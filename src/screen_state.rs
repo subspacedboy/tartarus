@@ -1,6 +1,7 @@
 use embedded_graphics_core::draw_target::DrawTarget;
 use embedded_hal::digital::OutputPin;
 use crate::lock_ctx::LockCtx;
+use crate::prelude::prelude::DynScreen;
 use crate::screen_ids::ScreenId;
 
 
@@ -10,10 +11,7 @@ pub trait ScreenState {
     type DC: OutputPin<Error = Self::PinE>;
     type RST: OutputPin<Error = Self::PinE>;
 
-    // fn on_d0(&mut self) -> Option<Box<dyn ScreenState<SPI, DC, RST>>>;
-    // fn on_d1(&mut self) -> Option<Box<dyn ScreenState<SPI, DC, RST>>>;
-    // fn on_d2(&mut self, input: char) -> Option<Box<dyn ScreenState<SPI, DC, RST>>>;
-    fn on_qr(&mut self, input: [u8; 254]);
+    fn on_update(&mut self, lock_ctx : &mut LockCtx) -> Option<Box<DynScreen<'static>>>;
 
     fn draw_screen(&mut self, lock_ctx : &mut LockCtx);
 

@@ -10,10 +10,16 @@ use embedded_graphics_core::Drawable;
 use embedded_graphics_core::geometry::{Point, Size};
 use embedded_graphics_core::primitives::Rectangle;
 use embedded_hal::digital::OutputPin;
+use esp_idf_hal::gpio::{GpioError, Output, PinDriver};
 use p256::pkcs8::{EncodePublicKey, LineEnding};
 use qrcode::{Color, QrCode};
 use st7789::ST7789;
+use crate::display_contract_screen::DisplayContractScreen;
 use crate::lock_ctx::LockCtx;
+use crate::under_contract_screen::UnderContractScreen;
+use crate::prelude::prelude::{DynScreen, MySPI};
+use crate::screen_ids::ScreenId::DisplayContract;
+use crate::verifier::{ContractVerifier, VerifiedType};
 
 pub struct BootScreen<SPI, DC, RST, PinE> {
     _spi: core::marker::PhantomData<SPI>,
@@ -45,10 +51,40 @@ where
     type PinE = PinE;
     type DC = DC;
     type RST = RST;
-    
-    fn on_qr(&mut self, input: [u8; 254]) {
-        todo!()
+
+    fn on_update(&mut self, lock_ctx: &mut LockCtx) -> Option<Box<DynScreen<'static>>> {
+        if let Some(update) = &lock_ctx.this_update {
+            if let Some(qr_data) = &update.qr_data {
+                let verifier = ContractVerifier::new();
+
+                if let Ok(verified_type) = verifier.verify(qr_data.clone()) {
+                    match verified_type {
+                        VerifiedType::Contract(contract) => {
+                            lock_ctx.accept_contract(&contract);
+
+                            lock_ctx.contract = Some(contract);
+                            let display_contract = Box::new(
+                                DisplayContractScreen::<
+                                    MySPI<'static>,
+                                    PinDriver<'static, _, Output>,
+                                    PinDriver<'static, _, Output>,
+                                    GpioError
+                                >::new());
+                            return Some(display_contract);
+                        }
+                        VerifiedType::PartialContract(partial_contract) => {
+                            log::info!("Partial Contract verified!", );
+                            log::info!("Address for full contract -> {}", partial_contract.full_address);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        None
     }
+
 
     fn draw_screen(&mut self, lock_ctx : &mut LockCtx) {
         let whole_message = if let Some(key) = lock_ctx.public_key {
@@ -92,7 +128,7 @@ where
     }
 
     fn get_id(&self) -> ScreenId {
-        todo!()
+        ScreenId::Boot
     }
 
     fn needs_redraw(&self) -> bool {

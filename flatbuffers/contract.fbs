@@ -44,7 +44,7 @@ table Contract {
   end_condition: EndCondition;
 
   // If participants is non-zero specified then capabilities must contain Online.
-  participants: [WebHook];
+  webhooks: [WebHook];
 
   // If true the lock will cycle immediately on read and verification.
   is_lock_on_accept: bool;

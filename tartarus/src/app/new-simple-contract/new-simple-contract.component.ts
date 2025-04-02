@@ -8,7 +8,7 @@ import jsQR from 'jsqr';
 import * as QRCode from 'qrcode';
 import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
 import {IdHelperService} from '../id-helper.service';
-import {PartialContract} from '../subjugated/club';
+import {EndCondition, PartialContract, WhenISaySo} from '../subjugated/club';
 import {CryptoService} from '../crypto.service';
 
 @Component({
@@ -42,30 +42,21 @@ export class NewSimpleContractComponent implements OnInit {
     // Create a public key string
     const publicKeyOffset = builder.createByteVector(compressedPublicKey);
 
-    // Create capabilities array
-    // This has to be a multiple of 4.
-    // Contract.startCapabilitiesVector(builder, 4);
-    // builder.addInt8(Capabilities.Online);
-    // builder.addInt8(Capabilities.Time);
-    // builder.addInt8(0);
-    // builder.addInt8(0);
-    // const capabilitiesOffset = builder.endVector();
+    WhenISaySo.startWhenISaySo(builder);
+    const whenISaySoOffset = WhenISaySo.endWhenISaySo(builder);
+
+    Contract.startContract(builder);
+    Contract.addPublicKey(builder, publicKeyOffset);
+    Contract.addIsLockOnAccept(builder, true);
+    Contract.addIsTemporaryUnlockAllowed(builder, false);
+    Contract.addEndCondition(builder, whenISaySoOffset);
+    Contract.addEndConditionType(builder, EndCondition.WhenISaySo);
+    Contract.addIsUnremovable(builder, true);
+    let fullContractOffset = Contract.endContract(builder);
+    builder.finish(fullContractOffset);
 
     const contractName = this.idHelperService.generateBase32Id()
-    const partialLocationOffset = builder.createString(`http://192.168.1.168:5200/contract/${contractName}`)
-
-    // Start creating the Contract
-    PartialContract.startPartialContract(builder);
-    PartialContract.addPublicKey(builder, publicKeyOffset);
-    // Contract.addCapabilities(builder, capabilitiesOffset);
-    PartialContract.addCompleteContractAddress(
-      builder,
-      partialLocationOffset
-      )
-    const contractOffset = PartialContract.endPartialContract(builder);
-
-    builder.finish(contractOffset);
-    console.log(builder.asUint8Array().length);
+    // console.log(builder.asUint8Array().length);
 
     const contractBytes = builder.asUint8Array();
     const offsetToTable = contractBytes[0] | (contractBytes[1] << 8);
@@ -78,7 +69,7 @@ export class NewSimpleContractComponent implements OnInit {
 
     const signatureOffset = SignedMessage.createSignatureVector(builder, new Uint8Array(signature));
 
-    // const payloadOffset = unionToMessagePayload(MessagePayload.Contract, contractOffset);
+    // const payloadOffset = unionToMessagePayload(MessagePayload.Contract, fullContractOffset);
     // MessagePayload.startMessagePayload(builder);
     // MessagePayload.addType(builder, MessagePayload.Contract); // Set correct type
     // MessagePayload.addTable(builder, contractOffset);
@@ -88,8 +79,8 @@ export class NewSimpleContractComponent implements OnInit {
     console.log("Length of signature " + signature.byteLength);
     console.log("Signature: " + new Uint8Array(signature));
     SignedMessage.startSignedMessage(builder);
-    SignedMessage.addPayload(builder, contractOffset);
-    SignedMessage.addPayloadType(builder, MessagePayload.PartialContract);
+    SignedMessage.addPayload(builder, fullContractOffset);
+    SignedMessage.addPayloadType(builder, MessagePayload.Contract);
     SignedMessage.addSignature(builder, signatureOffset);
     const signedMessageOffset = SignedMessage.endSignedMessage(builder);
 

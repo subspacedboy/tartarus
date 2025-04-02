@@ -1,4 +1,5 @@
 use embedded_graphics_core::draw_target::DrawTarget;
+use embedded_graphics_core::geometry::Point;
 use embedded_hal::digital::OutputPin;
 use crate::lock_ctx::LockCtx;
 

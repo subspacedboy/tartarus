@@ -1,7 +1,3 @@
-use esp_idf_hal::gpio::GpioError;
-use std::convert::Infallible;
-use std::io::Read;
-use sha2::Digest;
 mod contract_generated;
 mod verifier;
 mod lock_state_machine;
@@ -13,27 +9,18 @@ mod lock_ctx;
 mod prelude;
 mod overlay;
 mod overlays;
-
-use contract_generated::*;
+mod under_contract_screen;
+mod display_contract_screen;
+mod internal_contract;
 
 use std::thread::sleep;
 use std::time::Duration;
 
-use aes_gcm::{Aes256Gcm, Key, KeyInit};
-use aes_gcm::aead::{Aead, Nonce, Payload};
-use aes_gcm::aead::generic_array::GenericArray;
-use base64::Engine;
-use base64::engine::general_purpose;
+use aes_gcm::{Aes256Gcm, KeyInit};
 use display_interface_spi::SPIInterface;
-use embedded_graphics::geometry::{Point, Size};
-use embedded_graphics::pixelcolor::{Rgb565, RgbColor};
-use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle};
-use embedded_graphics::draw_target::DrawTarget;
 use embedded_hal::spi::MODE_3;
-use embedded_graphics::prelude::Primitive;
-use embedded_graphics::Drawable;
-use esp_idf_hal::delay::{Delay, BLOCK, NON_BLOCK};
-use esp_idf_hal::gpio::{AnyIOPin, Gpio40, Gpio41, Gpio45, Output, PinDriver, Pull};
+use esp_idf_hal::delay::{NON_BLOCK};
+use esp_idf_hal::gpio::{AnyIOPin, PinDriver, Pull};
 use esp_idf_hal::i2c::{I2cConfig, I2cDriver};
 use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_hal::prelude::FromValueType;
@@ -43,34 +30,29 @@ use esp_idf_hal::units::KiloHertz;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::hal::delay;
 use esp_idf_svc::hal::gpio;
-use esp_idf_svc::sys::esp_random;
-use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs, NvsDefault};
-use esp_idf_svc::wifi::{AuthMethod, BlockingWifi, ClientConfiguration, Configuration, EspWifi};
 use esp_idf_svc::http::client::EspHttpConnection;
+use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs, NvsDefault};
+use esp_idf_svc::sys::esp_random;
+use esp_idf_svc::wifi::{AuthMethod, BlockingWifi, ClientConfiguration, Configuration, EspWifi};
 
+use crate::lock_ctx::{LockCtx, TickUpdate};
+use crate::lock_state_machine::{LockStateMachine, State};
+
+use crate::wifi_util::{connect_wifi, parse_wifi_qr};
 use embedded_svc::http::client::Client as HttpClient;
 use embedded_svc::io::Write;
 use esp_idf_hal::sys::EspError;
-use hkdf::Hkdf;
-use p256::{PublicKey, SecretKey};
-use p256::ecdh::diffie_hellman;
-use p256::ecdsa::{Signature, VerifyingKey};
-use p256::pkcs8::{DecodePublicKey, EncodePublicKey, LineEnding};
-use p256::ecdsa::signature::Verifier;
-use qrcode::{Color, QrCode};
 use rand_core::{CryptoRng, RngCore};
-use sha2::{digest, Sha256};
 use st7789::{Error, Orientation, ST7789};
-use crate::boot_screen::BootScreen;
-use crate::contract_generated::subjugated::club::{MessagePayload, SignedMessage};
-use crate::lock_ctx::{LockCtx, TickUpdate};
-use crate::lock_state_machine::{LockStateMachine, State};
-use crate::screen_state::ScreenState;
-use crate::verifier::{ContractVerifier, VerifiedType};
-use crate::wifi_util::{connect_wifi, parse_wifi_qr};
-use embedded_graphics_core::geometry::OriginDimensions;
-use embedded_graphics_core::pixelcolor::raw::RawU16;
-use embedded_graphics_core::prelude::RawData;
+use embedded_graphics::draw_target::DrawTarget;
+use embedded_graphics::geometry::OriginDimensions;
+use embedded_graphics::mono_font::ascii::FONT_10X20;
+use embedded_graphics::mono_font::MonoTextStyle;
+use embedded_graphics::prelude::RgbColor;
+use embedded_graphics::pixelcolor::Rgb565;
+use embedded_graphics::text::{Alignment, Text};
+use embedded_graphics_core::geometry::Point;
+use embedded_graphics_core::Drawable;
 
 struct Esp32Rng;
 
@@ -169,6 +151,11 @@ fn main() {
     display.set_orientation(Orientation::Landscape).expect("To set landscape");
     display.clear(Rgb565::WHITE).expect("Display to clear");
 
+    let style = MonoTextStyle::new(&FONT_10X20, Rgb565::BLACK);
+    let draw_position = Point::new(120, 67);
+    let text = Text::with_alignment("@SubspacedBoy\nTartarus Lock Booting", draw_position, style, Alignment::Center);
+    text.draw(&mut display).expect("Should have drawn");
+
     // let sq_size = 50_u16;
 
     // The Correct 0,0 offset for the set_pixels call is 40,53 in landscape.
@@ -187,7 +174,7 @@ fn main() {
 
     // Warm up NVS (non-volatile storage)
     let nvs_partition = EspDefaultNvsPartition::take().expect("EspDefaultNvsPartition to be available");
-    let mut nvs: EspNvs<NvsDefault> = EspNvs::new(nvs_partition.clone(), "storage", true).unwrap();
+    let nvs: EspNvs<NvsDefault> = EspNvs::new(nvs_partition.clone(), "storage", true).unwrap();
 
     // let key_name = "ec_private";
     // let mut buffer : [u8; 256] = [0; 256];
@@ -310,9 +297,10 @@ fn main() {
 
 
     log::info!("Ready :-)");
-    let mut sm = LockStateMachine::new();
+    let sm = LockStateMachine::new();
     // let mut public_key : Option<PublicKey> = None;
-    let mut cipher : Option<Aes256Gcm> = None;
+    let cipher : Option<Aes256Gcm> = None;
+    const SLEEP_DURATION : Duration = Duration::from_millis(150);
 
     let mut lock_ctx = LockCtx::new(display, nvs, wifi);
 
@@ -323,15 +311,12 @@ fn main() {
         let mut d2_pressed = false;
 
         if d0_button.is_low() {
-            log::info!("d0 is pressed");
             d0_pressed = true;
         }
         if d1_button.is_high() {
-            log::info!("d1 is pressed");
             d1_pressed = true;
         }
         if d2_button.is_high() {
-            log::info!("d2 is pressed");
             d2_pressed = true;
         }
 
@@ -341,7 +326,6 @@ fn main() {
                 let size: usize = rx_buf[0] as usize;
                 if size > 0 {
                     // See rx_buf for 2 and +2 info.
-                    // let as_string = String::from_utf8(rx_buf[2..size+2].to_vec()).expect("Valid string");
                     data = Some(rx_buf[2..size + 2].to_vec())
                 }
             }
@@ -352,7 +336,8 @@ fn main() {
             d0_pressed,
             d1_pressed,
             d2_pressed,
-            qr_data : data
+            qr_data : data,
+            since_last: SLEEP_DURATION
         };
 
         lock_ctx.tick(this_update);
@@ -416,7 +401,7 @@ fn main() {
         //     State::Reset => {}
         // }
 
-        sleep(Duration::from_millis(100));
+        sleep(SLEEP_DURATION);
 
         // continue; // keep optimizer from removing in --release
     }

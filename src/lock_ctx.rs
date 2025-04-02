@@ -1,3 +1,4 @@
+use std::time::Duration;
 use base64::Engine;
 use base64::engine::general_purpose;
 use display_interface_spi::SPIInterface;
@@ -18,18 +19,23 @@ use p256::{PublicKey, SecretKey};
 use p256::pkcs8::{EncodePublicKey, LineEnding};
 use st7789::ST7789;
 use crate::boot_screen::BootScreen;
+use crate::contract_generated::subjugated;
+use crate::contract_generated::subjugated::club::Contract;
 use crate::Esp32Rng;
-use crate::overlays::WifiOverlay;
+use crate::internal_contract::InternalContract;
+use crate::overlays::{ButtonPressOverlay, WifiOverlay};
 use crate::prelude::prelude;
 use crate::prelude::prelude::{DynOverlay, DynScreen, MyDisplay, MySPI};
 use crate::screen_state::ScreenState;
 use crate::wifi_util::{connect_wifi, parse_wifi_qr};
 
+#[derive(Debug, Clone)]
 pub struct TickUpdate {
     pub d0_pressed : bool,
     pub d1_pressed : bool,
     pub d2_pressed : bool,
-    pub qr_data : Option<Vec<u8>>
+    pub qr_data : Option<Vec<u8>>,
+    pub since_last: Duration
 }
 
 pub struct LockCtx {
@@ -41,6 +47,9 @@ pub struct LockCtx {
     pub(crate) wifi_connected: bool,
     secret_key: Option<SecretKey>,
     pub(crate) public_key: Option<PublicKey>,
+    pub(crate) this_update: Option<TickUpdate>,
+    pub(crate) contract: Option<InternalContract>,
+    is_locked: bool,
 }
 
 impl LockCtx {
@@ -53,7 +62,10 @@ impl LockCtx {
             overlays: Vec::new(),
             current_screen: None,
             secret_key: None,
-            public_key: None
+            public_key: None,
+            this_update: None,
+            contract: None,
+            is_locked: false,
         };
 
         if let Ok(connected) = lck.wifi.is_connected() {
@@ -62,9 +74,6 @@ impl LockCtx {
 
         let secret_key = lck.load_or_create_key();
         let my_public = PublicKey::from_secret_scalar(&secret_key.to_nonzero_scalar());
-
-        //TODO: Do something with this encoded body?
-        let encoded_cert = general_purpose::STANDARD.encode(&my_public.to_public_key_pem(LineEnding::CR).unwrap());
 
         lck.secret_key = Some(secret_key);
         lck.public_key = Some(my_public);
@@ -79,6 +88,16 @@ impl LockCtx {
         );
         lck.overlays.push(wifi_overlay);
 
+        let button_overlay: Box<DynOverlay<'static>> = Box::new(
+            ButtonPressOverlay::<
+                MySPI<'static>,
+                PinDriver<'static, _, Output>,
+                PinDriver<'static, _, Output>,
+                GpioError
+            >::new()
+        );
+        lck.overlays.push(button_overlay);
+
         let boot_screen: Box<DynScreen<'static>> = Box::new(
             BootScreen::<
                 MySPI<'static>,
@@ -88,6 +107,8 @@ impl LockCtx {
             >::new()
         );
         lck.current_screen = Some(boot_screen);
+
+        lck.display.clear(Rgb565::WHITE).unwrap();
 
         lck
     }
@@ -117,11 +138,25 @@ impl LockCtx {
     }
 
     pub fn tick(&mut self, update : TickUpdate) -> () {
+        self.this_update = Some(update.clone());
+
         if let Some(mut current_screen) = self.current_screen.take() {
-            if current_screen.needs_redraw() {
-                current_screen.draw_screen(self);
+            let result_from_update = current_screen.on_update(self);
+
+            if let Some(mut new_screen) = result_from_update {
+                log::info!("New screen -> {:?}", new_screen.get_id());
+                // We state transitioned. So mandatory clear + draw.
+                self.display.clear(Rgb565::WHITE).unwrap();
+                new_screen.draw_screen(self);
+                self.current_screen = Some(new_screen);
+            } else {
+                if current_screen.needs_redraw() {
+                    current_screen.draw_screen(self);
+                }
+                // Put the current screen back
+                self.current_screen = Some(current_screen);
             }
-            self.current_screen = Some(current_screen);
+
         }
 
         let mut overlays = core::mem::take(&mut self.overlays);
@@ -129,22 +164,6 @@ impl LockCtx {
             overlay.draw_screen(self);
         }
         self.overlays = overlays;
-
-        if update.d0_pressed {
-            let blue_square = Rectangle::new(Point::new(0, 0), Size::new(25, 25))
-                .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::BLUE).build());
-            blue_square.draw(&mut self.display).expect("Failed to draw screen");
-
-            log::info!("Drew blue square");
-        } else {
-            let white_square = Rectangle::new(Point::new(0, 0), Size::new(25, 25))
-                .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::WHITE).build());
-            white_square.draw(&mut self.display).expect("Failed to draw screen");
-            white_square.draw(&mut self.display).expect("Failed to draw screen");
-            // let r = Rectangle::new(Point::new(0, 0), Size::new(50, 50));
-            // self.display.fill_solid(&r, Rgb565::WHITE).unwrap();
-            // log::info!("Drew white square");
-        }
 
         if let Some(incoming_data) = update.qr_data.clone() {
             if let Ok(maybe_string) = String::from_utf8(incoming_data) {
@@ -178,6 +197,33 @@ impl LockCtx {
                     }
                 }
             }
+        }//end of if let Some(incoming_data)
+
+    }
+
+    pub fn cycle_lock(&mut self) -> () {
+        log::info!("Cycling lock");
+        self.is_locked ^= self.is_locked;
+    }
+
+    pub fn lock(&mut self) -> () {
+        log::info!("Locking");
+        self.is_locked = true;
+    }
+
+    pub fn unlock(&mut self) -> () {
+        log::info!("Unlocking");
+        self.is_locked = false;
+    }
+
+    pub fn is_locked(&self) -> bool {
+        self.is_locked
+    }
+
+    pub fn accept_contract(&mut self, contract : &InternalContract) -> () {
+        if contract.lock_on_accept {
+            self.cycle_lock();
+            log::info!("Contract was lock on accept");
         }
     }
 }
