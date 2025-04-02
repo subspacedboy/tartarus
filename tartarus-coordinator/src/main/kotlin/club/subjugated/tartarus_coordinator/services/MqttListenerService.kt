@@ -112,7 +112,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                                 val lockSession = this.lockSessionService.findBySessionToken(err.session!!)
 
                                 val command = this.commandQueueService.getCommandBySessionAndSerial(lockSession, err.serialNumber.toInt())
-                                this.commandQueueService.errorCommand(command)
+                                this.commandQueueService.errorCommand(command, err.message)
                                 println("😞 Error received $err")
                             }
                             else -> TODO()

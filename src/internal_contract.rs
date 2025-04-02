@@ -1,5 +1,5 @@
 use p256::ecdsa::VerifyingKey;
-use crate::contract_generated::club::subjugated::fb::message::{Contract, EndCondition, LockCommand, UnlockCommand};
+use crate::contract_generated::club::subjugated::fb::message::{Contract, EndCondition, LockCommand, ReleaseCommand, UnlockCommand};
 
 #[derive(Debug, Clone)]
 pub struct InternalContract {
@@ -20,6 +20,13 @@ pub struct InternalUnlockCommand {
 
 #[derive(Debug, Clone)]
 pub struct InternalLockCommand {
+    pub contract_serial_number: u16,
+    pub serial_number: u16,
+    pub counter: u16
+}
+
+#[derive(Debug, Clone)]
+pub struct InternalReleaseCommand {
     pub contract_serial_number: u16,
     pub serial_number: u16,
     pub counter: u16
@@ -89,6 +96,16 @@ impl From<LockCommand<'_>> for InternalLockCommand {
             contract_serial_number: lock_command.contract_serial_number(),
             serial_number: lock_command.serial_number(),
             counter: lock_command.counter(),
+        }
+    }
+}
+
+impl From<ReleaseCommand<'_>> for InternalReleaseCommand {
+    fn from(release_command: ReleaseCommand) -> InternalReleaseCommand {
+        Self {
+            contract_serial_number: release_command.contract_serial_number(),
+            serial_number: release_command.serial_number(),
+            counter: release_command.counter(),
         }
     }
 }

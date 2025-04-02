@@ -5,7 +5,7 @@ use p256::ecdsa::signature::Verifier;
 use p256::PublicKey;
 use sha2::{Digest, Sha256};
 use crate::contract_generated::club::subjugated::fb::message::{Contract, MessagePayload};
-use crate::internal_contract::{InternalContract, InternalLockCommand, InternalUnlockCommand, InternalUnverified};
+use crate::internal_contract::{InternalContract, InternalLockCommand, InternalReleaseCommand, InternalUnlockCommand, InternalUnverified};
 
 pub(crate) struct SignedMessageVerifier;
 
@@ -14,6 +14,7 @@ pub enum VerifiedType {
     Contract(InternalContract),
     UnlockCommand(InternalUnlockCommand),
     LockCommand(InternalLockCommand),
+    ReleaseCommand(InternalReleaseCommand),
     NoVerifiedType
 }
 
@@ -171,6 +172,50 @@ impl SignedMessageVerifier {
                                 return Err(VerificationError {
                                     serial_number: lock.serial_number(),
                                     counter: lock.counter(),
+                                    message: "Required a contract key but none was loaded".to_string(),
+                                })
+                            }
+                        }
+                        MessagePayload::ReleaseCommand => {
+                            log::info!("Processing release command");
+                            let release = signed_msg.payload_as_release_command().unwrap();
+                            if let Some(public_key) = contract_public_key {
+                                let message_table_start = release._tab.loc();
+                                let vtable_offset = u16::from_le_bytes(incoming_data[message_table_start..message_table_start +2].try_into().expect("wrong size")) as usize;
+                                let contract_end = incoming_data.len();
+                                let vtable_start = message_table_start - vtable_offset;
+                                let message_buffer = &incoming_data[vtable_start..contract_end];
+
+                                log::info!("Release buffer w/ vtable ({},{}): {:?}", vtable_start, contract_end, message_buffer.bytes());
+                                let hash = Sha256::digest(&message_buffer);
+                                log::info!("Hash: {:?}", hash);
+
+                                match Signature::from_bytes(signature.unwrap().bytes().into()) {
+                                    Ok(valid_signature) => {
+                                        if let Some(verifying_key) = contract_public_key {
+                                            match verifying_key.verify(&hash, &valid_signature) {
+                                                Ok(_) => {
+                                                    log::debug!("Signature verified!");
+                                                    return Ok(VerifiedType::ReleaseCommand(release.into()));
+                                                }
+                                                Err(e) => {
+                                                    log::error!("Error verifying signature: {:?}", e);
+                                                }
+                                            }
+                                        } else {
+                                            log::error!("Somehow contract publish key wasn't supplied");
+                                        }
+                                    }
+                                    Err(e) => {
+                                        log::error!("Error parsing signature: {:?}", e);
+                                    }
+                                }
+
+                            } else {
+                                log::error!("We received a message that requires a contract without having a public key already loaded.");
+                                return Err(VerificationError {
+                                    serial_number: release.serial_number(),
+                                    counter: release.counter(),
                                     message: "Required a contract key but none was loaded".to_string(),
                                 })
                             }

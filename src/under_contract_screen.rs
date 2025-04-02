@@ -11,6 +11,7 @@ use embedded_graphics_core::prelude::{DrawTarget, RgbColor};
 use embedded_graphics_core::Drawable;
 use embedded_hal::digital::OutputPin;
 use esp_idf_hal::gpio::{GpioError, Output, PinDriver};
+use crate::boot_screen::BootScreen;
 use crate::verifier::VerifiedType;
 
 pub struct UnderContractScreen<SPI, DC, RST, PinE> {
@@ -89,6 +90,18 @@ where
                 self.text = "Locked :-)".to_string();
                 self.needs_redraw = true;
                 Ok(None)
+            },
+            VerifiedType::ReleaseCommand(_) => {
+                lock_ctx.release();
+
+                let boot_screen = Box::new(
+                    BootScreen::<
+                        MySPI<'static>,
+                        PinDriver<'static, _, Output>,
+                        PinDriver<'static, _, Output>,
+                        GpioError
+                    >::new());
+                Ok(Some(boot_screen))
             }
             _ => {
                 Err("Command doesn't work on UnderContractScreen".parse().unwrap())

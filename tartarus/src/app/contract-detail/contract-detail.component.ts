@@ -9,6 +9,7 @@ import {UnlockCommand} from '../club/subjugated/fb/message/unlock-command';
 import {SignedMessage} from '../club/subjugated/fb/message/signed-message';
 import {MessagePayload} from '../club/subjugated/fb/message/message-payload';
 import {LockCommand} from '../club/subjugated/fb/message/lock-command';
+import {ReleaseCommand} from '../club/subjugated/fb/message/release-command';
 
 @Component({
   selector: 'app-contract-detail',
@@ -48,7 +49,16 @@ export class ContractDetailComponent implements OnInit {
     const authorName = this.userDataService.getAuthorName();
     this.makeLockMessage().then(lockSignedMessage => {
       this.tartarusCoordinatorService.saveUnlock(this.contractName, authorName, this.lockSessionShareableToken!, lockSignedMessage).subscribe(r => {
-        console.log("Unlock code saved");
+        console.log("Lock code saved");
+      });
+    });
+  }
+
+  release() {
+    const authorName = this.userDataService.getAuthorName();
+    this.makeReleaseMessage().then(releaseSignedMessage => {
+      this.tartarusCoordinatorService.saveUnlock(this.contractName, authorName, this.lockSessionShareableToken!, releaseSignedMessage).subscribe(r => {
+        console.log("Release code saved");
       });
     });
   }
@@ -104,6 +114,36 @@ export class ContractDetailComponent implements OnInit {
     SignedMessage.startSignedMessage(builder);
     SignedMessage.addPayload(builder, lockOffset);
     SignedMessage.addPayloadType(builder, MessagePayload.LockCommand);
+    SignedMessage.addSignature(builder, signatureOffset);
+    const signedMessageOffset = SignedMessage.endSignedMessage(builder);
+    builder.finish(signedMessageOffset);
+
+    const finishedSignedMessageBytes = builder.asUint8Array();
+    console.log(finishedSignedMessageBytes);
+    return finishedSignedMessageBytes;
+  }
+
+  async makeReleaseMessage() : Promise<Uint8Array> {
+    const builder = new flatbuffers.Builder(1024);
+
+    const {privatePem, publicPem} = this.userDataService.getAuthorKeypair();
+    const ecdsKeys = await this.cryptoService.importKeyPairForECDSA(String(privatePem) + String(publicPem));
+
+    const serialNumber = Math.floor(Math.random() * 65536);
+
+    ReleaseCommand.startReleaseCommand(builder);
+    ReleaseCommand.addCounter(builder, this.contract!.nextCounter!);
+    ReleaseCommand.addContractSerialNumber(builder, this.contract!.serialNumber!);
+    ReleaseCommand.addSerialNumber(builder, serialNumber);
+    const releaseOffset = ReleaseCommand.endReleaseCommand(builder);
+    builder.finish(releaseOffset);
+
+    const signature = await this.cryptoService.hashAndSignFb(ecdsKeys.privateKey, builder.asUint8Array())
+    const signatureOffset = SignedMessage.createSignatureVector(builder, new Uint8Array(signature));
+
+    SignedMessage.startSignedMessage(builder);
+    SignedMessage.addPayload(builder, releaseOffset);
+    SignedMessage.addPayloadType(builder, MessagePayload.ReleaseCommand);
     SignedMessage.addSignature(builder, signatureOffset);
     const signedMessageOffset = SignedMessage.endSignedMessage(builder);
     builder.finish(signedMessageOffset);

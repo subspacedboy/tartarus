@@ -36,8 +36,9 @@ class CommandQueueService {
         saveCommand(command)
     }
 
-    fun errorCommand(command: Command) {
+    fun errorCommand(command: Command, message : String?) {
         command.state = CommandState.ERROR
+        command.message = message
         saveCommand(command)
     }
 

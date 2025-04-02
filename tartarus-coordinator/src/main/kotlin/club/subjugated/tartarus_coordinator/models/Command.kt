@@ -13,7 +13,10 @@ class Command(
 
     @Enumerated(EnumType.STRING)
     var state : CommandState = CommandState.UNSPECIFIED,
+    @Enumerated(EnumType.STRING)
+    var type: CommandType = CommandType.UNSPECIFIED,
     var body : ByteArray? = null,
+    var message: String? = null,
 
     var serialNumber: Int? = null,
     var counter: Int? = null,

@@ -28,6 +28,9 @@ impl Acknowledger {
             VerifiedType::LockCommand(lock) => {
                 (lock.serial_number, lock.counter)
             }
+            VerifiedType::ReleaseCommand(release) => {
+                (release.serial_number, release.counter)
+            }
             VerifiedType::NoVerifiedType => {
                 (0u16, 0u16)
             }
@@ -109,6 +112,9 @@ impl Acknowledger {
             }
             VerifiedType::LockCommand(lock) => {
                 (lock.serial_number, lock.counter)
+            }
+            VerifiedType::ReleaseCommand(release) => {
+                (release.serial_number, release.counter)
             }
             VerifiedType::NoVerifiedType => {
                 (0u16, 0u16)

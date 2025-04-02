@@ -336,6 +336,12 @@ impl LockCtx {
         Ok(true)
     }
 
+    pub fn release(&mut self) -> () {
+        log::info!("Released");
+        self.unlock();
+        self.contract = None;
+    }
+
     pub fn lock(&mut self) -> () {
         log::info!("Locking");
         self.is_locked = true;

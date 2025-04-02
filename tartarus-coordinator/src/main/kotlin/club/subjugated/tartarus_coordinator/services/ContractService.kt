@@ -53,6 +53,7 @@ class ContractService {
                     val command = Command(
                         commandQueue = lockSession.commandQueue.first(),
                         state = CommandState.PENDING,
+                        type = CommandType.ACCEPT_CONTRACT,
                         serialNumber = maybeContract.contract.serialNumber.toInt(),
                         counter = 0,
                         body = Base64.getDecoder().decode(newContractMessage.signedMessage),
@@ -84,6 +85,7 @@ class ContractService {
                 val command = Command(
                     commandQueue = lockSession.commandQueue.first(),
                     state = CommandState.PENDING,
+                    type = CommandType.UNLOCK,
                     serialNumber = incomingCommand.unlockCommand.serialNumber.toInt(),
                     counter = incomingCommand.unlockCommand.counter.toInt(),
                     body = decodedData,
@@ -99,8 +101,25 @@ class ContractService {
                 val command = Command(
                     commandQueue = lockSession.commandQueue.first(),
                     state = CommandState.PENDING,
+                    type = CommandType.LOCK,
                     serialNumber = incomingCommand.lockCommand.serialNumber.toInt(),
                     counter = incomingCommand.lockCommand.counter.toInt(),
+                    body = decodedData,
+                    authorSession = authorSession,
+                    createdAt = timeSource.nowInUtc(),
+                    updatedAt = timeSource.nowInUtc(),
+                    contract = contract
+                )
+                this.commandQueueService.saveCommand(command)
+                publisher.publishEvent(NewCommandEvent(this, lockSession.sessionToken!!))
+            }
+            is ValidatedPayload.ReleaseCommandPayload -> {
+                val command = Command(
+                    commandQueue = lockSession.commandQueue.first(),
+                    state = CommandState.PENDING,
+                    type = CommandType.RELEASE,
+                    serialNumber = incomingCommand.releaseCommand.serialNumber.toInt(),
+                    counter = incomingCommand.releaseCommand.counter.toInt(),
                     body = decodedData,
                     authorSession = authorSession,
                     createdAt = timeSource.nowInUtc(),
@@ -134,6 +153,12 @@ class ContractService {
         } else if(command.contract.nextCounter!! > 0) {
             val contract = command.contract
             contract.nextCounter = command.counter!! + 1
+            this.contractRepository.save(contract)
+        }
+
+        if(command.contract.state == ContractState.CONFIRMED && command.type == CommandType.RELEASE) {
+            val contract = command.contract
+            contract.state = ContractState.RELEASED
             this.contractRepository.save(contract)
         }
     }

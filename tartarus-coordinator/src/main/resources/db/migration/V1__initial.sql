@@ -41,6 +41,8 @@ create table command(
     contract_id bigint NOT NULL,
     command_queue_id bigint NOT NULL,
     state varchar(25) NOT NULL,
+    type varchar(25) NOT NULL,
+    message varchar(255) DEFAULT NULL,
     serial_number SMALLINT UNSIGNED NOT NULL,
     counter SMALLINT UNSIGNED NOT NULL,
     body BLOB NOT NULL,

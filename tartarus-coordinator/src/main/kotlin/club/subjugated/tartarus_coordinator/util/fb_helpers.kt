@@ -11,6 +11,7 @@ sealed class ValidatedPayload {
     data class ContractPayload(val contract: Contract) : ValidatedPayload()
     data class UnlockCommandPayload(val unlockCommand: UnlockCommand) : ValidatedPayload()
     data class LockCommandPayload(val lockCommand: LockCommand) : ValidatedPayload()
+    data class ReleaseCommandPayload(val releaseCommand: ReleaseCommand) : ValidatedPayload()
     data class StartedUpdatePayload(val startedUpdate: StartedUpdate) : ValidatedPayload()
     data class AcknowledgementPayload(val acknowledgement: Acknowledgement) : ValidatedPayload()
     data class ErrorPayload(val error: Error) : ValidatedPayload()
@@ -39,7 +40,6 @@ fun findVerificationKeyRequirement(buf : ByteBuffer) : ValidationKeyRequirement 
             val ack = Acknowledgement()
             signedMessage.payload(ack)
             ValidationKeyRequirement.LockSessionKey(ack.session!!)
-//            ValidationKeyRequirement.KeyIsInMessage
         }
         MessagePayload.StartedUpdate -> ValidationKeyRequirement.KeyIsInMessage
         else -> ValidationKeyRequirement.Unspecified
@@ -102,6 +102,15 @@ fun  signedMessageBytesValidatorWithExternalKey(buf : ByteBuffer, key: ByteArray
             signedMessage.payload(lock)
             if(verifySignedMessageSignature(lock, key, signatureBytes)) {
                 ValidatedPayload.LockCommandPayload(lock)
+            } else {
+                ValidatedPayload.UnknownPayload
+            }
+        }
+        MessagePayload.ReleaseCommand -> {
+            val release = ReleaseCommand()
+            signedMessage.payload(release)
+            if(verifySignedMessageSignature(release, key, signatureBytes)) {
+                ValidatedPayload.ReleaseCommandPayload(release)
             } else {
                 ValidatedPayload.UnknownPayload
             }
