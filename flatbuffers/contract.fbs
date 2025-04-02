@@ -1,0 +1,77 @@
+namespace subjugated.club;
+
+enum Capabilities : byte { Online = 1, Time }
+
+table TimeEndCondition {
+  seconds: ulong;
+}
+
+table WhenISaySo {
+
+}
+
+union EndCondition {
+  TimeEndCondition,
+  WhenISaySo
+}
+
+table WebHook {
+  address: string;
+}
+
+table TemporaryUnlockRules {
+  // If greater than zero it should act like a counter.
+  max_unlocks: ushort;
+
+  // This only makes sense if capabilities has Time and Online.
+  time_limit: ushort;
+}
+
+table Contract {
+  public_key: [ubyte];
+
+  capabilities: [Capabilities];
+
+  // If a contract is partial then the only fields that are considered
+  // are is_partial and the complete_contract_address. Everything else
+  // should be ignored. Capabilities must specify Online if is_partial is true.
+  is_partial: bool;
+  complete_contract_address: string;
+
+  // If this contract is able to be loaded, it cannot be removed
+  // without explicit permission.
+  // If it's partial, then the rest has to be checked first.
+  is_unremovable: bool;
+
+  // There's a nested contract and it's encrypted with the shared secret
+  // of the target lockbox and the keyholder of this contract.
+  is_blind: bool;
+  encrypted_contract: [ubyte];
+
+  end_condition: EndCondition;
+
+  // If participants is non-zero specified then capabilities must contain Online.
+  participants: [WebHook];
+
+  // If true the lock will cycle immediately on read and verification.
+  is_lock_on_accept: bool;
+
+  // If true, subject can freely cycle the lock.
+  is_temporary_unlock_allowed: bool;
+  unlock_rules : TemporaryUnlockRules;
+}
+
+union MessagePayload {
+  Contract
+}
+
+table SignedMessage {
+  signature: [ubyte];
+  payload: MessagePayload;
+}
+
+table Configuration {
+  coordinator_address: string;
+}
+
+root_type SignedMessage;

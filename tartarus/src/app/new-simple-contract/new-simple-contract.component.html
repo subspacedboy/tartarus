@@ -1,0 +1,15 @@
+<h2>Simple Contract Builder</h2>
+
+<h2>Step 1: Load key</h2>
+<input type="file" (change)="onFileSelected($event)" accept="image/*">
+<canvas #scanCanvas style="display: none;"></canvas>
+<p>Scanned QR Code Data: <strong>{{ keyMessage }}</strong></p>
+
+<div>
+  <button (click)="createContract()">Create Contract</button>
+</div>
+
+<div #hiddenDiv hidden>
+  <h1 style="color: black">Contract</h1>
+  <canvas #canvas></canvas>
+</div>

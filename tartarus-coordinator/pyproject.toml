@@ -1,0 +1,26 @@
+[project]
+name = "tartarus-coordinator"
+version = "0.1.0"
+description = ""
+authors = [
+<<<<<<< HEAD:support/pyproject.toml
+    {name = "SubspacedBoy",email = "ssb@subjugated.club"}
+=======
+    {name = "SubspacedBoy ",email = "ssb@subjugated.club" }
+>>>>>>> 26e4f6d (Contract verification working everywhere):tartarus-coordinator/pyproject.toml
+]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "flask (>=3.1.0,<4.0.0)",
+    "cryptography (>=44.0.1,<45.0.0)",
+    "flatbuffers (>=25.2.10,<26.0.0)",
+    "sqlalchemy (>=2.0.38,<3.0.0)",
+    "sqlalchemy-orm (>=1.2.10,<2.0.0)",
+    "flask-cors (>=5.0.0,<6.0.0)",
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

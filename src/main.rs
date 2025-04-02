@@ -1,3 +1,9 @@
+use std::io::Read;
+use sha2::Digest;
+mod contract_generated;
+
+use contract_generated::*;
+
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -37,12 +43,14 @@ use embedded_svc::io::Write;
 use hkdf::Hkdf;
 use p256::{PublicKey, SecretKey};
 use p256::ecdh::diffie_hellman;
+use p256::ecdsa::{Signature, VerifyingKey};
 use p256::pkcs8::{DecodePublicKey, EncodePublicKey, LineEnding};
+use p256::ecdsa::signature::Verifier;
 use qrcode::{Color, QrCode};
 use rand_core::{CryptoRng, RngCore};
-use sha2::Sha256;
+use sha2::{digest, Sha256};
 use st7789::{Orientation, ST7789};
-
+use crate::contract_generated::subjugated::club::{MessagePayload, SignedMessage};
 
 struct Esp32Rng;
 
@@ -138,9 +146,6 @@ fn main() {
 
     let nvs_partition = EspDefaultNvsPartition::take().expect("EspDefaultNvsPartition to be available");
     let mut nvs = EspNvs::new(nvs_partition.clone(), "storage", true).unwrap();
-
-    // let partition = EspNvsPartition::<NvsDefault>::take().unwrap();
-    // let mut nvs = EspNvs::new(partition, "storage", true).unwrap();
 
     let key_name = "ec_private";
     let mut buffer : [u8; 256] = [0; 256];
@@ -325,34 +330,81 @@ fn main() {
         match sm.current_state() {
             State::Start => {
                 if let Some(incoming_data) = data {
-                    if let Ok(maybe_b64_string) = String::from_utf8(incoming_data) {
-                        if let Ok(decoded_string) = general_purpose::STANDARD.decode(maybe_b64_string) {
-                            if let Ok(valid_string) = String::from_utf8(decoded_string) {
-                                log::info!("valid b64 decoded string {:?}", valid_string);
+                    log::info!("Scanned data: {:?}", incoming_data.bytes());
 
-                                let receiver_public = PublicKey::from_public_key_pem(valid_string.as_str());
-                                if let Ok(_public_key) = receiver_public {
-                                    log::info!("Valid key found");
-                                    public_key = Some(_public_key);
+                    match subjugated::club::root_as_signed_message(incoming_data.as_slice()) {
+                        Ok(signed_msg) => {
+                            log::info!("Signed message: {:?}", signed_msg);
 
-                                    let shared_secret = diffie_hellman(
-                                        private_key.to_nonzero_scalar(),
-                                        _public_key.as_affine()
-                                    );
+                            let signature = signed_msg.signature();
+                            println!("Signature: {:?}", signature);
 
-                                    let mut aes_key = [0u8; 32];
-                                    let hk = Hkdf::<Sha256>::new(None, &shared_secret.raw_secret_bytes());
-                                    hk.expand("AES-GCM key derivation".as_bytes(), &mut aes_key).expect("HKDF expansion failed");
-                                    log::info!("Derived key: {:x?}", aes_key);
+                            if let Some(payload) = signed_msg.payload() {
+                                match payload {
+                                    Contract => {
+                                        // Step 4: Extract the Contract
+                                        let contract = signed_msg.payload_as_contract().unwrap();
+                                        println!("Contract Public Key: {:?}", contract.public_key().unwrap());
 
-                                    // let symmetric_key: &Key<Aes256Gcm> = shared_secret.raw_secret_bytes().into();
-                                    let symmetric_key: &Key<Aes256Gcm> = (&aes_key).into();
-                                    cipher = Some(Aes256Gcm::new(symmetric_key));
+                                        match PublicKey::from_sec1_bytes(contract.public_key().unwrap().bytes()) {
+                                            Ok(valid_key) => {
+                                                println!("Key correctly parsed!");
 
-                                    log::info!("AES Cipher initialized");
-                                    sm.transition(State::CertificateLoaded);
+                                                let contract_table_start = contract._tab.loc();
+                                                let vtable_offset = u16::from_le_bytes(incoming_data[contract_table_start..contract_table_start+2].try_into().expect("wrong size")) as usize;
+                                                let contract_end = incoming_data.len();
+                                                let vtable_start = contract_table_start - vtable_offset;
+                                                let contract_buffer = &incoming_data[vtable_start..contract_end];
+
+                                                log::info!("Contract buffer w/ vtable ({},{}): {:?}", vtable_start, contract_end, contract_buffer.bytes());
+                                                let hash = Sha256::digest(&contract_buffer);
+                                                log::info!("Hash: {:?}", hash);
+
+                                                let vkey = VerifyingKey::from_sec1_bytes(contract.public_key().unwrap().bytes()).expect("Valid public key");
+                                                match Signature::from_bytes(signature.unwrap().bytes().into()) {
+                                                    Ok(valid_signature) => {
+                                                        log::info!("Signature was valid: {:?}", valid_signature);
+                                                        match vkey.verify(&hash, &valid_signature) {
+                                                            Ok(_) => {
+                                                                println!("Signature verified!");
+                                                                if contract.is_partial() {
+                                                                    // Go get the other part.
+                                                                } else {
+                                                                    if contract.is_lock_on_accept() {
+                                                                        log::info!("Not partial and Lock on accept!");
+                                                                        sm.transition(State::CodeConfirmed);
+                                                                    }
+                                                                }
+                                                            }
+                                                            Err(e) => {
+                                                                println!("Error verifying signature: {:?}", e);
+                                                            }
+                                                        }
+                                                    }
+                                                    Err(e) => {
+                                                        println!("Error parsing signature: {:?}", e);
+                                                    }
+                                                }
+
+                                            }
+                                            Err(e) => {
+                                                println!("Error parsing key: {:?}", e);
+                                            }
+                                        }
+
+                                        // Step 5: Extract Capabilities
+                                        if let Some(capabilities) = contract.capabilities() {
+                                            println!("Capabilities: {:?}", capabilities);
+                                        }
+
+                                        // Step 6: Extract is_partial flag
+                                        println!("Is Partial: {}", contract.is_partial());
+                                    }
                                 }
                             }
+                        }
+                        Err(e) => {
+                            println!("Error parsing signed message: {:?}", e);
                         }
                     }
                 }

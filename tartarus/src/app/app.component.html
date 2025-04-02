@@ -1,0 +1,30 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand" id="maybe" href="#">Tartarus 🔐</a>
+    <div ngbDropdown placement="bottom-end" class="d-inline-block" display="dynamic">
+      <button type="button" class="btn btn-primary" id="dropdownBasic1" ngbDropdownToggle>Menu</button>
+      <div ngbDropdownMenu aria-labelledby="dropdownBasic1">
+        <button ngbDropdownItem><a routerLink="">Home</a></button>
+        <button ngbDropdownItem><a routerLink="public/subscriptions">Public Subscriptions</a></button>
+
+<!--        @if (currentUser) {-->
+<!--          <button ngbDropdownItem><a routerLink="my-info">My Info</a></button>-->
+<!--          <button ngbDropdownItem><a routerLink="protocols">Protocols</a></button>-->
+<!--          <button ngbDropdownItem><a routerLink="subscribe">Subscribe</a></button>-->
+<!--          @if(environment.show_fake_location_component){-->
+<!--            <button ngbDropdownItem><a routerLink="fake-location">Set Fake Location</a></button>-->
+<!--          }-->
+<!--          <button ngbDropdownItem><a routerLink="logout">Logout</a></button>-->
+<!--        }-->
+
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!--<app-toast-container></app-toast-container>-->
+<!--<ngx-spinner bdColor = "rgba(0, 0, 0, 0.8)" size = "medium" color = "#df720c" type = "ball-atom" [fullScreen] = "true"><p style="color: white" > Reticulating Splines... </p></ngx-spinner>-->
+
+<div class="container">
+  <router-outlet></router-outlet>
+</div>
