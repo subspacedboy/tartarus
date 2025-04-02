@@ -33,10 +33,10 @@ class LockSession(
     }
 
     fun decodePublicKey(): ByteArray {
-        return Base64.getUrlDecoder().decode(this.publicKey)
+        return Base64.getDecoder().decode(this.publicKey)
     }
 
-    fun loadPublicKey(): ECPublicKey {
-        return getECPublicKeyFromCompressedKeyByteArray(Base64.getDecoder().decode(this.publicKey))
-    }
+//    fun loadPublicKey(): ECPublicKey {
+//        return getECPublicKeyFromCompressedKeyByteArray(Base64.getDecoder().decode(this.publicKey))
+//    }
 }

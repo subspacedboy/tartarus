@@ -22,32 +22,45 @@ static getSizePrefixedRootAsGetFirmwareChunkResponse(bb:flatbuffers.ByteBuffer, 
   return (obj || new GetFirmwareChunkResponse()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-chunk(index: number):number|null {
-  const offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
-}
-
-chunkLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
-}
-
-chunkArray():Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
-}
-
 size():number {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
+}
+
+offset():number {
   const offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
 }
 
+chunk(index: number):number|null {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
+}
+
+chunkLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+chunkArray():Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
+}
+
 static startGetFirmwareChunkResponse(builder:flatbuffers.Builder) {
-  builder.startObject(2);
+  builder.startObject(3);
+}
+
+static addSize(builder:flatbuffers.Builder, size:number) {
+  builder.addFieldInt16(0, size, 0);
+}
+
+static addOffset(builder:flatbuffers.Builder, offset:number) {
+  builder.addFieldInt16(1, offset, 0);
 }
 
 static addChunk(builder:flatbuffers.Builder, chunkOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, chunkOffset, 0);
+  builder.addFieldOffset(2, chunkOffset, 0);
 }
 
 static createChunkVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
@@ -62,19 +75,16 @@ static startChunkVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(1, numElems, 1);
 }
 
-static addSize(builder:flatbuffers.Builder, size:number) {
-  builder.addFieldInt16(1, size, 0);
-}
-
 static endGetFirmwareChunkResponse(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   return offset;
 }
 
-static createGetFirmwareChunkResponse(builder:flatbuffers.Builder, chunkOffset:flatbuffers.Offset, size:number):flatbuffers.Offset {
+static createGetFirmwareChunkResponse(builder:flatbuffers.Builder, size:number, offset:number, chunkOffset:flatbuffers.Offset):flatbuffers.Offset {
   GetFirmwareChunkResponse.startGetFirmwareChunkResponse(builder);
-  GetFirmwareChunkResponse.addChunk(builder, chunkOffset);
   GetFirmwareChunkResponse.addSize(builder, size);
+  GetFirmwareChunkResponse.addOffset(builder, offset);
+  GetFirmwareChunkResponse.addChunk(builder, chunkOffset);
   return GetFirmwareChunkResponse.endGetFirmwareChunkResponse(builder);
 }
 }

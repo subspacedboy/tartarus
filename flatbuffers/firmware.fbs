@@ -10,6 +10,7 @@ table Version {
 
 table FirmwareChallengeRequest {
     nonce: [ubyte];
+    latest: Version;
 }
 
 table FirmwareChallengeResponse {
@@ -32,12 +33,13 @@ table GetLatestFirmwareResponse {
 table GetFirmwareChunkRequest {
     name: string;
     offset: ushort;
-    bytes: ushort;
+    size: ushort;
 }
 
 table GetFirmwareChunkResponse {
-    chunk: [ubyte];
     size: ushort;
+    offset: ushort;
+    chunk: [ubyte];
 }
 
 union MessagePayload {

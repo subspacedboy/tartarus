@@ -14,11 +14,14 @@ use crate::firmware_generated::club::subjugated::fb::message::firmware::{
     FirmwareMessage, FirmwareMessageArgs, GetLatestFirmwareRequest, GetLatestFirmwareRequestArgs,
     MessagePayloadUnionTableOffset, Version, VersionArgs,
 };
-use crate::firmware_updater::FirmwareUpdater;
+use crate::firmware_updater::{
+    read_as_firmware_message, FirmwareAssembler, FirmwareManager, FirmwareUpdater,
+};
 use crate::internal_config::InternalConfig;
 use crate::internal_contract::{InternalContract, SaveState};
-use crate::internal_firmware::InternalFirmware;
+use crate::internal_firmware::{FirmwareMessageType, InternalFirmware};
 use crate::lock_ctx::TopicType::{Acknowledgments, ConfigurationData, SignedMessages};
+use crate::mqtt_service::TopicType::FirmwareMessage as TopicFirmwareMessage;
 use crate::mqtt_service::{MqttService, SignedMessageTransport, TopicType};
 use crate::overlays::{ButtonPressOverlay, WifiOverlay};
 use crate::prelude::prelude::{DynOverlay, DynScreen, MyDisplay, MySPI};
@@ -102,7 +105,8 @@ impl LockCtx {
             time_in_ticks: 0,
             configuration: InternalConfig::default(),
             firmware: InternalFirmware::default(),
-            firmware_updater: Some(FirmwareUpdater::new()),
+            // firmware_updater: Some(FirmwareUpdater::new()),
+            firmware_updater: None,
             schedule_next_update: None,
             mqtt_service: None,
         };
@@ -329,7 +333,7 @@ impl LockCtx {
                     log::info!("Received Configuration: {:?}", message);
                     configuration.push_back(message.buffer());
                 }
-                TopicType::FirmwareMessage | TopicType::FirmwareChunk => {
+                TopicType::FirmwareMessage => {
                     // log::info!("Received Firmware info: {:?}", message);
                     firmware.push_back(message.buffer());
                 }
@@ -342,15 +346,8 @@ impl LockCtx {
         while commands.len() > 0 {
             let buffer = commands.pop_front().unwrap();
             let verifier = SignedMessageVerifier::new();
-            let mut min_counter = 0_u16;
-            let mut contract_serial_number = 0_16;
-            // let contract_public_key: Option<&VerifyingKey> = if let Some(k) = &self.contract {
-            //     min_counter = k.command_counter;
-            //     contract_serial_number = k.serial_number;
-            //     k.public_key.as_ref()
-            // } else {
-            //     None
-            // };
+            let min_counter = 0_u16;
+            let contract_serial_number = 0_16;
 
             match verifier.verify(
                 buffer,
@@ -419,11 +416,25 @@ impl LockCtx {
         }
 
         while firmware.len() > 0 {
-            let firmware_message = firmware.pop_front();
-            if let Some(firmware_updater) = &self.firmware_updater {
-                firmware_updater.queue_bytes(firmware_message.unwrap());
+            let firmware_data = firmware.pop_front().unwrap();
+
+            if let Ok(msg) = read_as_firmware_message(firmware_data.as_slice()) {
+                match msg {
+                    FirmwareMessageType::Challenge(challenge) => {
+                        log::info!("We got firmware challenge");
+                        let fm = FirmwareManager::new();
+                        let response_bytes =
+                            fm.respond_to_challenge(&challenge, &self.session_token);
+                        self.enqueue_message(SignedMessageTransport::new(
+                            response_bytes,
+                            TopicFirmwareMessage,
+                        ));
+                    }
+                    FirmwareMessageType::FirmwareResponse => {
+                        log::info!("We got a fully constituted chunk!!");
+                    }
+                }
             }
-            log::info!("Processing firmware as noop for now");
         }
 
         // After all the MQTT-based channels see if the user has physically

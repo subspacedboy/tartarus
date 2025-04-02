@@ -28,8 +28,18 @@ class GetFirmwareChunkResponse : Table() {
         __init(_i, _bb)
         return this
     }
+    val size : UShort
+        get() {
+            val o = __offset(4)
+            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+        }
+    val offset : UShort
+        get() {
+            val o = __offset(6)
+            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+        }
     fun chunk(j: Int) : UByte {
-        val o = __offset(4)
+        val o = __offset(8)
         return if (o != 0) {
             bb.get(__vector(o) + j * 1).toUByte()
         } else {
@@ -38,15 +48,10 @@ class GetFirmwareChunkResponse : Table() {
     }
     val chunkLength : Int
         get() {
-            val o = __offset(4); return if (o != 0) __vector_len(o) else 0
+            val o = __offset(8); return if (o != 0) __vector_len(o) else 0
         }
-    val chunkAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun chunkInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
-    val size : UShort
-        get() {
-            val o = __offset(6)
-            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
-        }
+    val chunkAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(8, 1)
+    fun chunkInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 8, 1)
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsGetFirmwareChunkResponse(_bb: ByteBuffer): GetFirmwareChunkResponse = getRootAsGetFirmwareChunkResponse(_bb, GetFirmwareChunkResponse())
@@ -54,14 +59,17 @@ class GetFirmwareChunkResponse : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createGetFirmwareChunkResponse(builder: FlatBufferBuilder, chunkOffset: Int, size: UShort) : Int {
-            builder.startTable(2)
+        fun createGetFirmwareChunkResponse(builder: FlatBufferBuilder, size: UShort, offset: UShort, chunkOffset: Int) : Int {
+            builder.startTable(3)
             addChunk(builder, chunkOffset)
+            addOffset(builder, offset)
             addSize(builder, size)
             return endGetFirmwareChunkResponse(builder)
         }
-        fun startGetFirmwareChunkResponse(builder: FlatBufferBuilder) = builder.startTable(2)
-        fun addChunk(builder: FlatBufferBuilder, chunk: Int) = builder.addOffset(0, chunk, 0)
+        fun startGetFirmwareChunkResponse(builder: FlatBufferBuilder) = builder.startTable(3)
+        fun addSize(builder: FlatBufferBuilder, size: UShort) = builder.addShort(0, size.toShort(), 0)
+        fun addOffset(builder: FlatBufferBuilder, offset: UShort) = builder.addShort(1, offset.toShort(), 0)
+        fun addChunk(builder: FlatBufferBuilder, chunk: Int) = builder.addOffset(2, chunk, 0)
         @kotlin.ExperimentalUnsignedTypes
         fun createChunkVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
             builder.startVector(1, data.size, 1)
@@ -71,7 +79,6 @@ class GetFirmwareChunkResponse : Table() {
             return builder.endVector()
         }
         fun startChunkVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
-        fun addSize(builder: FlatBufferBuilder, size: UShort) = builder.addShort(1, size.toShort(), 0)
         fun endGetFirmwareChunkResponse(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o

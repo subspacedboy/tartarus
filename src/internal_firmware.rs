@@ -1,3 +1,6 @@
+use crate::internal_contract::{
+    InternalContract, InternalLockCommand, InternalReleaseCommand, InternalUnlockCommand,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -19,4 +22,22 @@ impl Default for InternalFirmware {
             signature: Vec::new(),
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct InternalChallenge {
+    pub nonce: Vec<u8>,
+    pub request_id: i64,
+}
+
+impl InternalChallenge {
+    pub fn new(nonce: Vec<u8>, request_id: i64) -> Self {
+        Self { nonce, request_id }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum FirmwareMessageType {
+    Challenge(InternalChallenge),
+    FirmwareResponse,
 }

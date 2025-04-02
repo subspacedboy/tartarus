@@ -8,10 +8,12 @@ import java.security.spec.*
 import org.bouncycastle.asn1.sec.SECNamedCurves
 import org.bouncycastle.asn1.x9.X9ECParameters
 import org.bouncycastle.crypto.signers.StandardDSAEncoding
+import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.jce.spec.ECNamedCurveSpec
 import org.bouncycastle.math.ec.ECCurve
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter
+import java.io.File
 
 fun getPemEncoding(ecPublicKey: ECPublicKey): String {
     val stringWriter = StringWriter()
@@ -43,21 +45,6 @@ fun loadECPublicKeyFromPkcs8(keyBytes: ByteArray): PublicKey {
 
     return keyFactory.generatePublic(keySpec)
 }
-
-//fun encodePublicKeySecp1(publicKey: ECPublicKey): ByteArray {
-//    val point = publicKey.w
-//    val xBytes = point.affineX.toByteArray()
-//    val yBytes = point.affineY.toByteArray()
-//
-//    // Ensure 32-byte representation for x and y
-//    val fixedX = ByteArray(32) { 0 }
-//    System.arraycopy(xBytes, 0, fixedX, 32 - xBytes.size, xBytes.size)
-//
-//    val yIsOdd = yBytes.last().toInt() and 1 == 1
-//    val prefix: Byte = if (yIsOdd) 0x03 else 0x02
-//
-//    return byteArrayOf(prefix) + fixedX
-//}
 
 fun encodePublicKeySecp1(publicKey: ECPublicKey): ByteArray {
     val point = publicKey.w
@@ -151,3 +138,33 @@ fun rawToDerSignature(rawSig: ByteArray): ByteArray {
     // Use BouncyCastle's built-in DSA encoding conversion
     return StandardDSAEncoding.INSTANCE.encode(SECNamedCurves.getByName("secp256r1").n, r, s)
 }
+
+fun loadRawPrivateKey(filePath: String): PrivateKey {
+    // Read the raw key bytes (32 bytes)
+    val keyBytes = File(filePath).readBytes()
+    if (keyBytes.size != 32) throw IllegalArgumentException("Invalid private key length")
+
+    // Convert raw bytes to BigInteger
+    val privateKeyInt = BigInteger(1, keyBytes)
+
+    // Load the EC parameter spec for secp256r1 (aka prime256v1)
+    val ecSpec = ECNamedCurveTable.getParameterSpec("prime256v1")
+
+    // Convert BouncyCastle's ECParameterSpec to a standard Java ECParameterSpec
+    val parameterSpec = ECNamedCurveSpec(
+        "secp256r1",
+        ecSpec.curve,
+        ecSpec.g,
+        ecSpec.n,
+        ecSpec.h,
+        ecSpec.seed
+    )
+
+    // Create ECPrivateKeySpec with the private key integer and the parameter spec
+    val privateKeySpec = ECPrivateKeySpec(privateKeyInt, parameterSpec)
+
+    // Create the EC private key
+    val keyFactory = KeyFactory.getInstance("EC", "BC")
+    return keyFactory.generatePrivate(privateKeySpec)
+}
+

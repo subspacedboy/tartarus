@@ -1,6 +1,7 @@
 package club.subjugated.tartarus_coordinator.api.firmware
 
 import club.subjugated.fb.bots.GetContractRequest
+import club.subjugated.fb.message.firmware.FirmwareChallengeResponse
 import club.subjugated.fb.message.firmware.FirmwareMessage
 import club.subjugated.fb.message.firmware.GetLatestFirmwareRequest
 import club.subjugated.fb.message.firmware.GetLatestFirmwareResponse
@@ -8,6 +9,7 @@ import club.subjugated.fb.message.firmware.MessagePayload
 import club.subjugated.fb.message.firmware.Version
 import club.subjugated.tartarus_coordinator.api.bots.ResponseBuilderContext
 import club.subjugated.tartarus_coordinator.services.FirmwareService
+import club.subjugated.tartarus_coordinator.services.LockSessionService
 import com.google.flatbuffers.FlatBufferBuilder
 import com.google.flatbuffers.Table
 import org.springframework.beans.factory.annotation.Autowired
@@ -19,14 +21,22 @@ import java.security.MessageDigest
 class FirmwareApiController {
     @Autowired
     lateinit var firmwareService: FirmwareService
+    @Autowired
+    lateinit var lockSessionService: LockSessionService
 
-    fun routeRequest(message: FirmwareMessage) : FirmwareMessage {
+    fun routeRequest(message: FirmwareMessage) : FirmwareMessage? {
         when(message.payloadType) {
             MessagePayload.GetLatestFirmwareRequest -> {
                 val latestRequest = GetLatestFirmwareRequest()
                 message.payload(latestRequest)
                 val response = handleGetLatestFirmwareRequest(latestRequest)
                 return buildResponse(MessagePayload.GetLatestFirmwareResponse, message.requestId, message.sessionToken!!, response)
+            }
+            MessagePayload.FirmwareChallengeResponse -> {
+                val challengeResponse = FirmwareChallengeResponse()
+                message.payload(challengeResponse)
+                handleChallengeResponse(message.requestId, message.sessionToken!!, challengeResponse)
+                return null
             }
             else -> {
                 TODO()
@@ -52,8 +62,6 @@ class FirmwareApiController {
 
     }
 
-
-
     fun handleGetLatestFirmwareRequest(message : GetLatestFirmwareRequest) : ResponseBuilderContext<GetLatestFirmwareResponse> {
         val firmware = firmwareService.getLatest()
 
@@ -69,7 +77,7 @@ class FirmwareApiController {
         val digest = MessageDigest.getInstance("SHA-256")
         val digestValue = digest.digest(firmware.image!!)
 
-        val subset = firmware.image!!.take(5_000).toByteArray()
+        val subset = firmware.image!!.take(16_000).toByteArray()
         val imageOffset = builder.createByteVector(ByteBuffer.wrap(subset))
         val nameOffset = builder.createString(firmware.name)
         val hashOffset = builder.createByteVector(digestValue)
@@ -84,5 +92,12 @@ class FirmwareApiController {
         val getLatestFirmwareVersionResponseOffset = GetLatestFirmwareResponse.endGetLatestFirmwareResponse(builder)
 
         return ResponseBuilderContext(builder, getLatestFirmwareVersionResponseOffset)
+    }
+
+    fun handleChallengeResponse(requestId: Long, sessionToken: String, message : FirmwareChallengeResponse) {
+        val signatureBytes = ByteArray(message.signatureLength) { message.signature(it).toByte() }
+
+        val validated = firmwareService.validateChallengeSignature(requestId, sessionToken, signatureBytes)
+        println("🧑‍🔬 Firmware validated as official? -> $validated")
     }
 }

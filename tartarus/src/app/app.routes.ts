@@ -12,6 +12,7 @@ import {ContractDetailComponent} from './contract-detail/contract-detail.compone
 import {CoordinatorConfigurationComponent} from './coordinator-configuration/coordinator-configuration.component';
 import {LogoutAuthorComponent} from './logout-author/logout-author.component';
 import {LockUserContractDetailComponent} from './lock-user-contract-detail/lock-user-contract-detail.component';
+import {WifiHelperComponent} from './wifi-helper/wifi-helper.component';
 
 export const routes: Routes = [
   {
@@ -64,5 +65,9 @@ export const routes: Routes = [
   {
     path: 'configuration',
     component: CoordinatorConfigurationComponent
+  },
+  {
+    path: 'wifi-helper',
+    component: WifiHelperComponent
   }
 ];

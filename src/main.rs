@@ -1,3 +1,4 @@
+extern crate core;
 mod acknowledger;
 mod boot_screen;
 mod config_verifier;
@@ -21,6 +22,8 @@ mod servo;
 mod under_contract_screen;
 mod verifier;
 mod wifi_util;
+
+mod generated;
 
 use crate::servo::Servo;
 use esp_idf_hal::ledc::LedcDriver;

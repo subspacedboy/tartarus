@@ -43,18 +43,19 @@ class LockSessionService {
                         createdAt = timeSource.nowInUtc(),
                         updatedAt = timeSource.nowInUtc(),
                     )
+                session.commandQueue.add(queue)
                 this.commandQueueRepository.save(queue)
 
                 session
             }
     }
 
-    fun findBySessionToken(token: String): LockSession {
-        return this.lockSessionRepository.findBySessionToken(token)!!
+    fun findBySessionToken(token: String): LockSession? {
+        return this.lockSessionRepository.findBySessionToken(token)
     }
 
     fun handlePeriodicUpdate(periodicUpdate: PeriodicUpdate) {
-        val lockSession = findBySessionToken(periodicUpdate.session!!)
+        val lockSession = findBySessionToken(periodicUpdate.session!!)!!
 
         lockSession.isLocked = periodicUpdate.isLocked
         saveLockSession(lockSession)

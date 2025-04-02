@@ -126,7 +126,7 @@ class BotApiController {
 
     fun handleGetContractRequest(botName: String, getContractRequest: GetContractRequest) : ResponseBuilderContext<GetContractResponse> {
         val lockSession = lockSessionService.findBySessionToken(getContractRequest.lockSession!!)
-        val contract = contractService.getBySerialAndLockSessionForBot(lockSession, getContractRequest.contractSerialNumber.toInt(), botName)
+        val contract = contractService.getBySerialAndLockSessionForBot(lockSession!!, getContractRequest.contractSerialNumber.toInt(), botName)
 
         val builder = FlatBufferBuilder(1024)
 

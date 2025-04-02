@@ -24,6 +24,7 @@ lto = true
 [features]
 default = []
 experimental = ["esp-idf-svc/experimental"]
+generated = []
 
 [dependencies]
 log = { version = "0.4", default-features = false }
@@ -36,7 +37,7 @@ st7789 = {path ="../st7789"}
 display-interface = "0.5.0"
 display-interface-spi = "0.5.0"
 qrcode = "0.14.0"
-p256 = { version = "0.13.2" }
+p256 = { version = "0.13.2"}
 rand_core = "0.6.4"
 data-encoding = "2.8.0"
 sha2 = "0.10.8"

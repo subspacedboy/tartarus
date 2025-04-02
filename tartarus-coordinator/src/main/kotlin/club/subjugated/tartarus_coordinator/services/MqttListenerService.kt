@@ -7,6 +7,7 @@ import club.subjugated.tartarus_coordinator.api.firmware.FirmwareApiController
 import club.subjugated.tartarus_coordinator.api.messages.NewLockSessionMessage
 import club.subjugated.tartarus_coordinator.components.CustomMqttSecurity
 import club.subjugated.tartarus_coordinator.events.NewCommandEvent
+import club.subjugated.tartarus_coordinator.models.CommandState
 import club.subjugated.tartarus_coordinator.util.*
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
@@ -44,7 +45,8 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
     @Autowired lateinit var lockSessionService: LockSessionService
     @Autowired lateinit var commandQueueService: CommandQueueService
     @Autowired lateinit var configurationService: ConfigurationService
-    @Autowired lateinit var contractService: ContractService
+//    @Autowired lateinit var contractService: ContractService
+    @Autowired lateinit var firmwareService: FirmwareService
 
     @Autowired lateinit var botApiController: BotApiController
     @Autowired lateinit var firmwareApiController: FirmwareApiController
@@ -122,10 +124,15 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                                         this.lockSessionService.findBySessionToken(
                                             keyRequirement.sessionToken
                                         )
-                                    signedMessageBytesValidatorWithExternalKey(
-                                        ByteBuffer.wrap(message.payload),
-                                        lockSession.decodePublicKey(),
-                                    )
+                                    if(lockSession == null) {
+                                        signedMessageBytesValidator(ByteBuffer.wrap(message.payload))
+                                    } else {
+                                        signedMessageBytesValidatorWithExternalKey(
+                                            ByteBuffer.wrap(message.payload),
+                                            lockSession.decodePublicKey(),
+                                        )
+                                    }
+
                                 }
                                 else -> {
                                     throw IllegalStateException()
@@ -165,7 +172,9 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
 
                         val response = firmwareApiController.routeRequest(firmwareApiMessage)
 
-                        client.publish("firmware/${response.sessionToken!!}", MqttMessage(response.byteBuffer.array()))
+                        if(response != null) {
+                            client.publish("firmware/${response.sessionToken!!}", MqttMessage(response.byteBuffer.array()))
+                        }
                     }
                     catch (ex : Exception) {
                         println("Encountered exception in processing Firmware MQTT")
@@ -198,10 +207,12 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
         val lockSession = lockSessionService.createLockSession(nlsm)
         lockSessionService.saveLockSession(lockSession)
 
-        val commands =
-            this.commandQueueService.getPendingCommandsForSession(
-                lockSession
-            )
+//        val commands =
+//            this.commandQueueService.getPendingCommandsForSession(
+//                lockSession
+//            )
+        val commands = lockSession.commandQueue.first().commands.filter { it.state == CommandState.PENDING }
+
         for (command in commands) {
             println("📤 Transmitting command ${command} -> ${sessionToken}")
             client.publish("locks/$sessionToken", MqttMessage(command.body))
@@ -214,6 +225,11 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
             "configuration/$sessionToken",
             MqttMessage(configData),
         )
+
+        // Also send the firmware challenge :-)
+        val firmwareChallenge = firmwareService.generateFirmwareChallenge(sessionToken)
+        println("🌮 Transmitting firmware challenge data -> ${sessionToken}")
+        client.publish("firmware/${sessionToken}", MqttMessage(firmwareChallenge))
     }
 
     private fun handlePeriodicUpdate(signedMessage: ValidatedPayload.PeriodicUpdatePayload) {
@@ -230,7 +246,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
             this.lockSessionService.findBySessionToken(ack.session!!)
         val command =
             this.commandQueueService.getCommandBySessionAndSerial(
-                lockSession,
+                lockSession!!,
                 ack.serialNumber.toInt(),
             )
         this.commandQueueService.acknowledgeCommand(command, ack)
@@ -245,7 +261,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
 
         val command =
             this.commandQueueService.getCommandBySessionAndSerial(
-                lockSession,
+                lockSession!!,
                 err.serialNumber.toInt(),
             )
         this.commandQueueService.errorCommand(command, err.message)
@@ -260,7 +276,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
     fun handleMessageEvent(event: NewCommandEvent) {
         println("MQTT service received: ${event}")
         val lockSession = this.lockSessionService.findBySessionToken(event.lockSessionToken)
-        val commands = this.commandQueueService.getPendingCommandsForSession(lockSession)
+        val commands = this.commandQueueService.getPendingCommandsForSession(lockSession!!)
         for (command in commands) {
             println("📤 Transmitting command ${command} -> ${event.lockSessionToken}")
             client.publish("locks/${event.lockSessionToken}", MqttMessage(command.body))

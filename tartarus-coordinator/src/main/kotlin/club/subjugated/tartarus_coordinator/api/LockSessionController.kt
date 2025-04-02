@@ -31,7 +31,7 @@ class LockSessionController {
     @ResponseBody
     fun findMyLockSession(@AuthenticationPrincipal user: UserDetails, @PathVariable someToken: String): ResponseEntity<LockSessionMessage> {
         val maybeSession = this.lockSessionService.findBySessionToken(someToken)
-        return ResponseEntity.ok(LockSessionMessage.fromLockSession(maybeSession, null, null,  listOf()))
+        return ResponseEntity.ok(LockSessionMessage.fromLockSession(maybeSession!!, null, null,  listOf()))
     }
 
     @GetMapping("/{someToken}", produces = [MediaType.APPLICATION_JSON])

@@ -7,4 +7,5 @@ import org.springframework.stereotype.Repository
 @Repository
 interface FirmwareRepository : JpaRepository<Firmware, Long> {
     fun findFirstByOrderByCreatedAtDesc() : Firmware
+    fun findFirstByDigest(digest : String): Firmware?
 }

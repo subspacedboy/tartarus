@@ -51,8 +51,19 @@ class FirmwareChallengeRequest(object):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         return o == 0
 
+    # FirmwareChallengeRequest
+    def Latest(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        if o != 0:
+            x = self._tab.Indirect(o + self._tab.Pos)
+            from club.subjugated.fb.message.firmware.Version import Version
+            obj = Version()
+            obj.Init(self._tab.Bytes, x)
+            return obj
+        return None
+
 def FirmwareChallengeRequestStart(builder):
-    builder.StartObject(1)
+    builder.StartObject(2)
 
 def Start(builder):
     FirmwareChallengeRequestStart(builder)
@@ -68,6 +79,12 @@ def FirmwareChallengeRequestStartNonceVector(builder, numElems):
 
 def StartNonceVector(builder, numElems):
     return FirmwareChallengeRequestStartNonceVector(builder, numElems)
+
+def FirmwareChallengeRequestAddLatest(builder, latest):
+    builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(latest), 0)
+
+def AddLatest(builder, latest):
+    FirmwareChallengeRequestAddLatest(builder, latest)
 
 def FirmwareChallengeRequestEnd(builder):
     return builder.EndObject()

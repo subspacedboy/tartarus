@@ -42,6 +42,15 @@ class FirmwareChallengeRequest : Table() {
         }
     val nonceAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
     fun nonceInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val latest : club.subjugated.fb.message.firmware.Version? get() = latest(club.subjugated.fb.message.firmware.Version())
+    fun latest(obj: club.subjugated.fb.message.firmware.Version) : club.subjugated.fb.message.firmware.Version? {
+        val o = __offset(6)
+        return if (o != 0) {
+            obj.__assign(__indirect(o + bb_pos), bb)
+        } else {
+            null
+        }
+    }
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsFirmwareChallengeRequest(_bb: ByteBuffer): FirmwareChallengeRequest = getRootAsFirmwareChallengeRequest(_bb, FirmwareChallengeRequest())
@@ -49,12 +58,13 @@ class FirmwareChallengeRequest : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createFirmwareChallengeRequest(builder: FlatBufferBuilder, nonceOffset: Int) : Int {
-            builder.startTable(1)
+        fun createFirmwareChallengeRequest(builder: FlatBufferBuilder, nonceOffset: Int, latestOffset: Int) : Int {
+            builder.startTable(2)
+            addLatest(builder, latestOffset)
             addNonce(builder, nonceOffset)
             return endFirmwareChallengeRequest(builder)
         }
-        fun startFirmwareChallengeRequest(builder: FlatBufferBuilder) = builder.startTable(1)
+        fun startFirmwareChallengeRequest(builder: FlatBufferBuilder) = builder.startTable(2)
         fun addNonce(builder: FlatBufferBuilder, nonce: Int) = builder.addOffset(0, nonce, 0)
         @kotlin.ExperimentalUnsignedTypes
         fun createNonceVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
@@ -65,6 +75,7 @@ class FirmwareChallengeRequest : Table() {
             return builder.endVector()
         }
         fun startNonceVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
+        fun addLatest(builder: FlatBufferBuilder, latest: Int) = builder.addOffset(1, latest, 0)
         fun endFirmwareChallengeRequest(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o

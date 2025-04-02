@@ -39,7 +39,7 @@ class GetFirmwareChunkRequest(object):
         return 0
 
     # GetFirmwareChunkRequest
-    def Bytes(self):
+    def Size(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
             return self._tab.Get(flatbuffers.number_types.Uint16Flags, o + self._tab.Pos)
@@ -63,11 +63,11 @@ def GetFirmwareChunkRequestAddOffset(builder, offset):
 def AddOffset(builder, offset):
     GetFirmwareChunkRequestAddOffset(builder, offset)
 
-def GetFirmwareChunkRequestAddBytes(builder, bytes):
-    builder.PrependUint16Slot(2, bytes, 0)
+def GetFirmwareChunkRequestAddSize(builder, size):
+    builder.PrependUint16Slot(2, size, 0)
 
-def AddBytes(builder, bytes):
-    GetFirmwareChunkRequestAddBytes(builder, bytes)
+def AddSize(builder, size):
+    GetFirmwareChunkRequestAddSize(builder, size)
 
 def GetFirmwareChunkRequestEnd(builder):
     return builder.EndObject()

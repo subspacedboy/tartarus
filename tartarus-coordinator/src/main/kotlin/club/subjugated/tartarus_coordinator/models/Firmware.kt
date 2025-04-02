@@ -16,6 +16,7 @@ class Firmware(
     @Enumerated(EnumType.STRING) var state: FirmwareState = FirmwareState.UNSPECIFIED,
     var image : ByteArray? = null,
     var signature: String,
+    var digest: String,
     var publicKey: String = "",
     var major : Long = 0,
     var minor : Long = 0,

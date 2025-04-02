@@ -1,6 +1,10 @@
+use crate::contract_generated::club::subjugated::fb::message;
+use crate::firmware_generated::club::subjugated::fb::message::firmware::FirmwareMessage;
+use crate::firmware_updater;
+use crate::firmware_updater::FirmwareAssembler;
 use crate::internal_config::InternalConfig;
 use embedded_svc::mqtt::client::EventPayload::Received;
-use embedded_svc::mqtt::client::{EventPayload, QoS};
+use embedded_svc::mqtt::client::{Details, Event, EventPayload, QoS};
 use esp_idf_svc::mqtt::client::{
     EspMqttClient, EspMqttConnection, LwtConfiguration, MqttClientConfiguration,
 };
@@ -64,7 +68,6 @@ pub enum TopicType {
     Acknowledgments,
     BotMessage,
     FirmwareMessage,
-    FirmwareChunk,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -192,43 +195,76 @@ impl MqttService {
                 let configuration_queue_name = format!("configuration/{session_token_2}");
                 let firmware_queue_name = format!("firmware/{session_token_2}");
 
+                let mut current_firmware_message : Option<FirmwareAssembler> = None;
+
                 while let Ok(event) = connection.next() {
                     match event.payload() {
-                        Received { topic, data, .. } => {
-                            if let Ok(mut message_queue) = queue_ref.lock() {
-                                if let Some(topic) = topic {
-                                    match topic {
-                                        x if x == inbound_queue_name.as_str() => message_queue
-                                            .push_back(SignedMessageTransport::new(
-                                                data.to_vec(),
-                                                TopicType::SignedMessages,
-                                            )),
-                                        x if x == configuration_queue_name.as_str() => {
-                                            message_queue.push_back(SignedMessageTransport::new(
-                                                data.to_vec(),
-                                                TopicType::ConfigurationData,
-                                            ))
-                                        }
-                                        x if x == firmware_queue_name.as_str() => message_queue
-                                            .push_back(SignedMessageTransport::new(
-                                                data.to_vec(),
-                                                TopicType::FirmwareMessage,
-                                            )),
-                                        _ => {}
-                                    }
-                                } else {
-                                    // Topic is None.
-                                    message_queue.push_back(SignedMessageTransport::new(
-                                        data.to_vec(),
-                                        TopicType::FirmwareChunk,
-                                    ))
-                                }
+                        Received { id, topic, data, details } => {
+                            let mut message : Option<SignedMessageTransport> = None;
 
-                                log::info!(
-                                    "Received MQTT message: {} bytes on {:?}",
+                            match details {
+                                Details::Complete => {
+                                    if let Some(topic) = topic {
+                                        match topic {
+                                            x if x == inbound_queue_name.as_str() => {
+                                                message = Some(SignedMessageTransport::new(
+                                                    data.to_vec(),
+                                                    TopicType::SignedMessages,
+                                                ))
+                                            },
+                                            x if x == configuration_queue_name.as_str() => {
+                                                message = Some(SignedMessageTransport::new(
+                                                    data.to_vec(),
+                                                    TopicType::ConfigurationData,
+                                                ))
+                                            }
+                                            x if x == firmware_queue_name.as_str() => {
+                                                // "Complete" messages are always 1 and done.
+                                                message = Some(SignedMessageTransport::new(
+                                                    data.to_vec(),
+                                                    TopicType::FirmwareMessage,
+                                                ))
+                                            },
+                                            _ => {}
+                                        }}
+                                }
+                                Details::InitialChunk(initial_chunk_data) => {
+                                    //Received MQTT message (0): 1004 bytes on Some("firmware/HRWS2V"). [Details -> InitialChunk(InitialChunkData { total_data_size: 16152 })]
+                                    if firmware_queue_name.as_str() == topic.unwrap() {
+                                        let mut assembler = FirmwareAssembler::new_with_size(initial_chunk_data.total_data_size);
+                                        assembler.add_to_current_message(data.to_vec());
+                                        current_firmware_message = Some(assembler);
+                                    }
+                                }
+                                Details::SubsequentChunk(subsequent) => {
+                                    // We won't have topic here.
+                                    if let Some(current_message) = current_firmware_message.as_mut() {
+                                        current_message.add_to_current_message(data.to_vec());
+
+                                        if subsequent.total_data_size == current_message.current_size() {
+                                            log::info!("Finished firmware message. Adding to SignedMessageTransport queue");
+                                            message = Some(SignedMessageTransport::new(
+                                                current_message.current_message.to_vec(),
+                                                TopicType::FirmwareMessage,
+                                            ));
+                                            current_firmware_message = None;
+                                        }
+                                    }
+                                }
+                            }
+
+                            log::info!(
+                                    "Received MQTT message ({:?}): {} bytes on {:?}. [Details -> {:?}]",
+                                    id,
                                     data.len(),
-                                    topic
+                                    topic,
+                                    details
                                 );
+
+                            if let Ok(mut message_queue) = queue_ref.lock() {
+                                if let Some(received_message) = message {
+                                    message_queue.push_back(received_message);
+                                }
                             }
                         }
                         EventPayload::Disconnected => {

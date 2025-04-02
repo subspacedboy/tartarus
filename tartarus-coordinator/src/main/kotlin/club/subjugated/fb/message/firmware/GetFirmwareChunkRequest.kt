@@ -44,7 +44,7 @@ class GetFirmwareChunkRequest : Table() {
             val o = __offset(6)
             return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
         }
-    val bytes : UShort
+    val size : UShort
         get() {
             val o = __offset(8)
             return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
@@ -56,17 +56,17 @@ class GetFirmwareChunkRequest : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createGetFirmwareChunkRequest(builder: FlatBufferBuilder, nameOffset: Int, offset: UShort, bytes: UShort) : Int {
+        fun createGetFirmwareChunkRequest(builder: FlatBufferBuilder, nameOffset: Int, offset: UShort, size: UShort) : Int {
             builder.startTable(3)
             addName(builder, nameOffset)
-            addBytes(builder, bytes)
+            addSize(builder, size)
             addOffset(builder, offset)
             return endGetFirmwareChunkRequest(builder)
         }
         fun startGetFirmwareChunkRequest(builder: FlatBufferBuilder) = builder.startTable(3)
         fun addName(builder: FlatBufferBuilder, name: Int) = builder.addOffset(0, name, 0)
         fun addOffset(builder: FlatBufferBuilder, offset: UShort) = builder.addShort(1, offset.toShort(), 0)
-        fun addBytes(builder: FlatBufferBuilder, bytes: UShort) = builder.addShort(2, bytes.toShort(), 0)
+        fun addSize(builder: FlatBufferBuilder, size: UShort) = builder.addShort(2, size.toShort(), 0)
         fun endGetFirmwareChunkRequest(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o

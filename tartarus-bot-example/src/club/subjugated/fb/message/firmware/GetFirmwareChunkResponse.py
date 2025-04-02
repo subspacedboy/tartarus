@@ -25,8 +25,22 @@ class GetFirmwareChunkResponse(object):
         self._tab = flatbuffers.table.Table(buf, pos)
 
     # GetFirmwareChunkResponse
-    def Chunk(self, j):
+    def Size(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
+        if o != 0:
+            return self._tab.Get(flatbuffers.number_types.Uint16Flags, o + self._tab.Pos)
+        return 0
+
+    # GetFirmwareChunkResponse
+    def Offset(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        if o != 0:
+            return self._tab.Get(flatbuffers.number_types.Uint16Flags, o + self._tab.Pos)
+        return 0
+
+    # GetFirmwareChunkResponse
+    def Chunk(self, j):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
             a = self._tab.Vector(o)
             return self._tab.Get(flatbuffers.number_types.Uint8Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 1))
@@ -34,38 +48,43 @@ class GetFirmwareChunkResponse(object):
 
     # GetFirmwareChunkResponse
     def ChunkAsNumpy(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
             return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Uint8Flags, o)
         return 0
 
     # GetFirmwareChunkResponse
     def ChunkLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
             return self._tab.VectorLen(o)
         return 0
 
     # GetFirmwareChunkResponse
     def ChunkIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         return o == 0
 
-    # GetFirmwareChunkResponse
-    def Size(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
-        if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Uint16Flags, o + self._tab.Pos)
-        return 0
-
 def GetFirmwareChunkResponseStart(builder):
-    builder.StartObject(2)
+    builder.StartObject(3)
 
 def Start(builder):
     GetFirmwareChunkResponseStart(builder)
 
+def GetFirmwareChunkResponseAddSize(builder, size):
+    builder.PrependUint16Slot(0, size, 0)
+
+def AddSize(builder, size):
+    GetFirmwareChunkResponseAddSize(builder, size)
+
+def GetFirmwareChunkResponseAddOffset(builder, offset):
+    builder.PrependUint16Slot(1, offset, 0)
+
+def AddOffset(builder, offset):
+    GetFirmwareChunkResponseAddOffset(builder, offset)
+
 def GetFirmwareChunkResponseAddChunk(builder, chunk):
-    builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(chunk), 0)
+    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(chunk), 0)
 
 def AddChunk(builder, chunk):
     GetFirmwareChunkResponseAddChunk(builder, chunk)
@@ -75,12 +94,6 @@ def GetFirmwareChunkResponseStartChunkVector(builder, numElems):
 
 def StartChunkVector(builder, numElems):
     return GetFirmwareChunkResponseStartChunkVector(builder, numElems)
-
-def GetFirmwareChunkResponseAddSize(builder, size):
-    builder.PrependUint16Slot(1, size, 0)
-
-def AddSize(builder, size):
-    GetFirmwareChunkResponseAddSize(builder, size)
 
 def GetFirmwareChunkResponseEnd(builder):
     return builder.EndObject()

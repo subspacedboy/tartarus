@@ -383,6 +383,7 @@ pub mod club {
 
                     impl<'a> FirmwareChallengeRequest<'a> {
                         pub const VT_NONCE: flatbuffers::VOffsetT = 4;
+                        pub const VT_LATEST: flatbuffers::VOffsetT = 6;
 
                         #[inline]
                         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -400,6 +401,9 @@ pub mod club {
                         ) -> flatbuffers::WIPOffset<FirmwareChallengeRequest<'bldr>>
                         {
                             let mut builder = FirmwareChallengeRequestBuilder::new(_fbb);
+                            if let Some(x) = args.latest {
+                                builder.add_latest(x);
+                            }
                             if let Some(x) = args.nonce {
                                 builder.add_nonce(x);
                             }
@@ -415,6 +419,18 @@ pub mod club {
                                 self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(FirmwareChallengeRequest::VT_NONCE, None)
                             }
                         }
+                        #[inline]
+                        pub fn latest(&self) -> Option<Version<'a>> {
+                            // Safety:
+                            // Created from valid Table for this object
+                            // which contains a valid value in this slot
+                            unsafe {
+                                self._tab.get::<flatbuffers::ForwardsUOffset<Version>>(
+                                    FirmwareChallengeRequest::VT_LATEST,
+                                    None,
+                                )
+                            }
+                        }
                     }
 
                     impl flatbuffers::Verifiable for FirmwareChallengeRequest<'_> {
@@ -426,17 +442,22 @@ pub mod club {
                             use self::flatbuffers::Verifiable;
                             v.visit_table(pos)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, u8>>>("nonce", Self::VT_NONCE, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<Version>>("latest", Self::VT_LATEST, false)?
      .finish();
                             Ok(())
                         }
                     }
                     pub struct FirmwareChallengeRequestArgs<'a> {
                         pub nonce: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
+                        pub latest: Option<flatbuffers::WIPOffset<Version<'a>>>,
                     }
                     impl<'a> Default for FirmwareChallengeRequestArgs<'a> {
                         #[inline]
                         fn default() -> Self {
-                            FirmwareChallengeRequestArgs { nonce: None }
+                            FirmwareChallengeRequestArgs {
+                                nonce: None,
+                                latest: None,
+                            }
                         }
                     }
 
@@ -458,6 +479,14 @@ pub mod club {
                                 FirmwareChallengeRequest::VT_NONCE,
                                 nonce,
                             );
+                        }
+                        #[inline]
+                        pub fn add_latest(&mut self, latest: flatbuffers::WIPOffset<Version<'b>>) {
+                            self.fbb_
+                                .push_slot_always::<flatbuffers::WIPOffset<Version>>(
+                                    FirmwareChallengeRequest::VT_LATEST,
+                                    latest,
+                                );
                         }
                         #[inline]
                         pub fn new(
@@ -483,6 +512,7 @@ pub mod club {
                         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                             let mut ds = f.debug_struct("FirmwareChallengeRequest");
                             ds.field("nonce", &self.nonce());
+                            ds.field("latest", &self.latest());
                             ds.finish()
                         }
                     }
@@ -1025,7 +1055,7 @@ pub mod club {
                     impl<'a> GetFirmwareChunkRequest<'a> {
                         pub const VT_NAME: flatbuffers::VOffsetT = 4;
                         pub const VT_OFFSET: flatbuffers::VOffsetT = 6;
-                        pub const VT_BYTES: flatbuffers::VOffsetT = 8;
+                        pub const VT_SIZE_: flatbuffers::VOffsetT = 8;
 
                         #[inline]
                         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -1046,7 +1076,7 @@ pub mod club {
                             if let Some(x) = args.name {
                                 builder.add_name(x);
                             }
-                            builder.add_bytes(args.bytes);
+                            builder.add_size_(args.size_);
                             builder.add_offset(args.offset);
                             builder.finish()
                         }
@@ -1075,13 +1105,13 @@ pub mod club {
                             }
                         }
                         #[inline]
-                        pub fn bytes(&self) -> u16 {
+                        pub fn size_(&self) -> u16 {
                             // Safety:
                             // Created from valid Table for this object
                             // which contains a valid value in this slot
                             unsafe {
                                 self._tab
-                                    .get::<u16>(GetFirmwareChunkRequest::VT_BYTES, Some(0))
+                                    .get::<u16>(GetFirmwareChunkRequest::VT_SIZE_, Some(0))
                                     .unwrap()
                             }
                         }
@@ -1101,7 +1131,7 @@ pub mod club {
                                     false,
                                 )?
                                 .visit_field::<u16>("offset", Self::VT_OFFSET, false)?
-                                .visit_field::<u16>("bytes", Self::VT_BYTES, false)?
+                                .visit_field::<u16>("size_", Self::VT_SIZE_, false)?
                                 .finish();
                             Ok(())
                         }
@@ -1109,7 +1139,7 @@ pub mod club {
                     pub struct GetFirmwareChunkRequestArgs<'a> {
                         pub name: Option<flatbuffers::WIPOffset<&'a str>>,
                         pub offset: u16,
-                        pub bytes: u16,
+                        pub size_: u16,
                     }
                     impl<'a> Default for GetFirmwareChunkRequestArgs<'a> {
                         #[inline]
@@ -1117,7 +1147,7 @@ pub mod club {
                             GetFirmwareChunkRequestArgs {
                                 name: None,
                                 offset: 0,
-                                bytes: 0,
+                                size_: 0,
                             }
                         }
                     }
@@ -1147,9 +1177,9 @@ pub mod club {
                             );
                         }
                         #[inline]
-                        pub fn add_bytes(&mut self, bytes: u16) {
+                        pub fn add_size_(&mut self, size_: u16) {
                             self.fbb_
-                                .push_slot::<u16>(GetFirmwareChunkRequest::VT_BYTES, bytes, 0);
+                                .push_slot::<u16>(GetFirmwareChunkRequest::VT_SIZE_, size_, 0);
                         }
                         #[inline]
                         pub fn new(
@@ -1173,7 +1203,7 @@ pub mod club {
                             let mut ds = f.debug_struct("GetFirmwareChunkRequest");
                             ds.field("name", &self.name());
                             ds.field("offset", &self.offset());
-                            ds.field("bytes", &self.bytes());
+                            ds.field("size_", &self.size_());
                             ds.finish()
                         }
                     }
@@ -1195,8 +1225,9 @@ pub mod club {
                     }
 
                     impl<'a> GetFirmwareChunkResponse<'a> {
-                        pub const VT_CHUNK: flatbuffers::VOffsetT = 4;
-                        pub const VT_SIZE_: flatbuffers::VOffsetT = 6;
+                        pub const VT_SIZE_: flatbuffers::VOffsetT = 4;
+                        pub const VT_OFFSET: flatbuffers::VOffsetT = 6;
+                        pub const VT_CHUNK: flatbuffers::VOffsetT = 8;
 
                         #[inline]
                         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -1217,19 +1248,11 @@ pub mod club {
                             if let Some(x) = args.chunk {
                                 builder.add_chunk(x);
                             }
+                            builder.add_offset(args.offset);
                             builder.add_size_(args.size_);
                             builder.finish()
                         }
 
-                        #[inline]
-                        pub fn chunk(&self) -> Option<flatbuffers::Vector<'a, u8>> {
-                            // Safety:
-                            // Created from valid Table for this object
-                            // which contains a valid value in this slot
-                            unsafe {
-                                self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(GetFirmwareChunkResponse::VT_CHUNK, None)
-                            }
-                        }
                         #[inline]
                         pub fn size_(&self) -> u16 {
                             // Safety:
@@ -1239,6 +1262,26 @@ pub mod club {
                                 self._tab
                                     .get::<u16>(GetFirmwareChunkResponse::VT_SIZE_, Some(0))
                                     .unwrap()
+                            }
+                        }
+                        #[inline]
+                        pub fn offset(&self) -> u16 {
+                            // Safety:
+                            // Created from valid Table for this object
+                            // which contains a valid value in this slot
+                            unsafe {
+                                self._tab
+                                    .get::<u16>(GetFirmwareChunkResponse::VT_OFFSET, Some(0))
+                                    .unwrap()
+                            }
+                        }
+                        #[inline]
+                        pub fn chunk(&self) -> Option<flatbuffers::Vector<'a, u8>> {
+                            // Safety:
+                            // Created from valid Table for this object
+                            // which contains a valid value in this slot
+                            unsafe {
+                                self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(GetFirmwareChunkResponse::VT_CHUNK, None)
                             }
                         }
                     }
@@ -1251,22 +1294,25 @@ pub mod club {
                         ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
                             use self::flatbuffers::Verifiable;
                             v.visit_table(pos)?
-     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, u8>>>("chunk", Self::VT_CHUNK, false)?
      .visit_field::<u16>("size_", Self::VT_SIZE_, false)?
+     .visit_field::<u16>("offset", Self::VT_OFFSET, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, u8>>>("chunk", Self::VT_CHUNK, false)?
      .finish();
                             Ok(())
                         }
                     }
                     pub struct GetFirmwareChunkResponseArgs<'a> {
-                        pub chunk: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
                         pub size_: u16,
+                        pub offset: u16,
+                        pub chunk: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
                     }
                     impl<'a> Default for GetFirmwareChunkResponseArgs<'a> {
                         #[inline]
                         fn default() -> Self {
                             GetFirmwareChunkResponseArgs {
-                                chunk: None,
                                 size_: 0,
+                                offset: 0,
+                                chunk: None,
                             }
                         }
                     }
@@ -1281,6 +1327,22 @@ pub mod club {
                     }
                     impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> GetFirmwareChunkResponseBuilder<'a, 'b, A> {
                         #[inline]
+                        pub fn add_size_(&mut self, size_: u16) {
+                            self.fbb_.push_slot::<u16>(
+                                GetFirmwareChunkResponse::VT_SIZE_,
+                                size_,
+                                0,
+                            );
+                        }
+                        #[inline]
+                        pub fn add_offset(&mut self, offset: u16) {
+                            self.fbb_.push_slot::<u16>(
+                                GetFirmwareChunkResponse::VT_OFFSET,
+                                offset,
+                                0,
+                            );
+                        }
+                        #[inline]
                         pub fn add_chunk(
                             &mut self,
                             chunk: flatbuffers::WIPOffset<flatbuffers::Vector<'b, u8>>,
@@ -1288,14 +1350,6 @@ pub mod club {
                             self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
                                 GetFirmwareChunkResponse::VT_CHUNK,
                                 chunk,
-                            );
-                        }
-                        #[inline]
-                        pub fn add_size_(&mut self, size_: u16) {
-                            self.fbb_.push_slot::<u16>(
-                                GetFirmwareChunkResponse::VT_SIZE_,
-                                size_,
-                                0,
                             );
                         }
                         #[inline]
@@ -1321,8 +1375,9 @@ pub mod club {
                     impl core::fmt::Debug for GetFirmwareChunkResponse<'_> {
                         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                             let mut ds = f.debug_struct("GetFirmwareChunkResponse");
-                            ds.field("chunk", &self.chunk());
                             ds.field("size_", &self.size_());
+                            ds.field("offset", &self.offset());
+                            ds.field("chunk", &self.chunk());
                             ds.finish()
                         }
                     }

@@ -34,7 +34,7 @@ offset():number {
   return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
 }
 
-bytes():number {
+size():number {
   const offset = this.bb!.__offset(this.bb_pos, 8);
   return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
 }
@@ -51,8 +51,8 @@ static addOffset(builder:flatbuffers.Builder, offset:number) {
   builder.addFieldInt16(1, offset, 0);
 }
 
-static addBytes(builder:flatbuffers.Builder, bytes:number) {
-  builder.addFieldInt16(2, bytes, 0);
+static addSize(builder:flatbuffers.Builder, size:number) {
+  builder.addFieldInt16(2, size, 0);
 }
 
 static endGetFirmwareChunkRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -60,11 +60,11 @@ static endGetFirmwareChunkRequest(builder:flatbuffers.Builder):flatbuffers.Offse
   return offset;
 }
 
-static createGetFirmwareChunkRequest(builder:flatbuffers.Builder, nameOffset:flatbuffers.Offset, offset:number, bytes:number):flatbuffers.Offset {
+static createGetFirmwareChunkRequest(builder:flatbuffers.Builder, nameOffset:flatbuffers.Offset, offset:number, size:number):flatbuffers.Offset {
   GetFirmwareChunkRequest.startGetFirmwareChunkRequest(builder);
   GetFirmwareChunkRequest.addName(builder, nameOffset);
   GetFirmwareChunkRequest.addOffset(builder, offset);
-  GetFirmwareChunkRequest.addBytes(builder, bytes);
+  GetFirmwareChunkRequest.addSize(builder, size);
   return GetFirmwareChunkRequest.endGetFirmwareChunkRequest(builder);
 }
 }

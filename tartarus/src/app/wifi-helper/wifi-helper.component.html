@@ -1,0 +1,38 @@
+<div class="row">
+  <div class="col-lg-4">
+    <div class="bs-component">
+      <h2>Wifi Helper</h2>
+      <h3>What is this for?</h3>
+      <p>You need to get the lock onto Wifi. This helps bootstrap it with a QR code.
+      No data is transmitted off this page.</p>
+    </div>
+  </div>
+</div>
+
+
+
+<div class="row" style="margin-top: 1em;">
+  <form [formGroup]="wifiForm" (submit)="generate()">
+    <fieldset>
+      <div class="col-sm-10">
+        <label for="ssid">SSID: </label>
+        <input id="ssid" class="form-control" type="text" formControlName="ssid" placeholder="SSID / Access point name">
+      </div>
+
+      <div class="col-sm-10">
+        <label for="password">Password: </label>
+        <input id="password" class="form-control" type="text" formControlName="password" placeholder="WS URI">
+      </div>
+
+      <button class="btn btn-small btn-primary" type="submit">
+        Regenerate
+      </button>
+    </fieldset>
+  </form>
+</div>
+
+
+<div #hiddenDiv hidden>
+  <h1 style="color: black">Configuration Data</h1>
+  <canvas #canvas></canvas>
+</div>

@@ -4,6 +4,9 @@
 
 import * as flatbuffers from 'flatbuffers';
 
+import { Version } from '../../../../../club/subjugated/fb/message/firmware/version.js';
+
+
 export class FirmwareChallengeRequest {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
@@ -37,8 +40,13 @@ nonceArray():Uint8Array|null {
   return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
+latest(obj?:Version):Version|null {
+  const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? (obj || new Version()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
+}
+
 static startFirmwareChallengeRequest(builder:flatbuffers.Builder) {
-  builder.startObject(1);
+  builder.startObject(2);
 }
 
 static addNonce(builder:flatbuffers.Builder, nonceOffset:flatbuffers.Offset) {
@@ -57,14 +65,13 @@ static startNonceVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(1, numElems, 1);
 }
 
+static addLatest(builder:flatbuffers.Builder, latestOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, latestOffset, 0);
+}
+
 static endFirmwareChallengeRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   return offset;
 }
 
-static createFirmwareChallengeRequest(builder:flatbuffers.Builder, nonceOffset:flatbuffers.Offset):flatbuffers.Offset {
-  FirmwareChallengeRequest.startFirmwareChallengeRequest(builder);
-  FirmwareChallengeRequest.addNonce(builder, nonceOffset);
-  return FirmwareChallengeRequest.endFirmwareChallengeRequest(builder);
-}
 }
