@@ -1,0 +1,14 @@
+namespace club.subjugated.fb.message.configuration;
+
+table Key {
+  name: string;
+  public_key: [ubyte];
+}
+
+table CoordinatorConfiguration {
+  web_uri: string;
+  mqtt_uri: string;
+  safety_keys: [Key];
+}
+
+root_type CoordinatorConfiguration;

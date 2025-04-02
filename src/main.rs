@@ -1,4 +1,3 @@
-mod contract_generated;
 mod verifier;
 mod wifi_util;
 mod screen_state;
@@ -12,6 +11,10 @@ mod under_contract_screen;
 mod internal_contract;
 mod acknowledger;
 mod servo;
+mod configuration_generated;
+mod contract_generated;
+mod config_verifier;
+mod internal_config;
 
 use crate::servo::Servo;
 use esp_idf_hal::ledc::LedcDriver;

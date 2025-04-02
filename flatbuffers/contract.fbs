@@ -92,9 +92,4 @@ table SignedMessage {
   payload: MessagePayload;
 }
 
-table Configuration {
-  coordinator_address: string;
-  safety_key: [ubyte];
-}
-
 root_type SignedMessage;

@@ -10,6 +10,7 @@ import {MyLockComponent} from './my-lock/my-lock.component';
 import {authGuard} from './auth.guard';
 import {LockSessionDetailComponent} from './lock-session-detail/lock-session-detail.component';
 import {ContractDetailComponent} from './contract-detail/contract-detail.component';
+import {CoordinatorConfigurationComponent} from './coordinator-configuration/coordinator-configuration.component';
 
 export const routes: Routes = [
   {
@@ -55,5 +56,9 @@ export const routes: Routes = [
   {
     path: 'my-lock',
     component: MyLockComponent
+  },
+  {
+    path: 'configuration',
+    component: CoordinatorConfigurationComponent
   }
 ];

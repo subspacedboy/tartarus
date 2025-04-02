@@ -6,7 +6,7 @@ use crate::contract_generated::club::subjugated::fb::message::{Contract, EndCond
 pub struct SaveState {
     pub(crate) internal_contract: InternalContract,
     pub(crate) is_locked: bool,
-    pub(crate) verifying_key_bytes: Vec<u8>
+    // pub(crate) verifying_key_bytes: Vec<u8>
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -2,5 +2,5 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
-export { CoordinatorConfiguration } from './subjugated/fb/message/configuration/coordinator-configuration.js';
-export { Key } from './subjugated/fb/message/configuration/key.js';
+export { CoordinatorConfiguration } from './coordinator-configuration.js';
+export { Key } from './key.js';

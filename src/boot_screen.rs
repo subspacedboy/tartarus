@@ -1,3 +1,5 @@
+use embedded_graphics::mono_font::ascii::FONT_10X20;
+use embedded_graphics::mono_font::MonoTextStyle;
 use crate::lock_ctx::LockCtx;
 use crate::prelude::prelude::{DynScreen, MySPI};
 use crate::screen_ids::ScreenId;
@@ -6,12 +8,15 @@ use crate::verifier::{SignedMessageVerifier, VerifiedType};
 use embedded_graphics::pixelcolor::{Rgb565, RgbColor};
 use embedded_graphics::prelude::Primitive;
 use embedded_graphics::primitives::PrimitiveStyleBuilder;
+use embedded_graphics::text::Text;
 use embedded_graphics_core::geometry::{Point, Size};
 use embedded_graphics_core::primitives::Rectangle;
 use embedded_graphics_core::Drawable;
+use embedded_graphics_core::prelude::DrawTarget;
 use embedded_hal::digital::OutputPin;
 use esp_idf_hal::gpio::{GpioError, Output, PinDriver};
 use qrcode::{Color, QrCode};
+use crate::config_verifier::ConfigVerifier;
 use crate::under_contract_screen::UnderContractScreen;
 
 pub struct BootScreen<SPI, DC, RST, PinE> {
@@ -19,7 +24,8 @@ pub struct BootScreen<SPI, DC, RST, PinE> {
     _dc: core::marker::PhantomData<DC>,
     _rst: core::marker::PhantomData<RST>,
     _pin: core::marker::PhantomData<PinE>,
-    needs_redraw: bool
+    needs_redraw: bool,
+    configuration_changed: bool
 }
 
 impl<SPI, DC, RST, PinE> BootScreen<SPI, DC, RST, PinE> {
@@ -29,7 +35,8 @@ impl<SPI, DC, RST, PinE> BootScreen<SPI, DC, RST, PinE> {
             _dc: core::marker::PhantomData,
             _rst: core::marker::PhantomData,
             _pin: core::marker::PhantomData,
-            needs_redraw: true
+            needs_redraw: true,
+            configuration_changed: false
         }
     }
 }
@@ -48,26 +55,34 @@ where
     fn on_update(&mut self, lock_ctx: &mut LockCtx) -> Option<Box<DynScreen<'static>>> {
         if let Some(update) = &lock_ctx.this_update {
             if let Some(qr_data) = &update.qr_data {
-                let verifier = SignedMessageVerifier::new();
+                //Maybe it's config data.
+                if let Ok(config) = ConfigVerifier::read_configuration(qr_data.clone()) {
+                    lock_ctx.save_configuration(&config);
+                    self.configuration_changed = true;
+                    self.needs_redraw = true;
+                } else {
+                    let verifier = SignedMessageVerifier::new();
+                    if let Ok(verified_type) = verifier.verify(qr_data.clone(), None, 0, 0) {
+                        match verified_type {
+                            VerifiedType::Contract(contract) => {
+                                lock_ctx.accept_contract(&contract);
 
-                if let Ok(verified_type) = verifier.verify(qr_data.clone(), None, 0, 0) {
-                    match verified_type {
-                        VerifiedType::Contract(contract) => {
-                            lock_ctx.accept_contract(&contract);
-
-                            lock_ctx.contract = Some(contract);
-                            let under_contract = Box::new(
-                                UnderContractScreen::<
-                                    MySPI<'static>,
-                                    PinDriver<'static, _, Output>,
-                                    PinDriver<'static, _, Output>,
-                                    GpioError
-                                >::new());
-                            return Some(under_contract);
+                                lock_ctx.contract = Some(contract);
+                                let under_contract = Box::new(
+                                    UnderContractScreen::<
+                                        MySPI<'static>,
+                                        PinDriver<'static, _, Output>,
+                                        PinDriver<'static, _, Output>,
+                                        GpioError
+                                    >::new());
+                                return Some(under_contract);
+                            }
+                            _ => {}
                         }
-                        _ => {}
                     }
                 }
+
+
             }
         }
 
@@ -97,13 +112,6 @@ where
 
 
     fn draw_screen(&mut self, lock_ctx : &mut LockCtx) {
-        // let whole_message = if let Some(key) = lock_ctx.public_key {
-        //     let encoded_pub_key = general_purpose::STANDARD.encode(key.to_public_key_pem(LineEnding::CR).unwrap());
-        //     const COORDINATOR: &str = "http://192.168.1.180:5002";
-        //     format!("{}/announce?public={}", COORDINATOR, encoded_pub_key)
-        // } else {
-        //     "http://192.168.1.180:5002/announce".parse().unwrap()
-        // };
         let whole_message = lock_ctx.get_lock_url().unwrap();
         let qr = QrCode::new(whole_message).expect("Valid QR code");
 
@@ -142,6 +150,16 @@ where
                     .into_styled(PrimitiveStyleBuilder::new().fill_color(color).build());
                 rect.draw(&mut lock_ctx.display).expect("Expected to draw");
             }
+        }
+
+        // This is theoretically a _very_ infrequent path taken. So not bothering to conditionally
+        // render the whole QR code. Just throw it away and say the lock needs a reset.
+        if self.configuration_changed {
+            lock_ctx.display.clear(Rgb565::BLACK).unwrap();
+            let style = MonoTextStyle::new(&FONT_10X20, Rgb565::GREEN);
+            let draw_position = Point::new(25, 85);
+            let text = Text::new("Config Changed\nReset Lock", draw_position, style);
+            text.draw(&mut lock_ctx.display).expect("Should have drawn");
         }
 
         self.needs_redraw = false;

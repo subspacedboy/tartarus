@@ -1,4 +1,4 @@
-import {Component, ElementRef, ViewChild} from '@angular/core';
+import {Component, ElementRef, OnInit, ViewChild} from '@angular/core';
 import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
 import {IdHelperService} from '../id-helper.service';
 import * as flatbuffers from 'flatbuffers';
@@ -20,7 +20,7 @@ import * as QRCode from 'qrcode';
   templateUrl: './new-full-contract.component.html',
   styleUrl: './new-full-contract.component.scss'
 })
-export class NewFullContractComponent {
+export class NewFullContractComponent implements OnInit {
   // @ViewChild('scanCanvas', { static: false }) scanCanvas!: ElementRef;
   //
   @ViewChild('canvas', { static: false }) canvas!: ElementRef;

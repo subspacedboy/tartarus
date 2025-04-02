@@ -28,6 +28,7 @@ use p256::pkcs8::der::Writer;
 use postcard::{from_bytes};
 use sha2::{Digest, Sha256};
 use crate::acknowledger::Acknowledger;
+use crate::internal_config::InternalConfig;
 use crate::servo::Servo;
 use crate::under_contract_screen::UnderContractScreen;
 use crate::verifier::{SignedMessageVerifier, VerifiedType};
@@ -65,7 +66,8 @@ pub struct LockCtx {
     dirty: bool,
     restart_mqtt: Arc<Mutex<bool>>,
     schedule_restart_mqtt: Option<u64>,
-    time_in_ticks: u64
+    time_in_ticks: u64,
+    configuration: InternalConfig,
 }
 
 impl LockCtx {
@@ -90,6 +92,7 @@ impl LockCtx {
             restart_mqtt: Arc::new(Mutex::new(false)),
             schedule_restart_mqtt: None,
             time_in_ticks: 0,
+            configuration: InternalConfig::default(),
         };
 
         lck.session_token = lck.load_or_create_session_id();
@@ -98,6 +101,9 @@ impl LockCtx {
 
         lck.lock_secret_key = Some(secret_key);
         lck.lock_public_key = Some(my_public);
+
+        let config = lck.get_configuration_or_default();
+        lck.configuration = config;
 
         // This must come after key loading because we're announcing to the coordinator with our
         // public key.
@@ -168,6 +174,35 @@ impl LockCtx {
         // Manually clear the dirty flag because we literally just loaded it.
         lck.dirty = false;
         lck
+    }
+
+    pub fn save_configuration(&mut self, config : &InternalConfig) {
+        use postcard::to_vec;
+
+        if let Ok(bytes) = to_vec::<_, 1024>(&config) {
+            if let Ok(_) = self.nvs.set_blob("config", bytes.as_slice()) {
+                log::info!("Configuration saved to NVS");
+            }
+        }
+    }
+
+    pub fn get_configuration_or_default(&mut self) -> InternalConfig {
+        let mut buffer: [u8; 1024] = [0; 1024];
+        if let Ok(maybe_byte_buffer) = self.nvs.get_blob("config", &mut buffer) {
+            if let Some(_byte_buffer) = maybe_byte_buffer {
+                if let Ok(deserialized_config) = from_bytes::<InternalConfig>(&buffer) {
+                    deserialized_config
+                } else {
+                    log::error!("Failed to deserialize config data");
+                    InternalConfig::default()
+                }
+            } else {
+                log::info!("No configuration data was found, using default");
+                InternalConfig::default()
+            }
+        } else {
+            InternalConfig::default()
+        }
     }
 
     fn load_or_create_session_id(&mut self) -> String {
@@ -430,11 +465,12 @@ impl LockCtx {
     }
 
     pub fn get_lock_url(&self) -> Result<String, String> {
-        const COORDINATOR: &str = "http://192.168.1.180:4200/lock-start";
+        // const COORDINATOR: &str = "http://192.168.1.180:4200/lock-start";
+        let coordinator = format!("{}/lock-start", self.configuration.web_uri);
         if let Some(pub_key) = self.lock_public_key {
             let compressed_bytes = pub_key.to_sec1_bytes();
             let encoded_key = BASE64_URL_SAFE.encode(&compressed_bytes);
-            Ok(format!("{}?public={}&session={}", COORDINATOR, encoded_key, self.session_token))
+            Ok(format!("{}?public={}&session={}", coordinator, encoded_key, self.session_token))
         } else {
             Err("Wasn't able to make the url?!".parse().unwrap())
         }
@@ -451,13 +487,13 @@ impl LockCtx {
         use postcard::to_vec;
         if self.dirty {
             if let Some(internal_contract) = self.contract.as_ref() {
-                let key = internal_contract.public_key.unwrap();
-                let key_bytes = key.to_encoded_point(true).as_bytes().to_vec();
+                // let key = internal_contract.public_key.unwrap();
+                // let key_bytes = key.to_encoded_point(true).as_bytes().to_vec();
 
                 let save_state = SaveState {
                     internal_contract: internal_contract.clone(),
                     is_locked: self.is_locked,
-                    verifying_key_bytes: key_bytes,
+                    // verifying_key_bytes: key_bytes,
                 };
 
                 if let Ok(bytes) = to_vec::<_, 1024>(&save_state) {
@@ -503,7 +539,7 @@ impl LockCtx {
     }
 
     fn start_mqtt(&self) {
-        let broker_url = "ws://192.168.1.180:8080/mqtt"; // Replace with your MQTT broker
+        let broker_url = &self.configuration.mqtt_broker_uri; // Replace with your MQTT broker
 
         let mut config = MqttClientConfiguration::default();
         config.client_id = Some(self.session_token.as_ref());
