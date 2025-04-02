@@ -4,6 +4,9 @@ mod contract_generated;
 mod verifier;
 mod lock_state_machine;
 mod wifi_util;
+mod screen_state;
+mod screen_ids;
+mod boot_screen;
 
 use contract_generated::*;
 
@@ -15,17 +18,19 @@ use aes_gcm::aead::{Aead, Nonce, Payload};
 use aes_gcm::aead::generic_array::GenericArray;
 use base64::Engine;
 use base64::engine::general_purpose;
-use display_interface_spi::SPIInterfaceNoCS;
-use embedded_graphics::Drawable;
-use embedded_graphics::geometry::Point;
-use embedded_graphics::pixelcolor::Rgb565;
-use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::Primitive;
-use embedded_graphics::primitives::*;
+use display_interface_spi::SPIInterface;
+use embedded_graphics::geometry::{Point, Size};
+use embedded_graphics::pixelcolor::{Rgb565, RgbColor};
+use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle};
+use embedded_graphics::draw_target::DrawTarget;
 use embedded_hal::spi::MODE_3;
 use embedded_hal_compat::eh0_2::digital::v1_compat::OldOutputPin;
-use esp_idf_hal::delay::{BLOCK, NON_BLOCK};
-use esp_idf_hal::gpio::{AnyIOPin, PinDriver, Pull};
+use embedded_hal_compat::eh0_2::Direction;
+use embedded_graphics::prelude::Primitive;
+use embedded_graphics::Drawable;
+// use embedded_hal_compat::eh0_2::digital::OutputPin;
+use esp_idf_hal::delay::{Delay, BLOCK, NON_BLOCK};
+use esp_idf_hal::gpio::{AnyIOPin, Gpio40, Gpio41, Gpio45, Output, PinDriver, Pull};
 use esp_idf_hal::i2c::{I2cConfig, I2cDriver};
 use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_hal::prelude::FromValueType;
@@ -52,9 +57,12 @@ use p256::ecdsa::signature::Verifier;
 use qrcode::{Color, QrCode};
 use rand_core::{CryptoRng, RngCore};
 use sha2::{digest, Sha256};
-use st7789::{Orientation, ST7789};
+use st7789_lcd::{Orientation, ST7789};
+// use st7789::{Orientation, ST7789};
+// use crate::boot_screen::BootScreen;
 use crate::contract_generated::subjugated::club::{MessagePayload, SignedMessage};
 use crate::lock_state_machine::{LockStateMachine, State};
+// use crate::screen_state::ScreenState;
 use crate::verifier::{ContractVerifier, VerifiedType};
 use crate::wifi_util::{connect_wifi, parse_wifi_qr};
 
@@ -133,7 +141,7 @@ fn main() {
     tft_power.set_high().expect("tft power to be high");
     tft_rst.set_low().expect("Reset to be low");
     tft_bl.set_high().expect("BL to be high");
-    let old_bl = OldOutputPin::new(tft_bl);
+    // let old_bl = OldOutputPin::new(tft_bl);
 
     let spi: SpiDeviceDriver<SpiDriver> = spi::SpiDeviceDriver::new_single(
         peripherals.spi2,
@@ -145,15 +153,24 @@ fn main() {
         &spi::SpiConfig::new().baudrate(10.MHz().into()),
     ).expect("SpiDeviceDriver to work");
 
-    let old_rst = OldOutputPin::new(tft_rst);
-    let di = SPIInterfaceNoCS::new(
-        spi,
-        gpio::PinDriver::output(tft_dc).expect("Pin driver for DC to work"),
-    );
-    let mut display = ST7789::new(di, Some(old_rst), Some(old_bl), 240, 135);
+    // let old_rst = OldOutputPin::new(tft_rst);
+    // let di = SPIInterfaceNoCS::new(
+    //     spi,
+    //     gpio::PinDriver::output(tft_dc).expect("Pin driver for DC to work"),
+    // );
+    // let di = SPIInterface::new(spi, gpio::PinDriver::output(tft_dc).expect("Pin driver for DC to work"));
 
-    display.init(&mut delay::Ets).expect("Display to initialize");
-    display.set_orientation(Orientation::Portrait).expect("To set landscape");
+    let mut display = ST7789::<_, _, _, 135, 240, 0, 0>::new(spi, gpio::PinDriver::output(tft_dc).expect("Pin driver for DC to work"), tft_rst);
+    // let mut display = ST7789::new(di, Some(old_rst), Some(old_bl), 240, 135);
+
+    // let mut disp_delay = Delay::new();
+    display.hard_reset(&mut delay::Ets).unwrap();
+    display.init(&mut delay::Ets, Orientation::Landscape, true, true).ok();
+    // display.init(&mut delay::Ets).expect("Display to initialize");
+    // display.set_orientation(Orientation::Portrait).expect("To set landscape");
+
+    display.on().expect("Display to on");
+    // display.clear_screen(Rgb565::WHITE).ok();
     display.clear(Rgb565::WHITE).expect("Display to clear");
 
     // Warm up NVS (non-volatile storage)
@@ -284,6 +301,12 @@ fn main() {
     let mut sm = LockStateMachine::new();
     // let mut public_key : Option<PublicKey> = None;
     let mut cipher : Option<Aes256Gcm> = None;
+
+    // let mut screen_state: Box<dyn ScreenState> = BootScreen {};
+
+    // let mut thingy = BootScreen {};
+    // thingy.draw_screen(&mut display);
+
 
     loop {
         if d0_button.is_low() {
