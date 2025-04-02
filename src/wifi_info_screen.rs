@@ -1,11 +1,9 @@
-use crate::boot_screen::BootScreen;
 use crate::lock_ctx::LockCtx;
-use crate::prelude::prelude::{DynScreen, MySPI};
+use crate::prelude::prelude::MySPI;
 use crate::screen_ids::ScreenId;
 use crate::screen_state::ScreenState;
-use crate::under_contract_screen::UnderContractScreen;
 use crate::verifier::VerifiedType;
-use crate::wifi_util::{connect_wifi, parse_wifi_qr};
+use crate::wifi_util::parse_wifi_qr;
 use embedded_graphics::mono_font::ascii::FONT_10X20;
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::text::{Alignment, Text};
@@ -13,44 +11,31 @@ use embedded_graphics_core::geometry::Point;
 use embedded_graphics_core::pixelcolor::Rgb565;
 use embedded_graphics_core::prelude::{DrawTarget, RgbColor};
 use embedded_graphics_core::Drawable;
-use embedded_hal::digital::OutputPin;
-use esp_idf_hal::gpio::{GpioError, Output, PinDriver};
+use esp_idf_hal::gpio::{Gpio41, Gpio45, GpioError, Output, PinDriver};
 
-pub struct WifiInfoScreen<SPI, DC, RST, PinE> {
-    _spi: core::marker::PhantomData<SPI>,
-    _dc: core::marker::PhantomData<DC>,
-    _rst: core::marker::PhantomData<RST>,
-    _pin: core::marker::PhantomData<PinE>,
+pub struct WifiInfoScreen {
     needs_redraw: bool,
+    error_string: Option<String>,
     text: String,
 }
 
-impl<SPI, DC, RST, PinE> WifiInfoScreen<SPI, DC, RST, PinE> {
+impl WifiInfoScreen {
     pub fn new() -> Self {
         Self {
-            _spi: core::marker::PhantomData,
-            _dc: core::marker::PhantomData,
-            _rst: core::marker::PhantomData,
-            _pin: core::marker::PhantomData,
             needs_redraw: true,
+            error_string: None,
             text: "Wifi Info".to_string(),
         }
     }
 }
 
-impl<SPI, DC, RST, PinE> ScreenState for WifiInfoScreen<SPI, DC, RST, PinE>
-where
-    SPI: display_interface::WriteOnlyDataCommand,
-    DC: OutputPin<Error = PinE>,
-    RST: OutputPin<Error = PinE>,
-    PinE: std::fmt::Debug,
-{
-    type SPI = SPI;
-    type PinE = PinE;
-    type DC = DC;
-    type RST = RST;
+impl ScreenState for WifiInfoScreen {
+    type SPI = MySPI<'static>;
+    type PinE = GpioError;
+    type DC = PinDriver<'static, Gpio41, Output>;
+    type RST = PinDriver<'static, Gpio45, Output>;
 
-    fn on_update(&mut self, lock_ctx: &mut LockCtx) -> Option<Box<DynScreen<'static>>> {
+    fn on_update(&mut self, lock_ctx: &mut LockCtx) -> Option<usize> {
         if let Some(update) = &lock_ctx.this_update {
             if let Some(incoming_data) = update.qr_data.clone() {
                 if let Ok(maybe_string) = String::from_utf8(incoming_data) {
@@ -77,7 +62,7 @@ where
         &mut self,
         lock_ctx: &mut LockCtx,
         command: VerifiedType,
-    ) -> Result<Option<Box<DynScreen<'static>>>, String> {
+    ) -> Result<Option<usize>, String> {
         Ok(None)
     }
 
@@ -87,13 +72,58 @@ where
             .clear(Rgb565::BLACK)
             .expect("Screen should have cleared");
 
-        self.text = lock_ctx.get_wifi_ssid().unwrap();
-
         let style = MonoTextStyle::new(&FONT_10X20, Rgb565::GREEN);
-        let draw_position = Point::new(80, 10);
-        let text =
-            Text::with_alignment(self.text.as_str(), draw_position, style, Alignment::Center);
-        text.draw(&mut lock_ctx.display).expect("Should have drawn");
+        let error_style = MonoTextStyle::new(&FONT_10X20, Rgb565::RED);
+
+        let banner_position = Point::new(60, 20);
+        let banner_text =
+            Text::with_alignment("Wifi Info", banner_position, style, Alignment::Left);
+        banner_text
+            .draw(&mut lock_ctx.display)
+            .expect("Should have drawn");
+
+        let currently_connected_position = Point::new(60, 40);
+        let currently_connected_text = if lock_ctx.wifi_connected {
+            let ssid = lock_ctx.get_wifi_ssid().unwrap();
+            let ssid_text = format!("SSID: {}", ssid);
+
+            let ssid_position = Point::new(60, 60);
+            let ssid_text =
+                Text::with_alignment(ssid_text.as_str(), ssid_position, style, Alignment::Left);
+            ssid_text
+                .draw(&mut lock_ctx.display)
+                .expect("Should have drawn");
+
+            Text::with_alignment(
+                "Connected",
+                currently_connected_position,
+                style,
+                Alignment::Left,
+            )
+        } else {
+            Text::with_alignment(
+                "Disconnected",
+                currently_connected_position,
+                error_style,
+                Alignment::Left,
+            )
+        };
+        currently_connected_text
+            .draw(&mut lock_ctx.display)
+            .expect("Should have drawn");
+
+        if self.error_string.is_some() {
+            let error_position = Point::new(60, 80);
+            let error_text = Text::with_alignment(
+                self.error_string.as_ref().unwrap().as_str(),
+                error_position,
+                error_style,
+                Alignment::Left,
+            );
+            error_text
+                .draw(&mut lock_ctx.display)
+                .expect("Should have drawn");
+        }
 
         self.needs_redraw = false;
     }

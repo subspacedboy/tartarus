@@ -1,5 +1,4 @@
 use crate::acknowledger::Acknowledger;
-use crate::boot_screen::BootScreen;
 use crate::config_verifier::ConfigVerifier;
 use crate::contract_generated::club::subjugated::fb::message::{
     MessagePayload, PeriodicUpdate, PeriodicUpdateArgs, SignedMessage, SignedMessageArgs,
@@ -14,18 +13,21 @@ use crate::firmware_generated::club::subjugated::fb::message::firmware::{
     FirmwareMessage, FirmwareMessageArgs, GetLatestFirmwareRequest, GetLatestFirmwareRequestArgs,
     Version, VersionArgs,
 };
+use crate::firmware_screen::FirmwareScreen;
 use crate::firmware_updater::{read_as_firmware_message, FirmwareManager};
 use crate::internal_config::InternalConfig;
 use crate::internal_contract::{InternalContract, SaveState};
 use crate::internal_firmware::FirmwareMessageType;
 use crate::lock_ctx::TopicType::{Acknowledgments, ConfigurationData, SignedMessages};
+use crate::lock_state_screen::LockstateScreen;
 use crate::mqtt_service::TopicType::FirmwareMessage as TopicFirmwareMessage;
 use crate::mqtt_service::{MqttService, SignedMessageTransport, TopicType};
 use crate::overlays::{ButtonPressOverlay, WifiOverlay};
 use crate::prelude::prelude::{DynOverlay, DynScreen, MyDisplay, MySPI};
+use crate::qr_screen::QrCodeScreen;
 use crate::screen_ids::ScreenId;
+use crate::screen_state::ScreenState;
 use crate::servo::Servo;
-use crate::under_contract_screen::UnderContractScreen;
 use crate::verifier::{SignedMessageVerifier, VerifiedType};
 use crate::wifi_info_screen::WifiInfoScreen;
 use crate::wifi_util::{connect_wifi, parse_wifi_qr};
@@ -58,7 +60,6 @@ pub struct TickUpdate {
 pub struct LockCtx {
     pub(crate) display: MyDisplay<'static>,
     nvs: EspNvs<NvsDefault>,
-    current_screen: Option<Box<DynScreen<'static>>>,
     overlays: Vec<Box<DynOverlay<'static>>>,
     pub(crate) wifi: BlockingWifi<EspWifi<'static>>,
     pub(crate) wifi_connected: bool,
@@ -73,13 +74,16 @@ pub struct LockCtx {
 
     time_in_ticks: u64,
     configuration: InternalConfig,
-    // firmware: InternalFirmware,
-    firmware_manager: FirmwareManager,
+    pub(crate) firmware_manager: FirmwareManager,
 
     schedule_next_update: Option<u64>,
     mqtt_service: Option<MqttService>,
     active_screen_idx: usize,
-    wifi_info_screen: Option<Box<DynScreen<'static>>>,
+
+    qr_code_screen: Option<Box<QrCodeScreen>>,
+    wifi_info_screen: Option<Box<WifiInfoScreen>>,
+    lock_state_screen: Option<Box<LockstateScreen>>,
+    firmware_screen: Option<Box<FirmwareScreen>>,
 }
 
 impl LockCtx {
@@ -95,7 +99,7 @@ impl LockCtx {
             wifi,
             wifi_connected: false,
             overlays: Vec::new(),
-            current_screen: None,
+            qr_code_screen: None,
             lock_secret_key: None,
             lock_public_key: None,
             this_update: None,
@@ -111,6 +115,8 @@ impl LockCtx {
             mqtt_service: None,
             active_screen_idx: 0,
             wifi_info_screen: None,
+            lock_state_screen: None,
+            firmware_screen: None,
         };
 
         lck.session_token = lck.load_or_create_session_id();
@@ -143,44 +149,38 @@ impl LockCtx {
         }
 
         log::info!("Seeing if we have previous state...");
+
         let maybe_state = lck.read_contract();
         if let Some(state) = maybe_state {
             log::info!("Restoring contract state.");
             lck.contract = Some(state.internal_contract);
+            log::info!("Contract {:?}", lck.contract);
             if state.is_locked {
                 lck.lock_without_update();
             }
 
-            // Back to UnderContract.
-            let under_contract: Box<DynScreen<'static>> = Box::new(UnderContractScreen::<
-                MySPI<'static>,
-                PinDriver<'static, _, Output>,
-                PinDriver<'static, _, Output>,
-                GpioError,
-            >::new());
-            lck.current_screen = Some(under_contract);
+            // Start on the lock screen
+            lck.active_screen_idx = 1;
         } else {
             // No state. Set as unlocked.
             log::info!("No previous state.");
             lck.unlock_without_update();
 
-            // Use normal boot screen since we don't have state.
-            let boot_screen: Box<DynScreen<'static>> = Box::new(BootScreen::<
-                MySPI<'static>,
-                PinDriver<'static, _, Output>,
-                PinDriver<'static, _, Output>,
-                GpioError,
-            >::new());
-            lck.current_screen = Some(boot_screen);
+            // Use normal qr screen since we don't have state.
+            lck.active_screen_idx = 0;
         }
 
-        let wifi_info_screen: Box<DynScreen<'static>> = Box::new(WifiInfoScreen::<
-            MySPI<'static>,
-            PinDriver<'static, _, Output>,
-            PinDriver<'static, _, Output>,
-            GpioError,
-        >::new());
+        let qr_code_screen: Box<QrCodeScreen> = Box::new(QrCodeScreen::new());
+        lck.qr_code_screen = Some(qr_code_screen);
+
+        let lock_state_screen: Box<LockstateScreen> = Box::new(LockstateScreen::new());
+        lck.lock_state_screen = Some(lock_state_screen);
+
+        let wifi_info_screen: Box<WifiInfoScreen> = Box::new(WifiInfoScreen::new());
         lck.wifi_info_screen = Some(wifi_info_screen);
+
+        let firmware_screen: Box<FirmwareScreen> = Box::new(FirmwareScreen::new());
+        lck.firmware_screen = Some(firmware_screen);
 
         let wifi_overlay: Box<DynOverlay<'static>> = Box::new(WifiOverlay::<
             MySPI<'static>,
@@ -302,6 +302,8 @@ impl LockCtx {
     pub fn tick(&mut self, update: TickUpdate) -> () {
         // Update time
         self.time_in_ticks += update.since_last.as_millis() as u64;
+        let mut screen_changed = false;
+        let screen_idx_at_start_of_tick = self.active_screen_idx;
 
         // Commands to process
         let mut commands: VecDeque<Vec<u8>> = VecDeque::new();
@@ -534,52 +536,106 @@ impl LockCtx {
             }
         }
 
-        let mut screen_changed = false;
-        if (update.d2_pressed) {
-            self.active_screen_idx = (self.active_screen_idx + 1) % 2;
+        if update.d2_pressed {
+            self.active_screen_idx = (self.active_screen_idx + 1) % 4;
+            screen_changed = true;
+        }
+
+        if screen_idx_at_start_of_tick != self.active_screen_idx {
+            log::info!("Active screen idx: {}", self.active_screen_idx);
             screen_changed = true;
         }
 
         match self.active_screen_idx {
             0 => {
-                if let Some(mut current_screen) = self.current_screen.take() {
-                    if screen_changed || current_screen.needs_redraw() {
-                        current_screen.draw_screen(self);
+                if let Some(mut qr_screen) = self.qr_code_screen.take() {
+                    if screen_changed || qr_screen.needs_redraw() {
+                        qr_screen.draw_screen(self);
                     }
-                    self.current_screen = Some(current_screen);
+                    self.qr_code_screen = Some(qr_screen);
                 }
             }
             1 => {
-                if let Some(mut current_screen) = self.wifi_info_screen.take() {
-                    if screen_changed || current_screen.needs_redraw() {
-                        current_screen.draw_screen(self);
+                if let Some(mut lock_screen) = self.lock_state_screen.take() {
+                    if screen_changed || lock_screen.needs_redraw() {
+                        log::info!("Drawing lock screen");
+                        lock_screen.draw_screen(self);
                     }
-                    self.wifi_info_screen = Some(current_screen);
+                    self.lock_state_screen = Some(lock_screen);
+                }
+            }
+            2 => {
+                if let Some(mut wifi_screen) = self.wifi_info_screen.take() {
+                    if screen_changed || wifi_screen.needs_redraw() {
+                        wifi_screen.draw_screen(self);
+                    }
+                    self.wifi_info_screen = Some(wifi_screen);
+                }
+            }
+            3 => {
+                if let Some(mut firmware_screen) = self.firmware_screen.take() {
+                    if screen_changed || firmware_screen.needs_redraw() {
+                        firmware_screen.draw_screen(self);
+                    }
+                    self.firmware_screen = Some(firmware_screen);
                 }
             }
             _ => {}
         }
+
+        if self.qr_code_screen.is_none()
+            || self.lock_state_screen.is_none()
+            || self.wifi_info_screen.is_none()
+            || self.firmware_screen.is_none()
+        {
+            panic!("One of the screens was taken and not replaced");
+        }
     } // end tick
 
+    /// Process updates for the current screen. This is different from process_commands
+    /// because we're interacting with the user directly via buttons and it's all they
+    /// can see.
     // NB: Because of poor choices, this expects LockCtx 'this_update' to have the data
     // to actually process the change.
     pub fn process_updates(&mut self) {
-        if let Some(mut current_screen) = self.current_screen.take() {
-            let result_from_update = current_screen.on_update(self);
-
-            if let Some(mut new_screen) = result_from_update {
-                log::info!("New screen -> {:?}", new_screen.get_id());
-                // We state transitioned. So mandatory clear + draw.
-                self.display.clear(Rgb565::BLACK).unwrap();
-                new_screen.draw_screen(self);
-                self.current_screen = Some(new_screen);
-            } else {
-                if current_screen.needs_redraw() {
-                    current_screen.draw_screen(self);
+        match self.active_screen_idx {
+            0 => {
+                if let Some(mut current_screen) = self.qr_code_screen.take() {
+                    let result = current_screen.on_update(self);
+                    if let Some(value) = result {
+                        self.active_screen_idx = value;
+                    }
+                    self.qr_code_screen = Some(current_screen);
                 }
-                // Put the current screen back
-                self.current_screen = Some(current_screen);
             }
+            1 => {
+                if let Some(mut lock_screen) = self.lock_state_screen.take() {
+                    let result = lock_screen.on_update(self);
+                    if let Some(value) = result {
+                        self.active_screen_idx = value;
+                    }
+                    self.lock_state_screen = Some(lock_screen);
+                }
+            }
+            2 => {
+                if let Some(mut wifi_info_screen) = self.wifi_info_screen.take() {
+                    let result = wifi_info_screen.on_update(self);
+                    if let Some(value) = result {
+                        self.active_screen_idx = value;
+                    }
+                    self.wifi_info_screen = Some(wifi_info_screen);
+                }
+            }
+            3 => {
+                if let Some(mut firmware_screen) = self.firmware_screen.take() {
+                    let result = firmware_screen.on_update(self);
+                    if let Some(value) = result {
+                        self.active_screen_idx = value;
+                    }
+                    self.firmware_screen = Some(firmware_screen);
+                }
+            }
+            _ => {}
         }
     }
 
@@ -615,35 +671,22 @@ impl LockCtx {
     }
 
     pub fn process_command(&mut self, command: VerifiedType) -> Result<bool, String> {
-        if let Some(mut current_screen) = self.current_screen.take() {
-            let result_from_update = current_screen.process_command(self, command);
+        // Update: Thanks to refactoring, all commands are handled by lock screen.
+        if let Some(mut lock_screen) = self.lock_state_screen.take() {
+            if let Ok(succeeded) = lock_screen.process_command(self, command) {
+                if let Some(new_screen) = succeeded {
+                    self.active_screen_idx = new_screen;
+                }
 
-            match result_from_update {
-                Ok(result) => {
-                    if let Some(mut new_screen) = result {
-                        log::info!("New screen -> {:?}", new_screen.get_id());
-                        // We state transitioned. So mandatory clear + draw.
-                        self.display.clear(Rgb565::BLACK).unwrap();
-                        new_screen.draw_screen(self);
-                        self.current_screen = Some(new_screen);
-                    } else {
-                        if current_screen.needs_redraw() {
-                            current_screen.draw_screen(self);
-                        }
-                        // Put the current screen back
-                        self.current_screen = Some(current_screen);
-                    }
-                }
-                Err(error) => {
-                    log::error!("Failed to process command: {:?}", error);
-                    return Err(error.to_string());
-                }
+                self.lock_state_screen = Some(lock_screen);
+                self.save_state_if_dirty();
+                Ok(true)
+            } else {
+                Err("Something went wrong".to_string())
             }
+        } else {
+            Err("lock state screen didn't exist?!".to_string())
         }
-
-        self.save_state_if_dirty();
-
-        Ok(true)
     }
 
     pub fn get_wifi_ssid(&mut self) -> Result<String, String> {
@@ -747,9 +790,6 @@ impl LockCtx {
         use postcard::to_vec;
         if self.dirty {
             if let Some(internal_contract) = self.contract.as_ref() {
-                // let key = internal_contract.public_key.unwrap();
-                // let key_bytes = key.to_encoded_point(true).as_bytes().to_vec();
-
                 let save_state = SaveState {
                     internal_contract: internal_contract.clone(),
                     is_locked: self.is_locked,
@@ -769,12 +809,12 @@ impl LockCtx {
     }
 
     pub fn end_contract(&mut self) -> () {
+        // NB: Order matters. If we clear the contract before enqueueing bot events
+        // we won't have bot records for sending data.
         self.unlock();
         self.enqueue_bot_event(EventType::ReleaseContract);
-        if let Ok(_) = self.nvs.remove("contract") {
-            log::info!("Contract removed");
-        }
-        self.contract = None;
+
+        self.clear_contract();
     }
 
     pub fn read_contract(&mut self) -> Option<SaveState> {
@@ -796,6 +836,14 @@ impl LockCtx {
             log::info!("No contract key was set");
             None
         }
+    }
+
+    fn clear_contract(&mut self) {
+        log::info!("Cleared contract");
+        if let Ok(_) = self.nvs.remove("contract") {
+            log::info!("Contract removed");
+        }
+        self.contract = None;
     }
 
     fn get_signing_key(&self) -> SigningKey {

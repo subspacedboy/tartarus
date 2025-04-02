@@ -1,9 +1,8 @@
 use crate::config_verifier::ConfigVerifier;
 use crate::lock_ctx::LockCtx;
-use crate::prelude::prelude::{DynScreen, MySPI};
+use crate::prelude::prelude::MySPI;
 use crate::screen_ids::ScreenId;
 use crate::screen_state::ScreenState;
-use crate::under_contract_screen::UnderContractScreen;
 use crate::verifier::{SignedMessageVerifier, VerifiedType};
 use embedded_graphics::mono_font::ascii::FONT_10X20;
 use embedded_graphics::mono_font::MonoTextStyle;
@@ -15,45 +14,30 @@ use embedded_graphics_core::geometry::{Point, Size};
 use embedded_graphics_core::prelude::DrawTarget;
 use embedded_graphics_core::primitives::Rectangle;
 use embedded_graphics_core::Drawable;
-use embedded_hal::digital::OutputPin;
-use esp_idf_hal::gpio::{GpioError, Output, PinDriver};
+use esp_idf_hal::gpio::{Gpio41, Gpio45, GpioError, Output, PinDriver};
 use qrcode::{Color, QrCode};
 
-pub struct BootScreen<SPI, DC, RST, PinE> {
-    _spi: core::marker::PhantomData<SPI>,
-    _dc: core::marker::PhantomData<DC>,
-    _rst: core::marker::PhantomData<RST>,
-    _pin: core::marker::PhantomData<PinE>,
+pub struct QrCodeScreen {
     needs_redraw: bool,
     configuration_changed: bool,
 }
 
-impl<SPI, DC, RST, PinE> BootScreen<SPI, DC, RST, PinE> {
+impl QrCodeScreen {
     pub fn new() -> Self {
         Self {
-            _spi: core::marker::PhantomData,
-            _dc: core::marker::PhantomData,
-            _rst: core::marker::PhantomData,
-            _pin: core::marker::PhantomData,
             needs_redraw: true,
             configuration_changed: false,
         }
     }
 }
 
-impl<SPI, DC, RST, PinE> ScreenState for BootScreen<SPI, DC, RST, PinE>
-where
-    SPI: display_interface::WriteOnlyDataCommand,
-    DC: OutputPin<Error = PinE>,
-    RST: OutputPin<Error = PinE>,
-    PinE: std::fmt::Debug,
-{
-    type SPI = SPI;
-    type PinE = PinE;
-    type DC = DC;
-    type RST = RST;
+impl ScreenState for QrCodeScreen {
+    type SPI = MySPI<'static>;
+    type PinE = GpioError;
+    type DC = PinDriver<'static, Gpio41, Output>;
+    type RST = PinDriver<'static, Gpio45, Output>;
 
-    fn on_update(&mut self, lock_ctx: &mut LockCtx) -> Option<Box<DynScreen<'static>>> {
+    fn on_update(&mut self, lock_ctx: &mut LockCtx) -> Option<usize> {
         if let Some(update) = &lock_ctx.this_update {
             if let Some(qr_data) = &update.qr_data {
                 //Maybe it's config data.
@@ -71,14 +55,7 @@ where
                                 lock_ctx.accept_contract(&contract);
 
                                 lock_ctx.contract = Some(contract);
-                                let under_contract = Box::new(UnderContractScreen::<
-                                    MySPI<'static>,
-                                    PinDriver<'static, _, Output>,
-                                    PinDriver<'static, _, Output>,
-                                    GpioError,
-                                >::new(
-                                ));
-                                return Some(under_contract);
+                                return Some(1);
                             }
                             _ => {}
                         }
@@ -86,7 +63,6 @@ where
                 }
             }
         }
-
         None
     }
 
@@ -94,19 +70,12 @@ where
         &mut self,
         lock_ctx: &mut LockCtx,
         command: VerifiedType,
-    ) -> Result<Option<Box<DynScreen<'static>>>, String> {
+    ) -> Result<Option<usize>, String> {
         match command {
             VerifiedType::Contract(contract) => {
                 lock_ctx.accept_contract(&contract);
-
                 lock_ctx.contract = Some(contract);
-                let under_contract = Box::new(UnderContractScreen::<
-                    MySPI<'static>,
-                    PinDriver<'static, _, Output>,
-                    PinDriver<'static, _, Output>,
-                    GpioError,
-                >::new());
-                Ok(Some(under_contract))
+                Ok(Some(1))
             }
             _ => Err("Command doesn't work on BootScreen".parse().unwrap()),
         }

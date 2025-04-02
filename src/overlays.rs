@@ -47,11 +47,13 @@ where
     fn draw_screen(&mut self, lock_ctx: &mut LockCtx) {
         let style = MonoTextStyle::new(&FONT_10X20, Rgb565::GREEN);
         let draw_position = Point::new(5, 125);
-        let text = if lock_ctx.wifi_connected {
-            Text::new("Wifi", draw_position, style)
-        } else {
-            Text::new("NC", draw_position, style)
-        };
+        // let text = if lock_ctx.wifi_connected {
+        //     Text::new("Wifi", draw_position, style)
+        // } else {
+        //     Text::new("NC", draw_position, style)
+        // };
+
+        let text = Text::new("Next", draw_position, style);
 
         text.draw(&mut lock_ctx.display).expect("Should have drawn");
 

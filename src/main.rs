@@ -1,6 +1,5 @@
 extern crate core;
 mod acknowledger;
-mod boot_screen;
 mod config_verifier;
 mod configuration_generated;
 mod contract_generated;
@@ -12,17 +11,19 @@ mod internal_config;
 mod internal_contract;
 mod internal_firmware;
 mod lock_ctx;
+mod lock_state_screen;
 mod mqtt_service;
 mod overlay;
 mod overlays;
 mod prelude;
+mod qr_screen;
 mod screen_ids;
 mod screen_state;
 mod servo;
-mod under_contract_screen;
 mod verifier;
 mod wifi_util;
 
+mod firmware_screen;
 mod generated;
 mod wifi_info_screen;
 

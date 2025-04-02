@@ -10,13 +10,13 @@ pub trait ScreenState {
     type DC: OutputPin<Error = Self::PinE>;
     type RST: OutputPin<Error = Self::PinE>;
 
-    fn on_update(&mut self, lock_ctx: &mut LockCtx) -> Option<Box<DynScreen<'static>>>;
+    fn on_update(&mut self, lock_ctx: &mut LockCtx) -> Option<usize>;
 
     fn process_command(
         &mut self,
         lock_ctx: &mut LockCtx,
         command: VerifiedType,
-    ) -> Result<Option<Box<DynScreen<'static>>>, String>;
+    ) -> Result<Option<usize>, String>;
 
     fn draw_screen(&mut self, lock_ctx: &mut LockCtx);
 

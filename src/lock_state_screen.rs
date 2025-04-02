@@ -1,6 +1,6 @@
-use crate::boot_screen::BootScreen;
 use crate::lock_ctx::LockCtx;
 use crate::prelude::prelude::{DynScreen, MySPI};
+use crate::qr_screen::QrCodeScreen;
 use crate::screen_ids::ScreenId;
 use crate::screen_state::ScreenState;
 use crate::verifier::VerifiedType;
@@ -12,55 +12,51 @@ use embedded_graphics_core::pixelcolor::Rgb565;
 use embedded_graphics_core::prelude::{DrawTarget, RgbColor};
 use embedded_graphics_core::Drawable;
 use embedded_hal::digital::OutputPin;
-use esp_idf_hal::gpio::{GpioError, Output, PinDriver};
+use esp_idf_hal::gpio::{Gpio41, Gpio45, GpioError, Output, PinDriver};
 
-pub struct UnderContractScreen<SPI, DC, RST, PinE> {
-    _spi: core::marker::PhantomData<SPI>,
-    _dc: core::marker::PhantomData<DC>,
-    _rst: core::marker::PhantomData<RST>,
-    _pin: core::marker::PhantomData<PinE>,
+pub struct LockstateScreen {
     needs_redraw: bool,
     text: String,
 }
 
-impl<SPI, DC, RST, PinE> UnderContractScreen<SPI, DC, RST, PinE> {
+impl LockstateScreen {
     pub fn new() -> Self {
         Self {
-            _spi: core::marker::PhantomData,
-            _dc: core::marker::PhantomData,
-            _rst: core::marker::PhantomData,
-            _pin: core::marker::PhantomData,
             needs_redraw: true,
             text: "Locked :-)".to_string(),
         }
     }
 }
 
-impl<SPI, DC, RST, PinE> ScreenState for UnderContractScreen<SPI, DC, RST, PinE>
-where
-    SPI: display_interface::WriteOnlyDataCommand,
-    DC: OutputPin<Error = PinE>,
-    RST: OutputPin<Error = PinE>,
-    PinE: std::fmt::Debug,
-{
-    type SPI = SPI;
-    type PinE = PinE;
-    type DC = DC;
-    type RST = RST;
+impl ScreenState for LockstateScreen {
+    type SPI = MySPI<'static>;
+    type PinE = GpioError;
+    type DC = PinDriver<'static, Gpio41, Output>;
+    type RST = PinDriver<'static, Gpio45, Output>;
 
-    fn on_update(&mut self, lock_ctx: &mut LockCtx) -> Option<Box<DynScreen<'static>>> {
+    fn on_update(&mut self, lock_ctx: &mut LockCtx) -> Option<usize> {
         let contract_option = lock_ctx.contract.as_ref();
-        let contract = contract_option.expect("contract");
 
-        if let Some(update) = &lock_ctx.this_update {
+        let update = lock_ctx.this_update.as_ref().unwrap();
+        if let Some(contract) = contract_option {
+            // We have a contract
             if update.d1_pressed && contract.temporary_unlock_allowed {
                 if lock_ctx.is_locked() {
                     lock_ctx.local_unlock();
-                    self.text = "Unlocked".to_string();
                     self.needs_redraw = true;
                 } else {
                     lock_ctx.local_lock();
-                    self.text = "Locked :-)".to_string();
+                    self.needs_redraw = true;
+                }
+            }
+        } else {
+            // We do not have a contract and just cycling the lock.
+            if update.d1_pressed {
+                if lock_ctx.is_locked() {
+                    lock_ctx.local_unlock();
+                    self.needs_redraw = true;
+                } else {
+                    lock_ctx.local_lock();
                     self.needs_redraw = true;
                 }
             }
@@ -73,46 +69,31 @@ where
         &mut self,
         lock_ctx: &mut LockCtx,
         command: VerifiedType,
-    ) -> Result<Option<Box<DynScreen<'static>>>, String> {
+    ) -> Result<Option<usize>, String> {
         log::info!("process_command: {:?}", command);
+        self.needs_redraw = true;
         match command {
+            VerifiedType::Contract(contract) => {
+                lock_ctx.accept_contract(&contract);
+                lock_ctx.contract = Some(contract);
+                Ok(Some(1))
+            }
             VerifiedType::UnlockCommand(_) => {
                 lock_ctx.unlock();
-                self.text = "Unlocked".to_string();
-                self.needs_redraw = true;
-                Ok(None)
+                Ok(Some(1))
             }
             VerifiedType::LockCommand(_) => {
                 lock_ctx.lock();
-                self.text = "Locked :-)".to_string();
-                self.needs_redraw = true;
-                Ok(None)
+                Ok(Some(1))
             }
             VerifiedType::ReleaseCommand(_) => {
                 lock_ctx.end_contract();
-
-                let boot_screen = Box::new(BootScreen::<
-                    MySPI<'static>,
-                    PinDriver<'static, _, Output>,
-                    PinDriver<'static, _, Output>,
-                    GpioError,
-                >::new());
-                Ok(Some(boot_screen))
+                Ok(Some(0))
             }
             VerifiedType::AbortCommand(_) => {
                 lock_ctx.end_contract();
-
-                let boot_screen = Box::new(BootScreen::<
-                    MySPI<'static>,
-                    PinDriver<'static, _, Output>,
-                    PinDriver<'static, _, Output>,
-                    GpioError,
-                >::new());
-                Ok(Some(boot_screen))
+                Ok(Some(0))
             }
-            _ => Err("Command doesn't work on UnderContractScreen"
-                .parse()
-                .unwrap()),
         }
     }
 
@@ -121,6 +102,12 @@ where
             .display
             .clear(Rgb565::BLACK)
             .expect("Screen should have cleared");
+
+        if lock_ctx.is_locked() {
+            self.text = "Locked :-)".to_string();
+        } else {
+            self.text = "Unlocked".to_string();
+        }
 
         let style = MonoTextStyle::new(&FONT_10X20, Rgb565::GREEN);
         let draw_position = Point::new(120, 67);

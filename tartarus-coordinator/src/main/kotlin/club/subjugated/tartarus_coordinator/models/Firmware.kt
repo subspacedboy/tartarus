@@ -19,9 +19,6 @@ class Firmware(
     var digest: String,
     var version: String,
     var publicKey: String = "",
-    var major : Long = 0,
-    var minor : Long = 0,
-    var build : Long = 0,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
 ) {
     companion object {

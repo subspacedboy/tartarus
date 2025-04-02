@@ -159,8 +159,6 @@ impl MqttService {
         let (mut client, mut connection): (EspMqttClient, EspMqttConnection) =
             EspMqttClient::new(broker_url, &config).expect("Failed to connect to MQTT broker");
 
-        // let scope = std::thread::scope(|s| {
-
         // Need to immediately start pumping the connection for messages, or else subscribe() and publish() below will not work
         // Note that when using the alternative constructor - `EspMqttClient::new_cb` - you don't need to
         // spawn a new thread, as the messages will be pumped with a backpressure into the callback you provide.
@@ -315,14 +313,12 @@ impl MqttService {
                     // Just to give a chance of our connection to get even the first published message
                     std::thread::sleep(Duration::from_millis(800));
                     loop {
-                        // log::info!("Copying local messages");
                         let mut local_signed_messages: Vec<SignedMessageTransport> = Vec::new();
                         if let Ok(mut message_queue) = out_queue_ref.lock() {
                             while let Some(message) = message_queue.pop_front() {
                                 local_signed_messages.push(message);
                             }
                         }
-                        // log::info!("Copying local messages finished");
 
                         while !local_signed_messages.is_empty() {
                             let message = local_signed_messages.remove(0);

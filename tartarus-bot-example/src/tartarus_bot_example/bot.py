@@ -67,23 +67,23 @@ class AsyncTartarusClient:
                     if has_callable(self.callback_obj, 'on_accept'):
                         asyncio.run_coroutine_threadsafe(self.callback_obj.on_accept(self, se), self.loop)
                 case EventType.LocalLock:
-                    print("Local lock")
+                    print("Event -> Local lock")
                     if has_callable(self.callback_obj, 'on_local_lock'):
                         asyncio.run_coroutine_threadsafe(self.callback_obj.on_local_lock(self, se), self.loop)
                 case EventType.LocalUnlock:
-                    print("Local Unlock")
+                    print("Event -> Local Unlock")
                     if has_callable(self.callback_obj, 'on_local_unlock'):
                         asyncio.run_coroutine_threadsafe(self.callback_obj.on_local_unlock(self, se), self.loop)
                 case EventType.ReleaseContract:
-                    print("Contract released")
+                    print("Event -> Contract released")
                     if has_callable(self.callback_obj, 'on_release'):
                         asyncio.run_coroutine_threadsafe(self.callback_obj.on_release(self, se), self.loop)
                 case EventType.Lock:
-                    print("Locked via command")
+                    print("Event -> Locked via command")
                     if has_callable(self.callback_obj, 'on_lock'):
                         asyncio.run_coroutine_threadsafe(self.callback_obj.on_lock(self, se), self.loop)
                 case EventType.Unlock:
-                    print("Unlocked via command")
+                    print("Event -> Unlocked via command")
                     if has_callable(self.callback_obj, 'on_unlock'):
                         asyncio.run_coroutine_threadsafe(self.callback_obj.on_unlock(self, se), self.loop)
         if "api" in msg.topic:
@@ -251,6 +251,8 @@ class TimerBot():
         print(common_metadata.LockSession())
         print(common_metadata.ContractSerialNumber())
 
+        # Only delete in on_release because that's the lock
+        # generated event.
         self.db.delete(common_metadata.ContractSerialNumber())
 
 def parse_args():
@@ -289,8 +291,9 @@ async def scan_contracts_and_release(timer: TimerBot):
                             await timer.add_message(contract['contract_name'], "You've done your time.")
                             await timer.release_contract(contract['contract_name'], contract['shareable_token'], int(c), 2000)
                         else:
+                            pass
                             # Already ended.
-                            timer.db.delete(c)
+                            # timer.db.delete(c)
                 else:
                     print(f"Waiting for {c} to be accepted.")
 
