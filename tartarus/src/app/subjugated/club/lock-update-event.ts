@@ -4,6 +4,9 @@
 
 import * as flatbuffers from 'flatbuffers';
 
+import { UpdateType } from '../../subjugated/club/update-type.js';
+
+
 export class LockUpdateEvent {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
@@ -22,8 +25,70 @@ static getSizePrefixedRootAsLockUpdateEvent(bb:flatbuffers.ByteBuffer, obj?:Lock
   return (obj || new LockUpdateEvent()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
+publicKey(index: number):number|null {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
+}
+
+publicKeyLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+publicKeyArray():Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
+}
+
+session():string|null
+session(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+session(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
+body():string|null
+body(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+body(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
+thisUpdateType():UpdateType {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? this.bb!.readInt8(this.bb_pos + offset) : UpdateType.Undefined;
+}
+
 static startLockUpdateEvent(builder:flatbuffers.Builder) {
-  builder.startObject(0);
+  builder.startObject(4);
+}
+
+static addPublicKey(builder:flatbuffers.Builder, publicKeyOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, publicKeyOffset, 0);
+}
+
+static createPublicKeyVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
+  builder.startVector(1, data.length, 1);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addInt8(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startPublicKeyVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(1, numElems, 1);
+}
+
+static addSession(builder:flatbuffers.Builder, sessionOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, sessionOffset, 0);
+}
+
+static addBody(builder:flatbuffers.Builder, bodyOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(2, bodyOffset, 0);
+}
+
+static addThisUpdateType(builder:flatbuffers.Builder, thisUpdateType:UpdateType) {
+  builder.addFieldInt8(3, thisUpdateType, UpdateType.Undefined);
 }
 
 static endLockUpdateEvent(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -31,8 +96,12 @@ static endLockUpdateEvent(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createLockUpdateEvent(builder:flatbuffers.Builder):flatbuffers.Offset {
+static createLockUpdateEvent(builder:flatbuffers.Builder, publicKeyOffset:flatbuffers.Offset, sessionOffset:flatbuffers.Offset, bodyOffset:flatbuffers.Offset, thisUpdateType:UpdateType):flatbuffers.Offset {
   LockUpdateEvent.startLockUpdateEvent(builder);
+  LockUpdateEvent.addPublicKey(builder, publicKeyOffset);
+  LockUpdateEvent.addSession(builder, sessionOffset);
+  LockUpdateEvent.addBody(builder, bodyOffset);
+  LockUpdateEvent.addThisUpdateType(builder, thisUpdateType);
   return LockUpdateEvent.endLockUpdateEvent(builder);
 }
 }

@@ -30,19 +30,16 @@ table TemporaryUnlockRules {
 table Contract {
   public_key: [ubyte];
 
+  nonce: [ubyte];
+  confirm_code: [ubyte];
   session: string;
   notes: string;
 
-  capabilities: [Capabilities];
+  // capabilities: [Capabilities];
 
   // If this contract is able to be loaded, it cannot be removed
   // without explicit permission.
   is_unremovable: bool;
-
-  // There's a nested contract and it's encrypted with the shared secret
-  // of the target lockbox and the keyholder of this contract.
-  is_blind: bool;
-  encrypted_contract: [ubyte];
 
   end_condition: EndCondition;
 
@@ -50,7 +47,7 @@ table Contract {
   webhooks: [WebHook];
 
   // If true the lock will cycle immediately on read and verification.
-  is_lock_on_accept: bool;
+  // is_lock_on_accept: bool;
 
   // If true, subject can freely cycle the lock.
   is_temporary_unlock_allowed: bool;
@@ -65,17 +62,19 @@ table PartialContract {
   complete_contract_address: string;
 }
 
+enum UpdateType : byte { Undefined = 0, Started, Locked, Unlocked }
+
 table LockUpdateEvent {
-
-}
-
-table SessionStart {
     public_key: [ubyte];
-    session_token: string;
+    session: string;
+
+    body: string;
+
+    this_update_type: UpdateType;
 }
 
 union MessagePayload {
-  Contract, PartialContract, LockUpdateEvent, SessionStart
+  Contract, PartialContract, LockUpdateEvent
 }
 
 table SignedMessage {

@@ -44,12 +44,12 @@ export class NewFullContractComponent {
     const publicKeyOffset = builder.createByteVector(compressedPublicKey);
     // Create capabilities array
     // This has to be a multiple of 4.
-    Contract.startCapabilitiesVector(builder, 4);
-    builder.addInt8(Capabilities.Online);
-    builder.addInt8(Capabilities.Time);
-    builder.addInt8(0);
-    builder.addInt8(0);
-    const capabilitiesOffset = builder.endVector();
+    // Contract.startCapabilitiesVector(builder, 4);
+    // builder.addInt8(Capabilities.Online);
+    // builder.addInt8(Capabilities.Time);
+    // builder.addInt8(0);
+    // builder.addInt8(0);
+    // const capabilitiesOffset = builder.endVector();
 
     const endCondition = EndCondition.WhenISaySo;
     WhenISaySo.startWhenISaySo(builder);
@@ -57,8 +57,8 @@ export class NewFullContractComponent {
 
     Contract.startContract(builder);
     Contract.addPublicKey(builder, publicKeyOffset);
-    Contract.addCapabilities(builder, capabilitiesOffset);
-    Contract.addIsLockOnAccept(builder, true);
+    // Contract.addCapabilities(builder, capabilitiesOffset);
+    // Contract.addIsLockOnAccept(builder, true);
     Contract.addIsTemporaryUnlockAllowed(builder, true);
     Contract.addEndCondition(builder, whenISaySoOffset);
     Contract.addEndConditionType(builder, EndCondition.WhenISaySo);

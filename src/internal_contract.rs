@@ -4,7 +4,6 @@ use crate::contract_generated::subjugated::club::EndCondition;
 
 #[derive(Debug)]
 pub struct InternalContract {
-    pub lock_on_accept: bool,
     pub temporary_unlock_allowed : bool,
     pub unremovable: bool,
     pub end_criteria: EndCriteria,
@@ -40,7 +39,6 @@ impl From<subjugated::club::Contract<'_>> for InternalContract {
         let mut ic = Self {
             temp_unlock_rules: Vec::new(),
             unremovable: contract.is_unremovable(),
-            lock_on_accept: contract.is_lock_on_accept(),
             temporary_unlock_allowed: contract.is_temporary_unlock_allowed(),
             end_criteria: end_condition,
             public_key: VerifyingKey::from_sec1_bytes(contract.public_key().unwrap().bytes()).expect("Valid public key")

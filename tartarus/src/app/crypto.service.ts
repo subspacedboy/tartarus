@@ -71,7 +71,7 @@ export class CryptoService {
     return buffer.buffer;
   }
 
-  async importKeyPair(pem: string): Promise<{ privateKey: CryptoKey; publicKey: CryptoKey }> {
+  async importKeyPairForECDSA(pem: string): Promise<{ privateKey: CryptoKey; publicKey: CryptoKey }> {
     // Extract private and public key parts
     const privateKeyMatch = pem.match(/-----BEGIN PRIVATE KEY-----(.*?)-----END PRIVATE KEY-----/s);
     const publicKeyMatch = pem.match(/-----BEGIN PUBLIC KEY-----(.*?)-----END PUBLIC KEY-----/s);
@@ -108,6 +108,41 @@ export class CryptoService {
     return { privateKey, publicKey };
   }
 
+  async importPrivateKeyForECDH(pem: string): Promise<CryptoKey> {
+    // Extract Base64 content from PEM
+    const base64Key = pem.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s+/g, "");
+
+    // Decode Base64 to ArrayBuffer
+    const pkcs8 = Uint8Array.from(atob(base64Key), c => c.charCodeAt(0)).buffer;
+
+    // Import the private key for ECDH
+    return await crypto.subtle.importKey(
+      "pkcs8",
+      pkcs8,
+      { name: "ECDH", namedCurve: "P-256" },
+      true, // Extractable
+      ["deriveBits"] // Required for ECDH key exchange
+    );
+  }
+
+
+  async importPublicKeyOnlyFromPem(pem: string): Promise<CryptoKey> {
+    // Extract Base64 content from PEM
+    const base64Key = pem.replace(/-----BEGIN PUBLIC KEY-----|-----END PUBLIC KEY-----|\s+/g, "");
+
+    // Decode Base64 to ArrayBuffer
+    const spki = Uint8Array.from(atob(base64Key), c => c.charCodeAt(0)).buffer;
+
+    // Import the public key into WebCrypto API
+    return await crypto.subtle.importKey(
+      "spki",
+      spki,
+      { name: "ECDH", namedCurve: "P-256" },
+      true,
+      []
+    );
+  }
+
   async exportRawPublicKey(publicKey: CryptoKey): Promise<Uint8Array> {
     const rawKey = await crypto.subtle.exportKey("raw", publicKey); // Returns x || y
     return new Uint8Array(rawKey);
@@ -126,5 +161,47 @@ export class CryptoService {
 
     // Compressed key format: prefix || x
     return new Uint8Array([prefix, ...x]);
+  }
+
+  async deriveSharedSecret(privateKey : CryptoKey, publicKey : CryptoKey) {
+    return await crypto.subtle.deriveBits(
+      { name: "ECDH", public: publicKey },
+      privateKey,
+      256 // Output length in bits
+    );
+  }
+
+  async deriveAESKey(sharedSecret: ArrayBuffer, salt: Uint8Array, info: Uint8Array): Promise<CryptoKey> {
+    const hkdfKey = await crypto.subtle.importKey("raw", sharedSecret, { name: "HKDF" }, false, ["deriveKey"]);
+
+    return await crypto.subtle.deriveKey(
+      {
+        name: "HKDF",
+        salt: salt,
+        info: info,
+        hash: "SHA-256"
+      },
+      hkdfKey,
+      { name: "AES-GCM", length: 256 },
+      true,
+      ["encrypt", "decrypt"]
+    );
+  }
+
+  async initializeAESCipher(aesKey: CryptoKey) {
+    const iv = crypto.getRandomValues(new Uint8Array(12)); // 12-byte IV for AES-GCM
+
+    return {
+      encrypt: async (plaintext: string) => {
+        const encoded = new TextEncoder().encode(plaintext);
+        return await crypto.subtle.encrypt({ name: "AES-GCM", iv }, aesKey, encoded);
+      },
+      decrypt: async (ciphertext: ArrayBuffer) => {
+        return new TextDecoder().decode(
+          await crypto.subtle.decrypt({ name: "AES-GCM", iv }, aesKey, ciphertext)
+        );
+      },
+      iv
+    };
   }
 }

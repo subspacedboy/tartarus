@@ -1,4 +1,5 @@
 use std::fmt::Error;
+use std::io::Read;
 use std::time::Duration;
 use base64::Engine;
 use base64::engine::general_purpose;
@@ -16,6 +17,7 @@ use embedded_graphics_core::prelude::{DrawTarget, Point, RgbColor, Size};
 use embedded_graphics_core::primitives::Rectangle;
 use esp_idf_hal::gpio::{Gpio40, Gpio41, Gpio45, GpioError, Output, PinDriver};
 use esp_idf_hal::spi::{SpiDeviceDriver, SpiDriver};
+use esp_idf_svc::http::client::EspHttpConnection;
 use esp_idf_svc::nvs::{EspNvs, NvsDefault};
 use esp_idf_svc::wifi::{BlockingWifi, EspWifi};
 use p256::{PublicKey, SecretKey};
@@ -24,7 +26,7 @@ use rand_core::RngCore;
 use st7789::ST7789;
 use crate::boot_screen::BootScreen;
 use crate::contract_generated::subjugated;
-use crate::contract_generated::subjugated::club::Contract;
+use crate::contract_generated::subjugated::club::{Contract, LockUpdateEvent, LockUpdateEventArgs, MessagePayload, SignedMessage, SignedMessageArgs, UpdateType};
 use crate::Esp32Rng;
 use crate::internal_contract::InternalContract;
 use crate::overlays::{ButtonPressOverlay, WifiOverlay};
@@ -32,6 +34,12 @@ use crate::prelude::prelude;
 use crate::prelude::prelude::{DynOverlay, DynScreen, MyDisplay, MySPI};
 use crate::screen_state::ScreenState;
 use crate::wifi_util::{connect_wifi, parse_wifi_qr};
+use embedded_svc::http::client::Client as HttpClient;
+use esp_idf_hal::io::Write;
+use flatbuffers::FlatBufferBuilder;
+use p256::ecdsa::signature::Signer;
+use p256::ecdsa::{Signature, SigningKey};
+use sha2::{Digest, Sha256};
 
 #[derive(Debug, Clone)]
 pub struct TickUpdate {
@@ -49,12 +57,12 @@ pub struct LockCtx {
     overlays: Vec<Box<DynOverlay<'static>>>,
     wifi: BlockingWifi<EspWifi<'static>>,
     pub(crate) wifi_connected: bool,
-    secret_key: Option<SecretKey>,
+    pub(crate) secret_key: Option<SecretKey>,
     pub(crate) public_key: Option<PublicKey>,
     pub(crate) this_update: Option<TickUpdate>,
     pub(crate) contract: Option<InternalContract>,
     is_locked: bool,
-    session_token: String,
+    pub(crate) session_token: String,
 }
 
 impl LockCtx {
@@ -74,16 +82,20 @@ impl LockCtx {
             session_token: String::new(),
         };
 
-        if let Ok(connected) = lck.wifi.is_connected() {
-            lck.wifi_connected = connected;
-        }
-
         lck.session_token = lck.load_or_create_session_id();
         let secret_key = lck.load_or_create_key();
         let my_public = PublicKey::from_secret_scalar(&secret_key.to_nonzero_scalar());
 
         lck.secret_key = Some(secret_key);
         lck.public_key = Some(my_public);
+
+        // This must come after key loading because we're announcing to the coordinator with our
+        // public key.
+        if let Ok(connected) = lck.wifi.is_connected() {
+            lck.wifi_connected = connected;
+
+            lck.start_announce_to_coordinator();
+        }
 
         let wifi_overlay: Box<DynOverlay<'static>> = Box::new(
             WifiOverlay::<
@@ -263,9 +275,105 @@ impl LockCtx {
     }
 
     pub fn accept_contract(&mut self, contract : &InternalContract) -> () {
-        if contract.lock_on_accept {
-            self.cycle_lock();
-            log::info!("Contract was lock on accept");
+    }
+
+    fn start_announce_to_coordinator(&self) {
+        const URL: &str = "http://192.168.1.180:5002/event";
+        let mut pos = EspHttpConnection::new(&mut Default::default()).expect("HTTP client should be available");
+        let mut client = HttpClient::wrap(&mut pos);
+
+        let mut builder = FlatBufferBuilder::with_capacity(1024);
+        let public_key: Vec<u8> = self.public_key.unwrap().to_sec1_bytes().as_ref().clone().to_vec();
+        let session = builder.create_string(&self.session_token);
+        let this_update_type = UpdateType::Started;
+        let body = builder.create_string("lock update body");
+
+        let pub_key_holder = builder.create_vector(&public_key);
+        let lock_update_event = LockUpdateEvent::create(
+            &mut builder,
+            &LockUpdateEventArgs {
+                public_key: Some(pub_key_holder),
+                session: Some(session),
+                body: Some(body),
+                this_update_type,
+            },
+        );
+
+        let payload_type = MessagePayload::LockUpdateEvent; // Union type
+        let payload_value = lock_update_event.as_union_value();
+
+        builder.finish(lock_update_event, None);
+        let buffer = builder.finished_data();
+
+        let table_offset = buffer[0] as usize;
+        let vtable_offset = buffer[table_offset] as usize;
+        let actual_start = table_offset - vtable_offset;
+
+        log::info!("Update buffer w/ vtable ({},{}): {:?}", vtable_offset, table_offset, buffer);
+        let hash = Sha256::digest(&buffer[actual_start..]);
+        log::info!("Hash {:?}", hash);
+
+        // UGH. We have to build the whole message over again because of the way
+        // Rust implements flatbuffers.
+        let mut builder = FlatBufferBuilder::with_capacity(1024);
+        let public_key: Vec<u8> = self.public_key.unwrap().to_sec1_bytes().as_ref().clone().to_vec();
+        let session = builder.create_string(&self.session_token);
+        let this_update_type = UpdateType::Started;
+        let body = builder.create_string("lock update body");
+
+        let pub_key_holder = builder.create_vector(&public_key);
+        let lock_update_event = LockUpdateEvent::create(
+            &mut builder,
+            &LockUpdateEventArgs {
+                public_key: Some(pub_key_holder),
+                session: Some(session),
+                body: Some(body),
+                this_update_type,
+            },
+        );
+
+        let payload_type = MessagePayload::LockUpdateEvent; // Union type
+        let payload_value = lock_update_event.as_union_value();
+
+        let secret = self.secret_key.as_ref().unwrap();
+        let pem = secret.to_sec1_pem(Default::default()).unwrap();
+
+        let cloned_secret = secret.clone();
+        let bytes = cloned_secret.to_bytes();
+        let key_bytes = bytes.as_slice();
+        let signing_key = SigningKey::from_slice(key_bytes).unwrap();
+        let signature: Signature = signing_key.sign(&hash.as_slice());
+        // let signing_key = SigningKey::from_bytes(*secret.as_scalar_primitive());
+        // let signing_key = /
+
+        // let signature: Vec<u8> = vec![9, 8, 7, 6, 5];
+        let sig_bytes = signature.to_bytes();
+
+        let signature_offset = builder.create_vector(sig_bytes.as_slice());
+        let signed_message = SignedMessage::create(
+            &mut builder,
+            &SignedMessageArgs {
+                signature: Some(signature_offset),
+                payload: Some(payload_value),
+                payload_type,
+            },
+        );
+
+        builder.finish(signed_message, None);
+        let data = builder.finished_data().to_vec();
+
+        if let Ok(mut request) = client.post(&URL, &[("Content-Type","application/octet-stream")]) {
+            if let Ok(result) =request.write_all(data.as_slice()) {
+                if let Ok(_) = request.flush() {}
+            }
+
+            if let Ok(response) = request.submit() {
+                log::info!("Response status: {}", response.status());
+            } else {
+                log::error!("Failed to send request");
+            }
+        } else {
+            log::error!("Failed to POST request");
         }
     }
 }

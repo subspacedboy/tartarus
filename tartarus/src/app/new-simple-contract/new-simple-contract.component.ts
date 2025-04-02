@@ -1,10 +1,8 @@
 import {Component, ElementRef, OnInit, ViewChild} from '@angular/core';
 import * as flatbuffers from 'flatbuffers';
 import {Contract} from '../subjugated/club/contract';
-import {Capabilities} from '../subjugated/club/capabilities';
 import {SignedMessage} from '../subjugated/club/signed-message';
 import {MessagePayload, unionToMessagePayload} from '../subjugated/club/message-payload';
-import jsQR from 'jsqr';
 import * as QRCode from 'qrcode';
 import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
 import {IdHelperService} from '../id-helper.service';
@@ -49,32 +47,41 @@ export class NewSimpleContractComponent implements OnInit {
     const builder = new flatbuffers.Builder(1024);
 
     const {privatePem, publicPem} = this.userDataService.getAuthorKeypair();
-    const keys = await this.cryptoService.importKeyPair(String(privatePem) + String(publicPem));
+    const ecdsKeys = await this.cryptoService.importKeyPairForECDSA(String(privatePem) + String(publicPem));
+    const ecdhPrivateKey = await this.cryptoService.importPrivateKeyForECDH(String(privatePem));
 
-    const compressedPublicKey = await this.cryptoService.generateCompressedPublicKey(keys.publicKey);
+    const compressedPublicKey = await this.cryptoService.generateCompressedPublicKey(ecdsKeys.publicKey);
     // Create a public key string
     const publicKeyOffset = builder.createByteVector(compressedPublicKey);
 
     WhenISaySo.startWhenISaySo(builder);
     const whenISaySoOffset = WhenISaySo.endWhenISaySo(builder);
 
-    const notesOffset = builder.createString("Notes!");
     const sessionOffset = builder.createString(this.lockSession?.session!);
+
+    // Derive secrets.
+    // const lockPub = await this.cryptoService.importKeyPair(this.lockSession?.public_key!);
+    let pubKey = await this.cryptoService.importPublicKeyOnlyFromPem(this.lockSession?.public_pem!);
+    const shared = await this.cryptoService.deriveSharedSecret(ecdhPrivateKey, pubKey);
+    const aesKey = await this.cryptoService.deriveAESKey(shared, new Uint8Array(), new Uint8Array());
+    const cipher = await this.cryptoService.initializeAESCipher(aesKey);
+    const cipherText = await cipher.encrypt("685");
+    const nonceOffset = builder.createByteVector(cipher.iv);
+    const confirmCodeOffset = builder.createByteVector(new Uint8Array(cipherText));
 
     Contract.startContract(builder);
     Contract.addPublicKey(builder, publicKeyOffset);
-    Contract.addIsLockOnAccept(builder, true);
     Contract.addIsTemporaryUnlockAllowed(builder, false);
     Contract.addEndCondition(builder, whenISaySoOffset);
     Contract.addEndConditionType(builder, EndCondition.WhenISaySo);
     Contract.addIsUnremovable(builder, true);
     Contract.addSession(builder, sessionOffset);
-    Contract.addNotes(builder, notesOffset);
+    Contract.addConfirmCode(builder, confirmCodeOffset);
+    Contract.addNonce(builder, nonceOffset);
     let fullContractOffset = Contract.endContract(builder);
     builder.finish(fullContractOffset);
 
     const contractName = this.idHelperService.generateBase32Id()
-    // console.log(builder.asUint8Array().length);
 
     const contractBytes = builder.asUint8Array();
     const offsetToTable = contractBytes[0] | (contractBytes[1] << 8);
@@ -83,7 +90,7 @@ export class NewSimpleContractComponent implements OnInit {
 
     const vtableAndContract = contractBytes.slice(vTableStart);
 
-    const signature = await this.cryptoService.hashAndSignData(keys.privateKey, vtableAndContract);
+    const signature = await this.cryptoService.hashAndSignData(ecdsKeys.privateKey, vtableAndContract);
 
     const signatureOffset = SignedMessage.createSignatureVector(builder, new Uint8Array(signature));
 

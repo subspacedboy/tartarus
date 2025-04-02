@@ -57,7 +57,7 @@ where
             if let Some(qr_data) = &update.qr_data {
                 let verifier = ContractVerifier::new();
 
-                if let Ok(verified_type) = verifier.verify(qr_data.clone()) {
+                if let Ok(verified_type) = verifier.verify(qr_data.clone(), &lock_ctx.session_token) {
                     match verified_type {
                         VerifiedType::Contract(contract) => {
                             lock_ctx.accept_contract(&contract);

@@ -28,7 +28,7 @@ export class QrcodeService {
       console.log("QR Data: " + qrCode.data);
 
       //.then(keys => {
-      return await this.cryptoService.importKeyPair(qrCode.data);
+      return await this.cryptoService.importKeyPairForECDSA(qrCode.data);
       //   // this.privateKey = keys.privateKey;
       //   // this.publicKey = keys.publicKey;
       //   result = {

@@ -7,4 +7,3 @@ class MessagePayload(object):
     Contract = 1
     PartialContract = 2
     LockUpdateEvent = 3
-    SessionStart = 4

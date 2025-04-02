@@ -21,7 +21,7 @@ impl ContractVerifier {
         Self {}
     }
 
-    pub fn verify(self, incoming_data: Vec<u8>) -> Result<VerifiedType, String> {
+    pub fn verify(self, incoming_data: Vec<u8>, session_token: &String) -> Result<VerifiedType, String> {
         let mut result_partial_contract : Option<PartialContract> = None;
         let mut result_contract : Option<Contract> = None;
         let owned_data = incoming_data.clone();

@@ -24,11 +24,89 @@ class LockUpdateEvent(object):
     def Init(self, buf, pos):
         self._tab = flatbuffers.table.Table(buf, pos)
 
+    # LockUpdateEvent
+    def PublicKey(self, j):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
+        if o != 0:
+            a = self._tab.Vector(o)
+            return self._tab.Get(flatbuffers.number_types.Uint8Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 1))
+        return 0
+
+    # LockUpdateEvent
+    def PublicKeyAsNumpy(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
+        if o != 0:
+            return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Uint8Flags, o)
+        return 0
+
+    # LockUpdateEvent
+    def PublicKeyLength(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
+        if o != 0:
+            return self._tab.VectorLen(o)
+        return 0
+
+    # LockUpdateEvent
+    def PublicKeyIsNone(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
+        return o == 0
+
+    # LockUpdateEvent
+    def Session(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        if o != 0:
+            return self._tab.String(o + self._tab.Pos)
+        return None
+
+    # LockUpdateEvent
+    def Body(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
+        if o != 0:
+            return self._tab.String(o + self._tab.Pos)
+        return None
+
+    # LockUpdateEvent
+    def ThisUpdateType(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        if o != 0:
+            return self._tab.Get(flatbuffers.number_types.Int8Flags, o + self._tab.Pos)
+        return 0
+
 def LockUpdateEventStart(builder):
-    builder.StartObject(0)
+    builder.StartObject(4)
 
 def Start(builder):
     LockUpdateEventStart(builder)
+
+def LockUpdateEventAddPublicKey(builder, publicKey):
+    builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(publicKey), 0)
+
+def AddPublicKey(builder, publicKey):
+    LockUpdateEventAddPublicKey(builder, publicKey)
+
+def LockUpdateEventStartPublicKeyVector(builder, numElems):
+    return builder.StartVector(1, numElems, 1)
+
+def StartPublicKeyVector(builder, numElems):
+    return LockUpdateEventStartPublicKeyVector(builder, numElems)
+
+def LockUpdateEventAddSession(builder, session):
+    builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(session), 0)
+
+def AddSession(builder, session):
+    LockUpdateEventAddSession(builder, session)
+
+def LockUpdateEventAddBody(builder, body):
+    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(body), 0)
+
+def AddBody(builder, body):
+    LockUpdateEventAddBody(builder, body)
+
+def LockUpdateEventAddThisUpdateType(builder, thisUpdateType):
+    builder.PrependInt8Slot(3, thisUpdateType, 0)
+
+def AddThisUpdateType(builder, thisUpdateType):
+    LockUpdateEventAddThisUpdateType(builder, thisUpdateType)
 
 def LockUpdateEventEnd(builder):
     return builder.EndObject()
