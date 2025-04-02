@@ -12,5 +12,9 @@ class MessagePayload private constructor() {
         const val CreateCommandResponse: UByte = 4u
         const val CreateContractRequest: UByte = 5u
         const val CreateContractResponse: UByte = 6u
+        const val GetLockSessionRequest: UByte = 7u
+        const val GetLockSessionResponse: UByte = 8u
+        const val CreateMessageRequest: UByte = 9u
+        const val CreateMessageResponse: UByte = 10u
     }
 }

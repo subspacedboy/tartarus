@@ -6,45 +6,58 @@ import flatbuffers
 from flatbuffers.compat import import_numpy
 np = import_numpy()
 
-class CreateContractResponse(object):
+class CreateMessageRequest(object):
     __slots__ = ['_tab']
 
     @classmethod
     def GetRootAs(cls, buf, offset=0):
         n = flatbuffers.encode.Get(flatbuffers.packer.uoffset, buf, offset)
-        x = CreateContractResponse()
+        x = CreateMessageRequest()
         x.Init(buf, n + offset)
         return x
 
     @classmethod
-    def GetRootAsCreateContractResponse(cls, buf, offset=0):
+    def GetRootAsCreateMessageRequest(cls, buf, offset=0):
         """This method is deprecated. Please switch to GetRootAs."""
         return cls.GetRootAs(buf, offset)
-    # CreateContractResponse
+    # CreateMessageRequest
     def Init(self, buf, pos):
         self._tab = flatbuffers.table.Table(buf, pos)
 
-    # CreateContractResponse
+    # CreateMessageRequest
     def ContractName(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
             return self._tab.String(o + self._tab.Pos)
         return None
 
-def CreateContractResponseStart(builder):
-    builder.StartObject(1)
+    # CreateMessageRequest
+    def Message(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        if o != 0:
+            return self._tab.String(o + self._tab.Pos)
+        return None
+
+def CreateMessageRequestStart(builder):
+    builder.StartObject(2)
 
 def Start(builder):
-    CreateContractResponseStart(builder)
+    CreateMessageRequestStart(builder)
 
-def CreateContractResponseAddContractName(builder, contractName):
+def CreateMessageRequestAddContractName(builder, contractName):
     builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(contractName), 0)
 
 def AddContractName(builder, contractName):
-    CreateContractResponseAddContractName(builder, contractName)
+    CreateMessageRequestAddContractName(builder, contractName)
 
-def CreateContractResponseEnd(builder):
+def CreateMessageRequestAddMessage(builder, message):
+    builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(message), 0)
+
+def AddMessage(builder, message):
+    CreateMessageRequestAddMessage(builder, message)
+
+def CreateMessageRequestEnd(builder):
     return builder.EndObject()
 
 def End(builder):
-    return CreateContractResponseEnd(builder)
+    return CreateMessageRequestEnd(builder)

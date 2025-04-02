@@ -6,45 +6,45 @@ import flatbuffers
 from flatbuffers.compat import import_numpy
 np = import_numpy()
 
-class CreateContractResponse(object):
+class GetLockSessionRequest(object):
     __slots__ = ['_tab']
 
     @classmethod
     def GetRootAs(cls, buf, offset=0):
         n = flatbuffers.encode.Get(flatbuffers.packer.uoffset, buf, offset)
-        x = CreateContractResponse()
+        x = GetLockSessionRequest()
         x.Init(buf, n + offset)
         return x
 
     @classmethod
-    def GetRootAsCreateContractResponse(cls, buf, offset=0):
+    def GetRootAsGetLockSessionRequest(cls, buf, offset=0):
         """This method is deprecated. Please switch to GetRootAs."""
         return cls.GetRootAs(buf, offset)
-    # CreateContractResponse
+    # GetLockSessionRequest
     def Init(self, buf, pos):
         self._tab = flatbuffers.table.Table(buf, pos)
 
-    # CreateContractResponse
-    def ContractName(self):
+    # GetLockSessionRequest
+    def ShareableToken(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
             return self._tab.String(o + self._tab.Pos)
         return None
 
-def CreateContractResponseStart(builder):
+def GetLockSessionRequestStart(builder):
     builder.StartObject(1)
 
 def Start(builder):
-    CreateContractResponseStart(builder)
+    GetLockSessionRequestStart(builder)
 
-def CreateContractResponseAddContractName(builder, contractName):
-    builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(contractName), 0)
+def GetLockSessionRequestAddShareableToken(builder, shareableToken):
+    builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(shareableToken), 0)
 
-def AddContractName(builder, contractName):
-    CreateContractResponseAddContractName(builder, contractName)
+def AddShareableToken(builder, shareableToken):
+    GetLockSessionRequestAddShareableToken(builder, shareableToken)
 
-def CreateContractResponseEnd(builder):
+def GetLockSessionRequestEnd(builder):
     return builder.EndObject()
 
 def End(builder):
-    return CreateContractResponseEnd(builder)
+    return GetLockSessionRequestEnd(builder)

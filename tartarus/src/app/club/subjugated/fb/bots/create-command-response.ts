@@ -4,6 +4,9 @@
 
 import * as flatbuffers from 'flatbuffers';
 
+import { Error } from '../../../../club/subjugated/fb/bots/error.js';
+
+
 export class CreateCommandResponse {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
@@ -22,8 +25,17 @@ static getSizePrefixedRootAsCreateCommandResponse(bb:flatbuffers.ByteBuffer, obj
   return (obj || new CreateCommandResponse()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
+error(obj?:Error):Error|null {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? (obj || new Error()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
+}
+
 static startCreateCommandResponse(builder:flatbuffers.Builder) {
-  builder.startObject(0);
+  builder.startObject(1);
+}
+
+static addError(builder:flatbuffers.Builder, errorOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, errorOffset, 0);
 }
 
 static endCreateCommandResponse(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -31,8 +43,9 @@ static endCreateCommandResponse(builder:flatbuffers.Builder):flatbuffers.Offset 
   return offset;
 }
 
-static createCreateCommandResponse(builder:flatbuffers.Builder):flatbuffers.Offset {
+static createCreateCommandResponse(builder:flatbuffers.Builder, errorOffset:flatbuffers.Offset):flatbuffers.Offset {
   CreateCommandResponse.startCreateCommandResponse(builder);
+  CreateCommandResponse.addError(builder, errorOffset);
   return CreateCommandResponse.endCreateCommandResponse(builder);
 }
 }

@@ -19,8 +19,10 @@ class Contract(
     @ManyToOne @JoinColumn(name = "lock_session_id") var lockSession: LockSession,
     var body: ByteArray? = null,
     var notes: String? = null,
-    @OneToMany(mappedBy = "id", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "contract", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     var commands: MutableList<Command> = mutableListOf(),
+    @OneToMany(mappedBy = "contract", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    var messages: MutableList<Message> = mutableListOf(),
     var nextCounter: Int = 0,
     var serialNumber: Int = 0,
     @Transient var lockState: Boolean? = null,

@@ -42,6 +42,28 @@ class CreateCommandRequest : Table() {
         }
     val commandBodyAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
     fun commandBodyInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val shareableToken : String?
+        get() {
+            val o = __offset(6)
+            return if (o != 0) {
+                __string(o + bb_pos)
+            } else {
+                null
+            }
+        }
+    val shareableTokenAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
+    fun shareableTokenInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
+    val contractName : String?
+        get() {
+            val o = __offset(8)
+            return if (o != 0) {
+                __string(o + bb_pos)
+            } else {
+                null
+            }
+        }
+    val contractNameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(8, 1)
+    fun contractNameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 8, 1)
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsCreateCommandRequest(_bb: ByteBuffer): CreateCommandRequest = getRootAsCreateCommandRequest(_bb, CreateCommandRequest())
@@ -49,12 +71,14 @@ class CreateCommandRequest : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createCreateCommandRequest(builder: FlatBufferBuilder, commandBodyOffset: Int) : Int {
-            builder.startTable(1)
+        fun createCreateCommandRequest(builder: FlatBufferBuilder, commandBodyOffset: Int, shareableTokenOffset: Int, contractNameOffset: Int) : Int {
+            builder.startTable(3)
+            addContractName(builder, contractNameOffset)
+            addShareableToken(builder, shareableTokenOffset)
             addCommandBody(builder, commandBodyOffset)
             return endCreateCommandRequest(builder)
         }
-        fun startCreateCommandRequest(builder: FlatBufferBuilder) = builder.startTable(1)
+        fun startCreateCommandRequest(builder: FlatBufferBuilder) = builder.startTable(3)
         fun addCommandBody(builder: FlatBufferBuilder, commandBody: Int) = builder.addOffset(0, commandBody, 0)
         @kotlin.ExperimentalUnsignedTypes
         fun createCommandBodyVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
@@ -65,6 +89,8 @@ class CreateCommandRequest : Table() {
             return builder.endVector()
         }
         fun startCommandBodyVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
+        fun addShareableToken(builder: FlatBufferBuilder, shareableToken: Int) = builder.addOffset(1, shareableToken, 0)
+        fun addContractName(builder: FlatBufferBuilder, contractName: Int) = builder.addOffset(2, contractName, 0)
         fun endCreateCommandRequest(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o

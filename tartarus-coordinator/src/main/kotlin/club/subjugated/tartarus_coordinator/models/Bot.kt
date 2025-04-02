@@ -1,12 +1,15 @@
 package club.subjugated.tartarus_coordinator.models
 
 import com.fasterxml.jackson.annotation.JsonFormat
+import jakarta.persistence.CascadeType
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
+import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
+import jakarta.persistence.OneToMany
 import java.time.OffsetDateTime
 
 @Entity
@@ -17,6 +20,8 @@ class Bot (
     @Enumerated(EnumType.STRING) var state: BotState = BotState.UNSPECIFIED,
     var publicKey: String,
     var description: String,
+    @OneToMany(mappedBy = "id", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    var messages: MutableList<Message> = mutableListOf(),
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
 ) {

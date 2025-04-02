@@ -22,8 +22,19 @@ static getSizePrefixedRootAsCreateContractResponse(bb:flatbuffers.ByteBuffer, ob
   return (obj || new CreateContractResponse()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
+contractName():string|null
+contractName(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+contractName(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
 static startCreateContractResponse(builder:flatbuffers.Builder) {
-  builder.startObject(0);
+  builder.startObject(1);
+}
+
+static addContractName(builder:flatbuffers.Builder, contractNameOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, contractNameOffset, 0);
 }
 
 static endCreateContractResponse(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -31,8 +42,9 @@ static endCreateContractResponse(builder:flatbuffers.Builder):flatbuffers.Offset
   return offset;
 }
 
-static createCreateContractResponse(builder:flatbuffers.Builder):flatbuffers.Offset {
+static createCreateContractResponse(builder:flatbuffers.Builder, contractNameOffset:flatbuffers.Offset):flatbuffers.Offset {
   CreateContractResponse.startCreateContractResponse(builder);
+  CreateContractResponse.addContractName(builder, contractNameOffset);
   return CreateContractResponse.endCreateContractResponse(builder);
 }
 }

@@ -7,6 +7,11 @@ export { CreateCommandRequest } from './subjugated/fb/bots/create-command-reques
 export { CreateCommandResponse } from './subjugated/fb/bots/create-command-response.js';
 export { CreateContractRequest } from './subjugated/fb/bots/create-contract-request.js';
 export { CreateContractResponse } from './subjugated/fb/bots/create-contract-response.js';
+export { CreateMessageRequest } from './subjugated/fb/bots/create-message-request.js';
+export { CreateMessageResponse } from './subjugated/fb/bots/create-message-response.js';
+export { Error } from './subjugated/fb/bots/error.js';
 export { GetContractRequest } from './subjugated/fb/bots/get-contract-request.js';
 export { GetContractResponse } from './subjugated/fb/bots/get-contract-response.js';
+export { GetLockSessionRequest } from './subjugated/fb/bots/get-lock-session-request.js';
+export { GetLockSessionResponse } from './subjugated/fb/bots/get-lock-session-response.js';
 export { MessagePayload } from './subjugated/fb/bots/message-payload.js';

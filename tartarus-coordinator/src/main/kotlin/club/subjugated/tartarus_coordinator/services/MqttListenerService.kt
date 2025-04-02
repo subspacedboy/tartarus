@@ -219,7 +219,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                 err.serialNumber.toInt(),
             )
         this.commandQueueService.errorCommand(command, err.message)
-        println("😞 Error received $err")
+        println("😞 Error received $err [Command ${command.name}")
     }
 
     fun tokenHasLiveSession(sessionToken: String): Boolean {

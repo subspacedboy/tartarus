@@ -107,20 +107,11 @@ impl MqttService {
         }
 
         if do_restart {
-            log::info!(
-                "Thread 1: {:?}",
-                self.mqtt_thread_1.as_ref().unwrap().is_finished()
-            );
-            log::info!(
-                "Thread 2: {:?}",
-                self.mqtt_thread_2.as_ref().unwrap().is_finished()
-            );
-
             // Join
-            log::info!("Thread 1 joining");
+            log::debug!("Thread 1 joining");
             let t1 = self.mqtt_thread_1.take().unwrap();
             t1.join().unwrap();
-            log::info!("Thread 2 joining");
+            log::debug!("Thread 2 joining");
             let t2 = self.mqtt_thread_2.take().unwrap();
             t2.join().unwrap();
         }
@@ -228,14 +219,12 @@ impl MqttService {
                             if let Ok(mut state) = state_machine_ref_1.lock() {
                                 *state = MqttStateMachine::Disconnected;
                             }
-                            log::info!("DISCONNECTED");
+                            log::info!("Disconnected");
                             break;
                         }
-                        EventPayload::BeforeConnect => {
-                            log::info!("Before connected");
-                        }
+                        EventPayload::BeforeConnect => {}
                         EventPayload::Connected(_) => {
-                            log::info!("CONNECTED");
+                            log::info!("Connected");
                             if let Ok(mut state) = state_machine_ref_1.lock() {
                                 *state = MqttStateMachine::Connected;
                             }
@@ -258,10 +247,6 @@ impl MqttService {
         let t2 = std::thread::Builder::new()
             .stack_size(12000)
             .spawn(move || {
-                log::info!("Subscribe/Publish thread");
-
-                // let session_token = session_token.clone();
-
                 let inbound_queue = format!("locks/{}", &session_token);
                 let configuration_queue = format!("configuration/{}", &session_token);
                 let queues_to_subscribe_to: Vec<String> = vec![inbound_queue, configuration_queue];
@@ -337,7 +322,6 @@ impl MqttService {
                     }
                 }
 
-                log::info!("HERE");
                 return;
             })
             .unwrap();

@@ -27,12 +27,34 @@ nextCounter():number {
   return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
 }
 
+state():string|null
+state(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+state(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
+name():string|null
+name(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+name(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
 static startGetContractResponse(builder:flatbuffers.Builder) {
-  builder.startObject(1);
+  builder.startObject(3);
 }
 
 static addNextCounter(builder:flatbuffers.Builder, nextCounter:number) {
   builder.addFieldInt16(0, nextCounter, 0);
+}
+
+static addState(builder:flatbuffers.Builder, stateOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, stateOffset, 0);
+}
+
+static addName(builder:flatbuffers.Builder, nameOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(2, nameOffset, 0);
 }
 
 static endGetContractResponse(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -40,9 +62,11 @@ static endGetContractResponse(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createGetContractResponse(builder:flatbuffers.Builder, nextCounter:number):flatbuffers.Offset {
+static createGetContractResponse(builder:flatbuffers.Builder, nextCounter:number, stateOffset:flatbuffers.Offset, nameOffset:flatbuffers.Offset):flatbuffers.Offset {
   GetContractResponse.startGetContractResponse(builder);
   GetContractResponse.addNextCounter(builder, nextCounter);
+  GetContractResponse.addState(builder, stateOffset);
+  GetContractResponse.addName(builder, nameOffset);
   return GetContractResponse.endGetContractResponse(builder);
 }
 }

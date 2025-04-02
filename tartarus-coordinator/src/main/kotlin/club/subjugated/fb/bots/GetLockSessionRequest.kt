@@ -19,16 +19,16 @@ import java.nio.ByteOrder
 import kotlin.math.sign
 
 @Suppress("unused")
-class CreateContractResponse : Table() {
+class GetLockSessionRequest : Table() {
 
     fun __init(_i: Int, _bb: ByteBuffer)  {
         __reset(_i, _bb)
     }
-    fun __assign(_i: Int, _bb: ByteBuffer) : CreateContractResponse {
+    fun __assign(_i: Int, _bb: ByteBuffer) : GetLockSessionRequest {
         __init(_i, _bb)
         return this
     }
-    val contractName : String?
+    val shareableToken : String?
         get() {
             val o = __offset(4)
             return if (o != 0) {
@@ -37,23 +37,23 @@ class CreateContractResponse : Table() {
                 null
             }
         }
-    val contractNameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun contractNameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val shareableTokenAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
+    fun shareableTokenInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
-        fun getRootAsCreateContractResponse(_bb: ByteBuffer): CreateContractResponse = getRootAsCreateContractResponse(_bb, CreateContractResponse())
-        fun getRootAsCreateContractResponse(_bb: ByteBuffer, obj: CreateContractResponse): CreateContractResponse {
+        fun getRootAsGetLockSessionRequest(_bb: ByteBuffer): GetLockSessionRequest = getRootAsGetLockSessionRequest(_bb, GetLockSessionRequest())
+        fun getRootAsGetLockSessionRequest(_bb: ByteBuffer, obj: GetLockSessionRequest): GetLockSessionRequest {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createCreateContractResponse(builder: FlatBufferBuilder, contractNameOffset: Int) : Int {
+        fun createGetLockSessionRequest(builder: FlatBufferBuilder, shareableTokenOffset: Int) : Int {
             builder.startTable(1)
-            addContractName(builder, contractNameOffset)
-            return endCreateContractResponse(builder)
+            addShareableToken(builder, shareableTokenOffset)
+            return endGetLockSessionRequest(builder)
         }
-        fun startCreateContractResponse(builder: FlatBufferBuilder) = builder.startTable(1)
-        fun addContractName(builder: FlatBufferBuilder, contractName: Int) = builder.addOffset(0, contractName, 0)
-        fun endCreateContractResponse(builder: FlatBufferBuilder) : Int {
+        fun startGetLockSessionRequest(builder: FlatBufferBuilder) = builder.startTable(1)
+        fun addShareableToken(builder: FlatBufferBuilder, shareableToken: Int) = builder.addOffset(0, shareableToken, 0)
+        fun endGetLockSessionRequest(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o
         }

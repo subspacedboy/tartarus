@@ -5,12 +5,15 @@ import club.subjugated.tartarus_coordinator.events.AcknowledgedCommandEvent
 import club.subjugated.tartarus_coordinator.events.ContractChangeEvent
 import club.subjugated.tartarus_coordinator.events.NewCommandEvent
 import club.subjugated.tartarus_coordinator.models.AuthorSession
+import club.subjugated.tartarus_coordinator.models.Bot
 import club.subjugated.tartarus_coordinator.models.Command
 import club.subjugated.tartarus_coordinator.models.CommandState
 import club.subjugated.tartarus_coordinator.models.CommandType
 import club.subjugated.tartarus_coordinator.models.Contract
 import club.subjugated.tartarus_coordinator.models.ContractState
 import club.subjugated.tartarus_coordinator.models.LockSession
+import club.subjugated.tartarus_coordinator.models.Message
+import club.subjugated.tartarus_coordinator.models.MessageType
 import club.subjugated.tartarus_coordinator.storage.ContractRepository
 import club.subjugated.tartarus_coordinator.util.TimeSource
 import club.subjugated.tartarus_coordinator.util.ValidatedPayload
@@ -142,6 +145,8 @@ class ContractService {
 
         when (val incomingCommand = signedMessageBytesValidatorWithExternalKey(buf, authorPubKey)) {
             is ValidatedPayload.UnlockCommandPayload -> {
+                assert(incomingCommand.unlockCommand.serialNumber.toInt() != 0)
+
                 val command =
                     Command(
                         commandQueue = lockSession.commandQueue.first(),
@@ -159,6 +164,7 @@ class ContractService {
                 publisher.publishEvent(NewCommandEvent(this, lockSession.sessionToken!!))
             }
             is ValidatedPayload.LockCommandPayload -> {
+                assert(incomingCommand.lockCommand.serialNumber.toInt() != 0)
                 val command =
                     Command(
                         commandQueue = lockSession.commandQueue.first(),
@@ -176,6 +182,7 @@ class ContractService {
                 publisher.publishEvent(NewCommandEvent(this, lockSession.sessionToken!!))
             }
             is ValidatedPayload.ReleaseCommandPayload -> {
+                assert(incomingCommand.releaseCommand.serialNumber.toInt() != 0)
                 val command =
                     Command(
                         commandQueue = lockSession.commandQueue.first(),
@@ -210,6 +217,20 @@ class ContractService {
             contract.lockState = contract.lockSession.isLocked
         }
         return contract
+    }
+
+    fun addMessageForBot(message: String, bot : Bot, contract: Contract) {
+        val contractMessage = Message(
+            body = message,
+            type = MessageType.BOT_MESSAGE,
+            contract = contract,
+            bot = bot,
+            createdAt = timeSource.nowInUtc(),
+            updatedAt = timeSource.nowInUtc()
+        )
+
+        contract.messages.add(contractMessage)
+        contractRepository.save(contract)
     }
 
     fun getBySerialAndLockSessionForBot(lockSession: LockSession, serial: Int, botName: String) : Contract {

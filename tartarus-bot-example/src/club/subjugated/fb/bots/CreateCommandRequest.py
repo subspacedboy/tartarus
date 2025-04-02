@@ -51,8 +51,22 @@ class CreateCommandRequest(object):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         return o == 0
 
+    # CreateCommandRequest
+    def ShareableToken(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        if o != 0:
+            return self._tab.String(o + self._tab.Pos)
+        return None
+
+    # CreateCommandRequest
+    def ContractName(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
+        if o != 0:
+            return self._tab.String(o + self._tab.Pos)
+        return None
+
 def CreateCommandRequestStart(builder):
-    builder.StartObject(1)
+    builder.StartObject(3)
 
 def Start(builder):
     CreateCommandRequestStart(builder)
@@ -68,6 +82,18 @@ def CreateCommandRequestStartCommandBodyVector(builder, numElems):
 
 def StartCommandBodyVector(builder, numElems):
     return CreateCommandRequestStartCommandBodyVector(builder, numElems)
+
+def CreateCommandRequestAddShareableToken(builder, shareableToken):
+    builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(shareableToken), 0)
+
+def AddShareableToken(builder, shareableToken):
+    CreateCommandRequestAddShareableToken(builder, shareableToken)
+
+def CreateCommandRequestAddContractName(builder, contractName):
+    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(contractName), 0)
+
+def AddContractName(builder, contractName):
+    CreateCommandRequestAddContractName(builder, contractName)
 
 def CreateCommandRequestEnd(builder):
     return builder.EndObject()

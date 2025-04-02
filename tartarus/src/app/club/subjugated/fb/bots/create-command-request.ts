@@ -37,8 +37,22 @@ commandBodyArray():Uint8Array|null {
   return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
+shareableToken():string|null
+shareableToken(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+shareableToken(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
+contractName():string|null
+contractName(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+contractName(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
 static startCreateCommandRequest(builder:flatbuffers.Builder) {
-  builder.startObject(1);
+  builder.startObject(3);
 }
 
 static addCommandBody(builder:flatbuffers.Builder, commandBodyOffset:flatbuffers.Offset) {
@@ -57,14 +71,24 @@ static startCommandBodyVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(1, numElems, 1);
 }
 
+static addShareableToken(builder:flatbuffers.Builder, shareableTokenOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, shareableTokenOffset, 0);
+}
+
+static addContractName(builder:flatbuffers.Builder, contractNameOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(2, contractNameOffset, 0);
+}
+
 static endCreateCommandRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   return offset;
 }
 
-static createCreateCommandRequest(builder:flatbuffers.Builder, commandBodyOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createCreateCommandRequest(builder:flatbuffers.Builder, commandBodyOffset:flatbuffers.Offset, shareableTokenOffset:flatbuffers.Offset, contractNameOffset:flatbuffers.Offset):flatbuffers.Offset {
   CreateCommandRequest.startCreateCommandRequest(builder);
   CreateCommandRequest.addCommandBody(builder, commandBodyOffset);
+  CreateCommandRequest.addShareableToken(builder, shareableTokenOffset);
+  CreateCommandRequest.addContractName(builder, contractNameOffset);
   return CreateCommandRequest.endCreateCommandRequest(builder);
 }
 }

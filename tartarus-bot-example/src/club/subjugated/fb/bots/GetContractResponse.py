@@ -31,8 +31,22 @@ class GetContractResponse(object):
             return self._tab.Get(flatbuffers.number_types.Uint16Flags, o + self._tab.Pos)
         return 0
 
+    # GetContractResponse
+    def State(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        if o != 0:
+            return self._tab.String(o + self._tab.Pos)
+        return None
+
+    # GetContractResponse
+    def Name(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
+        if o != 0:
+            return self._tab.String(o + self._tab.Pos)
+        return None
+
 def GetContractResponseStart(builder):
-    builder.StartObject(1)
+    builder.StartObject(3)
 
 def Start(builder):
     GetContractResponseStart(builder)
@@ -42,6 +56,18 @@ def GetContractResponseAddNextCounter(builder, nextCounter):
 
 def AddNextCounter(builder, nextCounter):
     GetContractResponseAddNextCounter(builder, nextCounter)
+
+def GetContractResponseAddState(builder, state):
+    builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(state), 0)
+
+def AddState(builder, state):
+    GetContractResponseAddState(builder, state)
+
+def GetContractResponseAddName(builder, name):
+    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(name), 0)
+
+def AddName(builder, name):
+    GetContractResponseAddName(builder, name)
 
 def GetContractResponseEnd(builder):
     return builder.EndObject()

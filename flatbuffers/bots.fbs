@@ -6,7 +6,7 @@ table CreateContractRequest {
 }
 
 table CreateContractResponse {
-
+    contract_name: string;
 }
 
 table GetContractRequest {
@@ -16,18 +16,54 @@ table GetContractRequest {
 
 table GetContractResponse {
     next_counter: ushort;
+    state: string;
+    name: string;
 }
 
 table CreateCommandRequest {
     command_body: [ubyte];
+    shareable_token: string;
+    contract_name : string;
 }
 
 table CreateCommandResponse {
 
+    error: Error;
+}
+
+table GetLockSessionRequest {
+    shareable_token: string;
+}
+
+table GetLockSessionResponse {
+    name: string;
+    public_key: [ubyte];
+    available_for_contract: bool;
+    error: Error;
+}
+
+table CreateMessageRequest {
+    contract_name: string;
+    message: string;
+}
+
+table CreateMessageResponse {}
+
+table Error {
+    message: string;
 }
 
 union MessagePayload {
-  GetContractRequest, GetContractResponse, CreateCommandRequest, CreateCommandResponse, CreateContractRequest, CreateContractResponse
+  GetContractRequest,
+  GetContractResponse,
+  CreateCommandRequest,
+  CreateCommandResponse,
+  CreateContractRequest,
+  CreateContractResponse,
+  GetLockSessionRequest,
+  GetLockSessionResponse,
+  CreateMessageRequest,
+  CreateMessageResponse
 }
 
 table BotApiMessage {

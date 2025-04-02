@@ -19,12 +19,12 @@ import java.nio.ByteOrder
 import kotlin.math.sign
 
 @Suppress("unused")
-class CreateContractResponse : Table() {
+class CreateMessageRequest : Table() {
 
     fun __init(_i: Int, _bb: ByteBuffer)  {
         __reset(_i, _bb)
     }
-    fun __assign(_i: Int, _bb: ByteBuffer) : CreateContractResponse {
+    fun __assign(_i: Int, _bb: ByteBuffer) : CreateMessageRequest {
         __init(_i, _bb)
         return this
     }
@@ -39,21 +39,34 @@ class CreateContractResponse : Table() {
         }
     val contractNameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
     fun contractNameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val message : String?
+        get() {
+            val o = __offset(6)
+            return if (o != 0) {
+                __string(o + bb_pos)
+            } else {
+                null
+            }
+        }
+    val messageAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
+    fun messageInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
-        fun getRootAsCreateContractResponse(_bb: ByteBuffer): CreateContractResponse = getRootAsCreateContractResponse(_bb, CreateContractResponse())
-        fun getRootAsCreateContractResponse(_bb: ByteBuffer, obj: CreateContractResponse): CreateContractResponse {
+        fun getRootAsCreateMessageRequest(_bb: ByteBuffer): CreateMessageRequest = getRootAsCreateMessageRequest(_bb, CreateMessageRequest())
+        fun getRootAsCreateMessageRequest(_bb: ByteBuffer, obj: CreateMessageRequest): CreateMessageRequest {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createCreateContractResponse(builder: FlatBufferBuilder, contractNameOffset: Int) : Int {
-            builder.startTable(1)
+        fun createCreateMessageRequest(builder: FlatBufferBuilder, contractNameOffset: Int, messageOffset: Int) : Int {
+            builder.startTable(2)
+            addMessage(builder, messageOffset)
             addContractName(builder, contractNameOffset)
-            return endCreateContractResponse(builder)
+            return endCreateMessageRequest(builder)
         }
-        fun startCreateContractResponse(builder: FlatBufferBuilder) = builder.startTable(1)
+        fun startCreateMessageRequest(builder: FlatBufferBuilder) = builder.startTable(2)
         fun addContractName(builder: FlatBufferBuilder, contractName: Int) = builder.addOffset(0, contractName, 0)
-        fun endCreateContractResponse(builder: FlatBufferBuilder) : Int {
+        fun addMessage(builder: FlatBufferBuilder, message: Int) = builder.addOffset(1, message, 0)
+        fun endCreateMessageRequest(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o
         }

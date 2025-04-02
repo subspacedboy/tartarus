@@ -45,10 +45,10 @@ pub mod bots {
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
 pub const ENUM_MIN_MESSAGE_PAYLOAD: u8 = 0;
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
-pub const ENUM_MAX_MESSAGE_PAYLOAD: u8 = 6;
+pub const ENUM_MAX_MESSAGE_PAYLOAD: u8 = 10;
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
 #[allow(non_camel_case_types)]
-pub const ENUM_VALUES_MESSAGE_PAYLOAD: [MessagePayload; 7] = [
+pub const ENUM_VALUES_MESSAGE_PAYLOAD: [MessagePayload; 11] = [
   MessagePayload::NONE,
   MessagePayload::GetContractRequest,
   MessagePayload::GetContractResponse,
@@ -56,6 +56,10 @@ pub const ENUM_VALUES_MESSAGE_PAYLOAD: [MessagePayload; 7] = [
   MessagePayload::CreateCommandResponse,
   MessagePayload::CreateContractRequest,
   MessagePayload::CreateContractResponse,
+  MessagePayload::GetLockSessionRequest,
+  MessagePayload::GetLockSessionResponse,
+  MessagePayload::CreateMessageRequest,
+  MessagePayload::CreateMessageResponse,
 ];
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
@@ -70,9 +74,13 @@ impl MessagePayload {
   pub const CreateCommandResponse: Self = Self(4);
   pub const CreateContractRequest: Self = Self(5);
   pub const CreateContractResponse: Self = Self(6);
+  pub const GetLockSessionRequest: Self = Self(7);
+  pub const GetLockSessionResponse: Self = Self(8);
+  pub const CreateMessageRequest: Self = Self(9);
+  pub const CreateMessageResponse: Self = Self(10);
 
   pub const ENUM_MIN: u8 = 0;
-  pub const ENUM_MAX: u8 = 6;
+  pub const ENUM_MAX: u8 = 10;
   pub const ENUM_VALUES: &'static [Self] = &[
     Self::NONE,
     Self::GetContractRequest,
@@ -81,6 +89,10 @@ impl MessagePayload {
     Self::CreateCommandResponse,
     Self::CreateContractRequest,
     Self::CreateContractResponse,
+    Self::GetLockSessionRequest,
+    Self::GetLockSessionResponse,
+    Self::CreateMessageRequest,
+    Self::CreateMessageResponse,
   ];
   /// Returns the variant's name or "" if unknown.
   pub fn variant_name(self) -> Option<&'static str> {
@@ -92,6 +104,10 @@ impl MessagePayload {
       Self::CreateCommandResponse => Some("CreateCommandResponse"),
       Self::CreateContractRequest => Some("CreateContractRequest"),
       Self::CreateContractResponse => Some("CreateContractResponse"),
+      Self::GetLockSessionRequest => Some("GetLockSessionRequest"),
+      Self::GetLockSessionResponse => Some("GetLockSessionResponse"),
+      Self::CreateMessageRequest => Some("CreateMessageRequest"),
+      Self::CreateMessageResponse => Some("CreateMessageResponse"),
       _ => None,
     }
   }
@@ -279,6 +295,7 @@ impl<'a> flatbuffers::Follow<'a> for CreateContractResponse<'a> {
 }
 
 impl<'a> CreateContractResponse<'a> {
+  pub const VT_CONTRACT_NAME: flatbuffers::VOffsetT = 4;
 
   #[inline]
   pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -287,12 +304,21 @@ impl<'a> CreateContractResponse<'a> {
   #[allow(unused_mut)]
   pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: flatbuffers::Allocator + 'bldr>(
     _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
-    _args: &'args CreateContractResponseArgs
+    args: &'args CreateContractResponseArgs<'args>
   ) -> flatbuffers::WIPOffset<CreateContractResponse<'bldr>> {
     let mut builder = CreateContractResponseBuilder::new(_fbb);
+    if let Some(x) = args.contract_name { builder.add_contract_name(x); }
     builder.finish()
   }
 
+
+  #[inline]
+  pub fn contract_name(&self) -> Option<&'a str> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CreateContractResponse::VT_CONTRACT_NAME, None)}
+  }
 }
 
 impl flatbuffers::Verifiable for CreateContractResponse<'_> {
@@ -302,16 +328,19 @@ impl flatbuffers::Verifiable for CreateContractResponse<'_> {
   ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
     use self::flatbuffers::Verifiable;
     v.visit_table(pos)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("contract_name", Self::VT_CONTRACT_NAME, false)?
      .finish();
     Ok(())
   }
 }
-pub struct CreateContractResponseArgs {
+pub struct CreateContractResponseArgs<'a> {
+    pub contract_name: Option<flatbuffers::WIPOffset<&'a str>>,
 }
-impl<'a> Default for CreateContractResponseArgs {
+impl<'a> Default for CreateContractResponseArgs<'a> {
   #[inline]
   fn default() -> Self {
     CreateContractResponseArgs {
+      contract_name: None,
     }
   }
 }
@@ -321,6 +350,10 @@ pub struct CreateContractResponseBuilder<'a: 'b, 'b, A: flatbuffers::Allocator +
   start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> CreateContractResponseBuilder<'a, 'b, A> {
+  #[inline]
+  pub fn add_contract_name(&mut self, contract_name: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CreateContractResponse::VT_CONTRACT_NAME, contract_name);
+  }
   #[inline]
   pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>) -> CreateContractResponseBuilder<'a, 'b, A> {
     let start = _fbb.start_table();
@@ -339,6 +372,7 @@ impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> CreateContractResponseBuilder<'
 impl core::fmt::Debug for CreateContractResponse<'_> {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     let mut ds = f.debug_struct("CreateContractResponse");
+      ds.field("contract_name", &self.contract_name());
       ds.finish()
   }
 }
@@ -473,6 +507,8 @@ impl<'a> flatbuffers::Follow<'a> for GetContractResponse<'a> {
 
 impl<'a> GetContractResponse<'a> {
   pub const VT_NEXT_COUNTER: flatbuffers::VOffsetT = 4;
+  pub const VT_STATE: flatbuffers::VOffsetT = 6;
+  pub const VT_NAME: flatbuffers::VOffsetT = 8;
 
   #[inline]
   pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -481,9 +517,11 @@ impl<'a> GetContractResponse<'a> {
   #[allow(unused_mut)]
   pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: flatbuffers::Allocator + 'bldr>(
     _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
-    args: &'args GetContractResponseArgs
+    args: &'args GetContractResponseArgs<'args>
   ) -> flatbuffers::WIPOffset<GetContractResponse<'bldr>> {
     let mut builder = GetContractResponseBuilder::new(_fbb);
+    if let Some(x) = args.name { builder.add_name(x); }
+    if let Some(x) = args.state { builder.add_state(x); }
     builder.add_next_counter(args.next_counter);
     builder.finish()
   }
@@ -496,6 +534,20 @@ impl<'a> GetContractResponse<'a> {
     // which contains a valid value in this slot
     unsafe { self._tab.get::<u16>(GetContractResponse::VT_NEXT_COUNTER, Some(0)).unwrap()}
   }
+  #[inline]
+  pub fn state(&self) -> Option<&'a str> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(GetContractResponse::VT_STATE, None)}
+  }
+  #[inline]
+  pub fn name(&self) -> Option<&'a str> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(GetContractResponse::VT_NAME, None)}
+  }
 }
 
 impl flatbuffers::Verifiable for GetContractResponse<'_> {
@@ -506,18 +558,24 @@ impl flatbuffers::Verifiable for GetContractResponse<'_> {
     use self::flatbuffers::Verifiable;
     v.visit_table(pos)?
      .visit_field::<u16>("next_counter", Self::VT_NEXT_COUNTER, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("state", Self::VT_STATE, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("name", Self::VT_NAME, false)?
      .finish();
     Ok(())
   }
 }
-pub struct GetContractResponseArgs {
+pub struct GetContractResponseArgs<'a> {
     pub next_counter: u16,
+    pub state: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub name: Option<flatbuffers::WIPOffset<&'a str>>,
 }
-impl<'a> Default for GetContractResponseArgs {
+impl<'a> Default for GetContractResponseArgs<'a> {
   #[inline]
   fn default() -> Self {
     GetContractResponseArgs {
       next_counter: 0,
+      state: None,
+      name: None,
     }
   }
 }
@@ -530,6 +588,14 @@ impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> GetContractResponseBuilder<'a, 
   #[inline]
   pub fn add_next_counter(&mut self, next_counter: u16) {
     self.fbb_.push_slot::<u16>(GetContractResponse::VT_NEXT_COUNTER, next_counter, 0);
+  }
+  #[inline]
+  pub fn add_state(&mut self, state: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(GetContractResponse::VT_STATE, state);
+  }
+  #[inline]
+  pub fn add_name(&mut self, name: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(GetContractResponse::VT_NAME, name);
   }
   #[inline]
   pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>) -> GetContractResponseBuilder<'a, 'b, A> {
@@ -550,6 +616,8 @@ impl core::fmt::Debug for GetContractResponse<'_> {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     let mut ds = f.debug_struct("GetContractResponse");
       ds.field("next_counter", &self.next_counter());
+      ds.field("state", &self.state());
+      ds.field("name", &self.name());
       ds.finish()
   }
 }
@@ -570,6 +638,8 @@ impl<'a> flatbuffers::Follow<'a> for CreateCommandRequest<'a> {
 
 impl<'a> CreateCommandRequest<'a> {
   pub const VT_COMMAND_BODY: flatbuffers::VOffsetT = 4;
+  pub const VT_SHAREABLE_TOKEN: flatbuffers::VOffsetT = 6;
+  pub const VT_CONTRACT_NAME: flatbuffers::VOffsetT = 8;
 
   #[inline]
   pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -581,6 +651,8 @@ impl<'a> CreateCommandRequest<'a> {
     args: &'args CreateCommandRequestArgs<'args>
   ) -> flatbuffers::WIPOffset<CreateCommandRequest<'bldr>> {
     let mut builder = CreateCommandRequestBuilder::new(_fbb);
+    if let Some(x) = args.contract_name { builder.add_contract_name(x); }
+    if let Some(x) = args.shareable_token { builder.add_shareable_token(x); }
     if let Some(x) = args.command_body { builder.add_command_body(x); }
     builder.finish()
   }
@@ -593,6 +665,20 @@ impl<'a> CreateCommandRequest<'a> {
     // which contains a valid value in this slot
     unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(CreateCommandRequest::VT_COMMAND_BODY, None)}
   }
+  #[inline]
+  pub fn shareable_token(&self) -> Option<&'a str> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CreateCommandRequest::VT_SHAREABLE_TOKEN, None)}
+  }
+  #[inline]
+  pub fn contract_name(&self) -> Option<&'a str> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CreateCommandRequest::VT_CONTRACT_NAME, None)}
+  }
 }
 
 impl flatbuffers::Verifiable for CreateCommandRequest<'_> {
@@ -603,18 +689,24 @@ impl flatbuffers::Verifiable for CreateCommandRequest<'_> {
     use self::flatbuffers::Verifiable;
     v.visit_table(pos)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, u8>>>("command_body", Self::VT_COMMAND_BODY, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("shareable_token", Self::VT_SHAREABLE_TOKEN, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("contract_name", Self::VT_CONTRACT_NAME, false)?
      .finish();
     Ok(())
   }
 }
 pub struct CreateCommandRequestArgs<'a> {
     pub command_body: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
+    pub shareable_token: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub contract_name: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for CreateCommandRequestArgs<'a> {
   #[inline]
   fn default() -> Self {
     CreateCommandRequestArgs {
       command_body: None,
+      shareable_token: None,
+      contract_name: None,
     }
   }
 }
@@ -627,6 +719,14 @@ impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> CreateCommandRequestBuilder<'a,
   #[inline]
   pub fn add_command_body(&mut self, command_body: flatbuffers::WIPOffset<flatbuffers::Vector<'b , u8>>) {
     self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CreateCommandRequest::VT_COMMAND_BODY, command_body);
+  }
+  #[inline]
+  pub fn add_shareable_token(&mut self, shareable_token: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CreateCommandRequest::VT_SHAREABLE_TOKEN, shareable_token);
+  }
+  #[inline]
+  pub fn add_contract_name(&mut self, contract_name: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CreateCommandRequest::VT_CONTRACT_NAME, contract_name);
   }
   #[inline]
   pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>) -> CreateCommandRequestBuilder<'a, 'b, A> {
@@ -647,6 +747,8 @@ impl core::fmt::Debug for CreateCommandRequest<'_> {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     let mut ds = f.debug_struct("CreateCommandRequest");
       ds.field("command_body", &self.command_body());
+      ds.field("shareable_token", &self.shareable_token());
+      ds.field("contract_name", &self.contract_name());
       ds.finish()
   }
 }
@@ -666,6 +768,7 @@ impl<'a> flatbuffers::Follow<'a> for CreateCommandResponse<'a> {
 }
 
 impl<'a> CreateCommandResponse<'a> {
+  pub const VT_ERROR: flatbuffers::VOffsetT = 4;
 
   #[inline]
   pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -674,12 +777,21 @@ impl<'a> CreateCommandResponse<'a> {
   #[allow(unused_mut)]
   pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: flatbuffers::Allocator + 'bldr>(
     _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
-    _args: &'args CreateCommandResponseArgs
+    args: &'args CreateCommandResponseArgs<'args>
   ) -> flatbuffers::WIPOffset<CreateCommandResponse<'bldr>> {
     let mut builder = CreateCommandResponseBuilder::new(_fbb);
+    if let Some(x) = args.error { builder.add_error(x); }
     builder.finish()
   }
 
+
+  #[inline]
+  pub fn error(&self) -> Option<Error<'a>> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<Error>>(CreateCommandResponse::VT_ERROR, None)}
+  }
 }
 
 impl flatbuffers::Verifiable for CreateCommandResponse<'_> {
@@ -689,16 +801,19 @@ impl flatbuffers::Verifiable for CreateCommandResponse<'_> {
   ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
     use self::flatbuffers::Verifiable;
     v.visit_table(pos)?
+     .visit_field::<flatbuffers::ForwardsUOffset<Error>>("error", Self::VT_ERROR, false)?
      .finish();
     Ok(())
   }
 }
-pub struct CreateCommandResponseArgs {
+pub struct CreateCommandResponseArgs<'a> {
+    pub error: Option<flatbuffers::WIPOffset<Error<'a>>>,
 }
-impl<'a> Default for CreateCommandResponseArgs {
+impl<'a> Default for CreateCommandResponseArgs<'a> {
   #[inline]
   fn default() -> Self {
     CreateCommandResponseArgs {
+      error: None,
     }
   }
 }
@@ -708,6 +823,10 @@ pub struct CreateCommandResponseBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 
   start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> CreateCommandResponseBuilder<'a, 'b, A> {
+  #[inline]
+  pub fn add_error(&mut self, error: flatbuffers::WIPOffset<Error<'b >>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<Error>>(CreateCommandResponse::VT_ERROR, error);
+  }
   #[inline]
   pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>) -> CreateCommandResponseBuilder<'a, 'b, A> {
     let start = _fbb.start_table();
@@ -726,6 +845,542 @@ impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> CreateCommandResponseBuilder<'a
 impl core::fmt::Debug for CreateCommandResponse<'_> {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     let mut ds = f.debug_struct("CreateCommandResponse");
+      ds.field("error", &self.error());
+      ds.finish()
+  }
+}
+pub enum GetLockSessionRequestOffset {}
+#[derive(Copy, Clone, PartialEq)]
+
+pub struct GetLockSessionRequest<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for GetLockSessionRequest<'a> {
+  type Inner = GetLockSessionRequest<'a>;
+  #[inline]
+  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    Self { _tab: flatbuffers::Table::new(buf, loc) }
+  }
+}
+
+impl<'a> GetLockSessionRequest<'a> {
+  pub const VT_SHAREABLE_TOKEN: flatbuffers::VOffsetT = 4;
+
+  #[inline]
+  pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+    GetLockSessionRequest { _tab: table }
+  }
+  #[allow(unused_mut)]
+  pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: flatbuffers::Allocator + 'bldr>(
+    _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
+    args: &'args GetLockSessionRequestArgs<'args>
+  ) -> flatbuffers::WIPOffset<GetLockSessionRequest<'bldr>> {
+    let mut builder = GetLockSessionRequestBuilder::new(_fbb);
+    if let Some(x) = args.shareable_token { builder.add_shareable_token(x); }
+    builder.finish()
+  }
+
+
+  #[inline]
+  pub fn shareable_token(&self) -> Option<&'a str> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(GetLockSessionRequest::VT_SHAREABLE_TOKEN, None)}
+  }
+}
+
+impl flatbuffers::Verifiable for GetLockSessionRequest<'_> {
+  #[inline]
+  fn run_verifier(
+    v: &mut flatbuffers::Verifier, pos: usize
+  ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
+    use self::flatbuffers::Verifiable;
+    v.visit_table(pos)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("shareable_token", Self::VT_SHAREABLE_TOKEN, false)?
+     .finish();
+    Ok(())
+  }
+}
+pub struct GetLockSessionRequestArgs<'a> {
+    pub shareable_token: Option<flatbuffers::WIPOffset<&'a str>>,
+}
+impl<'a> Default for GetLockSessionRequestArgs<'a> {
+  #[inline]
+  fn default() -> Self {
+    GetLockSessionRequestArgs {
+      shareable_token: None,
+    }
+  }
+}
+
+pub struct GetLockSessionRequestBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> GetLockSessionRequestBuilder<'a, 'b, A> {
+  #[inline]
+  pub fn add_shareable_token(&mut self, shareable_token: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(GetLockSessionRequest::VT_SHAREABLE_TOKEN, shareable_token);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>) -> GetLockSessionRequestBuilder<'a, 'b, A> {
+    let start = _fbb.start_table();
+    GetLockSessionRequestBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<GetLockSessionRequest<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+impl core::fmt::Debug for GetLockSessionRequest<'_> {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    let mut ds = f.debug_struct("GetLockSessionRequest");
+      ds.field("shareable_token", &self.shareable_token());
+      ds.finish()
+  }
+}
+pub enum GetLockSessionResponseOffset {}
+#[derive(Copy, Clone, PartialEq)]
+
+pub struct GetLockSessionResponse<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for GetLockSessionResponse<'a> {
+  type Inner = GetLockSessionResponse<'a>;
+  #[inline]
+  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    Self { _tab: flatbuffers::Table::new(buf, loc) }
+  }
+}
+
+impl<'a> GetLockSessionResponse<'a> {
+  pub const VT_NAME: flatbuffers::VOffsetT = 4;
+  pub const VT_PUBLIC_KEY: flatbuffers::VOffsetT = 6;
+  pub const VT_AVAILABLE_FOR_CONTRACT: flatbuffers::VOffsetT = 8;
+  pub const VT_ERROR: flatbuffers::VOffsetT = 10;
+
+  #[inline]
+  pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+    GetLockSessionResponse { _tab: table }
+  }
+  #[allow(unused_mut)]
+  pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: flatbuffers::Allocator + 'bldr>(
+    _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
+    args: &'args GetLockSessionResponseArgs<'args>
+  ) -> flatbuffers::WIPOffset<GetLockSessionResponse<'bldr>> {
+    let mut builder = GetLockSessionResponseBuilder::new(_fbb);
+    if let Some(x) = args.error { builder.add_error(x); }
+    if let Some(x) = args.public_key { builder.add_public_key(x); }
+    if let Some(x) = args.name { builder.add_name(x); }
+    builder.add_available_for_contract(args.available_for_contract);
+    builder.finish()
+  }
+
+
+  #[inline]
+  pub fn name(&self) -> Option<&'a str> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(GetLockSessionResponse::VT_NAME, None)}
+  }
+  #[inline]
+  pub fn public_key(&self) -> Option<flatbuffers::Vector<'a, u8>> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(GetLockSessionResponse::VT_PUBLIC_KEY, None)}
+  }
+  #[inline]
+  pub fn available_for_contract(&self) -> bool {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<bool>(GetLockSessionResponse::VT_AVAILABLE_FOR_CONTRACT, Some(false)).unwrap()}
+  }
+  #[inline]
+  pub fn error(&self) -> Option<Error<'a>> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<Error>>(GetLockSessionResponse::VT_ERROR, None)}
+  }
+}
+
+impl flatbuffers::Verifiable for GetLockSessionResponse<'_> {
+  #[inline]
+  fn run_verifier(
+    v: &mut flatbuffers::Verifier, pos: usize
+  ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
+    use self::flatbuffers::Verifiable;
+    v.visit_table(pos)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("name", Self::VT_NAME, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, u8>>>("public_key", Self::VT_PUBLIC_KEY, false)?
+     .visit_field::<bool>("available_for_contract", Self::VT_AVAILABLE_FOR_CONTRACT, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<Error>>("error", Self::VT_ERROR, false)?
+     .finish();
+    Ok(())
+  }
+}
+pub struct GetLockSessionResponseArgs<'a> {
+    pub name: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub public_key: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
+    pub available_for_contract: bool,
+    pub error: Option<flatbuffers::WIPOffset<Error<'a>>>,
+}
+impl<'a> Default for GetLockSessionResponseArgs<'a> {
+  #[inline]
+  fn default() -> Self {
+    GetLockSessionResponseArgs {
+      name: None,
+      public_key: None,
+      available_for_contract: false,
+      error: None,
+    }
+  }
+}
+
+pub struct GetLockSessionResponseBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> GetLockSessionResponseBuilder<'a, 'b, A> {
+  #[inline]
+  pub fn add_name(&mut self, name: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(GetLockSessionResponse::VT_NAME, name);
+  }
+  #[inline]
+  pub fn add_public_key(&mut self, public_key: flatbuffers::WIPOffset<flatbuffers::Vector<'b , u8>>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(GetLockSessionResponse::VT_PUBLIC_KEY, public_key);
+  }
+  #[inline]
+  pub fn add_available_for_contract(&mut self, available_for_contract: bool) {
+    self.fbb_.push_slot::<bool>(GetLockSessionResponse::VT_AVAILABLE_FOR_CONTRACT, available_for_contract, false);
+  }
+  #[inline]
+  pub fn add_error(&mut self, error: flatbuffers::WIPOffset<Error<'b >>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<Error>>(GetLockSessionResponse::VT_ERROR, error);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>) -> GetLockSessionResponseBuilder<'a, 'b, A> {
+    let start = _fbb.start_table();
+    GetLockSessionResponseBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<GetLockSessionResponse<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+impl core::fmt::Debug for GetLockSessionResponse<'_> {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    let mut ds = f.debug_struct("GetLockSessionResponse");
+      ds.field("name", &self.name());
+      ds.field("public_key", &self.public_key());
+      ds.field("available_for_contract", &self.available_for_contract());
+      ds.field("error", &self.error());
+      ds.finish()
+  }
+}
+pub enum CreateMessageRequestOffset {}
+#[derive(Copy, Clone, PartialEq)]
+
+pub struct CreateMessageRequest<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for CreateMessageRequest<'a> {
+  type Inner = CreateMessageRequest<'a>;
+  #[inline]
+  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    Self { _tab: flatbuffers::Table::new(buf, loc) }
+  }
+}
+
+impl<'a> CreateMessageRequest<'a> {
+  pub const VT_CONTRACT_NAME: flatbuffers::VOffsetT = 4;
+  pub const VT_MESSAGE: flatbuffers::VOffsetT = 6;
+
+  #[inline]
+  pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+    CreateMessageRequest { _tab: table }
+  }
+  #[allow(unused_mut)]
+  pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: flatbuffers::Allocator + 'bldr>(
+    _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
+    args: &'args CreateMessageRequestArgs<'args>
+  ) -> flatbuffers::WIPOffset<CreateMessageRequest<'bldr>> {
+    let mut builder = CreateMessageRequestBuilder::new(_fbb);
+    if let Some(x) = args.message { builder.add_message(x); }
+    if let Some(x) = args.contract_name { builder.add_contract_name(x); }
+    builder.finish()
+  }
+
+
+  #[inline]
+  pub fn contract_name(&self) -> Option<&'a str> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CreateMessageRequest::VT_CONTRACT_NAME, None)}
+  }
+  #[inline]
+  pub fn message(&self) -> Option<&'a str> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CreateMessageRequest::VT_MESSAGE, None)}
+  }
+}
+
+impl flatbuffers::Verifiable for CreateMessageRequest<'_> {
+  #[inline]
+  fn run_verifier(
+    v: &mut flatbuffers::Verifier, pos: usize
+  ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
+    use self::flatbuffers::Verifiable;
+    v.visit_table(pos)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("contract_name", Self::VT_CONTRACT_NAME, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("message", Self::VT_MESSAGE, false)?
+     .finish();
+    Ok(())
+  }
+}
+pub struct CreateMessageRequestArgs<'a> {
+    pub contract_name: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub message: Option<flatbuffers::WIPOffset<&'a str>>,
+}
+impl<'a> Default for CreateMessageRequestArgs<'a> {
+  #[inline]
+  fn default() -> Self {
+    CreateMessageRequestArgs {
+      contract_name: None,
+      message: None,
+    }
+  }
+}
+
+pub struct CreateMessageRequestBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> CreateMessageRequestBuilder<'a, 'b, A> {
+  #[inline]
+  pub fn add_contract_name(&mut self, contract_name: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CreateMessageRequest::VT_CONTRACT_NAME, contract_name);
+  }
+  #[inline]
+  pub fn add_message(&mut self, message: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CreateMessageRequest::VT_MESSAGE, message);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>) -> CreateMessageRequestBuilder<'a, 'b, A> {
+    let start = _fbb.start_table();
+    CreateMessageRequestBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<CreateMessageRequest<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+impl core::fmt::Debug for CreateMessageRequest<'_> {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    let mut ds = f.debug_struct("CreateMessageRequest");
+      ds.field("contract_name", &self.contract_name());
+      ds.field("message", &self.message());
+      ds.finish()
+  }
+}
+pub enum CreateMessageResponseOffset {}
+#[derive(Copy, Clone, PartialEq)]
+
+pub struct CreateMessageResponse<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for CreateMessageResponse<'a> {
+  type Inner = CreateMessageResponse<'a>;
+  #[inline]
+  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    Self { _tab: flatbuffers::Table::new(buf, loc) }
+  }
+}
+
+impl<'a> CreateMessageResponse<'a> {
+
+  #[inline]
+  pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+    CreateMessageResponse { _tab: table }
+  }
+  #[allow(unused_mut)]
+  pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: flatbuffers::Allocator + 'bldr>(
+    _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
+    _args: &'args CreateMessageResponseArgs
+  ) -> flatbuffers::WIPOffset<CreateMessageResponse<'bldr>> {
+    let mut builder = CreateMessageResponseBuilder::new(_fbb);
+    builder.finish()
+  }
+
+}
+
+impl flatbuffers::Verifiable for CreateMessageResponse<'_> {
+  #[inline]
+  fn run_verifier(
+    v: &mut flatbuffers::Verifier, pos: usize
+  ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
+    use self::flatbuffers::Verifiable;
+    v.visit_table(pos)?
+     .finish();
+    Ok(())
+  }
+}
+pub struct CreateMessageResponseArgs {
+}
+impl<'a> Default for CreateMessageResponseArgs {
+  #[inline]
+  fn default() -> Self {
+    CreateMessageResponseArgs {
+    }
+  }
+}
+
+pub struct CreateMessageResponseBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> CreateMessageResponseBuilder<'a, 'b, A> {
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>) -> CreateMessageResponseBuilder<'a, 'b, A> {
+    let start = _fbb.start_table();
+    CreateMessageResponseBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<CreateMessageResponse<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+impl core::fmt::Debug for CreateMessageResponse<'_> {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    let mut ds = f.debug_struct("CreateMessageResponse");
+      ds.finish()
+  }
+}
+pub enum ErrorOffset {}
+#[derive(Copy, Clone, PartialEq)]
+
+pub struct Error<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for Error<'a> {
+  type Inner = Error<'a>;
+  #[inline]
+  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    Self { _tab: flatbuffers::Table::new(buf, loc) }
+  }
+}
+
+impl<'a> Error<'a> {
+  pub const VT_MESSAGE: flatbuffers::VOffsetT = 4;
+
+  #[inline]
+  pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+    Error { _tab: table }
+  }
+  #[allow(unused_mut)]
+  pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: flatbuffers::Allocator + 'bldr>(
+    _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
+    args: &'args ErrorArgs<'args>
+  ) -> flatbuffers::WIPOffset<Error<'bldr>> {
+    let mut builder = ErrorBuilder::new(_fbb);
+    if let Some(x) = args.message { builder.add_message(x); }
+    builder.finish()
+  }
+
+
+  #[inline]
+  pub fn message(&self) -> Option<&'a str> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(Error::VT_MESSAGE, None)}
+  }
+}
+
+impl flatbuffers::Verifiable for Error<'_> {
+  #[inline]
+  fn run_verifier(
+    v: &mut flatbuffers::Verifier, pos: usize
+  ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
+    use self::flatbuffers::Verifiable;
+    v.visit_table(pos)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("message", Self::VT_MESSAGE, false)?
+     .finish();
+    Ok(())
+  }
+}
+pub struct ErrorArgs<'a> {
+    pub message: Option<flatbuffers::WIPOffset<&'a str>>,
+}
+impl<'a> Default for ErrorArgs<'a> {
+  #[inline]
+  fn default() -> Self {
+    ErrorArgs {
+      message: None,
+    }
+  }
+}
+
+pub struct ErrorBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> ErrorBuilder<'a, 'b, A> {
+  #[inline]
+  pub fn add_message(&mut self, message: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Error::VT_MESSAGE, message);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>) -> ErrorBuilder<'a, 'b, A> {
+    let start = _fbb.start_table();
+    ErrorBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<Error<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+impl core::fmt::Debug for Error<'_> {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    let mut ds = f.debug_struct("Error");
+      ds.field("message", &self.message());
       ds.finish()
   }
 }
@@ -886,6 +1541,66 @@ impl<'a> BotApiMessage<'a> {
     }
   }
 
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn payload_as_get_lock_session_request(&self) -> Option<GetLockSessionRequest<'a>> {
+    if self.payload_type() == MessagePayload::GetLockSessionRequest {
+      self.payload().map(|t| {
+       // Safety:
+       // Created from a valid Table for this object
+       // Which contains a valid union in this slot
+       unsafe { GetLockSessionRequest::init_from_table(t) }
+     })
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn payload_as_get_lock_session_response(&self) -> Option<GetLockSessionResponse<'a>> {
+    if self.payload_type() == MessagePayload::GetLockSessionResponse {
+      self.payload().map(|t| {
+       // Safety:
+       // Created from a valid Table for this object
+       // Which contains a valid union in this slot
+       unsafe { GetLockSessionResponse::init_from_table(t) }
+     })
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn payload_as_create_message_request(&self) -> Option<CreateMessageRequest<'a>> {
+    if self.payload_type() == MessagePayload::CreateMessageRequest {
+      self.payload().map(|t| {
+       // Safety:
+       // Created from a valid Table for this object
+       // Which contains a valid union in this slot
+       unsafe { CreateMessageRequest::init_from_table(t) }
+     })
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn payload_as_create_message_response(&self) -> Option<CreateMessageResponse<'a>> {
+    if self.payload_type() == MessagePayload::CreateMessageResponse {
+      self.payload().map(|t| {
+       // Safety:
+       // Created from a valid Table for this object
+       // Which contains a valid union in this slot
+       unsafe { CreateMessageResponse::init_from_table(t) }
+     })
+    } else {
+      None
+    }
+  }
+
 }
 
 impl flatbuffers::Verifiable for BotApiMessage<'_> {
@@ -904,6 +1619,10 @@ impl flatbuffers::Verifiable for BotApiMessage<'_> {
           MessagePayload::CreateCommandResponse => v.verify_union_variant::<flatbuffers::ForwardsUOffset<CreateCommandResponse>>("MessagePayload::CreateCommandResponse", pos),
           MessagePayload::CreateContractRequest => v.verify_union_variant::<flatbuffers::ForwardsUOffset<CreateContractRequest>>("MessagePayload::CreateContractRequest", pos),
           MessagePayload::CreateContractResponse => v.verify_union_variant::<flatbuffers::ForwardsUOffset<CreateContractResponse>>("MessagePayload::CreateContractResponse", pos),
+          MessagePayload::GetLockSessionRequest => v.verify_union_variant::<flatbuffers::ForwardsUOffset<GetLockSessionRequest>>("MessagePayload::GetLockSessionRequest", pos),
+          MessagePayload::GetLockSessionResponse => v.verify_union_variant::<flatbuffers::ForwardsUOffset<GetLockSessionResponse>>("MessagePayload::GetLockSessionResponse", pos),
+          MessagePayload::CreateMessageRequest => v.verify_union_variant::<flatbuffers::ForwardsUOffset<CreateMessageRequest>>("MessagePayload::CreateMessageRequest", pos),
+          MessagePayload::CreateMessageResponse => v.verify_union_variant::<flatbuffers::ForwardsUOffset<CreateMessageResponse>>("MessagePayload::CreateMessageResponse", pos),
           _ => Ok(()),
         }
      })?
@@ -1009,6 +1728,34 @@ impl core::fmt::Debug for BotApiMessage<'_> {
         },
         MessagePayload::CreateContractResponse => {
           if let Some(x) = self.payload_as_create_contract_response() {
+            ds.field("payload", &x)
+          } else {
+            ds.field("payload", &"InvalidFlatbuffer: Union discriminant does not match value.")
+          }
+        },
+        MessagePayload::GetLockSessionRequest => {
+          if let Some(x) = self.payload_as_get_lock_session_request() {
+            ds.field("payload", &x)
+          } else {
+            ds.field("payload", &"InvalidFlatbuffer: Union discriminant does not match value.")
+          }
+        },
+        MessagePayload::GetLockSessionResponse => {
+          if let Some(x) = self.payload_as_get_lock_session_response() {
+            ds.field("payload", &x)
+          } else {
+            ds.field("payload", &"InvalidFlatbuffer: Union discriminant does not match value.")
+          }
+        },
+        MessagePayload::CreateMessageRequest => {
+          if let Some(x) = self.payload_as_create_message_request() {
+            ds.field("payload", &x)
+          } else {
+            ds.field("payload", &"InvalidFlatbuffer: Union discriminant does not match value.")
+          }
+        },
+        MessagePayload::CreateMessageResponse => {
+          if let Some(x) = self.payload_as_create_message_response() {
             ds.field("payload", &x)
           } else {
             ds.field("payload", &"InvalidFlatbuffer: Union discriminant does not match value.")

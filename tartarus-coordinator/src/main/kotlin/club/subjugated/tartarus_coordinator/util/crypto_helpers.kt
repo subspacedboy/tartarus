@@ -44,16 +44,43 @@ fun loadECPublicKeyFromPkcs8(keyBytes: ByteArray): PublicKey {
     return keyFactory.generatePublic(keySpec)
 }
 
+//fun encodePublicKeySecp1(publicKey: ECPublicKey): ByteArray {
+//    val point = publicKey.w
+//    val xBytes = point.affineX.toByteArray()
+//    val yBytes = point.affineY.toByteArray()
+//
+//    // Ensure 32-byte representation for x and y
+//    val fixedX = ByteArray(32) { 0 }
+//    System.arraycopy(xBytes, 0, fixedX, 32 - xBytes.size, xBytes.size)
+//
+//    val yIsOdd = yBytes.last().toInt() and 1 == 1
+//    val prefix: Byte = if (yIsOdd) 0x03 else 0x02
+//
+//    return byteArrayOf(prefix) + fixedX
+//}
+
 fun encodePublicKeySecp1(publicKey: ECPublicKey): ByteArray {
     val point = publicKey.w
     val xBytes = point.affineX.toByteArray()
     val yBytes = point.affineY.toByteArray()
 
     // Ensure 32-byte representation for x and y
-    val fixedX = ByteArray(32) { 0 }
-    System.arraycopy(xBytes, 0, fixedX, 32 - xBytes.size, xBytes.size)
+    val fixedX = ByteArray(32)
+    val fixedY = ByteArray(32)
 
-    val yIsOdd = yBytes.last().toInt() and 1 == 1
+    // Handle cases where the BigInteger representation has a sign byte
+    val xStart = if (xBytes.size > 32) 1 else 0
+    val yStart = if (yBytes.size > 32) 1 else 0
+
+    // Copy only the lower 32 bytes, ignoring any sign byte if present
+    val xLength = xBytes.size - xStart
+    val yLength = yBytes.size - yStart
+
+    System.arraycopy(xBytes, xStart, fixedX, 32 - xLength, xLength)
+    System.arraycopy(yBytes, yStart, fixedY, 32 - yLength, yLength)
+
+    // Determine the prefix based on the Y-coordinate's parity
+    val yIsOdd = fixedY.last().toInt() and 1 == 1
     val prefix: Byte = if (yIsOdd) 0x03 else 0x02
 
     return byteArrayOf(prefix) + fixedX

@@ -19,6 +19,7 @@ create table message(
     name varchar(25) NOT NULL,
     type varchar(25) NOT NULL,
     bot_id bigint NOT NULL,
+    contract_id bigint NOT NULL,
     body varchar(255) NOT NULL,
     created_at DATETIME,
     updated_at DATETIME,

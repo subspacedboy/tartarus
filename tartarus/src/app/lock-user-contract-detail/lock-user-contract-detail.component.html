@@ -4,11 +4,12 @@
       <div class="bs-component">
         <h2>Contract Details for {{contract.name}}</h2>
         <h3>What is this for?</h3>
-        <p>Manage your contract.</p>
+        <p>See your contract.</p>
 
-        <p>
-          State: {{contract.state}}
-        </p>
+        <div>
+          <h3>State</h3>
+          {{contract.state}}
+        </div>
 
         @if(contractDescription) {
           <h3>Terms</h3>
@@ -42,6 +43,18 @@
               <button type="button" class="btn btn-lg btn-warning" (click)="reject()">Reject</button>
             </div>
           }
+        }
+
+        @if(contract.messages?.length! > 0) {
+          <hr>
+          <div class="bs-component">
+            <h3>Bot Messages</h3>
+            <ul class="list-group">
+              @for(m of contract.messages; track m.name) {
+                <li class="list-group-item">{{m.body}}</li>
+              }
+            </ul>
+          </div>
         }
 
         @if(commands.length > 0) {

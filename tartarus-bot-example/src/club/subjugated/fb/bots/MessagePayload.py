@@ -10,3 +10,7 @@ class MessagePayload(object):
     CreateCommandResponse = 4
     CreateContractRequest = 5
     CreateContractResponse = 6
+    GetLockSessionRequest = 7
+    GetLockSessionResponse = 8
+    CreateMessageRequest = 9
+    CreateMessageResponse = 10

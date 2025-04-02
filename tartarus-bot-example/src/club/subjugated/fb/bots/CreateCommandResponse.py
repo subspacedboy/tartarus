@@ -24,11 +24,28 @@ class CreateCommandResponse(object):
     def Init(self, buf, pos):
         self._tab = flatbuffers.table.Table(buf, pos)
 
+    # CreateCommandResponse
+    def Error(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
+        if o != 0:
+            x = self._tab.Indirect(o + self._tab.Pos)
+            from club.subjugated.fb.bots.Error import Error
+            obj = Error()
+            obj.Init(self._tab.Bytes, x)
+            return obj
+        return None
+
 def CreateCommandResponseStart(builder):
-    builder.StartObject(0)
+    builder.StartObject(1)
 
 def Start(builder):
     CreateCommandResponseStart(builder)
+
+def CreateCommandResponseAddError(builder, error):
+    builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(error), 0)
+
+def AddError(builder, error):
+    CreateCommandResponseAddError(builder, error)
 
 def CreateCommandResponseEnd(builder):
     return builder.EndObject()

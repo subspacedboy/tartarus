@@ -38,6 +38,10 @@ class AuthorSessionService {
         return authorSession
     }
 
+    fun getSessionForBot(publicKey: String) : AuthorSession {
+        return authorSessionRepository.findByPublicKey(publicKey)!!
+    }
+
     fun saveAuthorSessionForBot(publicKey: String) : AuthorSession {
         val maybeSession =
             this.authorSessionRepository.findByPublicKey(publicKey)

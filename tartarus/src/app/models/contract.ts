@@ -1,4 +1,5 @@
 import {LockState} from './lock-state';
+import {Message} from './message';
 
 export class Contract {
   name?: string;
@@ -13,6 +14,7 @@ export class Contract {
   serialNumber?: number;
   lockState?: LockState;
   notes?: string;
+  messages?: Message[];
 
   constructor(init?: Partial<Contract>) {
     Object.assign(this, init);

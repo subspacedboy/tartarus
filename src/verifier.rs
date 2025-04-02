@@ -95,9 +95,11 @@ impl SignedMessageVerifier {
             Ok(signed_msg) => {
                 log::info!("Signed message: {:?}", signed_msg);
 
-                let verifying_key = if let Some(authority) = signed_msg.authority_identifier() {
+                let verifying_key: Option<_> = if let Some(authority) =
+                    signed_msg.authority_identifier()
+                {
                     if let Some(other_key) = verifying_keys.get(authority) {
-                        other_key
+                        Some(other_key)
                     } else {
                         log::error!("We received a message that specifies an authority we don't have a key for");
                         return Err(VerificationError {
@@ -108,19 +110,57 @@ impl SignedMessageVerifier {
                     }
                 } else {
                     if let Some(contract_key) = verifying_keys.get("contract") {
-                        contract_key
+                        Some(contract_key)
                     } else {
-                        log::error!("We received a message that specifies an authority we don't have a key for");
-                        return Err(VerificationError {
-                            serial_number: 0,
-                            counter: 0,
-                            message: "Required a key but it wasn't available".to_string(),
-                        });
+                        // The only remaining acceptable condition is that this is a new contract
+                        // and we're going to make a verifying key out of the public key on that
+                        // one message. Any other type and we fail. We have this large ugly block
+                        // because we need the serial number of the command to actually ERROR the message.
+                        match signed_msg.payload_type() {
+                            MessagePayload::Contract => None,
+                            MessagePayload::LockCommand => {
+                                return Err(VerificationError {
+                                    serial_number: signed_msg
+                                        .payload_as_lock_command()
+                                        .unwrap()
+                                        .serial_number(),
+                                    counter: 0,
+                                    message: "Required a key but it wasn't available".to_string(),
+                                });
+                            }
+                            MessagePayload::UnlockCommand => {
+                                return Err(VerificationError {
+                                    serial_number: signed_msg
+                                        .payload_as_unlock_command()
+                                        .unwrap()
+                                        .serial_number(),
+                                    counter: 0,
+                                    message: "Required a key but it wasn't available".to_string(),
+                                });
+                            }
+                            MessagePayload::ReleaseCommand => {
+                                return Err(VerificationError {
+                                    serial_number: signed_msg
+                                        .payload_as_release_command()
+                                        .unwrap()
+                                        .serial_number(),
+                                    counter: 0,
+                                    message: "Required a key but it wasn't available".to_string(),
+                                });
+                            }
+                            _ => {
+                                return Err(VerificationError {
+                                    serial_number: 0,
+                                    counter: 0,
+                                    message: "Required a key but it wasn't available".to_string(),
+                                });
+                            }
+                        }
                     }
                 };
 
                 let signature_bytes = signed_msg.signature();
-                log::debug!("Signature: {:?}", signature_bytes);
+                log::info!("Signature: {:?}", signature_bytes);
                 let signature = match Signature::from_bytes(signature_bytes.unwrap().bytes().into())
                 {
                     Ok(signature) => signature,
@@ -167,20 +207,8 @@ impl SignedMessageVerifier {
                         log::info!("Processing unlock command");
                         let unlock = signed_msg.payload_as_unlock_command().unwrap();
 
-                        // let verifying_key = match contract_public_key {
-                        //     Some(verifying_key) => verifying_key,
-                        //     None => {
-                        //         log::error!("We received a message that requires a contract without having a public key already loaded.");
-                        //         return Err(VerificationError {
-                        //             serial_number: unlock.serial_number(),
-                        //             counter: unlock.counter(),
-                        //             message: "Required a contract key but none was loaded"
-                        //                 .to_string(),
-                        //         });
-                        //     }
-                        // };
                         let hash = unlock.calculate_hash(&incoming_data);
-                        match verifying_key.verify(&hash, &signature) {
+                        match verifying_key.unwrap().verify(&hash, &signature) {
                             Ok(_) => {
                                 log::debug!("Signature verified!");
 
@@ -217,20 +245,8 @@ impl SignedMessageVerifier {
                         log::info!("Processing lock command");
                         let lock = signed_msg.payload_as_lock_command().unwrap();
 
-                        // let verifying_key = match contract_public_key {
-                        //     Some(verifying_key) => verifying_key,
-                        //     None => {
-                        //         log::error!("We received a message that requires a contract without having a public key already loaded.");
-                        //         return Err(VerificationError {
-                        //             serial_number: lock.serial_number(),
-                        //             counter: lock.counter(),
-                        //             message: "Required a contract key but none was loaded"
-                        //                 .to_string(),
-                        //         });
-                        //     }
-                        // };
                         let hash = lock.calculate_hash(&incoming_data);
-                        match verifying_key.verify(&hash, &signature) {
+                        match verifying_key.unwrap().verify(&hash, &signature) {
                             Ok(_) => {
                                 log::debug!("Signature verified!");
                                 if lock.contract_serial_number() != contract_serial_number {
@@ -266,20 +282,8 @@ impl SignedMessageVerifier {
                         log::info!("Processing release command");
                         let release = signed_msg.payload_as_release_command().unwrap();
 
-                        // let verifying_key = match contract_public_key {
-                        //     Some(verifying_key) => verifying_key,
-                        //     None => {
-                        //         log::error!("We received a message that requires a contract without having a public key already loaded.");
-                        //         return Err(VerificationError {
-                        //             serial_number: release.serial_number(),
-                        //             counter: release.counter(),
-                        //             message: "Required a contract key but none was loaded"
-                        //                 .to_string(),
-                        //         });
-                        //     }
-                        // };
                         let hash = release.calculate_hash(&incoming_data);
-                        match verifying_key.verify(&hash, &signature) {
+                        match verifying_key.unwrap().verify(&hash, &signature) {
                             Ok(_) => {
                                 log::debug!("Signature verified!");
                                 if release.contract_serial_number() != contract_serial_number {
@@ -318,10 +322,10 @@ impl SignedMessageVerifier {
                     }),
                 }
             }
-            Err(_) => Err(VerificationError {
+            Err(e) => Err(VerificationError {
                 serial_number: 0,
                 counter: 0,
-                message: "Message doesn't parse as a signed message".to_string(),
+                message: format!("Message doesn't parse as a signed message. {:?}", e).to_string(),
             }),
         }
     }

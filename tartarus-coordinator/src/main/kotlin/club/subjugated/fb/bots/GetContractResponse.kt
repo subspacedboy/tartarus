@@ -33,6 +33,28 @@ class GetContractResponse : Table() {
             val o = __offset(4)
             return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
         }
+    val state : String?
+        get() {
+            val o = __offset(6)
+            return if (o != 0) {
+                __string(o + bb_pos)
+            } else {
+                null
+            }
+        }
+    val stateAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
+    fun stateInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
+    val name : String?
+        get() {
+            val o = __offset(8)
+            return if (o != 0) {
+                __string(o + bb_pos)
+            } else {
+                null
+            }
+        }
+    val nameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(8, 1)
+    fun nameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 8, 1)
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsGetContractResponse(_bb: ByteBuffer): GetContractResponse = getRootAsGetContractResponse(_bb, GetContractResponse())
@@ -40,13 +62,17 @@ class GetContractResponse : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createGetContractResponse(builder: FlatBufferBuilder, nextCounter: UShort) : Int {
-            builder.startTable(1)
+        fun createGetContractResponse(builder: FlatBufferBuilder, nextCounter: UShort, stateOffset: Int, nameOffset: Int) : Int {
+            builder.startTable(3)
+            addName(builder, nameOffset)
+            addState(builder, stateOffset)
             addNextCounter(builder, nextCounter)
             return endGetContractResponse(builder)
         }
-        fun startGetContractResponse(builder: FlatBufferBuilder) = builder.startTable(1)
+        fun startGetContractResponse(builder: FlatBufferBuilder) = builder.startTable(3)
         fun addNextCounter(builder: FlatBufferBuilder, nextCounter: UShort) = builder.addShort(0, nextCounter.toShort(), 0)
+        fun addState(builder: FlatBufferBuilder, state: Int) = builder.addOffset(1, state, 0)
+        fun addName(builder: FlatBufferBuilder, name: Int) = builder.addOffset(2, name, 0)
         fun endGetContractResponse(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o
