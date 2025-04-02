@@ -1,16 +1,17 @@
 import {Component, ElementRef, OnInit, ViewChild} from '@angular/core';
 import * as flatbuffers from 'flatbuffers';
-import {Contract} from '../subjugated/club/contract';
-import {SignedMessage} from '../subjugated/club/signed-message';
-import {MessagePayload, unionToMessagePayload} from '../subjugated/club/message-payload';
+import {Contract} from '../club/subjugated/fb/message/contract';
+import {SignedMessage} from '../club/subjugated/fb/message/signed-message';
+import {MessagePayload, unionToMessagePayload} from '../club/subjugated/fb/message/message-payload';
 import * as QRCode from 'qrcode';
 import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
 import {IdHelperService} from '../id-helper.service';
-import {EndCondition, PartialContract, WhenISaySo} from '../subjugated/club';
 import {CryptoService} from '../crypto.service';
 import {ActivatedRoute} from '@angular/router';
 import {UserDataService} from '../user-data.service';
 import {LockSession} from '../models/lock-session';
+import {WhenISaySo} from '../club/subjugated/fb/message/when-isay-so';
+import {EndCondition} from '../club/subjugated/fb/message/end-condition';
 
 @Component({
   selector: 'app-new-simple-contract',

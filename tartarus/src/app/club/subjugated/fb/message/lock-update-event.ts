@@ -4,7 +4,7 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import { UpdateType } from '../../subjugated/club/update-type.js';
+import { UpdateType } from '../../../../club/subjugated/fb/message/update-type.js';
 
 
 export class LockUpdateEvent {

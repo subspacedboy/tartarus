@@ -4,7 +4,7 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import { MessagePayload, unionToMessagePayload, unionListToMessagePayload } from '../../subjugated/club/message-payload.js';
+import { MessagePayload, unionToMessagePayload, unionListToMessagePayload } from '../../../../club/subjugated/fb/message/message-payload.js';
 
 
 export class SignedMessage {

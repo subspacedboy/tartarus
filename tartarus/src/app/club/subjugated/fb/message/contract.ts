@@ -4,9 +4,9 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import { EndCondition, unionToEndCondition, unionListToEndCondition } from '../../subjugated/club/end-condition.js';
-import { TemporaryUnlockRules } from '../../subjugated/club/temporary-unlock-rules.js';
-import { WebHook } from '../../subjugated/club/web-hook.js';
+import { EndCondition, unionToEndCondition, unionListToEndCondition } from '../../../../club/subjugated/fb/message/end-condition.js';
+import { TemporaryUnlockRules } from '../../../../club/subjugated/fb/message/temporary-unlock-rules.js';
+import { WebHook } from '../../../../club/subjugated/fb/message/web-hook.js';
 
 
 export class Contract {

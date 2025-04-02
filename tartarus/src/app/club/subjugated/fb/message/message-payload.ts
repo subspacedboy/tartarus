@@ -2,9 +2,9 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
-import { Contract } from '../../subjugated/club/contract.js';
-import { LockUpdateEvent } from '../../subjugated/club/lock-update-event.js';
-import { PartialContract } from '../../subjugated/club/partial-contract.js';
+import { Contract } from '../../../../club/subjugated/fb/message/contract.js';
+import { LockUpdateEvent } from '../../../../club/subjugated/fb/message/lock-update-event.js';
+import { PartialContract } from '../../../../club/subjugated/fb/message/partial-contract.js';
 
 
 export enum MessagePayload {

@@ -2,12 +2,14 @@ import {Component, ElementRef, ViewChild} from '@angular/core';
 import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
 import {IdHelperService} from '../id-helper.service';
 import * as flatbuffers from 'flatbuffers';
-import {PartialContract} from '../subjugated/club/partial-contract';
-import {SignedMessage} from '../subjugated/club/signed-message';
-import {MessagePayload} from '../subjugated/club/message-payload';
+import {PartialContract} from '../club/subjugated/fb/message/partial-contract';
+import {SignedMessage} from '../club/subjugated/fb/message/signed-message';
+import {MessagePayload} from '../club/subjugated/fb/message/message-payload';
 import {CryptoService} from '../crypto.service';
 import {QrcodeService} from '../qrcode.service';
-import {Capabilities, Contract, EndCondition, WhenISaySo} from '../subjugated/club';
+import {EndCondition} from '../club/subjugated/fb/message/end-condition';
+import {WhenISaySo} from '../club/subjugated/fb/message/when-isay-so';
+import {Contract} from '../club/subjugated/fb/message/contract';
 
 @Component({
   selector: 'app-new-full-contract',

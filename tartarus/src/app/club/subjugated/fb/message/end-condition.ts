@@ -2,8 +2,8 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
-import { TimeEndCondition } from '../../subjugated/club/time-end-condition.js';
-import { WhenISaySo } from '../../subjugated/club/when-isay-so.js';
+import { TimeEndCondition } from '../../../../club/subjugated/fb/message/time-end-condition.js';
+import { WhenISaySo } from '../../../../club/subjugated/fb/message/when-isay-so.js';
 
 
 export enum EndCondition {

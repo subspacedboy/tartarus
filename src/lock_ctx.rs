@@ -35,6 +35,10 @@ use crate::screen_state::ScreenState;
 use crate::wifi_util::{connect_wifi, parse_wifi_qr};
 use embedded_svc::http::client::Client as HttpClient;
 use esp_idf_hal::io::Write;
+
+use esp_idf_svc::mqtt::client::{EspMqttClient, EspMqttConnection, EspMqttEvent, MqttClientConfiguration, QoS};
+use embedded_svc::mqtt::client::{Client, Publish, QoS as EmbeddedQoS};
+use embedded_svc::mqtt::client::QoS::AtMostOnce;
 use flatbuffers::FlatBufferBuilder;
 use p256::ecdsa::signature::Signer;
 use p256::ecdsa::{Signature, SigningKey};
@@ -93,6 +97,7 @@ impl LockCtx {
         if let Ok(connected) = lck.wifi.is_connected() {
             lck.wifi_connected = connected;
 
+            lck.mqtt_announce();
             lck.start_announce_to_coordinator();
         }
 
@@ -274,6 +279,82 @@ impl LockCtx {
     }
 
     pub fn accept_contract(&mut self, contract : &InternalContract) -> () {
+    }
+
+    fn mqtt_announce(&self) {
+        let broker_url = "mqtt://192.168.1.180:1883"; // Replace with your MQTT broker
+
+        let mut config = MqttClientConfiguration::default();
+        config.client_id = Some("Moo");
+        config.network_timeout = Duration::from_secs(5);
+        config.password = Some("maybe?");
+        config.username = Some("tartarus");
+
+        log::info!("Attempting to connect to MQTT");
+        let (mut client, mut connection): (EspMqttClient, EspMqttConnection) =
+            EspMqttClient::new(broker_url, &config).expect("Failed to connect to MQTT broker");
+
+        // let scope = std::thread::scope(|s| {
+            log::info!("About to start the MQTT client");
+
+            // Need to immediately start pumping the connection for messages, or else subscribe() and publish() below will not work
+            // Note that when using the alternative constructor - `EspMqttClient::new_cb` - you don't need to
+            // spawn a new thread, as the messages will be pumped with a backpressure into the callback you provide.
+            // Yet, you still need to efficiently process each message in the callback without blocking for too long.
+            //
+            // Note also that if you go to http://tools.emqx.io/ and then connect and send a message to topic
+            // "esp-mqtt-demo", the client configured here should receive it.
+            std::thread::Builder::new()
+                .stack_size(12000)
+                .spawn(move || {
+                    log::info!("MQTT Listening for messages");
+
+                    while let Ok(event) = connection.next() {
+                        log::info!("[Queue] Event: {}", event.payload());
+                    }
+
+                    log::info!("Connection closed");
+                })
+                .unwrap();
+
+            std::thread::Builder::new()
+                .stack_size(12000)
+                .spawn( move || {
+                    log::info!("Publish thread");
+
+                    loop {
+                        if let Err(e) = client.subscribe("test/topic", QoS::AtMostOnce) {
+                            log::error!("Failed to subscribe to topic : {e}, retrying...");
+
+                            // Re-try in 0.5s
+                            std::thread::sleep(Duration::from_millis(500));
+
+                            continue;
+                        }
+
+                        log::info!("Subscribed to topic ");
+
+                        // Just to give a chance of our connection to get even the first published message
+                        std::thread::sleep(Duration::from_millis(500));
+
+                        let payload = "Hello from esp-mqtt-demo!";
+
+                        loop {
+                            client.enqueue("test/topic", QoS::AtMostOnce, false, payload.as_bytes()).unwrap();
+
+                            log::info!("Published \"{payload}\" to topic ");
+
+                            let sleep_secs = 2;
+
+                            log::info!("Now sleeping for {sleep_secs}s...");
+                            std::thread::sleep(Duration::from_secs(sleep_secs));
+                        }
+                    }
+                })
+                .unwrap();
+
+        // });
+
     }
 
     fn start_announce_to_coordinator(&self) {
