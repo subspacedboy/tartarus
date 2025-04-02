@@ -31,9 +31,6 @@ impl Acknowledger {
             VerifiedType::ReleaseCommand(release) => {
                 (release.serial_number, release.counter)
             }
-            VerifiedType::NoVerifiedType => {
-                (0u16, 0u16)
-            }
         };
 
         let public_key_bytes: Vec<u8> = public_key.to_sec1_bytes().to_vec();
@@ -115,9 +112,6 @@ impl Acknowledger {
             }
             VerifiedType::ReleaseCommand(release) => {
                 (release.serial_number, release.counter)
-            }
-            VerifiedType::NoVerifiedType => {
-                (0u16, 0u16)
             }
         };
 

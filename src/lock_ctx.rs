@@ -201,7 +201,7 @@ impl LockCtx {
                 None
             };
 
-            match verifier.verify(buffer, &self.session_token, contract_public_key) {
+            match verifier.verify(buffer, contract_public_key) {
                 Ok(verified_message) => {
                     let for_acknowledgement = verified_message.clone();
 
