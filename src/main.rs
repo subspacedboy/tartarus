@@ -6,6 +6,7 @@ mod contract_generated;
 mod internal_config;
 mod internal_contract;
 mod lock_ctx;
+mod mqtt_service;
 mod overlay;
 mod overlays;
 mod prelude;

@@ -1,15 +1,10 @@
 use crate::configuration_generated::club::subjugated::fb::message::configuration::CoordinatorConfiguration;
 use crate::internal_config::{InternalConfig, InternalSafetyKey};
-use flatbuffers::InvalidFlatbuffer;
 use p256::ecdsa::VerifyingKey;
 
 pub struct ConfigVerifier {}
 
 impl ConfigVerifier {
-    pub fn new() -> Self {
-        ConfigVerifier {}
-    }
-
     pub fn read_configuration(incoming_data: Vec<u8>) -> Result<InternalConfig, String> {
         match crate::configuration_generated::club::subjugated::fb::message::configuration::root_as_coordinator_configuration(incoming_data.as_slice()) {
             Ok(config_data) => {
