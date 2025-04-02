@@ -24,7 +24,10 @@ create table contract(
     id bigint NOT NULL AUTO_INCREMENT,
     name varchar(25) NOT NULL,
     public_key varchar(255) NOT NULL,
-    body TEXT NOT NULL,
+    shareable_token varchar(10) NOT NULL,
+    state varchar(25) NOT NULL,
+    author_id bigint NOT NULL,
+    body BLOB NOT NULL,
     created_at DATETIME,
     updated_at DATETIME,
     PRIMARY KEY (id)

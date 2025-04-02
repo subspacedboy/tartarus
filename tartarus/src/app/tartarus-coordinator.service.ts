@@ -3,6 +3,7 @@ import {HttpClient, HttpErrorResponse, HttpHeaders} from '@angular/common/http';
 import {catchError, map, Observable, throwError} from 'rxjs';
 import * as base32 from 'hi-base32';
 import {LockSession} from './models/lock-session';
+import {AuthorSession} from './models/author-session';
 
 @Injectable({
   providedIn: 'root'
@@ -36,23 +37,22 @@ export class TartarusCoordinatorService {
     }));
   }
 
-  public createAuthorSession(public_key: string, session_token: string, signature : string): Observable<boolean> {
-    const save_key_uri = 'http://localhost:5002/author_sessions';
+  public createAuthorSession(public_key: string, session_token: string, signature : string): Observable<AuthorSession> {
+    const save_key_uri = 'http://localhost:5002/author_sessions/';
     const body = JSON.stringify({
-      'public_key' : public_key,
-      'session': session_token,
+      'publicKey' : public_key,
+      'sessionToken': session_token,
       'signature': signature
     });
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
     return this.http.post(save_key_uri, body, {headers} ).pipe(map((res:any) => {
-      // let t = new Ticket(res);
-      return true;
+      return new AuthorSession(res);
     }),  catchError(error => {
       return this.handleError(error);
     }));
   }
 
-  public saveLockPubKeyAndSession(public_key: string, session: string) : Observable<boolean> {
+  public saveLockPubKeyAndSession(public_key: string, session: string) : Observable<LockSession> {
     const save_key_uri = 'http://localhost:5002/lock_sessions/';
     const body = JSON.stringify({
       'publicKey' : public_key,
@@ -60,16 +60,17 @@ export class TartarusCoordinatorService {
     });
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
     return this.http.post(save_key_uri, body, {headers} ).pipe(map((res:any) => {
-      return true;
+      return new LockSession(res);
     }),  catchError(error => {
       return this.handleError(error);
     }));
   }
 
-  public saveContract(name: string, signed_message: Uint8Array) : Observable<boolean> {
+  public saveContract(authorName: string, shareableToken: string, signed_message: Uint8Array) : Observable<boolean> {
     const save_contract_uri = `http://localhost:5002/contracts/`;
     const body = JSON.stringify({
-      'contractName' : name,
+      'shareableToken' : shareableToken,
+      'authorName' : authorName,
       'signedMessage' : btoa(String.fromCharCode(...signed_message))
     });
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });

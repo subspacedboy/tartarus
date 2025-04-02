@@ -2,6 +2,7 @@ import {Component, OnInit} from '@angular/core';
 import {ActivatedRoute, Router} from '@angular/router';
 import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
 import {UserDataService} from '../user-data.service';
+import {LockSession} from '../models/lock-session';
 
 @Component({
   selector: 'app-lock-start',
@@ -11,6 +12,7 @@ import {UserDataService} from '../user-data.service';
 })
 export class LockStartComponent implements OnInit {
   session: string | null = null;
+  lockSession? : LockSession;
   publicKey: string | null = null;
   showDetails: boolean = false;
 
@@ -25,13 +27,10 @@ export class LockStartComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.tartarusCoordinatorService.saveLockPubKeyAndSession(String(this.publicKey), String(this.session)).subscribe(r => {
+    this.tartarusCoordinatorService.saveLockPubKeyAndSession(String(this.publicKey), String(this.session)).subscribe(lockSession => {
+      this.lockSession = lockSession;
       this.userDataService.addLockSession(String(this.session), String(this.publicKey));
     });
-  }
-
-  getSessionLink() : string {
-    return `http://localhost:4200/lock_session/${this.session}`;
   }
 
   showTechnicalDetails() {

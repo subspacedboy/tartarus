@@ -18,6 +18,14 @@ class LockSessionController {
     @Autowired
     lateinit var lockSessionService: LockSessionService
 
+    @GetMapping("/{someToken}", produces = [MediaType.APPLICATION_JSON])
+    @ResponseBody
+    fun findLockSession(@PathVariable someToken : String) : ResponseEntity<LockSessionMessage>{
+        val maybeSession = this.lockSessionService.findByShareableToken(someToken) ?: return ResponseEntity.notFound().build()
+
+        return ResponseEntity.ok(LockSessionMessage.fromLockSession(maybeSession))
+    }
+
     @PostMapping("/", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
     fun saveLockSession(@RequestBody newLockSessionMessage: NewLockSessionMessage) : ResponseEntity<LockSessionMessage> {

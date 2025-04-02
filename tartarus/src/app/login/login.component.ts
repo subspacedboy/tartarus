@@ -72,7 +72,7 @@ export class LoginComponent implements OnInit {
             this.tartarusCoordinatorService.createAuthorSession(b64compressed, token, b64Signature).subscribe(session_result => {
               console.log("Session created");
 
-              this.userDataService.addPublicAndPrivateKeyToLocalSession(r.privateKeyPEM, r.publicKeyPEM, token);
+              this.userDataService.addPublicAndPrivateKeyToLocalSession(r.privateKeyPEM, r.publicKeyPEM, String(session_result.sessionToken));
               this.loginComplete = true;
             });
         })

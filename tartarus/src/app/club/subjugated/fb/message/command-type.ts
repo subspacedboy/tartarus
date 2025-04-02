@@ -2,10 +2,11 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
-export enum UpdateType {
+export enum CommandType {
   Undefined = 0,
-  Started = 1,
-  Locked = 2,
-  Unlocked = 3,
-  Error = 4
+  AcceptContract = 1,
+  Lock = 2,
+  Unlock = 3,
+  Release = 4,
+  Ping = 5
 }

@@ -1,8 +1,9 @@
 export class LockSession {
   // public_key is secp1 compressed, web crypto can't use it.
-  public_key?: string;
-  public_pem?: string;
-  session?: string;
+  publicKey?: string;
+  publicPem?: string;
+  shareToken?: string;
+  totalControlToken?: string;
 
   constructor(init?:Partial<LockSession>) {
     // if (init!.associatedTask) {
@@ -11,5 +12,13 @@ export class LockSession {
     // }
 
     Object.assign(this, init);
+  }
+
+  getShareLink(): string {
+    return `http://localhost:4200/lock-sessions/${this.shareToken}`;
+  }
+
+  getTotalControlLink(): string {
+    return `http://localhost:4200/lock-sessions/${this.totalControlToken}`;
   }
 }

@@ -9,5 +9,6 @@ class UpdateType private constructor() {
         const val Started: Byte = 1
         const val Locked: Byte = 2
         const val Unlocked: Byte = 3
+        const val Error: Byte = 4
     }
 }

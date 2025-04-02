@@ -1,5 +1,6 @@
 import {Component, ElementRef, OnInit, ViewChild} from '@angular/core';
 import * as flatbuffers from 'flatbuffers';
+import {SimpleContract} from '../club/subjugated/fb/message/simple-contract';
 import {Contract} from '../club/subjugated/fb/message/contract';
 import {SignedMessage} from '../club/subjugated/fb/message/signed-message';
 import {MessagePayload, unionToMessagePayload} from '../club/subjugated/fb/message/message-payload';
@@ -58,15 +59,15 @@ export class NewSimpleContractComponent implements OnInit {
     WhenISaySo.startWhenISaySo(builder);
     const whenISaySoOffset = WhenISaySo.endWhenISaySo(builder);
 
-    const sessionOffset = builder.createString(this.lockSession?.session!);
+    const sessionOffset = builder.createString(this.lockSession?.shareToken!);
 
     // Derive secrets.
     // const lockPub = await this.cryptoService.importKeyPair(this.lockSession?.public_key!);
-    let pubKey = await this.cryptoService.importPublicKeyOnlyFromPem(this.lockSession?.public_pem!);
+    let pubKey = await this.cryptoService.importPublicKeyOnlyFromPem(this.lockSession?.publicPem!);
     const shared = await this.cryptoService.deriveSharedSecret(ecdhPrivateKey, pubKey);
     const aesKey = await this.cryptoService.deriveAESKey(shared, new Uint8Array(), new Uint8Array());
     const cipher = await this.cryptoService.initializeAESCipher(aesKey);
-    const cipherText = await cipher.encrypt("685");
+    const cipherText = await cipher.encrypt("687");
     const nonceOffset = builder.createByteVector(cipher.iv);
     const confirmCodeOffset = builder.createByteVector(new Uint8Array(cipherText));
 
@@ -76,7 +77,7 @@ export class NewSimpleContractComponent implements OnInit {
     Contract.addEndCondition(builder, whenISaySoOffset);
     Contract.addEndConditionType(builder, EndCondition.WhenISaySo);
     Contract.addIsUnremovable(builder, true);
-    Contract.addSession(builder, sessionOffset);
+    //Contractact.addSession(builder, sessionOffset);
     Contract.addConfirmCode(builder, confirmCodeOffset);
     Contract.addNonce(builder, nonceOffset);
     let fullContractOffset = Contract.endContract(builder);
@@ -121,7 +122,7 @@ export class NewSimpleContractComponent implements OnInit {
 
     await this.generateQRCode(builder.asUint8Array());
 
-    this.tartarusCoordinatorService.saveContract(contractName, builder.asUint8Array()).subscribe(r => {
+    this.tartarusCoordinatorService.saveContract(this.userDataService.getAuthorName(), this.lockSessionToken, builder.asUint8Array()).subscribe(r => {
       console.log("Saved");
     })
 

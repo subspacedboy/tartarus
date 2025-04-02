@@ -28,7 +28,6 @@ table Contract {
 
   nonce: [ubyte];
   confirm_code: [ubyte];
-  session: string;
   notes: string;
 
   // If this contract is able to be loaded, it cannot be removed
@@ -44,19 +43,47 @@ table Contract {
   unlock_rules : TemporaryUnlockRules;
 }
 
-enum UpdateType : byte { Undefined = 0, Started, Locked, Unlocked }
+table SimpleContract {
+  public_key: [ubyte];
+
+  nonce: [ubyte];
+  confirm_code: [ubyte];
+
+  // If this contract is able to be loaded, it cannot be removed
+  // without explicit permission.
+  is_unremovable: bool;
+
+  end_condition: EndCondition;
+
+  // If true, subject can freely cycle the lock.
+  is_temporary_unlock_allowed: bool;
+  unlock_rules : TemporaryUnlockRules;
+}
+
+
+enum UpdateType : byte { Undefined = 0, Started, Locked, Unlocked, Error }
 
 table LockUpdateEvent {
     public_key: [ubyte];
     session: string;
-
     body: string;
-
     this_update_type: UpdateType;
 }
 
+enum CommandType : byte { Undefined = 0, AcceptContract, Lock, Unlock, Release, Ping }
+
+table Command {
+    public_key: [ubyte];
+    session: string;
+    body: string;
+
+    contract: Contract;
+
+    command_type: CommandType;
+}
+
 union MessagePayload {
-  Contract, LockUpdateEvent
+  Contract, LockUpdateEvent, Command
 }
 
 table SignedMessage {

@@ -1,5 +1,7 @@
+use std::collections::VecDeque;
+use std::sync::{Arc, Mutex};
 use crate::boot_screen::BootScreen;
-use crate::contract_generated::club::subjugated::fb::message::{Contract, LockUpdateEvent, LockUpdateEventArgs, MessagePayload, SignedMessage, SignedMessageArgs, UpdateType};
+use crate::contract_generated::club::subjugated::fb::message::{root_as_signed_message, Contract, LockUpdateEvent, LockUpdateEventArgs, MessagePayload, SignedMessage, SignedMessageArgs, UpdateType};
 use crate::internal_contract::InternalContract;
 use crate::overlays::{ButtonPressOverlay, WifiOverlay};
 use crate::prelude::prelude::{DynOverlay, DynScreen, MyDisplay, MySPI};
@@ -19,7 +21,9 @@ use rand_core::RngCore;
 use std::time::Duration;
 use base64::Engine;
 use base64::prelude::BASE64_URL_SAFE;
-use esp_idf_svc::mqtt::client::{EspMqttClient, EspMqttConnection, MqttClientConfiguration, QoS};
+use embedded_svc::mqtt::client::{EventPayload, MessageId};
+use embedded_svc::mqtt::client::EventPayload::Received;
+use esp_idf_svc::mqtt::client::{EspMqttClient, EspMqttConnection, EspMqttEvent, LwtConfiguration, MqttClientConfiguration, QoS};
 use flatbuffers::FlatBufferBuilder;
 use p256::ecdsa::signature::Signer;
 use p256::ecdsa::{Signature, SigningKey};
@@ -32,6 +36,11 @@ pub struct TickUpdate {
     pub d2_pressed : bool,
     pub qr_data : Option<Vec<u8>>,
     pub since_last: Duration
+}
+
+#[derive(Debug, Clone)]
+pub struct SignedMessageTransport {
+    buffer: Vec<u8>
 }
 
 pub struct LockCtx {
@@ -47,6 +56,8 @@ pub struct LockCtx {
     pub(crate) contract: Option<InternalContract>,
     is_locked: bool,
     pub(crate) session_token: String,
+    incoming_messages: Arc<Mutex<VecDeque<SignedMessageTransport>>>,
+    outgoing_message: Arc<Mutex<VecDeque<SignedMessageTransport>>>,
 }
 
 impl LockCtx {
@@ -64,6 +75,8 @@ impl LockCtx {
             contract: None,
             is_locked: false,
             session_token: String::new(),
+            incoming_messages : Arc::new(Mutex::new(VecDeque::new())),
+            outgoing_message : Arc::new(Mutex::new(VecDeque::new()))
         };
 
         lck.session_token = lck.load_or_create_session_id();
@@ -78,8 +91,9 @@ impl LockCtx {
         if let Ok(connected) = lck.wifi.is_connected() {
             lck.wifi_connected = connected;
 
-            lck.mqtt_announce();
-            lck.start_announce_to_coordinator();
+            lck.start_mqtt();
+            lck.enqueue_announce_message();
+            // lck.start_announce_to_coordinator();
         }
 
         let wifi_overlay: Box<DynOverlay<'static>> = Box::new(
@@ -165,6 +179,16 @@ impl LockCtx {
 
     pub fn tick(&mut self, update : TickUpdate) -> () {
         self.this_update = Some(update.clone());
+
+        // Process message queue
+        if let Ok(mut message_queue) = self.incoming_messages.lock() {
+            while(message_queue.len() > 0) {
+                let current = message_queue.pop_front();
+                if let Some(message) = current {
+                    log::info!("Received: {:?}", message);
+                }
+            }
+        }
 
         if let Some(mut current_screen) = self.current_screen.take() {
             let result_from_update = current_screen.on_update(self);
@@ -261,78 +285,105 @@ impl LockCtx {
     pub fn accept_contract(&mut self, _contract : &InternalContract) -> () {
     }
 
-    fn mqtt_announce(&self) {
+    fn start_mqtt(&self) {
         let broker_url = "mqtt://192.168.1.180:1883"; // Replace with your MQTT broker
 
         let mut config = MqttClientConfiguration::default();
-        config.client_id = Some("Moo");
+        config.client_id = Some(self.session_token.as_ref());
         config.network_timeout = Duration::from_secs(5);
         config.password = Some("maybe?");
-        config.username = Some("tartarus");
+        config.username = Some(self.session_token.as_ref());
+
+        let lwtConfig = LwtConfiguration {
+            topic: "devices/status",
+            payload: "Vanished".as_bytes(),
+            qos: QoS::AtLeastOnce,
+            retain: true,
+        };
+        config.lwt = Some(lwtConfig);
 
         log::info!("Attempting to connect to MQTT");
         let (mut client, mut connection): (EspMqttClient, EspMqttConnection) =
             EspMqttClient::new(broker_url, &config).expect("Failed to connect to MQTT broker");
 
         // let scope = std::thread::scope(|s| {
-            log::info!("About to start the MQTT client");
+        log::info!("About to start the MQTT client");
 
-            // Need to immediately start pumping the connection for messages, or else subscribe() and publish() below will not work
-            // Note that when using the alternative constructor - `EspMqttClient::new_cb` - you don't need to
-            // spawn a new thread, as the messages will be pumped with a backpressure into the callback you provide.
-            // Yet, you still need to efficiently process each message in the callback without blocking for too long.
-            //
-            // Note also that if you go to http://tools.emqx.io/ and then connect and send a message to topic
-            // "esp-mqtt-demo", the client configured here should receive it.
-            std::thread::Builder::new()
-                .stack_size(12000)
-                .spawn(move || {
-                    log::info!("MQTT Listening for messages");
+        // Need to immediately start pumping the connection for messages, or else subscribe() and publish() below will not work
+        // Note that when using the alternative constructor - `EspMqttClient::new_cb` - you don't need to
+        // spawn a new thread, as the messages will be pumped with a backpressure into the callback you provide.
+        // Yet, you still need to efficiently process each message in the callback without blocking for too long.
+        //
+        // Note also that if you go to http://tools.emqx.io/ and then connect and send a message to topic
+        // "esp-mqtt-demo", the client configured here should receive it.
 
-                    while let Ok(event) = connection.next() {
-                        log::info!("[Queue] Event: {}", event.payload());
+        let queue_ref = Arc::clone(&self.incoming_messages);
+        let out_queue_ref = Arc::clone(&self.outgoing_message);
+        let session_token = self.session_token.clone();
+
+        std::thread::Builder::new()
+            .stack_size(12000)
+            .spawn(move || {
+                log::info!("MQTT Listening for messages");
+
+                while let Ok(event) = connection.next() {
+                    if let Ok(mut message_queue) = queue_ref.lock() {
+                        match event.payload() {
+                            EventPayload::Received { data, .. } => {
+                                message_queue.push_back(SignedMessageTransport {
+                                    buffer: data.to_vec(), // Convert slice to Vec<u8>
+                                });
+
+                                log::info!("Received MQTT message: {} bytes", data.len());
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
+                log::info!("Connection closed");
+            })
+            .unwrap();
+
+        std::thread::Builder::new()
+            .stack_size(12000)
+            .spawn( move || {
+                log::info!("Publish thread");
+
+                // let session_token = session_token.clone();
+
+                loop {
+                    let inbound_queue = format!("locks/{session_token}");
+                    if let Err(e) = client.subscribe(&*inbound_queue, QoS::AtMostOnce) {
+                        log::error!("Failed to subscribe to topic : {e}, retrying...");
+                        std::thread::sleep(Duration::from_secs(2));
+                        continue;
                     }
 
-                    log::info!("Connection closed");
-                })
-                .unwrap();
-
-            std::thread::Builder::new()
-                .stack_size(12000)
-                .spawn( move || {
-                    log::info!("Publish thread");
-
+                    // Just to give a chance of our connection to get even the first published message
+                    std::thread::sleep(Duration::from_millis(500));
                     loop {
-                        if let Err(e) = client.subscribe("test/topic", QoS::AtMostOnce) {
-                            log::error!("Failed to subscribe to topic : {e}, retrying...");
-                            std::thread::sleep(Duration::from_secs(2));
-                            continue;
+
+                        if let Ok(mut message_queue) = out_queue_ref.lock() {
+                            while let Some(message) = message_queue.pop_front() {
+                                match client.publish("locks/updates", QoS::AtLeastOnce, false, message.buffer.as_ref()) {
+                                    Ok(id) => log::info!("Publish successful [{id:?}]"),
+                                    Err(e) => log::error!("Failed to publish topic: {e}, retrying..."),
+                                }
+                            }
                         }
-                        log::info!("Subscribed to topic ");
 
-                        // Just to give a chance of our connection to get even the first published message
-                        std::thread::sleep(Duration::from_millis(500));
-
-                        let payload = "Hello from esp-mqtt-demo!";
-
-                        loop {
-                            client.enqueue("test/topic", QoS::AtLeastOnce, false, payload.as_bytes()).unwrap();
-
-                            log::info!("Published \"{payload}\" to topic ");
-                            let sleep_secs = 2;
-                            log::info!("Now sleeping for {sleep_secs}s...");
-                            std::thread::sleep(Duration::from_secs(sleep_secs));
-                        }
+                        // We use publish and not enqueue because this is already an independent thread.
+                        // Enqueue will "wait" for its own (internal) thread while publish will go ahead and use ours.
+                        let sleep_secs = 2;
+                        std::thread::sleep(Duration::from_secs(sleep_secs));
                     }
-                })
-                .unwrap();
+                }
+            })
+            .unwrap();
     }
 
-    fn start_announce_to_coordinator(&self) {
-        const URL: &str = "http://192.168.1.180:5002/event";
-        let mut pos = EspHttpConnection::new(&mut Default::default()).expect("HTTP client should be available");
-        let mut client = HttpClient::wrap(&mut pos);
-
+    fn enqueue_announce_message(&self) {
         let mut builder = FlatBufferBuilder::with_capacity(1024);
         let public_key: Vec<u8> = self.public_key.unwrap().to_sec1_bytes().as_ref().to_vec();
         let session = builder.create_string(&self.session_token);
@@ -413,18 +464,116 @@ impl LockCtx {
         builder.finish(signed_message, None);
         let data = builder.finished_data().to_vec();
 
-        if let Ok(mut request) = client.post(&URL, &[("Content-Type","application/octet-stream")]) {
-            if let Ok(_result) =request.write_all(data.as_slice()) {
-                if let Ok(_) = request.flush() {}
-            }
+        let t = SignedMessageTransport {
+            buffer: data
+        };
 
-            if let Ok(response) = request.submit() {
-                log::info!("Response status: {}", response.status());
-            } else {
-                log::error!("Failed to send request");
-            }
-        } else {
-            log::error!("Failed to POST request");
+        self.enqueue_message(t);
+    }
+
+    fn enqueue_message(&self, message : SignedMessageTransport) {
+        if let Ok(mut message_queue) = self.outgoing_message.lock() {
+            message_queue.push_back(message);
         }
     }
+
+    // fn start_announce_to_coordinator(&self) {
+    //     const URL: &str = "http://192.168.1.180:5002/event";
+    //     let mut pos = EspHttpConnection::new(&mut Default::default()).expect("HTTP client should be available");
+    //     let mut client = HttpClient::wrap(&mut pos);
+    //
+    //     let mut builder = FlatBufferBuilder::with_capacity(1024);
+    //     let public_key: Vec<u8> = self.public_key.unwrap().to_sec1_bytes().as_ref().to_vec();
+    //     let session = builder.create_string(&self.session_token);
+    //     let this_update_type = UpdateType::Started;
+    //     let body = builder.create_string("lock update body");
+    //
+    //     let pub_key_holder = builder.create_vector(&public_key);
+    //     let lock_update_event = LockUpdateEvent::create(
+    //         &mut builder,
+    //         &LockUpdateEventArgs {
+    //             public_key: Some(pub_key_holder),
+    //             session: Some(session),
+    //             body: Some(body),
+    //             this_update_type,
+    //         },
+    //     );
+    //
+    //     let _payload_type = MessagePayload::LockUpdateEvent; // Union type
+    //     let _payload_value = lock_update_event.as_union_value();
+    //
+    //     builder.finish(lock_update_event, None);
+    //     let buffer = builder.finished_data();
+    //
+    //     let table_offset = buffer[0] as usize;
+    //     let vtable_offset = buffer[table_offset] as usize;
+    //     let actual_start = table_offset - vtable_offset;
+    //
+    //     log::info!("Update buffer w/ vtable ({},{}): {:?}", vtable_offset, table_offset, buffer);
+    //     let hash = Sha256::digest(&buffer[actual_start..]);
+    //     log::info!("Hash {:?}", hash);
+    //
+    //     // UGH. We have to build the whole message over again because of the way
+    //     // Rust implements flatbuffers.
+    //     let mut builder = FlatBufferBuilder::with_capacity(1024);
+    //     let public_key: Vec<u8> = self.public_key.unwrap().to_sec1_bytes().as_ref().to_vec();
+    //     let session = builder.create_string(&self.session_token);
+    //     let this_update_type = UpdateType::Started;
+    //     let body = builder.create_string("lock update body");
+    //
+    //     let pub_key_holder = builder.create_vector(&public_key);
+    //     let lock_update_event = LockUpdateEvent::create(
+    //         &mut builder,
+    //         &LockUpdateEventArgs {
+    //             public_key: Some(pub_key_holder),
+    //             session: Some(session),
+    //             body: Some(body),
+    //             this_update_type,
+    //         },
+    //     );
+    //
+    //     let payload_type = MessagePayload::LockUpdateEvent; // Union type
+    //     let payload_value = lock_update_event.as_union_value();
+    //
+    //     let secret = self.secret_key.as_ref().unwrap();
+    //     // let pem = secret.to_sec1_pem(Default::default()).unwrap();
+    //
+    //     let cloned_secret = secret.clone();
+    //     let bytes = cloned_secret.to_bytes();
+    //     let key_bytes = bytes.as_slice();
+    //     let signing_key = SigningKey::from_slice(key_bytes).unwrap();
+    //     let signature: Signature = signing_key.sign(&hash.as_slice());
+    //     // let signing_key = SigningKey::from_bytes(*secret.as_scalar_primitive());
+    //     // let signing_key = /
+    //
+    //     // let signature: Vec<u8> = vec![9, 8, 7, 6, 5];
+    //     let sig_bytes = signature.to_bytes();
+    //
+    //     let signature_offset = builder.create_vector(sig_bytes.as_slice());
+    //     let signed_message = SignedMessage::create(
+    //         &mut builder,
+    //         &SignedMessageArgs {
+    //             signature: Some(signature_offset),
+    //             payload: Some(payload_value),
+    //             payload_type,
+    //         },
+    //     );
+    //
+    //     builder.finish(signed_message, None);
+    //     let data = builder.finished_data().to_vec();
+    //
+    //     if let Ok(mut request) = client.post(&URL, &[("Content-Type","application/octet-stream")]) {
+    //         if let Ok(_result) =request.write_all(data.as_slice()) {
+    //             if let Ok(_) = request.flush() {}
+    //         }
+    //
+    //         if let Ok(response) = request.submit() {
+    //             log::info!("Response status: {}", response.status());
+    //         } else {
+    //             log::error!("Failed to send request");
+    //         }
+    //     } else {
+    //         log::error!("Failed to POST request");
+    //     }
+    // }
 }

@@ -6,11 +6,26 @@
     <div class="bs-component">
       <div class="alert alert-dismissible alert-info">
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        <strong>Heads up!</strong> This is the link you send to contract authors.
+        <strong>Heads up!</strong> This is the link you send to contract authors when you want the ability to review.
       </div>
     </div>
 
-    <input class="form-control" id="lockLink" [value]="getSessionLink()" [disabled]="true">
+    <input class="form-control" id="lockLink" [value]="lockSession?.getShareLink()" [disabled]="true">
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-sm-10">
+
+    <div class="bs-component">
+      <div class="alert alert-dismissible alert-info">
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <strong>Heads up!</strong> This is the link you send to contract authors when you DO NOT want the ability to review.
+        If your lock is online, they can simply activate contracts without approval. You've been warned.
+      </div>
+    </div>
+
+    <input class="form-control" id="lockLink2" [value]="lockSession?.getTotalControlLink()" [disabled]="true">
   </div>
 </div>
 

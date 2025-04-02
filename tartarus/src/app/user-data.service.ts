@@ -36,6 +36,10 @@ export class UserDataService {
     localStorage.setItem('author_session_token', token);
   }
 
+  getAuthorName() : string {
+    return String(localStorage.getItem('author_session_token'));
+  }
+
   isAlreadyLoggedIn(): boolean {
     return localStorage.getItem('author_session_token') !== null;
   }

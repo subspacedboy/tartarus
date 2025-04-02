@@ -2,37 +2,45 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
+import { Command } from '../../../../club/subjugated/fb/message/command.js';
 import { Contract } from '../../../../club/subjugated/fb/message/contract.js';
 import { LockUpdateEvent } from '../../../../club/subjugated/fb/message/lock-update-event.js';
+import { SimpleContract } from '../../../../club/subjugated/fb/message/simple-contract.js';
 
 
 export enum MessagePayload {
   NONE = 0,
   Contract = 1,
-  LockUpdateEvent = 2
+  SimpleContract = 2,
+  LockUpdateEvent = 3,
+  Command = 4
 }
 
 export function unionToMessagePayload(
   type: MessagePayload,
-  accessor: (obj:Contract|LockUpdateEvent) => Contract|LockUpdateEvent|null
-): Contract|LockUpdateEvent|null {
+  accessor: (obj:Command|Contract|LockUpdateEvent|SimpleContract) => Command|Contract|LockUpdateEvent|SimpleContract|null
+): Command|Contract|LockUpdateEvent|SimpleContract|null {
   switch(MessagePayload[type]) {
     case 'NONE': return null; 
     case 'Contract': return accessor(new Contract())! as Contract;
+    case 'SimpleContract': return accessor(new SimpleContract())! as SimpleContract;
     case 'LockUpdateEvent': return accessor(new LockUpdateEvent())! as LockUpdateEvent;
+    case 'Command': return accessor(new Command())! as Command;
     default: return null;
   }
 }
 
 export function unionListToMessagePayload(
   type: MessagePayload, 
-  accessor: (index: number, obj:Contract|LockUpdateEvent) => Contract|LockUpdateEvent|null, 
+  accessor: (index: number, obj:Command|Contract|LockUpdateEvent|SimpleContract) => Command|Contract|LockUpdateEvent|SimpleContract|null, 
   index: number
-): Contract|LockUpdateEvent|null {
+): Command|Contract|LockUpdateEvent|SimpleContract|null {
   switch(MessagePayload[type]) {
     case 'NONE': return null; 
     case 'Contract': return accessor(index, new Contract())! as Contract;
+    case 'SimpleContract': return accessor(index, new SimpleContract())! as SimpleContract;
     case 'LockUpdateEvent': return accessor(index, new LockUpdateEvent())! as LockUpdateEvent;
+    case 'Command': return accessor(index, new Command())! as Command;
     default: return null;
   }
 }

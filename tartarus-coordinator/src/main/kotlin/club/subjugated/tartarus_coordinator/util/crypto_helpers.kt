@@ -6,12 +6,22 @@ import org.bouncycastle.crypto.signers.StandardDSAEncoding
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.jce.spec.ECNamedCurveSpec
 import org.bouncycastle.math.ec.ECCurve
+import org.bouncycastle.openssl.jcajce.JcaPEMWriter
+import java.io.StringWriter
 import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.Security
 import java.security.interfaces.ECPublicKey
 import java.security.spec.ECPoint
 import java.security.spec.ECPublicKeySpec
+
+fun getPemEncoding(ecPublicKey: ECPublicKey): String {
+    val stringWriter = StringWriter()
+    JcaPEMWriter(stringWriter).use { pemWriter ->
+        pemWriter.writeObject(ecPublicKey)
+    }
+    return stringWriter.toString()
+}
 
 fun getECPublicKeyFromByteArray(compressedKeyBytes : ByteArray) : ECPublicKey {
     Security.addProvider(BouncyCastleProvider())

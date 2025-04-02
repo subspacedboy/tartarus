@@ -47,6 +47,7 @@ dependencies {
 
 	// https://mvnrepository.com/artifact/io.moquette/moquette-broker
 	implementation("io.moquette:moquette-broker:0.17")
+	implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
 	implementation("org.bouncycastle:bcprov-jdk18on:1.80")
 }
 

@@ -2,7 +2,6 @@ import {Component, ElementRef, ViewChild} from '@angular/core';
 import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
 import {IdHelperService} from '../id-helper.service';
 import * as flatbuffers from 'flatbuffers';
-import {PartialContract} from '../club/subjugated/fb/message/partial-contract';
 import {SignedMessage} from '../club/subjugated/fb/message/signed-message';
 import {MessagePayload} from '../club/subjugated/fb/message/message-payload';
 import {CryptoService} from '../crypto.service';
@@ -10,6 +9,7 @@ import {QrcodeService} from '../qrcode.service';
 import {EndCondition} from '../club/subjugated/fb/message/end-condition';
 import {WhenISaySo} from '../club/subjugated/fb/message/when-isay-so';
 import {Contract} from '../club/subjugated/fb/message/contract';
+import {UserDataService} from '../user-data.service';
 
 @Component({
   selector: 'app-new-full-contract',
@@ -30,7 +30,8 @@ export class NewFullContractComponent {
   constructor(private tartarusCoordinatorService : TartarusCoordinatorService,
               private idHelperService: IdHelperService,
               private cryptoService: CryptoService,
-              private qrcodeService: QrcodeService) {
+              private qrcodeService: QrcodeService,
+              private userDataService: UserDataService,) {
   }
 
   ngOnInit() {
@@ -99,7 +100,7 @@ export class NewFullContractComponent {
     const signedMessageOffset = SignedMessage.endSignedMessage(builder);
     builder.finish(signedMessageOffset);
 
-    this.tartarusCoordinatorService.saveContract(contractName, builder.asUint8Array()).subscribe(r => {
+    this.tartarusCoordinatorService.saveContract(this.userDataService.getAuthorName(), contractName, builder.asUint8Array()).subscribe(r => {
       console.log("Saved");
     })
 
