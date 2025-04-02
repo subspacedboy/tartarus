@@ -9,8 +9,9 @@ import { provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
 import {provideAnimations} from '@angular/platform-browser/animations';
-import {provideHttpClient} from '@angular/common/http';
+import {provideHttpClient, withInterceptors} from '@angular/common/http';
 import {ConfigService} from './config.service';
+import {authInterceptor} from './auth.interceptor';
 
 function loadConfig(configService: ConfigService) : Promise<void>
 {
@@ -23,7 +24,7 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
     provideAnimations(),
-    provideHttpClient(),
+    provideHttpClient(withInterceptors([authInterceptor])),
     ConfigService,
     provideAppInitializer(() => loadConfig(inject(ConfigService))),
   ]

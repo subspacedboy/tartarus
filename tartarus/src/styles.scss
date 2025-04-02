@@ -1,4 +1,5 @@
 /* You can add global styles to this file, and also import other style files */
+/* Importing Bootstrap SCSS file. */
 @import '../node_modules/bootswatch/dist/spacelab/bootstrap.min.css';
 
 //@import "../node_modules/angular-calendar/css/angular-calendar.css";
@@ -12,5 +13,6 @@
   margin: 0.25em
 }
 
-/* Importing Bootstrap SCSS file. */
-@import 'bootstrap/scss/bootstrap';
+.row {
+  margin-top: 1em;
+}

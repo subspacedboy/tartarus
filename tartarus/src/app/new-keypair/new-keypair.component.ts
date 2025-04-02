@@ -1,9 +1,9 @@
 import {Component, ElementRef, OnInit, ViewChild} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 
-import jsQR from 'jsqr';
 import * as QRCode from 'qrcode';
 import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
+import {Platform} from '@angular/cdk/platform';
 
 @Component({
   selector: 'app-new-keypair',
@@ -23,10 +23,11 @@ export class NewKeypairComponent implements OnInit {
 
   @ViewChild('hiddenDiv', { static: false }) hiddenDiv!: ElementRef;
 
-  constructor(private tartarusCoordinatorService : TartarusCoordinatorService) {
+  constructor(private tartarusCoordinatorService : TartarusCoordinatorService,
+              private platform: Platform,) {
   }
 
-  ngOnInit(): void {
+  async ngOnInit() {
 
   }
 
@@ -69,10 +70,24 @@ export class NewKeypairComponent implements OnInit {
 
   downloadQRCode() {
     const canvas = this.canvas.nativeElement;
-    const link = document.createElement('a');
-    link.href = canvas.toDataURL('image/png');
-    link.download = 'qrcode.png';
-    link.click();
+    const imageData = canvas.toDataURL('image/png');
+
+    if (this.platform.IOS) {
+      const newWindow = window.open(imageData, '_blank');
+      if (!newWindow) {
+        const link = document.createElement('a');
+        link.href = imageData;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } else {
+      const link = document.createElement('a');
+      link.href = imageData;
+      link.download = 'qrcode.png';
+      link.click();
+    }
   }
 
   async generateKeyPair(): Promise<{ privateKeyPEM: string; publicKeyPEM: string }> {

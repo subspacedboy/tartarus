@@ -1,5 +1,5 @@
 import {Component, OnInit} from '@angular/core';
-import {ActivatedRoute, Router, RouterLink, RouterOutlet} from '@angular/router';
+import {ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet} from '@angular/router';
 import {NgbDropdown, NgbDropdownItem, NgbDropdownMenu, NgbDropdownToggle} from '@ng-bootstrap/ng-bootstrap';
 import {UserDataService} from './user-data.service';
 
@@ -19,11 +19,21 @@ export class AppComponent implements OnInit {
     private router: Router,
     private route: ActivatedRoute,
     private userData: UserDataService) {
-    this.hasLockSessions = this.userData.hasLockSessions();
-    this.hasAuthorSession = this.userData.isAlreadyLoggedIn();
+    this.updateSessionStatus();
   }
 
   ngOnInit() {
+    this.updateSessionStatus();
 
+    this.router.events.subscribe(event => {
+      if (event instanceof NavigationEnd) {
+        this.updateSessionStatus();
+      }
+    });
+  }
+
+  private updateSessionStatus() {
+    this.hasLockSessions = this.userData.hasLockSessions();
+    this.hasAuthorSession = this.userData.isAlreadyLoggedIn();
   }
 }

@@ -49,13 +49,18 @@ startedWithLocalContract():boolean {
   return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
 }
 
-isLocked():boolean {
+currentContractSerial():number {
   const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
+}
+
+isLocked():boolean {
+  const offset = this.bb!.__offset(this.bb_pos, 12);
   return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
 }
 
 static startStartedUpdate(builder:flatbuffers.Builder) {
-  builder.startObject(4);
+  builder.startObject(5);
 }
 
 static addPublicKey(builder:flatbuffers.Builder, publicKeyOffset:flatbuffers.Offset) {
@@ -82,8 +87,12 @@ static addStartedWithLocalContract(builder:flatbuffers.Builder, startedWithLocal
   builder.addFieldInt8(2, +startedWithLocalContract, +false);
 }
 
+static addCurrentContractSerial(builder:flatbuffers.Builder, currentContractSerial:number) {
+  builder.addFieldInt16(3, currentContractSerial, 0);
+}
+
 static addIsLocked(builder:flatbuffers.Builder, isLocked:boolean) {
-  builder.addFieldInt8(3, +isLocked, +false);
+  builder.addFieldInt8(4, +isLocked, +false);
 }
 
 static endStartedUpdate(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -91,11 +100,12 @@ static endStartedUpdate(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createStartedUpdate(builder:flatbuffers.Builder, publicKeyOffset:flatbuffers.Offset, sessionOffset:flatbuffers.Offset, startedWithLocalContract:boolean, isLocked:boolean):flatbuffers.Offset {
+static createStartedUpdate(builder:flatbuffers.Builder, publicKeyOffset:flatbuffers.Offset, sessionOffset:flatbuffers.Offset, startedWithLocalContract:boolean, currentContractSerial:number, isLocked:boolean):flatbuffers.Offset {
   StartedUpdate.startStartedUpdate(builder);
   StartedUpdate.addPublicKey(builder, publicKeyOffset);
   StartedUpdate.addSession(builder, sessionOffset);
   StartedUpdate.addStartedWithLocalContract(builder, startedWithLocalContract);
+  StartedUpdate.addCurrentContractSerial(builder, currentContractSerial);
   StartedUpdate.addIsLocked(builder, isLocked);
   return StartedUpdate.endStartedUpdate(builder);
 }

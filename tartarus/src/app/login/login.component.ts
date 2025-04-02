@@ -4,6 +4,7 @@ import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
 import jsQR from 'jsqr';
 import {IdHelperService} from '../id-helper.service';
 import {CryptoService} from '../crypto.service';
+import {Router} from '@angular/router';
 
 interface LoadedKeyPair {
   privateKey: CryptoKey;
@@ -27,7 +28,8 @@ export class LoginComponent implements OnInit {
   constructor(private userDataService: UserDataService,
               private tartarusCoordinatorService: TartarusCoordinatorService,
               private idHelperService: IdHelperService,
-              private cryptoService: CryptoService,) {
+              private cryptoService: CryptoService,
+              private router: Router) {
   }
 
   ngOnInit() {}
@@ -74,6 +76,8 @@ export class LoginComponent implements OnInit {
 
               this.userDataService.addPublicAndPrivateKeyToLocalSession(r.privateKeyPEM, r.publicKeyPEM, String(session_result.sessionToken));
               this.loginComplete = true;
+
+              this.router.navigate(['/']);
             });
         })
       });
@@ -81,7 +85,6 @@ export class LoginComponent implements OnInit {
   }
 
   async loadKeyPair(pemData: string): Promise<LoadedKeyPair> {
-    console.log(pemData);
     // Extract PEM blocks
     const privateKeyPEM = pemData.match(/-----BEGIN PRIVATE KEY-----(.*?)-----END PRIVATE KEY-----/s)?.[0] || "";
     const publicKeyPEM = pemData.match(/-----BEGIN PUBLIC KEY-----(.*?)-----END PUBLIC KEY-----/s)?.[0] || "";
@@ -124,5 +127,4 @@ export class LoginComponent implements OnInit {
     }
     return bytes.buffer;
   }
-
 }

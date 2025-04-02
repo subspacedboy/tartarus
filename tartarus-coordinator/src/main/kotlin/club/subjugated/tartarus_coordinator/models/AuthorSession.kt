@@ -18,6 +18,9 @@ class AuthorSession(
     var contracts : MutableList<Contract> = mutableListOf(),
 
     @OneToMany(mappedBy = "id", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    var knownTokens : MutableList<KnownToken> = mutableListOf(),
+
+    @OneToMany(mappedBy = "id", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     var commands : MutableList<Command> = mutableListOf(),
 
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,

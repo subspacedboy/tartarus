@@ -60,6 +60,14 @@ export class UserDataService {
     localStorage.setItem('author_session_token', token);
   }
 
+  logoutAuthorSession() {
+    localStorage.removeItem('private_pem');
+    localStorage.removeItem('public_pem');
+
+    localStorage.removeItem('has_author_session');
+    localStorage.removeItem('author_session_token');
+  }
+
   getAuthorName() : string {
     return String(localStorage.getItem('author_session_token'));
   }

@@ -937,7 +937,8 @@ impl<'a> StartedUpdate<'a> {
   pub const VT_PUBLIC_KEY: flatbuffers::VOffsetT = 4;
   pub const VT_SESSION: flatbuffers::VOffsetT = 6;
   pub const VT_STARTED_WITH_LOCAL_CONTRACT: flatbuffers::VOffsetT = 8;
-  pub const VT_IS_LOCKED: flatbuffers::VOffsetT = 10;
+  pub const VT_CURRENT_CONTRACT_SERIAL: flatbuffers::VOffsetT = 10;
+  pub const VT_IS_LOCKED: flatbuffers::VOffsetT = 12;
 
   #[inline]
   pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -951,6 +952,7 @@ impl<'a> StartedUpdate<'a> {
     let mut builder = StartedUpdateBuilder::new(_fbb);
     if let Some(x) = args.session { builder.add_session(x); }
     if let Some(x) = args.public_key { builder.add_public_key(x); }
+    builder.add_current_contract_serial(args.current_contract_serial);
     builder.add_is_locked(args.is_locked);
     builder.add_started_with_local_contract(args.started_with_local_contract);
     builder.finish()
@@ -979,6 +981,13 @@ impl<'a> StartedUpdate<'a> {
     unsafe { self._tab.get::<bool>(StartedUpdate::VT_STARTED_WITH_LOCAL_CONTRACT, Some(false)).unwrap()}
   }
   #[inline]
+  pub fn current_contract_serial(&self) -> u16 {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<u16>(StartedUpdate::VT_CURRENT_CONTRACT_SERIAL, Some(0)).unwrap()}
+  }
+  #[inline]
   pub fn is_locked(&self) -> bool {
     // Safety:
     // Created from valid Table for this object
@@ -997,6 +1006,7 @@ impl flatbuffers::Verifiable for StartedUpdate<'_> {
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, u8>>>("public_key", Self::VT_PUBLIC_KEY, false)?
      .visit_field::<flatbuffers::ForwardsUOffset<&str>>("session", Self::VT_SESSION, false)?
      .visit_field::<bool>("started_with_local_contract", Self::VT_STARTED_WITH_LOCAL_CONTRACT, false)?
+     .visit_field::<u16>("current_contract_serial", Self::VT_CURRENT_CONTRACT_SERIAL, false)?
      .visit_field::<bool>("is_locked", Self::VT_IS_LOCKED, false)?
      .finish();
     Ok(())
@@ -1006,6 +1016,7 @@ pub struct StartedUpdateArgs<'a> {
     pub public_key: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
     pub session: Option<flatbuffers::WIPOffset<&'a str>>,
     pub started_with_local_contract: bool,
+    pub current_contract_serial: u16,
     pub is_locked: bool,
 }
 impl<'a> Default for StartedUpdateArgs<'a> {
@@ -1015,6 +1026,7 @@ impl<'a> Default for StartedUpdateArgs<'a> {
       public_key: None,
       session: None,
       started_with_local_contract: false,
+      current_contract_serial: 0,
       is_locked: false,
     }
   }
@@ -1036,6 +1048,10 @@ impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> StartedUpdateBuilder<'a, 'b, A>
   #[inline]
   pub fn add_started_with_local_contract(&mut self, started_with_local_contract: bool) {
     self.fbb_.push_slot::<bool>(StartedUpdate::VT_STARTED_WITH_LOCAL_CONTRACT, started_with_local_contract, false);
+  }
+  #[inline]
+  pub fn add_current_contract_serial(&mut self, current_contract_serial: u16) {
+    self.fbb_.push_slot::<u16>(StartedUpdate::VT_CURRENT_CONTRACT_SERIAL, current_contract_serial, 0);
   }
   #[inline]
   pub fn add_is_locked(&mut self, is_locked: bool) {
@@ -1062,6 +1078,7 @@ impl core::fmt::Debug for StartedUpdate<'_> {
       ds.field("public_key", &self.public_key());
       ds.field("session", &self.session());
       ds.field("started_with_local_contract", &self.started_with_local_contract());
+      ds.field("current_contract_serial", &self.current_contract_serial());
       ds.field("is_locked", &self.is_locked());
       ds.finish()
   }

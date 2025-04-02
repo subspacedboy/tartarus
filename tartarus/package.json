@@ -11,6 +11,7 @@
   "private": true,
   "dependencies": {
     "@angular/animations": "^19.1.0",
+    "@angular/cdk": "^19.2.2",
     "@angular/common": "^19.1.0",
     "@angular/compiler": "^19.1.0",
     "@angular/core": "^19.1.0",
@@ -24,6 +25,7 @@
     "bootswatch": "^5.3.3",
     "flatbuffers": "^25.2.10",
     "hi-base32": "^0.5.1",
+    "jose": "^6.0.9",
     "jsqr": "^1.4.0",
     "ngx-spinner": "^17.0.0",
     "qrcode": "^1.5.4",

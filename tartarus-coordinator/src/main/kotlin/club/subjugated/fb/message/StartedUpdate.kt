@@ -58,9 +58,14 @@ class StartedUpdate : Table() {
             val o = __offset(8)
             return if(o != 0) 0.toByte() != bb.get(o + bb_pos) else false
         }
-    val isLocked : Boolean
+    val currentContractSerial : UShort
         get() {
             val o = __offset(10)
+            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+        }
+    val isLocked : Boolean
+        get() {
+            val o = __offset(12)
             return if(o != 0) 0.toByte() != bb.get(o + bb_pos) else false
         }
     companion object {
@@ -70,15 +75,16 @@ class StartedUpdate : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createStartedUpdate(builder: FlatBufferBuilder, publicKeyOffset: Int, sessionOffset: Int, startedWithLocalContract: Boolean, isLocked: Boolean) : Int {
-            builder.startTable(4)
+        fun createStartedUpdate(builder: FlatBufferBuilder, publicKeyOffset: Int, sessionOffset: Int, startedWithLocalContract: Boolean, currentContractSerial: UShort, isLocked: Boolean) : Int {
+            builder.startTable(5)
             addSession(builder, sessionOffset)
             addPublicKey(builder, publicKeyOffset)
+            addCurrentContractSerial(builder, currentContractSerial)
             addIsLocked(builder, isLocked)
             addStartedWithLocalContract(builder, startedWithLocalContract)
             return endStartedUpdate(builder)
         }
-        fun startStartedUpdate(builder: FlatBufferBuilder) = builder.startTable(4)
+        fun startStartedUpdate(builder: FlatBufferBuilder) = builder.startTable(5)
         fun addPublicKey(builder: FlatBufferBuilder, publicKey: Int) = builder.addOffset(0, publicKey, 0)
         @kotlin.ExperimentalUnsignedTypes
         fun createPublicKeyVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
@@ -91,7 +97,8 @@ class StartedUpdate : Table() {
         fun startPublicKeyVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
         fun addSession(builder: FlatBufferBuilder, session: Int) = builder.addOffset(1, session, 0)
         fun addStartedWithLocalContract(builder: FlatBufferBuilder, startedWithLocalContract: Boolean) = builder.addBoolean(2, startedWithLocalContract, false)
-        fun addIsLocked(builder: FlatBufferBuilder, isLocked: Boolean) = builder.addBoolean(3, isLocked, false)
+        fun addCurrentContractSerial(builder: FlatBufferBuilder, currentContractSerial: UShort) = builder.addShort(3, currentContractSerial.toShort(), 0)
+        fun addIsLocked(builder: FlatBufferBuilder, isLocked: Boolean) = builder.addBoolean(4, isLocked, false)
         fun endStartedUpdate(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o

@@ -11,6 +11,7 @@ import {authGuard} from './auth.guard';
 import {LockSessionDetailComponent} from './lock-session-detail/lock-session-detail.component';
 import {ContractDetailComponent} from './contract-detail/contract-detail.component';
 import {CoordinatorConfigurationComponent} from './coordinator-configuration/coordinator-configuration.component';
+import {LogoutAuthorComponent} from './logout-author/logout-author.component';
 
 export const routes: Routes = [
   {
@@ -38,6 +39,10 @@ export const routes: Routes = [
   {
     path: 'login',
     component: LoginComponent
+  },
+  {
+    path: 'logout-author',
+    component: LogoutAuthorComponent
   },
   {
     path: 'lock-sessions',

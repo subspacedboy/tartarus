@@ -586,6 +586,7 @@ impl LockCtx {
         config.password = Some("tartarus");
         config.username = Some(self.session_token.as_ref());
         config.reconnect_timeout = Some(Duration::from_secs(5));
+        config.keep_alive_interval = Some(Duration::from_secs(20));
 
         // Requires -> CONFIG_MBEDTLS_CERTIFICATE_BUNDLE in sdkconfig.defaults
         config.crt_bundle_attach = Some(esp_idf_svc::sys::esp_crt_bundle_attach);

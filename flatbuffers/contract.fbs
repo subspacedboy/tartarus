@@ -46,6 +46,8 @@ table StartedUpdate {
     session: string;
 
     started_with_local_contract: bool;
+
+    current_contract_serial: ushort;
     is_locked: bool;
 }
 
@@ -82,9 +84,14 @@ table ReleaseCommand {
     serial_number: ushort;
     counter: ushort;
 }
+table AbortCommand {
+    contract_serial_number: ushort;
+    serial_number: ushort;
+    counter: ushort;
+}
 
 union MessagePayload {
-  Contract, LockCommand, UnlockCommand, ReleaseCommand, StartedUpdate, Acknowledgement, Error
+  Contract, LockCommand, UnlockCommand, ReleaseCommand, StartedUpdate, Acknowledgement, Error, AbortCommand
 }
 
 table SignedMessage {

@@ -2,13 +2,18 @@ package club.subjugated.tartarus_coordinator.api
 
 import club.subjugated.tartarus_coordinator.api.messages.LockSessionMessage
 import club.subjugated.tartarus_coordinator.api.messages.NewLockSessionMessage
+import club.subjugated.tartarus_coordinator.services.AuthorSessionService
 import club.subjugated.tartarus_coordinator.services.LockSessionService
 import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromByteArray
 import jakarta.ws.rs.core.MediaType
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.*
+import java.security.Principal
 import java.util.*
 
 @RestController
@@ -17,6 +22,8 @@ import java.util.*
 class LockSessionController {
     @Autowired
     lateinit var lockSessionService: LockSessionService
+    @Autowired
+    lateinit var authorSessionService: AuthorSessionService
 
     @GetMapping("/mine/{someToken}", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
@@ -27,8 +34,11 @@ class LockSessionController {
 
     @GetMapping("/{someToken}", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
-    fun findLockSession(@PathVariable someToken : String) : ResponseEntity<LockSessionMessage>{
+    fun findLockSession(@AuthenticationPrincipal user: UserDetails, @PathVariable someToken : String) : ResponseEntity<LockSessionMessage>{
         val maybeSession = this.lockSessionService.findByShareableToken(someToken) ?: return ResponseEntity.notFound().build()
+
+        val authorSession = this.authorSessionService.findByName(user.username)
+        this.authorSessionService.authorHasSeenToken(authorSession, someToken)
 
         return ResponseEntity.ok(LockSessionMessage.fromLockSession(maybeSession))
     }

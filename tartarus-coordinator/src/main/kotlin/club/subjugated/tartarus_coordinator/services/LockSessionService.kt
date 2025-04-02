@@ -1,9 +1,9 @@
 package club.subjugated.tartarus_coordinator.services
 
 import club.subjugated.tartarus_coordinator.api.messages.NewLockSessionMessage
-import club.subjugated.tartarus_coordinator.models.CommandQueue
-import club.subjugated.tartarus_coordinator.models.LockSession
+import club.subjugated.tartarus_coordinator.models.*
 import club.subjugated.tartarus_coordinator.storage.CommandQueueRepository
+import club.subjugated.tartarus_coordinator.storage.KnownTokenRepository
 import club.subjugated.tartarus_coordinator.storage.LockSessionRepository
 import club.subjugated.tartarus_coordinator.util.TimeSource
 import club.subjugated.tartarus_coordinator.util.generateId
@@ -18,6 +18,7 @@ class LockSessionService {
     lateinit var lockSessionRepository: LockSessionRepository
     @Autowired
     lateinit var commandQueueRepository: CommandQueueRepository
+
 
     fun createLockSession(newLockSessionMessage: NewLockSessionMessage) : LockSession {
         return lockSessionRepository.findBySessionToken(newLockSessionMessage.sessionToken)

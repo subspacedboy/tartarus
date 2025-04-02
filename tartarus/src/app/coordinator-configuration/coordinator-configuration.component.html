@@ -1,4 +1,52 @@
-<h1>Configuration data</h1>
+<div class="alert alert-dismissible alert-warning">
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  <h4 class="alert-heading">Warning!</h4>
+  <p class="mb-0">This is an expert mode page. If you're not sure what any of this does, don't adjust it.</p>
+</div>
+
+<div class="row">
+  <div class="col-lg-4">
+    <div class="bs-component">
+      <h2>Tartarus Lock Configuration Data</h2>
+      <h3>What is this for?</h3>
+      <p>This is used to tell your Tartarus lock where to connect. You can manually adjust the URIs if you're running
+      your own version of the coordinator service and frontend somewhere else.</p>
+    </div>
+  </div>
+</div>
+
+
+
+<div class="row" style="margin-top: 1em;">
+  <form [formGroup]="configurationForm" (submit)="regenerate()">
+    <fieldset>
+      <div class="col-sm-10">
+        <label for="webUri">Web URI: </label>
+        <input id="webUri" class="form-control" type="text" formControlName="webUri" placeholder="Web URI">
+      </div>
+
+      <div class="col-sm-10">
+        <label for="apiUri">API URI: </label>
+        <input id="apiUri" class="form-control" type="text" formControlName="apiUri" placeholder="Web URI">
+      </div>
+
+      <div class="col-sm-10">
+        <label for="mqttUri">MQTT URI: </label>
+        <input id="mqttUri" class="form-control" type="text" formControlName="mqttUri" placeholder="MQTT URI">
+      </div>
+
+      <div class="form-check form-switch">
+        <label class="form-check-label" for="includeSafetyKeys">Include Safety Keys?</label>
+        <input id="includeSafetyKeys" class="form-check-input" type="checkbox" formControlName="includeSafetyKeys">
+      </div>
+
+      <button class="btn btn-small btn-primary" type="submit">
+        Regenerate
+      </button>
+    </fieldset>
+  </form>
+</div>
+
 
 <div #hiddenDiv hidden>
   <h1 style="color: black">Configuration Data</h1>

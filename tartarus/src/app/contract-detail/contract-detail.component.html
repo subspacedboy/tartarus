@@ -5,12 +5,16 @@
     State: {{contract.state}}
   </div>
 
-  <div>
-    TODO: Refresh contract after making commands so counter increments
-  </div>
+  @switch (contract.state) {
+    @case('CONFIRMED') {
+      <button type="button" class="btn btn-primary" (click)="unlock()">Unlock</button>
+      <button type="button" class="btn btn-primary" (click)="lock()">Lock</button>
+      <button type="button" class="btn btn-warning" (click)="release()">Release</button>
+    }
+    @case('RELEASED') {
+      Contract has ended.
+    }
+  }
 
-  <button (click)="unlock()">Unlock</button>
-  <button (click)="lock()">Lock</button>
-  <button (click)="release()">Release</button>
 
 }

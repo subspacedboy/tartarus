@@ -56,6 +56,8 @@ dependencies {
 	implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
 	implementation("org.bouncycastle:bcprov-jdk18on:1.80")
 	implementation("com.github.ben-manes.caffeine:caffeine:3.2.0")
+	// https://mvnrepository.com/artifact/com.nimbusds/nimbus-jose-jwt
+	implementation("com.nimbusds:nimbus-jose-jwt:10.0.2")
 }
 
 dependencyManagement {

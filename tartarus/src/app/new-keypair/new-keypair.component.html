@@ -1,21 +1,22 @@
-<div>
-  <h1>Key Generator</h1>
+<div class="row">
+  <div class="col-lg-4">
+    <div class="bs-component">
+      <h2>Key Generator</h2>
+      <h3>What is this for?</h3>
+      <p>This will make you a key. A key is really just an image containing a QR code.
+        I strongly recommend saving this to your phone camera roll or to some place it will be safe
+        and probably backed up automatically. If you lose it, it's gone forever.</p>
 
-  <div class="row">
-    This will make you a key. A key is really just an image containing a QR code.
-    I strongly recommend saving this to your phone camera roll or to some place it will be safe
-    and probably backed up automatically.
-  </div>
+      <div>
+        <button type="button" class="btn-light" (click)="generateQRCode()">Generate Key</button>
+      </div>
 
-  <div>
-    <button (click)="generateQRCode()">Generate Key</button>
-  </div>
-  <!-- QR Code Display -->
-
-    <div #hiddenDiv hidden>
-      <h1 style="color: red">Do not share.</h1>
-      <canvas #canvas></canvas>
-      <h1 style="color: red">Do not share.</h1>
-      <button (click)="downloadQRCode()">Download QR Code</button>
+      <div #hiddenDiv hidden>
+        <h1 style="color: red">Do not share.</h1>
+        <canvas #canvas></canvas>
+        <h1 style="color: red">Do not share.</h1>
+        <button (click)="downloadQRCode()">Download QR Code</button>
+      </div>
     </div>
+  </div>
 </div>

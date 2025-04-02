@@ -1,11 +1,13 @@
 import {Component, Input} from '@angular/core';
 import {Contract} from '../models/contract';
 import {RouterLink} from '@angular/router';
+import {DatePipe} from '@angular/common';
 
 @Component({
   selector: 'app-contract-card',
   imports: [
-    RouterLink
+    RouterLink,
+    DatePipe
   ],
   templateUrl: './contract-card.component.html',
   styleUrl: './contract-card.component.scss'

@@ -69,3 +69,14 @@ create table safety_key (
     created_at DATETIME,
     PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+create table known_token (
+    id bigint NOT NULL AUTO_INCREMENT,
+    name varchar(25) NOT NULL,
+    state varchar(25) NOT NULL,
+    author_id bigint NOT NULL,
+    notes varchar(255) NOT NULL,
+    shareable_token varchar(10) NOT NULL,
+    created_at DATETIME,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
