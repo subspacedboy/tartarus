@@ -1,5 +1,12 @@
 <h1>Lock Sessions</h1>
 
+@if(knownTokens.length == 0) {
+  <p>
+    You don't have any lock sessions yet. You'll need a lock session link to write a contract. Go find a
+    sub with a Tartarus lock 😘
+  </p>
+}
+
 @for (k of knownTokens; track k.name) {
   <div class="row" style="margin-top: 1em;">
     <div class="col-lg-5">

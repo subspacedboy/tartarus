@@ -13,12 +13,13 @@ import {KnownToken} from '../models/known-token';
   styleUrl: './lock-sessions.component.scss'
 })
 export class LockSessionsComponent implements OnInit {
-  knownTokens?: KnownToken[];
+  knownTokens: KnownToken[];
 
   constructor(private activatedRoute: ActivatedRoute,
               private router: Router,
               private tartarusCoordinatorService: TartarusCoordinatorService,
               ) {
+    this.knownTokens = [];
   }
 
   ngOnInit() {
