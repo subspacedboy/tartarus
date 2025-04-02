@@ -1,6 +1,7 @@
 package club.subjugated.tartarus_coordinator.api
 
 import club.subjugated.tartarus_coordinator.api.messages.KnownTokenMessage
+import club.subjugated.tartarus_coordinator.api.messages.LockSessionArgs
 import club.subjugated.tartarus_coordinator.api.messages.LockSessionMessage
 import club.subjugated.tartarus_coordinator.api.messages.NewLockSessionMessage
 import club.subjugated.tartarus_coordinator.api.messages.UpdateKnownTokenMessage
@@ -30,24 +31,32 @@ class LockSessionController {
     @ResponseBody
     fun findMyLockSession(@AuthenticationPrincipal user: UserDetails, @PathVariable someToken: String): ResponseEntity<LockSessionMessage> {
         val maybeSession = this.lockSessionService.findBySessionToken(someToken)
-        return ResponseEntity.ok(LockSessionMessage.fromLockSession(maybeSession, null, null,  false))
+        return ResponseEntity.ok(LockSessionMessage.fromLockSession(maybeSession, null, null,  listOf()))
     }
 
     @GetMapping("/{someToken}", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
     fun findLockSession(
-        @AuthenticationPrincipal user: UserDetails,
+        @AuthenticationPrincipal author: UserDetails,
         @PathVariable someToken: String,
     ): ResponseEntity<LockSessionMessage> {
         val maybeSession =
             this.lockSessionService.findByShareableToken(someToken)
                 ?: return ResponseEntity.notFound().build()
 
-        val authorSession = this.authorSessionService.findByName(user.username)
+        val authorSession = this.authorSessionService.findByName(author.username)
         val knownToken = this.authorSessionService.authorKnowsToken(authorSession, someToken)
 
-        val suppressTotalControl = someToken != maybeSession.totalControlToken
-        return ResponseEntity.ok(LockSessionMessage.fromLockSession(maybeSession, null, knownToken, suppressTotalControl))
+        val args = if(someToken != maybeSession.totalControlToken) {
+            // This is the general shareable token, so make sure it doesn't include
+            // either lock state or the total control token.
+            listOf(LockSessionArgs.SUPPRESS_TC_TOKEN, LockSessionArgs.SUPPRESS_LOCK_STATE, LockSessionArgs.SUPPRESS_AVAILABLE_FOR_CONTRACT)
+        } else {
+            // This was the total control token. But we still don't include lock state. We do however
+            // include if it's available for contract.
+            listOf(LockSessionArgs.SUPPRESS_LOCK_STATE)
+        }
+        return ResponseEntity.ok(LockSessionMessage.fromLockSession(maybeSession, null, knownToken, args))
     }
 
     @GetMapping("/known", produces = [MediaType.APPLICATION_JSON])
@@ -88,6 +97,6 @@ class LockSessionController {
         val session = lockSessionService.createLockSession(newLockSessionMessage)
         val userSession = lockUserSessionService.saveNewLockUserSession(session, newLockSessionMessage.userSessionPublicKey)
 
-        return ResponseEntity.ok(LockSessionMessage.fromLockSession(session, userSession, null, false))
+        return ResponseEntity.ok(LockSessionMessage.fromLockSession(session, userSession, null, listOf()))
     }
 }

@@ -3,6 +3,8 @@ package club.subjugated.tartarus_coordinator.services
 import club.subjugated.tartarus_coordinator.api.messages.NewLockSessionMessage
 import club.subjugated.tartarus_coordinator.components.CustomMqttSecurity
 import club.subjugated.tartarus_coordinator.events.NewCommandEvent
+import club.subjugated.tartarus_coordinator.events.PeriodicUpdateEvent
+import club.subjugated.tartarus_coordinator.models.ContractState
 import club.subjugated.tartarus_coordinator.util.*
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
@@ -39,6 +41,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
     @Autowired lateinit var lockSessionService: LockSessionService
     @Autowired lateinit var commandQueueService: CommandQueueService
     @Autowired lateinit var configurationService: ConfigurationService
+    @Autowired lateinit var contractService: ContractService
 
     @Autowired lateinit var security: CustomMqttSecurity
 
@@ -150,6 +153,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
         val update = signedMessage.periodicUpdate
 
         println("👀 Periodic update from ${update.session} -> Locked? ${update.isLocked}, Local Lock -> ${update.localLock}, Local Unlock -> ${update.localUnlock}")
+        this.lockSessionService.handlePeriodicUpdate(update)
     }
 
     private fun handleAcknowledgePayload(signedMessage: ValidatedPayload.AcknowledgementPayload) {
@@ -181,7 +185,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
         println("😞 Error received $err")
     }
 
-    fun isSessionLive(sessionToken: String): Boolean {
+    fun tokenHasLiveSession(sessionToken: String): Boolean {
         return this.liveClients.getIfPresent(sessionToken) != null
     }
 

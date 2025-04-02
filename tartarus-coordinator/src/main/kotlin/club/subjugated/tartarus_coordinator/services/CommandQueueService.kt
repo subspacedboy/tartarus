@@ -5,6 +5,7 @@ import club.subjugated.tartarus_coordinator.events.AcknowledgedCommandEvent
 import club.subjugated.tartarus_coordinator.models.AuthorSession
 import club.subjugated.tartarus_coordinator.models.Command
 import club.subjugated.tartarus_coordinator.models.CommandState
+import club.subjugated.tartarus_coordinator.models.CommandType
 import club.subjugated.tartarus_coordinator.models.Contract
 import club.subjugated.tartarus_coordinator.models.LockSession
 import club.subjugated.tartarus_coordinator.storage.CommandQueueRepository
@@ -27,6 +28,14 @@ class CommandQueueService {
 
     fun acknowledgeCommand(command: Command, ack: Acknowledgement) {
         command.state = CommandState.ACKNOWLEDGED
+
+        if(command.type == CommandType.RELEASE) {
+            command.commandQueue.lockSession.availableForContract = true
+        }
+        if(command.type == CommandType.ACCEPT_CONTRACT) {
+            command.commandQueue.lockSession.availableForContract = false
+        }
+
         publisher.publishEvent(AcknowledgedCommandEvent(this, command, ack))
         saveCommand(command)
     }

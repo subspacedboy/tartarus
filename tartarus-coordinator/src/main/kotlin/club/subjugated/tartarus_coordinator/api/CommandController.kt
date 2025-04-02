@@ -1,8 +1,6 @@
 package club.subjugated.tartarus_coordinator.api
 
 import club.subjugated.tartarus_coordinator.api.messages.CommandMessage
-import club.subjugated.tartarus_coordinator.api.messages.ContractMessage
-import club.subjugated.tartarus_coordinator.models.ContractState
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
 import club.subjugated.tartarus_coordinator.services.CommandQueueService
 import club.subjugated.tartarus_coordinator.services.ContractService
@@ -42,7 +40,7 @@ class CommandController {
         @PathVariable contractName: String
     ): ResponseEntity<List<CommandMessage>> {
         val authorUserSession = authorSessionService.findByName(authorUser.username)
-        val contract = this.contractService.getByName(contractName)
+        val contract = this.contractService.getByNameForAuthor(contractName)
         val commands = this.commandQueueService.getByAuthorSessionIdAndContract(authorUserSession, contract)
 
         return ResponseEntity.ok(commands.map { CommandMessage.fromCommand(it) })
@@ -55,7 +53,7 @@ class CommandController {
         @PathVariable contractName: String
     ): ResponseEntity<List<CommandMessage>> {
         val lockSessionUser = lockUserSessionService.findByName(lockUser.username)
-        val contract = this.contractService.getByName(contractName)
+        val contract = this.contractService.getByNameForAuthor(contractName)
         assert(lockSessionUser.lockSession == contract.lockSession)
 
         val commands = this.commandQueueService.getByLockSessionIdAndContract(contract)

@@ -1,19 +1,8 @@
 @if(lockSession) {
-
-
-
-
   <div class="row">
     <div class="col-lg-4">
       <div class="bs-component">
         <h2>Lock Session {{sessionToken}}</h2>
-
-        @if(lockSession?.isTotalControlToken()) {
-          <div>
-            <h2 class="text-warning">Total control token</h2>
-          </div>
-        }
-
         <h3>What is this for?</h3>
         <p>This is where you see contracts you've written for this lock + holder.</p>
       </div>
@@ -38,9 +27,26 @@
   <div class="row">
     <div class="col-lg-4">
       <div class="bs-component">
-        <div class="d-grid gap-2">
-          <button type="button" class="btn btn-large btn-primary" (click)="navToNewContract()">New Contract</button>
-        </div>
+
+        @if(lockSession?.isTotalControlToken()) {
+          <div>
+            <h2 class="text-warning">Total Control</h2>
+            <p>Note: You have a total control token. This means you can just assign a contract directly
+            to the lock. The lock owner will not be prompted.</p>
+          </div>
+        }
+
+        @if(lockSession?.availableForContract) {
+          <div class="d-grid gap-2">
+            <button type="button" class="btn btn-large btn-primary" (click)="navToNewContract()">New Contract</button>
+          </div>
+        } @else {
+          <p class="text-warning">
+            Unavailable for new contract
+          </p>
+        }
+
+
       </div>
     </div>
   </div>

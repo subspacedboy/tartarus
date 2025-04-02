@@ -15,6 +15,14 @@
           <p>
             Temporary unlock allowed: {{contractDescription.isTemporaryUnlockAllowed}}
           </p>
+          <p>
+            Terms: {{contractDescription.terms}}
+          </p>
+        }
+
+        @if(contract.notes) {
+          <h3>Notes</h3>
+          <p>{{contract.notes}}</p>
         }
 
         @switch (contract.state) {

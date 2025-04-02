@@ -127,12 +127,13 @@ export class TartarusCoordinatorService {
 
   // Contracts & Commands
 
-  public saveContract(authorName: string, shareableToken: string, signed_message: Uint8Array) : Observable<Contract> {
+  public saveContract(authorName: string, shareableToken: string, signed_message: Uint8Array, notes : string) : Observable<Contract> {
     const save_contract_uri = `${this.baseUrl}/contracts/`;
     const body = JSON.stringify({
       'shareableToken' : shareableToken,
       'authorName' : authorName,
-      'signedMessage' : btoa(String.fromCharCode(...signed_message))
+      'signedMessage' : btoa(String.fromCharCode(...signed_message)),
+      'notes' : notes,
     });
     const headers = new HttpHeaders({ 'Content-Type': 'application/json', 'X-Require-Author' : 'require authorization tokens' });
     return this.http.post(save_contract_uri, body, {headers} ).pipe(map((res:any) => {

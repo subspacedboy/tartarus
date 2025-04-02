@@ -1,5 +1,5 @@
 use crate::contract_generated::club::subjugated::fb::message::{
-    Contract, EndCondition, LockCommand, ReleaseCommand, UnlockCommand,
+    Contract, LockCommand, ReleaseCommand, UnlockCommand,
 };
 use p256::ecdsa::VerifyingKey;
 use serde::{Deserialize, Serialize};
@@ -14,9 +14,6 @@ pub struct SaveState {
 pub struct InternalContract {
     pub serial_number: u16,
     pub temporary_unlock_allowed: bool,
-    pub unremovable: bool,
-    pub end_criteria: EndCriteria,
-    pub temp_unlock_rules: Vec<TempUnlockRules>,
     #[serde(with = "verifying_key_serde")]
     pub public_key: Option<VerifyingKey>,
     pub original_bytes: Vec<u8>,
@@ -58,37 +55,17 @@ pub enum TempUnlockRules {
 
 impl From<Contract<'_>> for InternalContract {
     fn from(contract: Contract<'_>) -> InternalContract {
-        let end_condition = match contract.end_condition_type() {
-            EndCondition::WhenISaySo => EndCriteria::WhenISaySo,
-            EndCondition::TimeEndCondition => EndCriteria::Time,
-            _ => EndCriteria::WhenISaySo,
-        };
-
         let original_bytes = contract._tab.buf().to_vec();
         let verifying_key = VerifyingKey::from_sec1_bytes(contract.public_key().unwrap().bytes())
             .expect("Valid public key");
 
         let mut ic = Self {
             serial_number: contract.serial_number(),
-            temp_unlock_rules: Vec::new(),
-            unremovable: false,
             temporary_unlock_allowed: contract.is_temporary_unlock_allowed(),
-            end_criteria: end_condition,
             public_key: Some(verifying_key),
             original_bytes,
             command_counter: 0,
         };
-
-        if let Some(rules) = contract.unlock_rules() {
-            if rules.max_unlocks() > 0 {
-                ic.temp_unlock_rules
-                    .push(TempUnlockRules::Remaining(rules.max_unlocks()))
-            }
-            if rules.time_limit() > 0 {
-                ic.temp_unlock_rules
-                    .push(TempUnlockRules::TimeLimit(rules.time_limit()));
-            }
-        }
 
         ic
     }

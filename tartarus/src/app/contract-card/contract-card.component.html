@@ -23,7 +23,9 @@
         <div class="card-header">{{ contract.name }}</div>
         <div class="card-body">
           <h4 class="card-title">📋 Created / Being Reviewed</h4>
-          <p class="card-text"><a routerLink="{{basePath}}contract/{{contract.name}}">Details</a></p>
+          <p class="card-text">
+            {{contract.notes}}
+            <a routerLink="{{basePath}}contract/{{contract.name}}">Details</a></p>
         </div>
       </div>
     }

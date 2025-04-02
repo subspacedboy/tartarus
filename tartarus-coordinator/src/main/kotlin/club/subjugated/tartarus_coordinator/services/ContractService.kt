@@ -47,6 +47,7 @@ class ContractService {
                         lockSession = lockSession,
                         state = ContractState.CREATED,
                         body = Base64.getDecoder().decode(newContractMessage.signedMessage),
+                        notes = newContractMessage.notes,
                         authorSession = authorSession,
                         nextCounter = 0,
                         serialNumber = maybeContract.contract.serialNumber.toInt(),
@@ -203,8 +204,12 @@ class ContractService {
         return this.contractRepository.findByAuthorSessionIdAndShareableTokenOrderByCreatedAtDesc(authorSession.id, someToken)
     }
 
-    fun getByName(name: String): Contract {
-        return this.contractRepository.findByName(name)
+    fun getByNameForAuthor(name: String): Contract {
+        val contract = this.contractRepository.findByName(name)
+        if(contract.state == ContractState.CONFIRMED) {
+            contract.lockState = contract.lockSession.isLocked
+        }
+        return contract
     }
 
     @EventListener

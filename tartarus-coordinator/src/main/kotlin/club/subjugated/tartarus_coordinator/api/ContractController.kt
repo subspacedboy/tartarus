@@ -51,9 +51,9 @@ class ContractController {
     @GetMapping("/{name}", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
     fun getContractsByName(
-        @AuthenticationPrincipal user: UserDetails,
+        @AuthenticationPrincipal author: UserDetails,
         @PathVariable name: String): ResponseEntity<ContractMessage> {
-        val contract = this.contractService.getByName(name)
+        val contract = this.contractService.getByNameForAuthor(name)
         return ResponseEntity.ok(ContractMessage.fromContract(contract))
     }
 
@@ -118,7 +118,7 @@ class ContractController {
             this.authorSessionService.findByName(newCommandMessage.authorSessionName!!)
         val lockSession =
             this.lockSessionService.findByShareableToken(newCommandMessage.shareableToken!!)
-        val contract = this.contractService.getByName(newCommandMessage.contractName!!)
+        val contract = this.contractService.getByNameForAuthor(newCommandMessage.contractName!!)
 
         this.contractService.saveCommand(
             authorSession,

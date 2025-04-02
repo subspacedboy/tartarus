@@ -45,104 +45,6 @@ pub mod club {
                     since = "2.0.0",
                     note = "Use associated constants instead. This will no longer be generated in 2021."
                 )]
-                pub const ENUM_MIN_END_CONDITION: u8 = 0;
-                #[deprecated(
-                    since = "2.0.0",
-                    note = "Use associated constants instead. This will no longer be generated in 2021."
-                )]
-                pub const ENUM_MAX_END_CONDITION: u8 = 2;
-                #[deprecated(
-                    since = "2.0.0",
-                    note = "Use associated constants instead. This will no longer be generated in 2021."
-                )]
-                #[allow(non_camel_case_types)]
-                pub const ENUM_VALUES_END_CONDITION: [EndCondition; 3] = [
-                    EndCondition::NONE,
-                    EndCondition::TimeEndCondition,
-                    EndCondition::WhenISaySo,
-                ];
-
-                #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-                #[repr(transparent)]
-                pub struct EndCondition(pub u8);
-                #[allow(non_upper_case_globals)]
-                impl EndCondition {
-                    pub const NONE: Self = Self(0);
-                    pub const TimeEndCondition: Self = Self(1);
-                    pub const WhenISaySo: Self = Self(2);
-
-                    pub const ENUM_MIN: u8 = 0;
-                    pub const ENUM_MAX: u8 = 2;
-                    pub const ENUM_VALUES: &'static [Self] =
-                        &[Self::NONE, Self::TimeEndCondition, Self::WhenISaySo];
-                    /// Returns the variant's name or "" if unknown.
-                    pub fn variant_name(self) -> Option<&'static str> {
-                        match self {
-                            Self::NONE => Some("NONE"),
-                            Self::TimeEndCondition => Some("TimeEndCondition"),
-                            Self::WhenISaySo => Some("WhenISaySo"),
-                            _ => None,
-                        }
-                    }
-                }
-                impl core::fmt::Debug for EndCondition {
-                    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                        if let Some(name) = self.variant_name() {
-                            f.write_str(name)
-                        } else {
-                            f.write_fmt(format_args!("<UNKNOWN {:?}>", self.0))
-                        }
-                    }
-                }
-                impl<'a> flatbuffers::Follow<'a> for EndCondition {
-                    type Inner = Self;
-                    #[inline]
-                    unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                        let b = flatbuffers::read_scalar_at::<u8>(buf, loc);
-                        Self(b)
-                    }
-                }
-
-                impl flatbuffers::Push for EndCondition {
-                    type Output = EndCondition;
-                    #[inline]
-                    unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
-                        flatbuffers::emplace_scalar::<u8>(dst, self.0);
-                    }
-                }
-
-                impl flatbuffers::EndianScalar for EndCondition {
-                    type Scalar = u8;
-                    #[inline]
-                    fn to_little_endian(self) -> u8 {
-                        self.0.to_le()
-                    }
-                    #[inline]
-                    #[allow(clippy::wrong_self_convention)]
-                    fn from_little_endian(v: u8) -> Self {
-                        let b = u8::from_le(v);
-                        Self(b)
-                    }
-                }
-
-                impl<'a> flatbuffers::Verifiable for EndCondition {
-                    #[inline]
-                    fn run_verifier(
-                        v: &mut flatbuffers::Verifier,
-                        pos: usize,
-                    ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
-                        use self::flatbuffers::Verifiable;
-                        u8::run_verifier(v, pos)
-                    }
-                }
-
-                impl flatbuffers::SimpleToVerifyInSlice for EndCondition {}
-                pub struct EndConditionUnionTableOffset {}
-
-                #[deprecated(
-                    since = "2.0.0",
-                    note = "Use associated constants instead. This will no longer be generated in 2021."
-                )]
                 pub const ENUM_MIN_MESSAGE_PAYLOAD: u8 = 0;
                 #[deprecated(
                     since = "2.0.0",
@@ -268,15 +170,15 @@ pub mod club {
                 impl flatbuffers::SimpleToVerifyInSlice for MessagePayload {}
                 pub struct MessagePayloadUnionTableOffset {}
 
-                pub enum TimeEndConditionOffset {}
+                pub enum PermissionOffset {}
                 #[derive(Copy, Clone, PartialEq)]
 
-                pub struct TimeEndCondition<'a> {
+                pub struct Permission<'a> {
                     pub _tab: flatbuffers::Table<'a>,
                 }
 
-                impl<'a> flatbuffers::Follow<'a> for TimeEndCondition<'a> {
-                    type Inner = TimeEndCondition<'a>;
+                impl<'a> flatbuffers::Follow<'a> for Permission<'a> {
+                    type Inner = Permission<'a>;
                     #[inline]
                     unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
                         Self {
@@ -285,12 +187,14 @@ pub mod club {
                     }
                 }
 
-                impl<'a> TimeEndCondition<'a> {
-                    pub const VT_SECONDS: flatbuffers::VOffsetT = 4;
+                impl<'a> Permission<'a> {
+                    pub const VT_RECEIVE_EVENTS: flatbuffers::VOffsetT = 4;
+                    pub const VT_CAN_UNLOCK: flatbuffers::VOffsetT = 6;
+                    pub const VT_CAN_RELEASE: flatbuffers::VOffsetT = 8;
 
                     #[inline]
                     pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-                        TimeEndCondition { _tab: table }
+                        Permission { _tab: table }
                     }
                     #[allow(unused_mut)]
                     pub fn create<
@@ -300,27 +204,51 @@ pub mod club {
                         A: flatbuffers::Allocator + 'bldr,
                     >(
                         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
-                        args: &'args TimeEndConditionArgs,
-                    ) -> flatbuffers::WIPOffset<TimeEndCondition<'bldr>> {
-                        let mut builder = TimeEndConditionBuilder::new(_fbb);
-                        builder.add_seconds(args.seconds);
+                        args: &'args PermissionArgs,
+                    ) -> flatbuffers::WIPOffset<Permission<'bldr>> {
+                        let mut builder = PermissionBuilder::new(_fbb);
+                        builder.add_can_release(args.can_release);
+                        builder.add_can_unlock(args.can_unlock);
+                        builder.add_receive_events(args.receive_events);
                         builder.finish()
                     }
 
                     #[inline]
-                    pub fn seconds(&self) -> u64 {
+                    pub fn receive_events(&self) -> bool {
                         // Safety:
                         // Created from valid Table for this object
                         // which contains a valid value in this slot
                         unsafe {
                             self._tab
-                                .get::<u64>(TimeEndCondition::VT_SECONDS, Some(0))
+                                .get::<bool>(Permission::VT_RECEIVE_EVENTS, Some(false))
+                                .unwrap()
+                        }
+                    }
+                    #[inline]
+                    pub fn can_unlock(&self) -> bool {
+                        // Safety:
+                        // Created from valid Table for this object
+                        // which contains a valid value in this slot
+                        unsafe {
+                            self._tab
+                                .get::<bool>(Permission::VT_CAN_UNLOCK, Some(false))
+                                .unwrap()
+                        }
+                    }
+                    #[inline]
+                    pub fn can_release(&self) -> bool {
+                        // Safety:
+                        // Created from valid Table for this object
+                        // which contains a valid value in this slot
+                        unsafe {
+                            self._tab
+                                .get::<bool>(Permission::VT_CAN_RELEASE, Some(false))
                                 .unwrap()
                         }
                     }
                 }
 
-                impl flatbuffers::Verifiable for TimeEndCondition<'_> {
+                impl flatbuffers::Verifiable for Permission<'_> {
                     #[inline]
                     fn run_verifier(
                         v: &mut flatbuffers::Verifier,
@@ -328,64 +256,87 @@ pub mod club {
                     ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
                         use self::flatbuffers::Verifiable;
                         v.visit_table(pos)?
-                            .visit_field::<u64>("seconds", Self::VT_SECONDS, false)?
+                            .visit_field::<bool>("receive_events", Self::VT_RECEIVE_EVENTS, false)?
+                            .visit_field::<bool>("can_unlock", Self::VT_CAN_UNLOCK, false)?
+                            .visit_field::<bool>("can_release", Self::VT_CAN_RELEASE, false)?
                             .finish();
                         Ok(())
                     }
                 }
-                pub struct TimeEndConditionArgs {
-                    pub seconds: u64,
+                pub struct PermissionArgs {
+                    pub receive_events: bool,
+                    pub can_unlock: bool,
+                    pub can_release: bool,
                 }
-                impl<'a> Default for TimeEndConditionArgs {
+                impl<'a> Default for PermissionArgs {
                     #[inline]
                     fn default() -> Self {
-                        TimeEndConditionArgs { seconds: 0 }
+                        PermissionArgs {
+                            receive_events: false,
+                            can_unlock: false,
+                            can_release: false,
+                        }
                     }
                 }
 
-                pub struct TimeEndConditionBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
+                pub struct PermissionBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
                     fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
                     start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
                 }
-                impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> TimeEndConditionBuilder<'a, 'b, A> {
+                impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> PermissionBuilder<'a, 'b, A> {
                     #[inline]
-                    pub fn add_seconds(&mut self, seconds: u64) {
+                    pub fn add_receive_events(&mut self, receive_events: bool) {
+                        self.fbb_.push_slot::<bool>(
+                            Permission::VT_RECEIVE_EVENTS,
+                            receive_events,
+                            false,
+                        );
+                    }
+                    #[inline]
+                    pub fn add_can_unlock(&mut self, can_unlock: bool) {
                         self.fbb_
-                            .push_slot::<u64>(TimeEndCondition::VT_SECONDS, seconds, 0);
+                            .push_slot::<bool>(Permission::VT_CAN_UNLOCK, can_unlock, false);
+                    }
+                    #[inline]
+                    pub fn add_can_release(&mut self, can_release: bool) {
+                        self.fbb_
+                            .push_slot::<bool>(Permission::VT_CAN_RELEASE, can_release, false);
                     }
                     #[inline]
                     pub fn new(
                         _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
-                    ) -> TimeEndConditionBuilder<'a, 'b, A> {
+                    ) -> PermissionBuilder<'a, 'b, A> {
                         let start = _fbb.start_table();
-                        TimeEndConditionBuilder {
+                        PermissionBuilder {
                             fbb_: _fbb,
                             start_: start,
                         }
                     }
                     #[inline]
-                    pub fn finish(self) -> flatbuffers::WIPOffset<TimeEndCondition<'a>> {
+                    pub fn finish(self) -> flatbuffers::WIPOffset<Permission<'a>> {
                         let o = self.fbb_.end_table(self.start_);
                         flatbuffers::WIPOffset::new(o.value())
                     }
                 }
 
-                impl core::fmt::Debug for TimeEndCondition<'_> {
+                impl core::fmt::Debug for Permission<'_> {
                     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                        let mut ds = f.debug_struct("TimeEndCondition");
-                        ds.field("seconds", &self.seconds());
+                        let mut ds = f.debug_struct("Permission");
+                        ds.field("receive_events", &self.receive_events());
+                        ds.field("can_unlock", &self.can_unlock());
+                        ds.field("can_release", &self.can_release());
                         ds.finish()
                     }
                 }
-                pub enum WhenISaySoOffset {}
+                pub enum BotOffset {}
                 #[derive(Copy, Clone, PartialEq)]
 
-                pub struct WhenISaySo<'a> {
+                pub struct Bot<'a> {
                     pub _tab: flatbuffers::Table<'a>,
                 }
 
-                impl<'a> flatbuffers::Follow<'a> for WhenISaySo<'a> {
-                    type Inner = WhenISaySo<'a>;
+                impl<'a> flatbuffers::Follow<'a> for Bot<'a> {
+                    type Inner = Bot<'a>;
                     #[inline]
                     unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
                         Self {
@@ -394,10 +345,13 @@ pub mod club {
                     }
                 }
 
-                impl<'a> WhenISaySo<'a> {
+                impl<'a> Bot<'a> {
+                    pub const VT_NAME: flatbuffers::VOffsetT = 4;
+                    pub const VT_PERMISSIONS: flatbuffers::VOffsetT = 6;
+
                     #[inline]
                     pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-                        WhenISaySo { _tab: table }
+                        Bot { _tab: table }
                     }
                     #[allow(unused_mut)]
                     pub fn create<
@@ -407,116 +361,43 @@ pub mod club {
                         A: flatbuffers::Allocator + 'bldr,
                     >(
                         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
-                        _args: &'args WhenISaySoArgs,
-                    ) -> flatbuffers::WIPOffset<WhenISaySo<'bldr>> {
-                        let mut builder = WhenISaySoBuilder::new(_fbb);
-                        builder.finish()
-                    }
-                }
-
-                impl flatbuffers::Verifiable for WhenISaySo<'_> {
-                    #[inline]
-                    fn run_verifier(
-                        v: &mut flatbuffers::Verifier,
-                        pos: usize,
-                    ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
-                        use self::flatbuffers::Verifiable;
-                        v.visit_table(pos)?.finish();
-                        Ok(())
-                    }
-                }
-                pub struct WhenISaySoArgs {}
-                impl<'a> Default for WhenISaySoArgs {
-                    #[inline]
-                    fn default() -> Self {
-                        WhenISaySoArgs {}
-                    }
-                }
-
-                pub struct WhenISaySoBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
-                    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
-                    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
-                }
-                impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> WhenISaySoBuilder<'a, 'b, A> {
-                    #[inline]
-                    pub fn new(
-                        _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
-                    ) -> WhenISaySoBuilder<'a, 'b, A> {
-                        let start = _fbb.start_table();
-                        WhenISaySoBuilder {
-                            fbb_: _fbb,
-                            start_: start,
+                        args: &'args BotArgs<'args>,
+                    ) -> flatbuffers::WIPOffset<Bot<'bldr>> {
+                        let mut builder = BotBuilder::new(_fbb);
+                        if let Some(x) = args.permissions {
+                            builder.add_permissions(x);
                         }
-                    }
-                    #[inline]
-                    pub fn finish(self) -> flatbuffers::WIPOffset<WhenISaySo<'a>> {
-                        let o = self.fbb_.end_table(self.start_);
-                        flatbuffers::WIPOffset::new(o.value())
-                    }
-                }
-
-                impl core::fmt::Debug for WhenISaySo<'_> {
-                    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                        let mut ds = f.debug_struct("WhenISaySo");
-                        ds.finish()
-                    }
-                }
-                pub enum WebHookOffset {}
-                #[derive(Copy, Clone, PartialEq)]
-
-                pub struct WebHook<'a> {
-                    pub _tab: flatbuffers::Table<'a>,
-                }
-
-                impl<'a> flatbuffers::Follow<'a> for WebHook<'a> {
-                    type Inner = WebHook<'a>;
-                    #[inline]
-                    unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                        Self {
-                            _tab: flatbuffers::Table::new(buf, loc),
-                        }
-                    }
-                }
-
-                impl<'a> WebHook<'a> {
-                    pub const VT_ADDRESS: flatbuffers::VOffsetT = 4;
-
-                    #[inline]
-                    pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-                        WebHook { _tab: table }
-                    }
-                    #[allow(unused_mut)]
-                    pub fn create<
-                        'bldr: 'args,
-                        'args: 'mut_bldr,
-                        'mut_bldr,
-                        A: flatbuffers::Allocator + 'bldr,
-                    >(
-                        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
-                        args: &'args WebHookArgs<'args>,
-                    ) -> flatbuffers::WIPOffset<WebHook<'bldr>> {
-                        let mut builder = WebHookBuilder::new(_fbb);
-                        if let Some(x) = args.address {
-                            builder.add_address(x);
+                        if let Some(x) = args.name {
+                            builder.add_name(x);
                         }
                         builder.finish()
                     }
 
                     #[inline]
-                    pub fn address(&self) -> Option<&'a str> {
+                    pub fn name(&self) -> Option<&'a str> {
                         // Safety:
                         // Created from valid Table for this object
                         // which contains a valid value in this slot
                         unsafe {
-                            self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(
-                                WebHook::VT_ADDRESS,
+                            self._tab
+                                .get::<flatbuffers::ForwardsUOffset<&str>>(Bot::VT_NAME, None)
+                        }
+                    }
+                    #[inline]
+                    pub fn permissions(&self) -> Option<Permission<'a>> {
+                        // Safety:
+                        // Created from valid Table for this object
+                        // which contains a valid value in this slot
+                        unsafe {
+                            self._tab.get::<flatbuffers::ForwardsUOffset<Permission>>(
+                                Bot::VT_PERMISSIONS,
                                 None,
                             )
                         }
                     }
                 }
 
-                impl flatbuffers::Verifiable for WebHook<'_> {
+                impl flatbuffers::Verifiable for Bot<'_> {
                     #[inline]
                     fn run_verifier(
                         v: &mut flatbuffers::Verifier,
@@ -525,196 +406,76 @@ pub mod club {
                         use self::flatbuffers::Verifiable;
                         v.visit_table(pos)?
                             .visit_field::<flatbuffers::ForwardsUOffset<&str>>(
-                                "address",
-                                Self::VT_ADDRESS,
+                                "name",
+                                Self::VT_NAME,
+                                false,
+                            )?
+                            .visit_field::<flatbuffers::ForwardsUOffset<Permission>>(
+                                "permissions",
+                                Self::VT_PERMISSIONS,
                                 false,
                             )?
                             .finish();
                         Ok(())
                     }
                 }
-                pub struct WebHookArgs<'a> {
-                    pub address: Option<flatbuffers::WIPOffset<&'a str>>,
+                pub struct BotArgs<'a> {
+                    pub name: Option<flatbuffers::WIPOffset<&'a str>>,
+                    pub permissions: Option<flatbuffers::WIPOffset<Permission<'a>>>,
                 }
-                impl<'a> Default for WebHookArgs<'a> {
+                impl<'a> Default for BotArgs<'a> {
                     #[inline]
                     fn default() -> Self {
-                        WebHookArgs { address: None }
+                        BotArgs {
+                            name: None,
+                            permissions: None,
+                        }
                     }
                 }
 
-                pub struct WebHookBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
+                pub struct BotBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
                     fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
                     start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
                 }
-                impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> WebHookBuilder<'a, 'b, A> {
+                impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> BotBuilder<'a, 'b, A> {
                     #[inline]
-                    pub fn add_address(&mut self, address: flatbuffers::WIPOffset<&'b str>) {
-                        self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
-                            WebHook::VT_ADDRESS,
-                            address,
-                        );
+                    pub fn add_name(&mut self, name: flatbuffers::WIPOffset<&'b str>) {
+                        self.fbb_
+                            .push_slot_always::<flatbuffers::WIPOffset<_>>(Bot::VT_NAME, name);
+                    }
+                    #[inline]
+                    pub fn add_permissions(
+                        &mut self,
+                        permissions: flatbuffers::WIPOffset<Permission<'b>>,
+                    ) {
+                        self.fbb_
+                            .push_slot_always::<flatbuffers::WIPOffset<Permission>>(
+                                Bot::VT_PERMISSIONS,
+                                permissions,
+                            );
                     }
                     #[inline]
                     pub fn new(
                         _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
-                    ) -> WebHookBuilder<'a, 'b, A> {
+                    ) -> BotBuilder<'a, 'b, A> {
                         let start = _fbb.start_table();
-                        WebHookBuilder {
+                        BotBuilder {
                             fbb_: _fbb,
                             start_: start,
                         }
                     }
                     #[inline]
-                    pub fn finish(self) -> flatbuffers::WIPOffset<WebHook<'a>> {
+                    pub fn finish(self) -> flatbuffers::WIPOffset<Bot<'a>> {
                         let o = self.fbb_.end_table(self.start_);
                         flatbuffers::WIPOffset::new(o.value())
                     }
                 }
 
-                impl core::fmt::Debug for WebHook<'_> {
+                impl core::fmt::Debug for Bot<'_> {
                     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                        let mut ds = f.debug_struct("WebHook");
-                        ds.field("address", &self.address());
-                        ds.finish()
-                    }
-                }
-                pub enum TemporaryUnlockRulesOffset {}
-                #[derive(Copy, Clone, PartialEq)]
-
-                pub struct TemporaryUnlockRules<'a> {
-                    pub _tab: flatbuffers::Table<'a>,
-                }
-
-                impl<'a> flatbuffers::Follow<'a> for TemporaryUnlockRules<'a> {
-                    type Inner = TemporaryUnlockRules<'a>;
-                    #[inline]
-                    unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                        Self {
-                            _tab: flatbuffers::Table::new(buf, loc),
-                        }
-                    }
-                }
-
-                impl<'a> TemporaryUnlockRules<'a> {
-                    pub const VT_MAX_UNLOCKS: flatbuffers::VOffsetT = 4;
-                    pub const VT_TIME_LIMIT: flatbuffers::VOffsetT = 6;
-
-                    #[inline]
-                    pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-                        TemporaryUnlockRules { _tab: table }
-                    }
-                    #[allow(unused_mut)]
-                    pub fn create<
-                        'bldr: 'args,
-                        'args: 'mut_bldr,
-                        'mut_bldr,
-                        A: flatbuffers::Allocator + 'bldr,
-                    >(
-                        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
-                        args: &'args TemporaryUnlockRulesArgs,
-                    ) -> flatbuffers::WIPOffset<TemporaryUnlockRules<'bldr>> {
-                        let mut builder = TemporaryUnlockRulesBuilder::new(_fbb);
-                        builder.add_time_limit(args.time_limit);
-                        builder.add_max_unlocks(args.max_unlocks);
-                        builder.finish()
-                    }
-
-                    #[inline]
-                    pub fn max_unlocks(&self) -> u16 {
-                        // Safety:
-                        // Created from valid Table for this object
-                        // which contains a valid value in this slot
-                        unsafe {
-                            self._tab
-                                .get::<u16>(TemporaryUnlockRules::VT_MAX_UNLOCKS, Some(0))
-                                .unwrap()
-                        }
-                    }
-                    #[inline]
-                    pub fn time_limit(&self) -> u16 {
-                        // Safety:
-                        // Created from valid Table for this object
-                        // which contains a valid value in this slot
-                        unsafe {
-                            self._tab
-                                .get::<u16>(TemporaryUnlockRules::VT_TIME_LIMIT, Some(0))
-                                .unwrap()
-                        }
-                    }
-                }
-
-                impl flatbuffers::Verifiable for TemporaryUnlockRules<'_> {
-                    #[inline]
-                    fn run_verifier(
-                        v: &mut flatbuffers::Verifier,
-                        pos: usize,
-                    ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
-                        use self::flatbuffers::Verifiable;
-                        v.visit_table(pos)?
-                            .visit_field::<u16>("max_unlocks", Self::VT_MAX_UNLOCKS, false)?
-                            .visit_field::<u16>("time_limit", Self::VT_TIME_LIMIT, false)?
-                            .finish();
-                        Ok(())
-                    }
-                }
-                pub struct TemporaryUnlockRulesArgs {
-                    pub max_unlocks: u16,
-                    pub time_limit: u16,
-                }
-                impl<'a> Default for TemporaryUnlockRulesArgs {
-                    #[inline]
-                    fn default() -> Self {
-                        TemporaryUnlockRulesArgs {
-                            max_unlocks: 0,
-                            time_limit: 0,
-                        }
-                    }
-                }
-
-                pub struct TemporaryUnlockRulesBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
-                    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
-                    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
-                }
-                impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> TemporaryUnlockRulesBuilder<'a, 'b, A> {
-                    #[inline]
-                    pub fn add_max_unlocks(&mut self, max_unlocks: u16) {
-                        self.fbb_.push_slot::<u16>(
-                            TemporaryUnlockRules::VT_MAX_UNLOCKS,
-                            max_unlocks,
-                            0,
-                        );
-                    }
-                    #[inline]
-                    pub fn add_time_limit(&mut self, time_limit: u16) {
-                        self.fbb_.push_slot::<u16>(
-                            TemporaryUnlockRules::VT_TIME_LIMIT,
-                            time_limit,
-                            0,
-                        );
-                    }
-                    #[inline]
-                    pub fn new(
-                        _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
-                    ) -> TemporaryUnlockRulesBuilder<'a, 'b, A> {
-                        let start = _fbb.start_table();
-                        TemporaryUnlockRulesBuilder {
-                            fbb_: _fbb,
-                            start_: start,
-                        }
-                    }
-                    #[inline]
-                    pub fn finish(self) -> flatbuffers::WIPOffset<TemporaryUnlockRules<'a>> {
-                        let o = self.fbb_.end_table(self.start_);
-                        flatbuffers::WIPOffset::new(o.value())
-                    }
-                }
-
-                impl core::fmt::Debug for TemporaryUnlockRules<'_> {
-                    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                        let mut ds = f.debug_struct("TemporaryUnlockRules");
-                        ds.field("max_unlocks", &self.max_unlocks());
-                        ds.field("time_limit", &self.time_limit());
+                        let mut ds = f.debug_struct("Bot");
+                        ds.field("name", &self.name());
+                        ds.field("permissions", &self.permissions());
                         ds.finish()
                     }
                 }
@@ -738,13 +499,9 @@ pub mod club {
                 impl<'a> Contract<'a> {
                     pub const VT_SERIAL_NUMBER: flatbuffers::VOffsetT = 4;
                     pub const VT_PUBLIC_KEY: flatbuffers::VOffsetT = 6;
-                    pub const VT_NONCE: flatbuffers::VOffsetT = 8;
-                    pub const VT_CONFIRM_CODE: flatbuffers::VOffsetT = 10;
-                    pub const VT_END_CONDITION_TYPE: flatbuffers::VOffsetT = 12;
-                    pub const VT_END_CONDITION: flatbuffers::VOffsetT = 14;
-                    pub const VT_WEBHOOKS: flatbuffers::VOffsetT = 16;
-                    pub const VT_IS_TEMPORARY_UNLOCK_ALLOWED: flatbuffers::VOffsetT = 18;
-                    pub const VT_UNLOCK_RULES: flatbuffers::VOffsetT = 20;
+                    pub const VT_BOTS: flatbuffers::VOffsetT = 8;
+                    pub const VT_TERMS: flatbuffers::VOffsetT = 10;
+                    pub const VT_IS_TEMPORARY_UNLOCK_ALLOWED: flatbuffers::VOffsetT = 12;
 
                     #[inline]
                     pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -761,27 +518,17 @@ pub mod club {
                         args: &'args ContractArgs<'args>,
                     ) -> flatbuffers::WIPOffset<Contract<'bldr>> {
                         let mut builder = ContractBuilder::new(_fbb);
-                        if let Some(x) = args.unlock_rules {
-                            builder.add_unlock_rules(x);
+                        if let Some(x) = args.terms {
+                            builder.add_terms(x);
                         }
-                        if let Some(x) = args.webhooks {
-                            builder.add_webhooks(x);
-                        }
-                        if let Some(x) = args.end_condition {
-                            builder.add_end_condition(x);
-                        }
-                        if let Some(x) = args.confirm_code {
-                            builder.add_confirm_code(x);
-                        }
-                        if let Some(x) = args.nonce {
-                            builder.add_nonce(x);
+                        if let Some(x) = args.bots {
+                            builder.add_bots(x);
                         }
                         if let Some(x) = args.public_key {
                             builder.add_public_key(x);
                         }
                         builder.add_serial_number(args.serial_number);
                         builder.add_is_temporary_unlock_allowed(args.is_temporary_unlock_allowed);
-                        builder.add_end_condition_type(args.end_condition_type);
                         builder.finish()
                     }
 
@@ -810,70 +557,27 @@ pub mod club {
                         }
                     }
                     #[inline]
-                    pub fn nonce(&self) -> Option<flatbuffers::Vector<'a, u8>> {
-                        // Safety:
-                        // Created from valid Table for this object
-                        // which contains a valid value in this slot
-                        unsafe {
-                            self._tab
-                                .get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(
-                                    Contract::VT_NONCE,
-                                    None,
-                                )
-                        }
-                    }
-                    #[inline]
-                    pub fn confirm_code(&self) -> Option<flatbuffers::Vector<'a, u8>> {
-                        // Safety:
-                        // Created from valid Table for this object
-                        // which contains a valid value in this slot
-                        unsafe {
-                            self._tab
-                                .get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(
-                                    Contract::VT_CONFIRM_CODE,
-                                    None,
-                                )
-                        }
-                    }
-                    #[inline]
-                    pub fn end_condition_type(&self) -> EndCondition {
-                        // Safety:
-                        // Created from valid Table for this object
-                        // which contains a valid value in this slot
-                        unsafe {
-                            self._tab
-                                .get::<EndCondition>(
-                                    Contract::VT_END_CONDITION_TYPE,
-                                    Some(EndCondition::NONE),
-                                )
-                                .unwrap()
-                        }
-                    }
-                    #[inline]
-                    pub fn end_condition(&self) -> Option<flatbuffers::Table<'a>> {
-                        // Safety:
-                        // Created from valid Table for this object
-                        // which contains a valid value in this slot
-                        unsafe {
-                            self._tab
-                                .get::<flatbuffers::ForwardsUOffset<flatbuffers::Table<'a>>>(
-                                    Contract::VT_END_CONDITION,
-                                    None,
-                                )
-                        }
-                    }
-                    #[inline]
-                    pub fn webhooks(
+                    pub fn bots(
                         &self,
-                    ) -> Option<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<WebHook<'a>>>>
+                    ) -> Option<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Bot<'a>>>>
                     {
                         // Safety:
                         // Created from valid Table for this object
                         // which contains a valid value in this slot
                         unsafe {
                             self._tab.get::<flatbuffers::ForwardsUOffset<
-                                flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<WebHook>>,
-                            >>(Contract::VT_WEBHOOKS, None)
+                                flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Bot>>,
+                            >>(Contract::VT_BOTS, None)
+                        }
+                    }
+                    #[inline]
+                    pub fn terms(&self) -> Option<&'a str> {
+                        // Safety:
+                        // Created from valid Table for this object
+                        // which contains a valid value in this slot
+                        unsafe {
+                            self._tab
+                                .get::<flatbuffers::ForwardsUOffset<&str>>(Contract::VT_TERMS, None)
                         }
                     }
                     #[inline]
@@ -885,50 +589,6 @@ pub mod club {
                             self._tab
                                 .get::<bool>(Contract::VT_IS_TEMPORARY_UNLOCK_ALLOWED, Some(false))
                                 .unwrap()
-                        }
-                    }
-                    #[inline]
-                    pub fn unlock_rules(&self) -> Option<TemporaryUnlockRules<'a>> {
-                        // Safety:
-                        // Created from valid Table for this object
-                        // which contains a valid value in this slot
-                        unsafe {
-                            self._tab
-                                .get::<flatbuffers::ForwardsUOffset<TemporaryUnlockRules>>(
-                                    Contract::VT_UNLOCK_RULES,
-                                    None,
-                                )
-                        }
-                    }
-                    #[inline]
-                    #[allow(non_snake_case)]
-                    pub fn end_condition_as_time_end_condition(
-                        &self,
-                    ) -> Option<TimeEndCondition<'a>> {
-                        if self.end_condition_type() == EndCondition::TimeEndCondition {
-                            self.end_condition().map(|t| {
-                                // Safety:
-                                // Created from a valid Table for this object
-                                // Which contains a valid union in this slot
-                                unsafe { TimeEndCondition::init_from_table(t) }
-                            })
-                        } else {
-                            None
-                        }
-                    }
-
-                    #[inline]
-                    #[allow(non_snake_case)]
-                    pub fn end_condition_as_when_isay_so(&self) -> Option<WhenISaySo<'a>> {
-                        if self.end_condition_type() == EndCondition::WhenISaySo {
-                            self.end_condition().map(|t| {
-                                // Safety:
-                                // Created from a valid Table for this object
-                                // Which contains a valid union in this slot
-                                unsafe { WhenISaySo::init_from_table(t) }
-                            })
-                        } else {
-                            None
                         }
                     }
                 }
@@ -943,18 +603,9 @@ pub mod club {
                         v.visit_table(pos)?
      .visit_field::<u16>("serial_number", Self::VT_SERIAL_NUMBER, false)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, u8>>>("public_key", Self::VT_PUBLIC_KEY, false)?
-     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, u8>>>("nonce", Self::VT_NONCE, false)?
-     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, u8>>>("confirm_code", Self::VT_CONFIRM_CODE, false)?
-     .visit_union::<EndCondition, _>("end_condition_type", Self::VT_END_CONDITION_TYPE, "end_condition", Self::VT_END_CONDITION, false, |key, v, pos| {
-        match key {
-          EndCondition::TimeEndCondition => v.verify_union_variant::<flatbuffers::ForwardsUOffset<TimeEndCondition>>("EndCondition::TimeEndCondition", pos),
-          EndCondition::WhenISaySo => v.verify_union_variant::<flatbuffers::ForwardsUOffset<WhenISaySo>>("EndCondition::WhenISaySo", pos),
-          _ => Ok(()),
-        }
-     })?
-     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<WebHook>>>>("webhooks", Self::VT_WEBHOOKS, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<Bot>>>>("bots", Self::VT_BOTS, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("terms", Self::VT_TERMS, false)?
      .visit_field::<bool>("is_temporary_unlock_allowed", Self::VT_IS_TEMPORARY_UNLOCK_ALLOWED, false)?
-     .visit_field::<flatbuffers::ForwardsUOffset<TemporaryUnlockRules>>("unlock_rules", Self::VT_UNLOCK_RULES, false)?
      .finish();
                         Ok(())
                     }
@@ -962,17 +613,13 @@ pub mod club {
                 pub struct ContractArgs<'a> {
                     pub serial_number: u16,
                     pub public_key: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
-                    pub nonce: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
-                    pub confirm_code: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
-                    pub end_condition_type: EndCondition,
-                    pub end_condition: Option<flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>>,
-                    pub webhooks: Option<
+                    pub bots: Option<
                         flatbuffers::WIPOffset<
-                            flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<WebHook<'a>>>,
+                            flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Bot<'a>>>,
                         >,
                     >,
+                    pub terms: Option<flatbuffers::WIPOffset<&'a str>>,
                     pub is_temporary_unlock_allowed: bool,
-                    pub unlock_rules: Option<flatbuffers::WIPOffset<TemporaryUnlockRules<'a>>>,
                 }
                 impl<'a> Default for ContractArgs<'a> {
                     #[inline]
@@ -980,13 +627,9 @@ pub mod club {
                         ContractArgs {
                             serial_number: 0,
                             public_key: None,
-                            nonce: None,
-                            confirm_code: None,
-                            end_condition_type: EndCondition::NONE,
-                            end_condition: None,
-                            webhooks: None,
+                            bots: None,
+                            terms: None,
                             is_temporary_unlock_allowed: false,
-                            unlock_rules: None,
                         }
                     }
                 }
@@ -1012,53 +655,20 @@ pub mod club {
                         );
                     }
                     #[inline]
-                    pub fn add_nonce(
+                    pub fn add_bots(
                         &mut self,
-                        nonce: flatbuffers::WIPOffset<flatbuffers::Vector<'b, u8>>,
-                    ) {
-                        self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
-                            Contract::VT_NONCE,
-                            nonce,
-                        );
-                    }
-                    #[inline]
-                    pub fn add_confirm_code(
-                        &mut self,
-                        confirm_code: flatbuffers::WIPOffset<flatbuffers::Vector<'b, u8>>,
-                    ) {
-                        self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
-                            Contract::VT_CONFIRM_CODE,
-                            confirm_code,
-                        );
-                    }
-                    #[inline]
-                    pub fn add_end_condition_type(&mut self, end_condition_type: EndCondition) {
-                        self.fbb_.push_slot::<EndCondition>(
-                            Contract::VT_END_CONDITION_TYPE,
-                            end_condition_type,
-                            EndCondition::NONE,
-                        );
-                    }
-                    #[inline]
-                    pub fn add_end_condition(
-                        &mut self,
-                        end_condition: flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>,
-                    ) {
-                        self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
-                            Contract::VT_END_CONDITION,
-                            end_condition,
-                        );
-                    }
-                    #[inline]
-                    pub fn add_webhooks(
-                        &mut self,
-                        webhooks: flatbuffers::WIPOffset<
-                            flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<WebHook<'b>>>,
+                        bots: flatbuffers::WIPOffset<
+                            flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<Bot<'b>>>,
                         >,
                     ) {
+                        self.fbb_
+                            .push_slot_always::<flatbuffers::WIPOffset<_>>(Contract::VT_BOTS, bots);
+                    }
+                    #[inline]
+                    pub fn add_terms(&mut self, terms: flatbuffers::WIPOffset<&'b str>) {
                         self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
-                            Contract::VT_WEBHOOKS,
-                            webhooks,
+                            Contract::VT_TERMS,
+                            terms,
                         );
                     }
                     #[inline]
@@ -1071,17 +681,6 @@ pub mod club {
                             is_temporary_unlock_allowed,
                             false,
                         );
-                    }
-                    #[inline]
-                    pub fn add_unlock_rules(
-                        &mut self,
-                        unlock_rules: flatbuffers::WIPOffset<TemporaryUnlockRules<'b>>,
-                    ) {
-                        self.fbb_
-                            .push_slot_always::<flatbuffers::WIPOffset<TemporaryUnlockRules>>(
-                                Contract::VT_UNLOCK_RULES,
-                                unlock_rules,
-                            );
                     }
                     #[inline]
                     pub fn new(
@@ -1105,35 +704,12 @@ pub mod club {
                         let mut ds = f.debug_struct("Contract");
                         ds.field("serial_number", &self.serial_number());
                         ds.field("public_key", &self.public_key());
-                        ds.field("nonce", &self.nonce());
-                        ds.field("confirm_code", &self.confirm_code());
-                        ds.field("end_condition_type", &self.end_condition_type());
-                        match self.end_condition_type() {
-                            EndCondition::TimeEndCondition => {
-                                if let Some(x) = self.end_condition_as_time_end_condition() {
-                                    ds.field("end_condition", &x)
-                                } else {
-                                    ds.field("end_condition", &"InvalidFlatbuffer: Union discriminant does not match value.")
-                                }
-                            }
-                            EndCondition::WhenISaySo => {
-                                if let Some(x) = self.end_condition_as_when_isay_so() {
-                                    ds.field("end_condition", &x)
-                                } else {
-                                    ds.field("end_condition", &"InvalidFlatbuffer: Union discriminant does not match value.")
-                                }
-                            }
-                            _ => {
-                                let x: Option<()> = None;
-                                ds.field("end_condition", &x)
-                            }
-                        };
-                        ds.field("webhooks", &self.webhooks());
+                        ds.field("bots", &self.bots());
+                        ds.field("terms", &self.terms());
                         ds.field(
                             "is_temporary_unlock_allowed",
                             &self.is_temporary_unlock_allowed(),
                         );
-                        ds.field("unlock_rules", &self.unlock_rules());
                         ds.finish()
                     }
                 }

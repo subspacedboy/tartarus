@@ -1,5 +1,6 @@
 import {LockUserSession} from './lock-user-session';
 import {KnownToken} from './known-token';
+import {LockState} from './lock-state';
 
 export class LockSession {
   // public_key is secp1 compressed, web crypto can't use it.
@@ -9,13 +10,10 @@ export class LockSession {
   totalControlToken?: string;
   lockUserSession?: LockUserSession;
   knownToken?: KnownToken;
+  lockState?: LockState;
+  availableForContract? : boolean;
 
   constructor(init?:Partial<LockSession>) {
-    // if (init!.associatedTask) {
-    //   this.associatedTask = new Task(init!.associatedTask);
-    //   delete init?.associatedTask;
-    // }
-
     Object.assign(this, init);
   }
 

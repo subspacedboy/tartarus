@@ -6,8 +6,6 @@ import {SignedMessage} from '../club/subjugated/fb/message/signed-message';
 import {MessagePayload} from '../club/subjugated/fb/message/message-payload';
 import {CryptoService} from '../crypto.service';
 import {QrcodeService} from '../qrcode.service';
-import {EndCondition} from '../club/subjugated/fb/message/end-condition';
-import {WhenISaySo} from '../club/subjugated/fb/message/when-isay-so';
 import {Contract} from '../club/subjugated/fb/message/contract';
 import {UserDataService} from '../user-data.service';
 import {ActivatedRoute, Router} from '@angular/router';
@@ -45,6 +43,8 @@ export class NewFullContractComponent implements OnInit {
     this.lockSessionToken = String(this.activatedRoute.snapshot.paramMap.get('sessionToken'));
 
     this.contractForm = this.fb.group({
+      notes: new FormControl('', []),
+      terms: new FormControl('', []),
       isTempUnlockAllowed: new FormControl(false),
     });
   }
@@ -66,31 +66,26 @@ export class NewFullContractComponent implements OnInit {
     // Create a public key string
     const publicKeyOffset = builder.createByteVector(compressedPublicKey);
 
-    WhenISaySo.startWhenISaySo(builder);
-    const whenISaySoOffset = WhenISaySo.endWhenISaySo(builder);
+    const termsStringOffset = builder.createString(this.contractForm.get('terms')!.value!)
 
     const sessionOffset = builder.createString(this.lockSession?.shareToken!);
 
     // Derive secrets.
     // const lockPub = await this.cryptoService.importKeyPair(this.lockSession?.public_key!);
     let pubKey = await this.cryptoService.importPublicKeyOnlyFromPem(this.lockSession?.publicPem!);
-    const shared = await this.cryptoService.deriveSharedSecret(ecdhPrivateKey, pubKey);
-    const aesKey = await this.cryptoService.deriveAESKey(shared, new Uint8Array(), new Uint8Array());
-    const cipher = await this.cryptoService.initializeAESCipher(aesKey);
-    const cipherText = await cipher.encrypt("687");
-    const nonceOffset = builder.createByteVector(cipher.iv);
-    const confirmCodeOffset = builder.createByteVector(new Uint8Array(cipherText));
+    // const shared = await this.cryptoService.deriveSharedSecret(ecdhPrivateKey, pubKey);
+    // const aesKey = await this.cryptoService.deriveAESKey(shared, new Uint8Array(), new Uint8Array());
+    // const cipher = await this.cryptoService.initializeAESCipher(aesKey);
+    // const cipherText = await cipher.encrypt("687");
+    // const nonceOffset = builder.createByteVector(cipher.iv);
+    // const confirmCodeOffset = builder.createByteVector(new Uint8Array(cipherText));
 
     const serialNumber = Math.floor(Math.random() * 65536);
     Contract.startContract(builder);
     Contract.addSerialNumber(builder, serialNumber);
     Contract.addPublicKey(builder, publicKeyOffset);
     Contract.addIsTemporaryUnlockAllowed(builder, this.contractForm.get('isTempUnlockAllowed')!.value!);
-    Contract.addEndCondition(builder, whenISaySoOffset);
-    Contract.addEndConditionType(builder, EndCondition.WhenISaySo);
-    //Contractact.addSession(builder, sessionOffset);
-    Contract.addConfirmCode(builder, confirmCodeOffset);
-    Contract.addNonce(builder, nonceOffset);
+    Contract.addTerms(builder, termsStringOffset);
     let fullContractOffset = Contract.endContract(builder);
     builder.finish(fullContractOffset);
 
@@ -126,9 +121,13 @@ export class NewFullContractComponent implements OnInit {
     await this.qrcodeService.generateQRCode(builder.asUint8Array(), this.canvas);
     this.hiddenDiv.nativeElement.hidden = false;
 
-    this.tartarusCoordinatorService.saveContract(this.userDataService.getAuthorName(), this.lockSessionToken, builder.asUint8Array()).subscribe(r => {
-      this.toastService.showSuccess("Saved");
-      this.router.navigate(['lock-sessions',this.lockSessionToken, 'contract', r.name]);
+    this.tartarusCoordinatorService.saveContract(
+      this.userDataService.getAuthorName(),
+      this.lockSessionToken,
+      builder.asUint8Array(),
+      this.contractForm.get('notes')!.value!).subscribe(r => {
+        this.toastService.showSuccess("Saved");
+        this.router.navigate(['lock-sessions',this.lockSessionToken, 'contract', r.name]);
     })
 
     return builder.asUint8Array();

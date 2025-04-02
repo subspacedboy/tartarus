@@ -1,6 +1,6 @@
 namespace club.subjugated.fb.message;
 
-table TimeEndCondition {
+/*table TimeEndCondition {
   seconds: ulong;
 }
 
@@ -10,33 +10,37 @@ table WhenISaySo {
 union EndCondition {
   TimeEndCondition,
   WhenISaySo
+}*/
+
+table Permission {
+  receive_events: bool;
+  can_unlock: bool;
+  can_release: bool;
 }
 
-table WebHook {
-  address: string;
+table Bot {
+  name: string;
+  permissions: Permission;
 }
 
-table TemporaryUnlockRules {
+/*table TemporaryUnlockRules {
   // If greater than zero it should act like a counter.
   max_unlocks: ushort;
 
   time_limit: ushort;
-}
+}*/
 
 table Contract {
   serial_number: ushort;
-
   public_key: [ubyte];
 
-  nonce: [ubyte];
-  confirm_code: [ubyte];
+  bots: [Bot];
 
-  end_condition: EndCondition;
-  webhooks: [WebHook];
+  terms: string;
 
   // If true, subject can freely cycle the lock.
   is_temporary_unlock_allowed: bool;
-  unlock_rules : TemporaryUnlockRules;
+  // unlock_rules : TemporaryUnlockRules;
 }
 
 // enum UpdateType : byte { Undefined = 0, Started, Acknowledgement }
