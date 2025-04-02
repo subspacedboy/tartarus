@@ -42,14 +42,6 @@ class EventWebSocketHandler : TextWebSocketHandler() {
         }
     }
 
-    fun sendMessage(message: String) {
-        sessions.forEach { session ->
-            if (session.isOpen) {
-                session.sendMessage(TextMessage(message))
-            }
-        }
-    }
-
     fun sendAuthorMessage(authorName : String, message: String) {
         authorSessions[authorName]?.sendMessage(TextMessage(message))
     }

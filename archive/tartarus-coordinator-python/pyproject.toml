@@ -19,6 +19,9 @@ dependencies = [
     "sqlalchemy-orm (>=1.2.10,<2.0.0)",
     "flask-cors (>=5.0.0,<6.0.0)",
     "ruff (>=0.9.9,<0.10.0)",
+    "paho-mqtt (>=2.1.0,<3.0.0)",
+    "websockets (>=15.0.1,<16.0.0)",
+    "protobuf (>=6.30.1,<7.0.0)",
 ]
 
 
