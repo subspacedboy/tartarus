@@ -25,4 +25,12 @@ class Bot (
             return club.subjugated.tartarus_coordinator.util.generateId("b-")
         }
     }
+
+    fun canReadMqtt(topic: String) : Boolean {
+        return listOf("bots/inbox_${name}").contains(topic)
+    }
+
+    fun canWriteMqtt(topic: String) : Boolean {
+        return listOf("status/${name}", "bots/outbox_${name}", "coordinator/inbox").contains(topic)
+    }
 }

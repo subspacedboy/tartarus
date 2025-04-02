@@ -1,5 +1,6 @@
 import asyncio
 import websockets
+from google.protobuf.json_format import MessageToJson
 
 async def server_handler(websocket, path):
     async for message in websocket:

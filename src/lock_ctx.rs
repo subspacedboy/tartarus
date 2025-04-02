@@ -5,6 +5,9 @@ use crate::contract_generated::club::subjugated::fb::message::{
     MessagePayload, PeriodicUpdate, PeriodicUpdateArgs, SignedMessage, SignedMessageArgs,
     StartedUpdate, StartedUpdateArgs,
 };
+use crate::event_generated::club::subjugated::fb::event::{
+    CommonMetadata, CommonMetadataArgs, Event, EventArgs, EventType, SignedEvent, SignedEventArgs,
+};
 use crate::fb_helper::calculate_signature;
 use crate::internal_config::InternalConfig;
 use crate::internal_contract::{InternalContract, SaveState};
@@ -506,6 +509,7 @@ impl LockCtx {
         self.is_locked = true;
         self.servo.close_position();
         self.enqueue_periodic_update_message(false, true);
+        self.enqueue_bot_event(EventType::LocalLock);
         self.dirty = true;
     }
 
@@ -521,6 +525,7 @@ impl LockCtx {
         self.is_locked = false;
         self.servo.open_position();
         self.enqueue_periodic_update_message(true, false);
+        self.enqueue_bot_event(EventType::LocalUnlock);
         self.dirty = true;
     }
 
@@ -552,6 +557,7 @@ impl LockCtx {
 
     pub fn accept_contract(&mut self, _contract: &InternalContract) -> () {
         self.contract = Some(_contract.clone());
+        self.enqueue_bot_event(EventType::AcceptContract);
         self.lock();
         self.dirty = true;
     }
@@ -583,6 +589,7 @@ impl LockCtx {
 
     pub fn end_contract(&mut self) -> () {
         self.unlock();
+        self.enqueue_bot_event(EventType::ReleaseContract);
         if let Ok(_) = self.nvs.remove("contract") {
             log::info!("Contract removed");
         }
@@ -711,13 +718,18 @@ impl LockCtx {
         let mut builder = FlatBufferBuilder::with_capacity(1024);
         let session = builder.create_string(&self.session_token);
 
+        let current_contract_serial = match &self.contract {
+            Some(s) => s.serial_number,
+            None => 0,
+        };
+
         // let pub_key_holder = builder.create_vector(&public_key);
         let periodic_update_event = PeriodicUpdate::create(
             &mut builder,
             &PeriodicUpdateArgs {
                 session: Some(session),
                 is_locked: self.is_locked,
-                current_contract_serial: 0,
+                current_contract_serial,
                 local_unlock,
                 local_lock,
             },
@@ -740,7 +752,7 @@ impl LockCtx {
             &PeriodicUpdateArgs {
                 session: Some(session),
                 is_locked: self.is_locked,
-                current_contract_serial: 0,
+                current_contract_serial,
                 local_unlock,
                 local_lock,
             },
@@ -764,6 +776,80 @@ impl LockCtx {
         let t = SignedMessageTransport::new(data, SignedMessages);
 
         self.enqueue_message(t);
+    }
+
+    fn enqueue_bot_event(&self, event_type: EventType) {
+        let current_contract_serial = match &self.contract {
+            Some(s) => s.serial_number,
+            None => 0,
+        };
+
+        let mut builder = FlatBufferBuilder::with_capacity(1024);
+        let session = builder.create_string(&self.session_token);
+
+        let metadata = CommonMetadata::create(
+            &mut builder,
+            &CommonMetadataArgs {
+                lock_session: Some(session),
+                contract_serial_number: current_contract_serial,
+                serial_number: 0,
+                counter: 0,
+            },
+        );
+
+        let event = Event::create(
+            &mut builder,
+            &EventArgs {
+                metadata: Some(metadata),
+                event_type,
+            },
+        );
+
+        builder.finish(event, None);
+        let buffer = builder.finished_data();
+
+        let signature = calculate_signature(&buffer, &self.get_signing_key());
+
+        let mut builder = FlatBufferBuilder::with_capacity(1024);
+        let session = builder.create_string(&self.session_token);
+
+        let metadata = CommonMetadata::create(
+            &mut builder,
+            &CommonMetadataArgs {
+                lock_session: Some(session),
+                contract_serial_number: current_contract_serial,
+                serial_number: 0,
+                counter: 0,
+            },
+        );
+
+        let event = Event::create(
+            &mut builder,
+            &EventArgs {
+                metadata: Some(metadata),
+                event_type,
+            },
+        );
+
+        let signature_offset = builder.create_vector(signature.to_bytes().as_slice());
+
+        let signedEvent = SignedEvent::create(
+            &mut builder,
+            &SignedEventArgs {
+                signature: Some(signature_offset),
+                payload: Some(event),
+            },
+        );
+
+        builder.finish(signedEvent, None);
+        let data = builder.finished_data().to_vec();
+
+        if let Some(contract) = &self.contract {
+            for b in &contract.bots {
+                let t = SignedMessageTransport::new_for_bot(data.clone(), b.name.clone());
+                self.enqueue_message(t);
+            }
+        }
     }
 
     fn enqueue_message(&self, message: SignedMessageTransport) {

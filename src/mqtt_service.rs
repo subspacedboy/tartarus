@@ -24,11 +24,24 @@ pub struct MqttService {
 pub struct SignedMessageTransport {
     buffer: Vec<u8>,
     topic: TopicType,
+    bot_name: Option<String>,
 }
 
 impl SignedMessageTransport {
     pub fn new(buffer: Vec<u8>, topic: TopicType) -> Self {
-        SignedMessageTransport { buffer, topic }
+        SignedMessageTransport {
+            buffer,
+            topic,
+            bot_name: None,
+        }
+    }
+
+    pub fn new_for_bot(buffer: Vec<u8>, bot_name: String) -> Self {
+        SignedMessageTransport {
+            buffer,
+            topic: TopicType::BotMessage,
+            bot_name: Some(bot_name),
+        }
     }
 
     pub fn buffer(&self) -> Vec<u8> {
@@ -38,6 +51,10 @@ impl SignedMessageTransport {
     pub fn topic(&self) -> TopicType {
         self.topic.clone()
     }
+
+    pub fn bot_name(&self) -> Option<String> {
+        self.bot_name.clone()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -45,6 +62,7 @@ pub enum TopicType {
     SignedMessages,
     ConfigurationData,
     Acknowledgments,
+    BotMessage,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -188,17 +206,16 @@ impl MqttService {
                             if let Ok(mut message_queue) = queue_ref.lock() {
                                 if let Some(topic) = topic {
                                     match topic {
-                                        x if x == inbound_queue_name.as_str() => {
-                                            message_queue.push_back(SignedMessageTransport {
-                                                buffer: data.to_vec(),
-                                                topic: TopicType::SignedMessages,
-                                            });
-                                        }
+                                        x if x == inbound_queue_name.as_str() => message_queue
+                                            .push_back(SignedMessageTransport::new(
+                                                data.to_vec(),
+                                                TopicType::SignedMessages,
+                                            )),
                                         x if x == configuration_queue_name.as_str() => {
-                                            message_queue.push_back(SignedMessageTransport {
-                                                buffer: data.to_vec(),
-                                                topic: TopicType::ConfigurationData,
-                                            });
+                                            message_queue.push_back(SignedMessageTransport::new(
+                                                data.to_vec(),
+                                                TopicType::ConfigurationData,
+                                            ))
                                         }
                                         _ => {}
                                     }
@@ -273,16 +290,35 @@ impl MqttService {
 
                         while !local_signed_messages.is_empty() {
                             let message = local_signed_messages.remove(0);
-                            match client.publish(
-                                "locks/updates",
-                                QoS::AtLeastOnce,
-                                false,
-                                message.buffer.as_ref(),
-                            ) {
-                                Ok(id) => log::info!("Publish successful [{id:?}]"),
-                                Err(e) => {
-                                    log::error!("Failed to publish topic: {e}, retrying...")
+                            match message.topic {
+                                TopicType::SignedMessages | TopicType::Acknowledgments => {
+                                    match client.publish(
+                                        "locks/updates",
+                                        QoS::AtLeastOnce,
+                                        false,
+                                        message.buffer.as_ref(),
+                                    ) {
+                                        Ok(id) => log::info!("Publish successful [{id:?}]"),
+                                        Err(e) => {
+                                            log::error!("Failed to publish topic: {e}, retrying...")
+                                        }
+                                    }
                                 }
+                                TopicType::BotMessage => {
+                                    match client.publish(
+                                        format!("bots/inbox_{}", message.bot_name.unwrap())
+                                            .as_str(),
+                                        QoS::AtLeastOnce,
+                                        false,
+                                        message.buffer.as_ref(),
+                                    ) {
+                                        Ok(id) => log::info!("Publish successful [{id:?}]"),
+                                        Err(e) => {
+                                            log::error!("Failed to publish topic: {e}, retrying...")
+                                        }
+                                    }
+                                }
+                                _ => {}
                             }
                         }
                         // log::info!("Sending complete");

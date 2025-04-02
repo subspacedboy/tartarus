@@ -21,12 +21,12 @@ import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource
 import org.springframework.web.filter.OncePerRequestFilter
 
-class AuthorAuthenticationFilter(
+class WebUserAuthenticationFilter(
     private val authorSessionService: AuthorSessionService,
     private val lockUserSessionService: LockUserSessionService) :
     OncePerRequestFilter() {
 
-    private val filterLogger: Logger = LoggerFactory.getLogger(AuthorAuthenticationFilter::class.java)
+    private val filterLogger: Logger = LoggerFactory.getLogger(WebUserAuthenticationFilter::class.java)
 
     @Throws(IOException::class, ServletException::class)
     override fun doFilterInternal(
@@ -51,7 +51,6 @@ class AuthorAuthenticationFilter(
                     val lockUserSession = this.lockUserSessionService.findByName(sessionTokenName)
                     Base64.getDecoder().decode(lockUserSession.publicKey)
                 }
-
 
                 val sessionPublicECKey =
                     getECPublicKeyFromCompressedKeyByteArray(

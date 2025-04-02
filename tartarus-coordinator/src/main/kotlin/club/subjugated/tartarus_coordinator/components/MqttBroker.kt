@@ -1,5 +1,6 @@
 package club.subjugated.tartarus_coordinator.components
 
+import club.subjugated.tartarus_coordinator.services.BotService
 import io.moquette.broker.ISslContextCreator
 import io.moquette.broker.Server
 import io.moquette.broker.config.IConfig
@@ -10,6 +11,7 @@ import io.moquette.broker.subscriptions.Topic
 import io.moquette.interception.InterceptHandler
 import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
+import org.springframework.beans.factory.annotation.Autowired
 import java.util.*
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
@@ -19,12 +21,22 @@ class CustomMqttSecurity : IAuthenticator, IAuthorizatorPolicy {
     final val internalPassword: UUID = UUID.randomUUID()
     val passAsString = internalPassword.toString()
 
+    @Autowired
+    lateinit var botService: BotService
+
     @PostConstruct
     fun start() {
         // Initialize security component
     }
 
     override fun checkValid(clientId: String?, username: String?, password: ByteArray?): Boolean {
+        if(username != null) {
+            if(username.startsWith("b-")) {
+                val bot = botService.getByName(username)
+                return true
+            }
+        }
+
         val regex = "^[a-zA-Z0-9]{6}$".toRegex()
         if (username.isNullOrEmpty()) {
             return false
@@ -43,6 +55,11 @@ class CustomMqttSecurity : IAuthenticator, IAuthorizatorPolicy {
 
         if (user == "internal") {
             return true
+        }
+
+        if(user.startsWith("b-")) {
+            val bot = botService.getByName(user)
+            return bot.canReadMqtt(topic.toString())
         }
 
         // Locks can read their own response channel.
@@ -67,7 +84,18 @@ class CustomMqttSecurity : IAuthenticator, IAuthorizatorPolicy {
             return true
         }
 
-        // Locks can read their own response channel.
+        if(user.startsWith("b-")) {
+            val bot = botService.getByName(user)
+            return bot.canWriteMqtt(topic.toString())
+        }
+
+        if(isLockUser(user)){
+            if(topic!!.toString().startsWith("bots/inbox_b-")) {
+                return true
+            }
+        }
+
+        // Locks can read write to the main response channel.
         if (topic!!.toString() == "locks/updates") {
             return true
         }
@@ -83,6 +111,14 @@ class CustomMqttSecurity : IAuthenticator, IAuthorizatorPolicy {
     @PreDestroy
     fun stop() {
         // Cleanup security component
+    }
+
+    private fun isLockUser(username : String?) : Boolean {
+        if (username.isNullOrEmpty()) {
+            return false
+        }
+        val regex = "^[a-zA-Z0-9]{6}$".toRegex()
+        return regex.matches(username)
     }
 }
 

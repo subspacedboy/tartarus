@@ -1,5 +1,5 @@
 use crate::contract_generated::club::subjugated::fb::message::{
-    Contract, LockCommand, ReleaseCommand, UnlockCommand,
+    Bot, Contract, LockCommand, Permission, ReleaseCommand, UnlockCommand,
 };
 use p256::ecdsa::VerifyingKey;
 use serde::{Deserialize, Serialize};
@@ -18,6 +18,20 @@ pub struct InternalContract {
     pub public_key: Option<VerifyingKey>,
     pub original_bytes: Vec<u8>,
     pub command_counter: u16,
+    pub bots: Vec<InternalBot>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InternalBot {
+    pub(crate) name: String,
+    permission: InternalPermission,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InternalPermission {
+    receive_events: bool,
+    can_unlock: bool,
+    can_release: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -59,12 +73,24 @@ impl From<Contract<'_>> for InternalContract {
         let verifying_key = VerifyingKey::from_sec1_bytes(contract.public_key().unwrap().bytes())
             .expect("Valid public key");
 
+        let mut internal_bots: Vec<InternalBot> = Vec::new();
+
+        if let Some(bots) = contract.bots() {
+            for bot in bots.iter() {
+                let internal_bot: InternalBot = bot.into();
+                internal_bots.push(internal_bot);
+            }
+        } else {
+            println!("No bots found in the contract.");
+        }
+
         let mut ic = Self {
             serial_number: contract.serial_number(),
             temporary_unlock_allowed: contract.is_temporary_unlock_allowed(),
             public_key: Some(verifying_key),
             original_bytes,
             command_counter: 0,
+            bots: internal_bots,
         };
 
         ic
@@ -97,6 +123,34 @@ impl From<ReleaseCommand<'_>> for InternalReleaseCommand {
             contract_serial_number: release_command.contract_serial_number(),
             serial_number: release_command.serial_number(),
             counter: release_command.counter(),
+        }
+    }
+}
+
+impl From<Bot<'_>> for InternalBot {
+    fn from(bot: Bot) -> InternalBot {
+        let internal_permission: Option<InternalPermission> = if let Some(p) = &bot.permissions() {
+            Some((*p).into())
+        } else {
+            None
+        };
+
+        Self {
+            name: bot
+                .name()
+                .expect("Bot should always have a name")
+                .to_string(),
+            permission: internal_permission.unwrap(),
+        }
+    }
+}
+
+impl From<Permission<'_>> for InternalPermission {
+    fn from(permission: Permission) -> InternalPermission {
+        Self {
+            receive_events: permission.receive_events(),
+            can_unlock: permission.can_unlock(),
+            can_release: permission.can_release(),
         }
     }
 }

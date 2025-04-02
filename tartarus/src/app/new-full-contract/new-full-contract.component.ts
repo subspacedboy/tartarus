@@ -13,6 +13,8 @@ import {LockSession} from '../models/lock-session';
 import * as QRCode from 'qrcode';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule} from '@angular/forms';
 import {ToastService} from '../toast.service';
+import {Permission} from '../club/subjugated/fb/message/permission';
+import {Bot} from '../club/subjugated/fb/message/bot';
 
 @Component({
   selector: 'app-new-full-contract',
@@ -45,6 +47,7 @@ export class NewFullContractComponent implements OnInit {
     this.contractForm = this.fb.group({
       notes: new FormControl('', []),
       terms: new FormControl('', []),
+      bots: new FormControl('', []),
       isTempUnlockAllowed: new FormControl(false),
     });
   }
@@ -70,6 +73,21 @@ export class NewFullContractComponent implements OnInit {
 
     const sessionOffset = builder.createString(this.lockSession?.shareToken!);
 
+    Permission.startPermission(builder);
+    Permission.addReceiveEvents(builder, true);
+    Permission.addCanUnlock(builder, true);
+    Permission.addCanRelease(builder, true);
+    const permissionOffset = Permission.endPermission(builder);
+
+    const botName1 = builder.createString("b-42R6AGO");
+    Bot.startBot(builder);
+    Bot.addName(builder, botName1);
+    Bot.addPermissions(builder, permissionOffset);
+    const bot1Offset = Bot.endBot(builder);
+
+    const bots = [bot1Offset];
+    const botsVector = Contract.createBotsVector(builder, bots);
+
     // Derive secrets.
     // const lockPub = await this.cryptoService.importKeyPair(this.lockSession?.public_key!);
     let pubKey = await this.cryptoService.importPublicKeyOnlyFromPem(this.lockSession?.publicPem!);
@@ -85,6 +103,7 @@ export class NewFullContractComponent implements OnInit {
     Contract.addSerialNumber(builder, serialNumber);
     Contract.addPublicKey(builder, publicKeyOffset);
     Contract.addIsTemporaryUnlockAllowed(builder, this.contractForm.get('isTempUnlockAllowed')!.value!);
+    Contract.addBots(builder, botsVector);
     Contract.addTerms(builder, termsStringOffset);
     let fullContractOffset = Contract.endContract(builder);
     builder.finish(fullContractOffset);

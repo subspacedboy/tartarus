@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface BotRepository : JpaRepository<Bot, Long> {
-
+    fun findByName(name : String) : Bot
 }

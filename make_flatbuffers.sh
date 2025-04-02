@@ -3,10 +3,11 @@
 flatc --rust flatbuffers/*.fbs
 mv contract_generated.rs src/
 mv configuration_generated.rs src/
+mv event_generated.rs src/
 
-# RIP python implementation
-#rm -rf tartarus-coordinator/tartarus-coordinator/club
-#mv club tartarus-coordinator/tartarus-coordinator/
+flatc --python flatbuffers/*.fbs
+rm -rf tartarus-bot-example/src/club
+mv club tartarus-bot-example/src
 
 flatc --ts flatbuffers/*.fbs
 rm -rf tartarus/src/app/club

@@ -1,6 +1,5 @@
 package club.subjugated.tartarus_coordinator.config
 
-import club.subjugated.tartarus_coordinator.components.BotWebSocketHandler
 import club.subjugated.tartarus_coordinator.components.EventWebSocketHandler
 import club.subjugated.tartarus_coordinator.filters.JwtHandshakeInterceptor
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
@@ -14,8 +13,7 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 @Configuration
 @EnableWebSocket
 class WebsocketConfig(
-    private val webSocketHandler: EventWebSocketHandler,
-    private val botWebSocketHandler: BotWebSocketHandler) : WebSocketConfigurer {
+    private val webSocketHandler: EventWebSocketHandler) : WebSocketConfigurer {
 
     @Autowired
     lateinit var lockUserSessionService: LockUserSessionService
@@ -26,7 +24,5 @@ class WebsocketConfig(
         registry.addHandler(webSocketHandler, "/ws/events")
             .addInterceptors(JwtHandshakeInterceptor(authorSessionService, lockUserSessionService))
             .setAllowedOrigins("*")
-
-        registry.addHandler(botWebSocketHandler, "/ws/bots").setAllowedOrigins("*")
     }
 }

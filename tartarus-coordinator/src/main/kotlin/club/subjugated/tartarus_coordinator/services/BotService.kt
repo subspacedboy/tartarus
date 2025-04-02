@@ -35,4 +35,8 @@ class BotService {
 
         return bot
     }
+
+    fun getByName(name : String) : Bot {
+        return botRepository.findByName(name)
+    }
 }

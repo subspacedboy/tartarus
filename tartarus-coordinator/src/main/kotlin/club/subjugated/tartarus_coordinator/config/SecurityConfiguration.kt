@@ -1,6 +1,6 @@
 package club.subjugated.tartarus_coordinator.config
 
-import club.subjugated.tartarus_coordinator.filters.AuthorAuthenticationFilter
+import club.subjugated.tartarus_coordinator.filters.WebUserAuthenticationFilter
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
 import club.subjugated.tartarus_coordinator.services.LockUserSessionService
 import org.springframework.beans.factory.annotation.Autowired
@@ -23,14 +23,14 @@ class SecurityConfiguration() {
 
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
-        val authorAuthenticationFilter = AuthorAuthenticationFilter(authorSessionService, lockUserSessionService)
+        val webUserAuthenticationFilter = WebUserAuthenticationFilter(authorSessionService, lockUserSessionService)
 
         http
             .cors { it.configurationSource(corsConfigurationSource()) }
             .csrf { it.disable() }
             .authorizeHttpRequests { auth -> auth.anyRequest().permitAll() }
             .httpBasic {}
-            .addFilterAfter(authorAuthenticationFilter, BasicAuthenticationFilter::class.java)
+            .addFilterAfter(webUserAuthenticationFilter, BasicAuthenticationFilter::class.java)
         //            .httpBasic{
         //
         //            }

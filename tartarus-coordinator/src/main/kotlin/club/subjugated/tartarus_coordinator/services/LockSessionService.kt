@@ -19,6 +19,7 @@ class LockSessionService {
     @Autowired lateinit var commandQueueRepository: CommandQueueRepository
     @Autowired lateinit var contractService: ContractService
     @Autowired lateinit var publisher: ApplicationEventPublisher
+    @Autowired lateinit var botService: BotService
 
     fun createLockSession(newLockSessionMessage: NewLockSessionMessage): LockSession {
         return lockSessionRepository.findBySessionToken(newLockSessionMessage.sessionToken)
@@ -61,6 +62,7 @@ class LockSessionService {
             val contracts = contractService.findByLockSessionIdAndState(lockSession, listOf(ContractState.CONFIRMED))
             val activeContract = contracts.firstOrNull { it.serialNumber == periodicUpdate.currentContractSerial.toInt() }
             PeriodicUpdateEvent(this, lockSession, activeContract)
+
         } else {
             PeriodicUpdateEvent(this, lockSession, null)
         }

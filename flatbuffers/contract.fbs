@@ -1,17 +1,5 @@
 namespace club.subjugated.fb.message;
 
-/*table TimeEndCondition {
-  seconds: ulong;
-}
-
-table WhenISaySo {
-}
-
-union EndCondition {
-  TimeEndCondition,
-  WhenISaySo
-}*/
-
 table Permission {
   receive_events: bool;
   can_unlock: bool;
@@ -22,13 +10,6 @@ table Bot {
   name: string;
   permissions: Permission;
 }
-
-/*table TemporaryUnlockRules {
-  // If greater than zero it should act like a counter.
-  max_unlocks: ushort;
-
-  time_limit: ushort;
-}*/
 
 table Contract {
   serial_number: ushort;
