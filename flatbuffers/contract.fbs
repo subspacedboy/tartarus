@@ -1,4 +1,4 @@
-namespace subjugated.club;
+namespace club.subjugated.fb.message;
 
 enum Capabilities : byte { Online = 1, Time }
 

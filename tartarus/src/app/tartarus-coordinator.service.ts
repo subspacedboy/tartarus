@@ -53,10 +53,10 @@ export class TartarusCoordinatorService {
   }
 
   public saveLockPubKeyAndSession(public_key: string, session: string) : Observable<boolean> {
-    const save_key_uri = 'http://localhost:5002/lock_sessions';
+    const save_key_uri = 'http://localhost:5002/lock_sessions/';
     const body = JSON.stringify({
-      'public_key' : public_key,
-      'session' : session
+      'publicKey' : public_key,
+      'sessionToken' : session
     });
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
     return this.http.post(save_key_uri, body, {headers} ).pipe(map((res:any) => {
@@ -67,9 +67,10 @@ export class TartarusCoordinatorService {
   }
 
   public saveContract(name: string, signed_message: Uint8Array) : Observable<boolean> {
-    const save_contract_uri = `http://localhost:5002/contracts/${name}`;
+    const save_contract_uri = `http://localhost:5002/contracts/`;
     const body = JSON.stringify({
-      'signed_message' : btoa(String.fromCharCode(...signed_message))
+      'contractName' : name,
+      'signedMessage' : btoa(String.fromCharCode(...signed_message))
     });
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
     return this.http.post(save_contract_uri, body, {headers} ).pipe(map((res:any) => {
