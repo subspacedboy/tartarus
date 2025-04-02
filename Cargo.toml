@@ -33,10 +33,9 @@ log = { version = "0.4", default-features = false }
 esp-idf-svc = { version = "0.51", features = ["critical-section", "embassy-time-driver", "embassy-sync"] }
 esp-idf-hal = "0.45.2"
 embedded-hal = "1.0.0"
-embedded-hal-compat = "0.13.0"
 embedded-graphics = "0.8.1"
-#st7789 = "0.7.0"
-st7789-lcd = "0.1.1"
+embedded-graphics-core = "0.4.0"
+st7789 = {path ="../st7789"}
 display-interface = "0.5.0"
 display-interface-spi = "0.5.0"
 qrcode = "0.14.0"

@@ -24,11 +24,8 @@ use embedded_graphics::pixelcolor::{Rgb565, RgbColor};
 use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle};
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_hal::spi::MODE_3;
-use embedded_hal_compat::eh0_2::digital::v1_compat::OldOutputPin;
-use embedded_hal_compat::eh0_2::Direction;
 use embedded_graphics::prelude::Primitive;
 use embedded_graphics::Drawable;
-// use embedded_hal_compat::eh0_2::digital::OutputPin;
 use esp_idf_hal::delay::{Delay, BLOCK, NON_BLOCK};
 use esp_idf_hal::gpio::{AnyIOPin, Gpio40, Gpio41, Gpio45, Output, PinDriver, Pull};
 use esp_idf_hal::i2c::{I2cConfig, I2cDriver};
@@ -57,12 +54,11 @@ use p256::ecdsa::signature::Verifier;
 use qrcode::{Color, QrCode};
 use rand_core::{CryptoRng, RngCore};
 use sha2::{digest, Sha256};
-use st7789_lcd::{Orientation, ST7789};
-// use st7789::{Orientation, ST7789};
-// use crate::boot_screen::BootScreen;
+use st7789::{Orientation, ST7789};
+use crate::boot_screen::BootScreen;
 use crate::contract_generated::subjugated::club::{MessagePayload, SignedMessage};
 use crate::lock_state_machine::{LockStateMachine, State};
-// use crate::screen_state::ScreenState;
+use crate::screen_state::ScreenState;
 use crate::verifier::{ContractVerifier, VerifiedType};
 use crate::wifi_util::{connect_wifi, parse_wifi_qr};
 
@@ -153,24 +149,12 @@ fn main() {
         &spi::SpiConfig::new().baudrate(10.MHz().into()),
     ).expect("SpiDeviceDriver to work");
 
-    // let old_rst = OldOutputPin::new(tft_rst);
-    // let di = SPIInterfaceNoCS::new(
-    //     spi,
-    //     gpio::PinDriver::output(tft_dc).expect("Pin driver for DC to work"),
-    // );
-    // let di = SPIInterface::new(spi, gpio::PinDriver::output(tft_dc).expect("Pin driver for DC to work"));
+    let di = SPIInterface::new(spi, gpio::PinDriver::output(tft_dc).expect("Pin driver for DC to work"));
 
-    let mut display = ST7789::<_, _, _, 135, 240, 0, 0>::new(spi, gpio::PinDriver::output(tft_dc).expect("Pin driver for DC to work"), tft_rst);
-    // let mut display = ST7789::new(di, Some(old_rst), Some(old_bl), 240, 135);
+    let mut display: ST7789<SPIInterface<SpiDeviceDriver<SpiDriver>, PinDriver<Gpio40, Output>>, PinDriver<Gpio41, Output>, PinDriver<Gpio45, Output>> = ST7789::new(di, Some(tft_rst), Some(tft_bl), 240, 135);
 
-    // let mut disp_delay = Delay::new();
-    display.hard_reset(&mut delay::Ets).unwrap();
-    display.init(&mut delay::Ets, Orientation::Landscape, true, true).ok();
-    // display.init(&mut delay::Ets).expect("Display to initialize");
-    // display.set_orientation(Orientation::Portrait).expect("To set landscape");
-
-    display.on().expect("Display to on");
-    // display.clear_screen(Rgb565::WHITE).ok();
+    display.init(&mut delay::Ets).expect("Display to initialize");
+    display.set_orientation(Orientation::Portrait).expect("To set landscape");
     display.clear(Rgb565::WHITE).expect("Display to clear");
 
     // Warm up NVS (non-volatile storage)
@@ -304,8 +288,9 @@ fn main() {
 
     // let mut screen_state: Box<dyn ScreenState> = BootScreen {};
 
-    // let mut thingy = BootScreen {};
+    let mut thingy = BootScreen {};
     // thingy.draw_screen(&mut display);
+    thingy.draw_screen(&mut display);
 
 
     loop {
