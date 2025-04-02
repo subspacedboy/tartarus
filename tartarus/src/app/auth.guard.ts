@@ -4,7 +4,7 @@ import {inject} from '@angular/core';
 
 export const authGuard: CanActivateFn = (route, state) => {
   const userDataService: UserDataService = inject(UserDataService);
-  if(userDataService.isAlreadyLoggedIn()) {
+  if(userDataService.hasAuthorSession()) {
     return true;
   }
   return inject(Router).createUrlTree(['/']);

@@ -1,4 +1,4 @@
-package club.subjugated.tartarus_coordinator.config
+package club.subjugated.tartarus_coordinator.components
 
 import club.subjugated.tartarus_coordinator.services.SafetyKeyService
 import jakarta.annotation.PostConstruct

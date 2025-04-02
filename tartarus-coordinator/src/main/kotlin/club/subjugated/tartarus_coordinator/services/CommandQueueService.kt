@@ -9,11 +9,8 @@ import club.subjugated.tartarus_coordinator.storage.CommandQueueRepository
 import club.subjugated.tartarus_coordinator.storage.CommandRepository
 import club.subjugated.tartarus_coordinator.util.TimeSource
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.context.ApplicationEvent
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
-
-class NewCommandEvent(source: Any, val lockSessionToken: String) : ApplicationEvent(source)
 
 @Service
 class CommandQueueService {

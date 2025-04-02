@@ -35,7 +35,7 @@ export class LoginComponent implements OnInit {
   ngOnInit() {}
 
   alreadyLoggedIn(): boolean {
-    return this.userDataService.isAlreadyLoggedIn();
+    return this.userDataService.hasAuthorSession();
   }
 
   onFileSelected(event: any) {

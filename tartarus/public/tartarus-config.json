@@ -1,5 +1,6 @@
 {
   "webUri": "https://tartarus.subjugated.club",
+  "wsUri": "wss://tartarus.subjugated.club/ws/events",
   "apiUri": "https://tartarus-api.subjugated.club:4446",
   "mqttUri" : "wss://tartarus-mqtt.subjugated.club:4447/mqtt"
 }

@@ -1,4 +1,4 @@
-package club.subjugated.tartarus_coordinator.config
+package club.subjugated.tartarus_coordinator.components
 
 import io.moquette.broker.ISslContextCreator
 import io.moquette.broker.Server

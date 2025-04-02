@@ -1,4 +1,5 @@
 import {Injectable} from '@angular/core';
+import {SignJWT} from 'jose';
 
 @Injectable({
   providedIn: 'root'
@@ -30,6 +31,15 @@ export class CryptoService {
     const base64 = btoa(String.fromCharCode(...der));
     const formatted = base64.match(/.{1,64}/g)?.join("\n") ?? "";
     return `-----BEGIN ${label}-----\n${formatted}\n-----END ${label}-----`;
+  }
+
+  async jwtForKeypair(subject : string, keypair : {privatePem : string | null, publicPem : string | null}) : Promise<string> {
+    const importedKeypair = await this.importKeyPairForECDSA(`${keypair.privatePem}${keypair.publicPem}`);
+    return await new SignJWT({sub: subject, name: subject})
+      .setProtectedHeader({alg: 'ES256'})
+      .setIssuedAt()
+      .setExpirationTime('1h')
+      .sign(importedKeypair.privateKey);
   }
 
   async generateCompressedPublicKey(publicKey : CryptoKey): Promise<Uint8Array> {

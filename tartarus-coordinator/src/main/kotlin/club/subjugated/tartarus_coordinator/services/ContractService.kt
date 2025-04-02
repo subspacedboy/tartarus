@@ -2,6 +2,7 @@ package club.subjugated.tartarus_coordinator.services
 
 import club.subjugated.tartarus_coordinator.api.messages.NewContractMessage
 import club.subjugated.tartarus_coordinator.events.AcknowledgedCommandEvent
+import club.subjugated.tartarus_coordinator.events.NewCommandEvent
 import club.subjugated.tartarus_coordinator.models.AuthorSession
 import club.subjugated.tartarus_coordinator.models.Command
 import club.subjugated.tartarus_coordinator.models.CommandState

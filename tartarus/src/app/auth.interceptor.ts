@@ -17,45 +17,25 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   if(requireAuthor) {
     const name = userDataService.getAuthorName();
-
-    return from(cryptoService.importKeyPairForECDSA(`${userDataService.getAuthorKeypair().privatePem}${userDataService.getAuthorKeypair().publicPem}`))
-      .pipe(
-        switchMap(thingy =>
-          from(new SignJWT({ sub: name, name: name })
-            .setProtectedHeader({ alg: 'ES256' })
-            .setIssuedAt()
-            .setExpirationTime('1h')
-            .sign(thingy.privateKey))
-        ),
-        switchMap(jwt => {
-          return next(
-            req.clone({
-              setHeaders: { Authorization: `Bearer ${jwt}` },
-              headers: req.headers.delete('X-Require-Author')
-            })
-          );
-        })
-      );
+    return from(cryptoService.jwtForKeypair(name, userDataService.getAuthorKeypair())).pipe(
+      switchMap(jwt => {
+        return next(
+          req.clone({
+            setHeaders: { Authorization: `Bearer ${jwt}` },
+            headers: req.headers.delete('X-Require-Author')
+          }));
+      })
+    )
   } else {
     const name = userDataService.getLockUserSessionToken();
-
-    return from(cryptoService.importKeyPairForECDSA(`${userDataService.getLockUserSessionKeyPair().privatePem}${userDataService.getLockUserSessionKeyPair().publicPem}`))
-      .pipe(
-        switchMap(thingy =>
-          from(new SignJWT({ sub: name, name: name })
-            .setProtectedHeader({ alg: 'ES256' })
-            .setIssuedAt()
-            .setExpirationTime('1h')
-            .sign(thingy.privateKey))
-        ),
-        switchMap(jwt => {
-          return next(
-            req.clone({
-              setHeaders: { Authorization: `Bearer ${jwt}` },
-              headers: req.headers.delete('X-Require-LockUser')
-            })
-          );
-        })
-      );
+    return from(cryptoService.jwtForKeypair(name, userDataService.getLockUserSessionKeyPair())).pipe(
+      switchMap(jwt => {
+        return next(
+          req.clone({
+            setHeaders: { Authorization: `Bearer ${jwt}` },
+            headers: req.headers.delete('X-Require-LockUser')
+          }));
+      })
+    )
   }
 };

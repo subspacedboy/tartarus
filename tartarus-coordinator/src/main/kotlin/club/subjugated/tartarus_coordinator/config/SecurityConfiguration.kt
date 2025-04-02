@@ -1,6 +1,6 @@
 package club.subjugated.tartarus_coordinator.config
 
-import AuthorAuthenticationFilter
+import club.subjugated.tartarus_coordinator.filters.AuthorAuthenticationFilter
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
 import club.subjugated.tartarus_coordinator.services.LockUserSessionService
 import org.springframework.beans.factory.annotation.Autowired

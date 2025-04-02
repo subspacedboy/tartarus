@@ -38,7 +38,7 @@ export class UserDataService {
     const privatePem = localStorage.getItem("lock_user_private_pem");
     const publicPem = localStorage.getItem("lock_user_public_pem");
 
-    return { privatePem, publicPem} ;
+    return {privatePem, publicPem} ;
   }
 
   addPublicAndPrivateKeyToLocalUserSession(privatePem: string, publicPem: string) {
@@ -82,7 +82,7 @@ export class UserDataService {
     return String(localStorage.getItem('author_session_token'));
   }
 
-  isAlreadyLoggedIn(): boolean {
+  hasAuthorSession(): boolean {
     return localStorage.getItem('author_session_token') !== null;
   }
 }

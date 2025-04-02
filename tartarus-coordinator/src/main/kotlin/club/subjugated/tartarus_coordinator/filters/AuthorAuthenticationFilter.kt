@@ -1,3 +1,5 @@
+package club.subjugated.tartarus_coordinator.filters
+
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
 import club.subjugated.tartarus_coordinator.services.LockUserSessionService
 import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromCompressedKeyByteArray
