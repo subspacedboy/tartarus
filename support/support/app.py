@@ -1,4 +1,5 @@
-from flask import Flask, request
+import io
+from flask import Flask, request, send_file
 import base64
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
@@ -6,6 +7,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+import qrcode
 
 import os
 
@@ -65,7 +67,6 @@ print("Loaded Public Key (PEM):\n", public_key.public_bytes(
 def create_app():
     app = Flask(__name__)
 
-
     # # engine = create_engine('sqlite:///:memory:')
     # file_path = "/tmp/my_database.db"
 
@@ -82,21 +83,46 @@ def create_app():
     @app.route("/", methods=["GET"])
     def landing():
         lock_public_key = request.args.get('public')
-        pem_key = base64.b64decode(lock_public_key)
-        print(pem_key)
-        lock_public_key = serialization.load_pem_public_key(pem_key)
+        lock_pem_key = base64.b64decode(lock_public_key)
+        print(lock_pem_key)
+        lock_public_key = serialization.load_pem_public_key(lock_pem_key)
+        with open("current_lock.pem", "wb") as lock_pub_file:
+            lock_pub_file.write(lock_pem_key)
         
-        shared_secret = private_key.exchange(ec.ECDH(), lock_public_key)
-        print("Shared Secret:", shared_secret.hex())
-        
-        # Make the B64 encoded version of this side's public key
-        public_pem = private_key.public_key().public_bytes(
+        my_public_key_pem = private_key.public_key().public_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo
         )
-        
-        b64_my_pub_key = base64.b64encode(public_pem)
+        b64_my_pub_key = base64.b64encode(my_public_key_pem)
         print(f"B64 key: {b64_my_pub_key}")
+
+        qr = qrcode.QRCode(box_size=10, border=5)
+        qr.add_data(b64_my_pub_key)
+        qr.make(fit=True)
+
+        img = qr.make_image(fill="black", back_color="white")
+
+        img_io = io.BytesIO()
+        img.save(img_io, "PNG")
+        img_io.seek(0)
+
+        # my_public_key_pem = private_key.public_key().public_bytes(
+        #     encoding=serialization.Encoding.PEM,
+        #     format=serialization.PublicFormat.SubjectPublicKeyInfo
+        # )
+        # encoded_pub = base64.b64encode(my_public_key_pem)
+        # print(f"My public pem: {encoded_pub}")
+
+        return send_file(img_io, mimetype="image/png")
+    
+    @app.route('/lock')
+    def lock_code():
+        lock_public_key = None
+        with open("current_lock.pem", "rb") as pub_file:
+            lock_public_key = serialization.load_pem_public_key(pub_file.read())
+
+        shared_secret = private_key.exchange(ec.ECDH(), lock_public_key)
+        print("Shared Secret:", shared_secret.hex())
 
         aes_key = HKDF(
             algorithm=hashes.SHA256(),
@@ -113,20 +139,19 @@ def create_app():
         plaintext = b"LOCK"
         ciphertext = aesgcm.encrypt(nonce, plaintext, associated_data=None)
 
-        b64_nonce = base64.b64encode(nonce)
-        b64_ciphertext = base64.b64encode(ciphertext)
+        b64_nonce_and_cipher = base64.b64encode(nonce+ciphertext)
+        print(f"Nonce+cipher {b64_nonce_and_cipher}")
 
-        print(f"Nonce {b64_nonce}")
-        print(f"Cipher {b64_ciphertext}")
+        qr = qrcode.QRCode(box_size=10, border=5)
+        qr.add_data(b64_nonce_and_cipher)
+        qr.make(fit=True)
 
-        # my_public_key_pem = private_key.public_key().public_bytes(
-        #     encoding=serialization.Encoding.PEM,
-        #     format=serialization.PublicFormat.SubjectPublicKeyInfo
-        # )
-        # encoded_pub = base64.b64encode(my_public_key_pem)
-        # print(f"My public pem: {encoded_pub}")
+        img = qr.make_image(fill="black", back_color="white")
 
-        return "OK"
+        img_io = io.BytesIO()
+        img.save(img_io, "PNG")
+        img_io.seek(0)
+        return send_file(img_io, mimetype="image/png")
     
     return app
     

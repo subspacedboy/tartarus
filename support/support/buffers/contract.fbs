@@ -1,0 +1,7 @@
+namespace subjugated.club;
+
+table Contract {
+  public_key: string;  // Base64-encoded blob
+}
+
+root_type Contract;

@@ -18,13 +18,17 @@ use embedded_graphics::primitives::*;
 use embedded_hal::spi::MODE_3;
 use embedded_hal_compat::eh0_2::digital::v1_compat::OldOutputPin;
 use embedded_hal_compat::ReverseCompat;
+use esp_idf_hal::delay::BLOCK;
 use esp_idf_hal::gpio::{AnyIOPin, AnyOutputPin, OutputPin, PinDriver};
+use esp_idf_hal::i2c::{I2cConfig, I2cDriver};
 use esp_idf_hal::io::{ErrorType, Read};
 use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_hal::prelude::FromValueType;
 use esp_idf_hal::spi;
 use esp_idf_hal::spi::{Spi, SpiConfig, SpiDeviceDriver, SpiDriver};
 use esp_idf_hal::spi::config::DriverConfig;
+use esp_idf_hal::sys::EspError;
+use esp_idf_hal::units::KiloHertz;
 use esp_idf_svc::hal::delay;
 use esp_idf_svc::hal::gpio;
 use esp_idf_svc::sys::esp_random;
@@ -150,7 +154,8 @@ fn main() {
 
     let private_key : SecretKey = if let Some(base64_key) = existing_key {
         log::info!("Loaded existing EC private key.");
-        let key_bytes = decode(base64_key).unwrap();
+        let key_bytes = general_purpose::STANDARD.decode(base64_key).unwrap();
+        // SecretKey::from_sec1_der()
         SecretKey::from_slice(&key_bytes).expect("Failed to parse private key")
     } else {
         log::info!("Generating a new EC private key...");
@@ -158,7 +163,7 @@ fn main() {
 
         // // Serialize & encode in base64
         let key_bytes = sk.to_bytes();
-        let encoded_key = encode(key_bytes);
+        let encoded_key = general_purpose::STANDARD.encode(key_bytes);
         nvs.set_blob(key_name, encoded_key.as_bytes()).unwrap();
         log::info!("Saved new EC private key to NVS.");
         sk
@@ -170,43 +175,36 @@ fn main() {
     // let receiver_secret = SecretKey::random(&mut rng);
     // let receiver_public = PublicKey::from_secret_scalar(&receiver_secret.to_nonzero_scalar());
 
-    const REMOTE_PUB_KEY: &str = "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFa3dVUDJmbjhMQVJkYi8rSDZrMFJzMEtaeE4zUApsTHVlTzQxdHFPRktGZlFWeC9CcHpVNGdYSmYzbEdKTjFDdXBGMlExbVcralV1cVJuMlpvSS82U3VBPT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==";
-    let pub_key = String::from_utf8(general_purpose::STANDARD.decode(REMOTE_PUB_KEY).expect("Key didn't parse")).expect("String to be valid");
-    let receiver_public = PublicKey::from_public_key_pem(pub_key.as_str()).expect("Valid key");
+    // const REMOTE_PUB_KEY: &str = "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFa3dVUDJmbjhMQVJkYi8rSDZrMFJzMEtaeE4zUApsTHVlTzQxdHFPRktGZlFWeC9CcHpVNGdYSmYzbEdKTjFDdXBGMlExbVcralV1cVJuMlpvSS82U3VBPT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==";
+    // let pub_key = String::from_utf8(general_purpose::STANDARD.decode(REMOTE_PUB_KEY).expect("Key didn't parse")).expect("String to be valid");
+    // let receiver_public = PublicKey::from_public_key_pem(pub_key.as_str()).expect("Valid key");
 
-    let shared_secret = diffie_hellman(
-        private_key.to_nonzero_scalar(),
-        receiver_public.as_affine()
-    );
-
-    // let symmetric_key: &Key<Aes256Gcm> = Key::from_slice(shared_secret.raw_secret_bytes()).into();
-
-    let hk = Hkdf::<Sha256>::new(None, &shared_secret.raw_secret_bytes());
-    let mut aes_key = [0u8; 32]; // Buffer for AES-256 key
-    const NONCE: &str = "8w/3FFyYUcwwKxnp";
-    const CIPHER_TEXT: &str = "jiAH8/ExuAumT476Z/OC/Jc3dsM=";
-    hk.expand("AES-GCM key derivation".as_bytes(), &mut aes_key).expect("HKDF expansion failed");
-    log::info!("Derived key: {:x?}", aes_key);
+    // let shared_secret = diffie_hellman(
+    //     private_key.to_nonzero_scalar(),
+    //     receiver_public.as_affine()
+    // );
+    //
+    // // let symmetric_key: &Key<Aes256Gcm> = Key::from_slice(shared_secret.raw_secret_bytes()).into();
+    //
+    // let hk = Hkdf::<Sha256>::new(None, &shared_secret.raw_secret_bytes());
+    // let mut aes_key = [0u8; 32]; // Buffer for AES-256 key
+    // const NONCE: &str = "8w/3FFyYUcwwKxnp";
+    // const CIPHER_TEXT: &str = "jiAH8/ExuAumT476Z/OC/Jc3dsM=";
+    // hk.expand("AES-GCM key derivation".as_bytes(), &mut aes_key).expect("HKDF expansion failed");
+    // log::info!("Derived key: {:x?}", aes_key);
 
     // let symmetric_key: &Key<Aes256Gcm> = shared_secret.raw_secret_bytes().into();
-    let symmetric_key: &Key<Aes256Gcm> = (&aes_key).into();
-    let cipher = Aes256Gcm::new(symmetric_key);
+    // let symmetric_key: &Key<Aes256Gcm> = (&aes_key).into();
+    // let cipher = Aes256Gcm::new(symmetric_key);
 
-    let nonce = general_purpose::STANDARD.decode(NONCE).expect("Nonce didn't parse");
-    let nonce_bytes : [u8; 12] = nonce.try_into().expect("wrong size");
-    let nonce: Nonce<Aes256Gcm> = *GenericArray::from_slice(&nonce_bytes);
+    // let nonce = general_purpose::STANDARD.decode(NONCE).expect("Nonce didn't parse");
+    // let nonce_bytes : [u8; 12] = nonce.try_into().expect("wrong size");
+    // let nonce: Nonce<Aes256Gcm> = *GenericArray::from_slice(&nonce_bytes);
 
-    let cipher_text = general_purpose::STANDARD.decode(CIPHER_TEXT).expect("Nonce didn't parse");
+    // let cipher_text = general_purpose::STANDARD.decode(CIPHER_TEXT).expect("Nonce didn't parse");
 
-    log::info!("ciphertext : {:x?}", cipher_text);
-    match cipher.decrypt(&nonce, Payload { msg: &cipher_text, aad: &[] }) {
-        Ok(plaintext) => {
-            println!("Decrypted message: {:?}", String::from_utf8_lossy(&plaintext));
-        }
-        Err(_) => {
-            println!("Decryption failed! Check key, nonce, or ciphertext.");
-        }
-    }
+    // log::info!("ciphertext : {:x?}", cipher_text);
+
 
     // cchandler: These are for encryption only.
     // let nonce = Aes256Gcm::generate_nonce(&mut rng);
@@ -230,7 +228,6 @@ fn main() {
     let qr_width = qr.width() as u32;
 
     log::info!("Generated code with version: {:?}", qr.version());
-
     log::info!("Has width: {:?}", qr_width);
 
     // Scale factor and positioning
@@ -254,13 +251,146 @@ fn main() {
         }
     }
 
+    log::info!("Initializing code reader");
+    const READER_ADDRESS: u8 = 0x0c;
+    let sda: AnyIOPin = peripherals.pins.gpio42.into();
+    let scl: AnyIOPin = peripherals.pins.gpio41.into();
+
+    let config = I2cConfig::new().baudrate(KiloHertz(400).into());
+    let mut i2c_driver = I2cDriver::new(
+        peripherals.i2c0,
+        sda,
+        scl,
+        &config,
+    ).expect("I2C to initialize");
+
+    // The maximum dataframe size from the tiny code reader is
+    // 254 (size of rx_buf). The first byte in the message is the length
+    // of the read message with an offset of 2. One for size, and one for
+    // the null byte after size.
+    let mut rx_buf: [u8; 254] = [0; 254];
+
     // Draw the circle on the display
 
     log::info!("Ready :-)");
+    let mut sm = StateMachine::new();
+    let mut public_key : Option<PublicKey> = None;
+    let mut cipher : Option<Aes256Gcm> = None;
 
     loop {
+        let mut data : Option<Vec<u8>> = None;
+        match i2c_driver.read(READER_ADDRESS, &mut rx_buf, BLOCK) {
+            Ok(_) => {
+                let size: usize = rx_buf[0] as usize;
+                if size > 0 {
+                    // See rx_buf for 2 and +2 info.
+                    // let as_string = String::from_utf8(rx_buf[2..size+2].to_vec()).expect("Valid string");
+                    data = Some(rx_buf[2..size + 2].to_vec())
+                }
+            }
+            Err(_) => {}
+        }
+
+        match sm.state {
+            State::Start => {
+                if let Some(incoming_data) = data {
+                    if let Ok(maybe_b64_string) = String::from_utf8(incoming_data) {
+                        if let Ok(decoded_string) = general_purpose::STANDARD.decode(maybe_b64_string) {
+                            if let Ok(valid_string) = String::from_utf8(decoded_string) {
+                                log::info!("valid b64 decoded string {:?}", valid_string);
+
+                                let receiver_public = PublicKey::from_public_key_pem(valid_string.as_str());
+                                if let Ok(_public_key) = receiver_public {
+                                    log::info!("Valid key found");
+                                    public_key = Some(_public_key);
+
+                                    let shared_secret = diffie_hellman(
+                                        private_key.to_nonzero_scalar(),
+                                        _public_key.as_affine()
+                                    );
+
+                                    let mut aes_key = [0u8; 32];
+                                    let hk = Hkdf::<Sha256>::new(None, &shared_secret.raw_secret_bytes());
+                                    hk.expand("AES-GCM key derivation".as_bytes(), &mut aes_key).expect("HKDF expansion failed");
+                                    log::info!("Derived key: {:x?}", aes_key);
+
+                                    // let symmetric_key: &Key<Aes256Gcm> = shared_secret.raw_secret_bytes().into();
+                                    let symmetric_key: &Key<Aes256Gcm> = (&aes_key).into();
+                                    cipher = Some(Aes256Gcm::new(symmetric_key));
+
+                                    log::info!("AES Cipher initialized");
+                                    sm.transition(State::CertificateLoaded);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            State::CertificateLoaded => {
+                if let Some(incoming_data) = data {
+                    if let Ok(maybe_b64_string) = String::from_utf8(incoming_data) {
+                        if let Ok(decoded_bytes) = general_purpose::STANDARD.decode(maybe_b64_string) {
+                            log::info!("Decoded message: {:?}", decoded_bytes);
+
+                            let nonce : &[u8] = &decoded_bytes[0..12];
+                            let nonce_bytes : [u8; 12] = nonce.try_into().expect("wrong size");
+                            let nonce: Nonce<Aes256Gcm> = *GenericArray::from_slice(&nonce_bytes);
+
+                            let cipher_text = &decoded_bytes[12..decoded_bytes.len()];
+                            if let Some(ref mut actual_cipher) = cipher {
+                                match actual_cipher.decrypt(&nonce, Payload { msg: &cipher_text, aad: &[] }) {
+                                    Ok(plaintext) => {
+                                        let plaintext_str = String::from_utf8_lossy(&plaintext);
+                                        println!("Decrypted message: {:?}", plaintext_str);
+
+                                        if plaintext_str == "LOCK" {
+                                            sm.transition(State::CodeConfirmed);
+                                        }
+                                    }
+                                    Err(_) => {
+                                        println!("Decryption failed! Check key, nonce, or ciphertext.");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            State::CodeConfirmed => {
+                log::info!("Locked!");
+            }
+            State::Reset => {}
+        }
+
         sleep(Duration::from_millis(100));
 
         // continue; // keep optimizer from removing in --release
+    }
+}
+
+#[derive(Debug)]
+enum State {
+    Start,
+    CertificateLoaded,
+    CodeConfirmed,
+    Reset,
+}
+
+struct StateMachine {
+    state: State,
+}
+
+impl StateMachine {
+    fn new() -> Self {
+        Self { state: State::Start }
+    }
+
+    fn transition(&mut self, new_state: State) {
+        println!("Transitioning from {:?} to {:?}", self.state, new_state);
+        self.state = new_state;
+    }
+
+    fn current_state(&self) -> &State {
+        &self.state
     }
 }
