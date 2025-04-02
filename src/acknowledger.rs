@@ -5,10 +5,8 @@ use crate::contract_generated::club::subjugated::fb::message::{
 use crate::fb_helper::calculate_signature;
 use crate::verifier::{VerificationError, VerifiedType};
 use flatbuffers::FlatBufferBuilder;
-use p256::ecdsa::signature::Signer;
 use p256::ecdsa::{Signature, SigningKey};
 use p256::PublicKey;
-use sha2::{Digest, Sha256};
 
 pub(crate) struct Acknowledger {}
 

@@ -64,7 +64,7 @@ pub enum TopicType {
     Acknowledgments,
     BotMessage,
     FirmwareMessage,
-    FirmwareChunk
+    FirmwareChunk,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -208,13 +208,12 @@ impl MqttService {
                                                 data.to_vec(),
                                                 TopicType::ConfigurationData,
                                             ))
-                                        },
-                                        x if x == firmware_queue_name.as_str() => {
-                                            message_queue.push_back(SignedMessageTransport::new(
+                                        }
+                                        x if x == firmware_queue_name.as_str() => message_queue
+                                            .push_back(SignedMessageTransport::new(
                                                 data.to_vec(),
                                                 TopicType::FirmwareMessage,
-                                            ))
-                                        }
+                                            )),
                                         _ => {}
                                     }
                                 } else {
@@ -225,7 +224,11 @@ impl MqttService {
                                     ))
                                 }
 
-                                log::info!("Received MQTT message: {} bytes on {:?}", data.len(), topic);
+                                log::info!(
+                                    "Received MQTT message: {} bytes on {:?}",
+                                    data.len(),
+                                    topic
+                                );
                             }
                         }
                         EventPayload::Disconnected => {
@@ -263,7 +266,8 @@ impl MqttService {
                 let inbound_queue = format!("locks/{}", &session_token);
                 let configuration_queue = format!("configuration/{}", &session_token);
                 let firmware_queue = format!("firmware/{}", &session_token);
-                let queues_to_subscribe_to: Vec<String> = vec![inbound_queue, configuration_queue, firmware_queue];
+                let queues_to_subscribe_to: Vec<String> =
+                    vec![inbound_queue, configuration_queue, firmware_queue];
                 // let subscription_count = 0_u8;
 
                 'outer: loop {
@@ -316,7 +320,7 @@ impl MqttService {
                                             log::error!("Failed to publish topic: {e}, retrying...")
                                         }
                                     }
-                                },
+                                }
                                 TopicType::FirmwareMessage => {
                                     match client.publish(
                                         "locks/firmware",
@@ -329,7 +333,7 @@ impl MqttService {
                                             log::error!("Failed to publish topic: {e}, retrying...")
                                         }
                                     }
-                                },
+                                }
                                 _ => {}
                             }
                         }

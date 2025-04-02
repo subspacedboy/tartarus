@@ -1,3 +1,7 @@
+use crate::mqtt_service::SignedMessageTransport;
+use anyhow::{anyhow, Context};
+use embedded_svc::ota::{Ota, SlotState};
+use esp_idf_svc::ota::{EspOta, EspOtaUpdate};
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::marker::PhantomData;
@@ -5,10 +9,6 @@ use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use anyhow::{anyhow, Context};
-use embedded_svc::ota::{Ota, SlotState};
-use esp_idf_svc::ota::{EspOta, EspOtaUpdate};
-use crate::mqtt_service::SignedMessageTransport;
 
 pub struct FirmwareUpdater {
     incoming_bytes: Arc<Mutex<VecDeque<Vec<u8>>>>,
@@ -26,7 +26,7 @@ impl FirmwareUpdater {
         let complete_ref = Arc::clone(&updater.complete);
         thread::spawn(move || {
             let mut ota = EspOta::new().expect("Ota new");
-            let mut update = ota.initiate_update().expect("Failed to initiate OTA");
+            // let mut update = ota.initiate_update().expect("Failed to initiate OTA");
 
             loop {
                 if let Ok(complete_flag) = complete_ref.lock() {
@@ -36,11 +36,12 @@ impl FirmwareUpdater {
                     }
                 }
 
-                let mut bytes_to_write: VecDeque<Vec<u8>> = queue_ref.lock().unwrap().drain(..).collect();
+                let mut bytes_to_write: VecDeque<Vec<u8>> =
+                    queue_ref.lock().unwrap().drain(..).collect();
                 while !bytes_to_write.is_empty() {
                     let data = bytes_to_write.pop_front().unwrap();
                     log::info!("FIRMWARE Writing {} bytes", data.len());
-                    update.write(data.as_slice()).expect("Failed to write data");
+                    // update.write(data.as_slice()).expect("Failed to write data");
                 }
                 std::thread::sleep(Duration::from_millis(800));
             }
@@ -91,8 +92,6 @@ impl FirmwareUpdater {
             }
         }
 
-
         Ok(())
     }
 }
-

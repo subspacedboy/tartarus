@@ -7,10 +7,10 @@ use crate::internal_contract::{
 // use aes_gcm::aes::cipher::crypto_common::Output;
 use p256::ecdsa::signature::Verifier;
 use p256::ecdsa::{Signature, VerifyingKey};
+use sha2::digest::Output;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::io::Read;
-use sha2::digest::Output;
 
 pub(crate) struct SignedMessageVerifier;
 

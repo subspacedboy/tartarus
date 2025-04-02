@@ -9,8 +9,15 @@ use crate::event_generated::club::subjugated::fb::event::{
     CommonMetadata, CommonMetadataArgs, Event, EventArgs, EventType, SignedEvent, SignedEventArgs,
 };
 use crate::fb_helper::calculate_signature;
+use crate::firmware_generated::club;
+use crate::firmware_generated::club::subjugated::fb::message::firmware::{
+    FirmwareMessage, FirmwareMessageArgs, GetLatestFirmwareRequest, GetLatestFirmwareRequestArgs,
+    MessagePayloadUnionTableOffset, Version, VersionArgs,
+};
+use crate::firmware_updater::FirmwareUpdater;
 use crate::internal_config::InternalConfig;
 use crate::internal_contract::{InternalContract, SaveState};
+use crate::internal_firmware::InternalFirmware;
 use crate::lock_ctx::TopicType::{Acknowledgments, ConfigurationData, SignedMessages};
 use crate::mqtt_service::{MqttService, SignedMessageTransport, TopicType};
 use crate::overlays::{ButtonPressOverlay, WifiOverlay};
@@ -20,9 +27,7 @@ use crate::under_contract_screen::UnderContractScreen;
 use crate::verifier::{SignedMessageVerifier, VerifiedType};
 use crate::wifi_util::{connect_wifi, parse_wifi_qr};
 use crate::Esp32Rng;
-use base64::prelude::BASE64_URL_SAFE;
-use base64::Engine;
-use data_encoding::{BASE32_NOPAD, BASE64};
+use data_encoding::{BASE32_NOPAD, BASE64, BASE64URL};
 use embedded_graphics_core::pixelcolor::Rgb565;
 use embedded_graphics_core::prelude::{DrawTarget, RgbColor};
 use esp_idf_hal::gpio::{GpioError, Output, PinDriver};
@@ -37,10 +42,6 @@ use rand_core::RngCore;
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, VecDeque};
 use std::time::Duration;
-use crate::firmware_generated::club;
-use crate::firmware_generated::club::subjugated::fb::message::firmware::{FirmwareMessage, FirmwareMessageArgs, GetLatestFirmwareRequest, GetLatestFirmwareRequestArgs, MessagePayloadUnionTableOffset, Version, VersionArgs};
-use crate::firmware_updater::FirmwareUpdater;
-use crate::internal_firmware::InternalFirmware;
 
 #[derive(Debug, Clone)]
 pub struct TickUpdate {
@@ -620,7 +621,7 @@ impl LockCtx {
         let coordinator = format!("{}/lock-start", self.configuration.web_uri);
         if let Some(pub_key) = self.lock_public_key {
             let compressed_bytes = pub_key.to_sec1_bytes();
-            let encoded_key = BASE64_URL_SAFE.encode(&compressed_bytes);
+            let encoded_key = BASE64URL.encode(&compressed_bytes);
             Ok(format!(
                 "{}?public={}&session={}",
                 coordinator, encoded_key, self.session_token
@@ -704,19 +705,25 @@ impl LockCtx {
     fn enqueue_get_latest_firmware(&self) {
         let mut builder = FlatBufferBuilder::with_capacity(1024);
 
-        let version = Version::create(&mut builder, &VersionArgs{
-            name: None,
-            major: self.firmware.major,
-            minor: self.firmware.minor,
-            build: self.firmware.build,
-            signature: None,
-        });
+        let version = Version::create(
+            &mut builder,
+            &VersionArgs {
+                name: None,
+                major: self.firmware.major,
+                minor: self.firmware.minor,
+                build: self.firmware.build,
+                signature: None,
+            },
+        );
 
         let session = builder.create_string(&self.session_token);
 
-        let get_latest_firmware_request_offset = GetLatestFirmwareRequest::create(&mut builder, &GetLatestFirmwareRequestArgs{
-            version: Some(version),
-        });
+        let get_latest_firmware_request_offset = GetLatestFirmwareRequest::create(
+            &mut builder,
+            &GetLatestFirmwareRequestArgs {
+                version: Some(version),
+            },
+        );
 
         let mut rng = Esp32Rng;
         let request_id = rng.next_u64();
