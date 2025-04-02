@@ -107,6 +107,14 @@ impl ScreenState for LockstateScreen {
         }
 
         let style = MonoTextStyle::new(&FONT_10X20, Rgb565::GREEN);
+        if let Some(internal_contract) = lock_ctx.contract.as_ref() {
+            let contract_position = Point::new(120, 47);
+            let contract_str = format!("Contract: {}", internal_contract.serial_number);
+            let text =
+                Text::with_alignment(contract_str.as_str(), contract_position, style, Alignment::Center);
+            text.draw(&mut lock_ctx.display).expect("Should have drawn");
+        }
+
         let draw_position = Point::new(120, 67);
         let text =
             Text::with_alignment(self.text.as_str(), draw_position, style, Alignment::Center);
@@ -114,10 +122,6 @@ impl ScreenState for LockstateScreen {
 
         self.needs_redraw = false;
     }
-
-    // fn get_id(&self) -> ScreenId {
-    //     ScreenId::UnderContract
-    // }
 
     fn needs_redraw(&self) -> bool {
         self.needs_redraw
