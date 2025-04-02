@@ -18,6 +18,9 @@ mod servo;
 mod under_contract_screen;
 mod verifier;
 mod wifi_util;
+mod internal_firmware;
+mod firmware_generated;
+mod firmware_updater;
 
 use crate::servo::Servo;
 use esp_idf_hal::ledc::LedcDriver;

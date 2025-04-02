@@ -37,6 +37,10 @@ use rand_core::RngCore;
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, VecDeque};
 use std::time::Duration;
+use crate::firmware_generated::club;
+use crate::firmware_generated::club::subjugated::fb::message::firmware::{FirmwareMessage, FirmwareMessageArgs, GetLatestFirmwareRequest, GetLatestFirmwareRequestArgs, MessagePayloadUnionTableOffset, Version, VersionArgs};
+use crate::firmware_updater::FirmwareUpdater;
+use crate::internal_firmware::InternalFirmware;
 
 #[derive(Debug, Clone)]
 pub struct TickUpdate {
@@ -65,6 +69,9 @@ pub struct LockCtx {
 
     time_in_ticks: u64,
     configuration: InternalConfig,
+    firmware: InternalFirmware,
+    firmware_updater: Option<FirmwareUpdater>,
+
     schedule_next_update: Option<u64>,
     mqtt_service: Option<MqttService>,
 }
@@ -93,6 +100,8 @@ impl LockCtx {
             dirty: false,
             time_in_ticks: 0,
             configuration: InternalConfig::default(),
+            firmware: InternalFirmware::default(),
+            firmware_updater: Some(FirmwareUpdater::new()),
             schedule_next_update: None,
             mqtt_service: None,
         };
@@ -109,6 +118,11 @@ impl LockCtx {
 
         log::info!("Loaded configuration {:?}", lck.configuration);
 
+        let firmware = lck.get_firmware_version_or_default();
+        lck.firmware = firmware;
+
+        log::info!("Loaded firmware version data {:?}", lck.firmware);
+
         // This must come after key loading because we're announcing to the coordinator with our
         // public key.
         if let Ok(connected) = lck.wifi.is_connected() {
@@ -122,6 +136,7 @@ impl LockCtx {
                 mqtt_service.start_mqtt();
                 std::thread::sleep(Duration::from_secs(2));
                 lck.enqueue_announce_message();
+                lck.enqueue_get_latest_firmware();
             }
         }
 
@@ -210,6 +225,25 @@ impl LockCtx {
         }
     }
 
+    pub fn get_firmware_version_or_default(&mut self) -> InternalFirmware {
+        let mut buffer: [u8; 1024] = [0; 1024];
+        if let Ok(maybe_byte_buffer) = self.nvs.get_blob("firmware", &mut buffer) {
+            if let Some(_byte_buffer) = maybe_byte_buffer {
+                if let Ok(deserialized_config) = from_bytes::<InternalFirmware>(&buffer) {
+                    deserialized_config
+                } else {
+                    log::error!("Failed to deserialize config data");
+                    InternalFirmware::default()
+                }
+            } else {
+                log::info!("No configuration data was found, using default");
+                InternalFirmware::default()
+            }
+        } else {
+            InternalFirmware::default()
+        }
+    }
+
     fn load_or_create_session_id(&mut self) -> String {
         let key_name = "session_key";
         let mut buffer: [u8; 32] = [0; 32];
@@ -264,13 +298,18 @@ impl LockCtx {
         private_key
     }
 
+    /// The primary event loop of the firmware. This is called by main in fixed intervals of milliseconds.
+    /// If the buttons on the face are pressed they'll be passed in here as part of the TickUpdate.
     pub fn tick(&mut self, update: TickUpdate) -> () {
         // Update time
         self.time_in_ticks += update.since_last.as_millis() as u64;
 
-        // Process message queue
+        // Commands to process
         let mut commands: VecDeque<Vec<u8>> = VecDeque::new();
+        // Configuration data we might need to update
         let mut configuration: VecDeque<Vec<u8>> = VecDeque::new();
+        // Firmware we might need to apply or challenge to respond to
+        let mut firmware: VecDeque<Vec<u8>> = VecDeque::new();
 
         let mut message_queue = if let Some(mqtt_service) = self.mqtt_service.as_mut() {
             mqtt_service.get_incoming_messages()
@@ -289,23 +328,28 @@ impl LockCtx {
                     log::info!("Received Configuration: {:?}", message);
                     configuration.push_back(message.buffer());
                 }
+                TopicType::FirmwareMessage | TopicType::FirmwareChunk => {
+                    // log::info!("Received Firmware info: {:?}", message);
+                    firmware.push_back(message.buffer());
+                }
                 _ => {
                     log::info!("Received Unknown message?!: {:?}", message);
                 }
             }
         }
+
         while commands.len() > 0 {
             let buffer = commands.pop_front().unwrap();
             let verifier = SignedMessageVerifier::new();
             let mut min_counter = 0_u16;
             let mut contract_serial_number = 0_16;
-            let contract_public_key: Option<&VerifyingKey> = if let Some(k) = &self.contract {
-                min_counter = k.command_counter;
-                contract_serial_number = k.serial_number;
-                k.public_key.as_ref()
-            } else {
-                None
-            };
+            // let contract_public_key: Option<&VerifyingKey> = if let Some(k) = &self.contract {
+            //     min_counter = k.command_counter;
+            //     contract_serial_number = k.serial_number;
+            //     k.public_key.as_ref()
+            // } else {
+            //     None
+            // };
 
             match verifier.verify(
                 buffer,
@@ -373,9 +417,20 @@ impl LockCtx {
             }
         }
 
+        while firmware.len() > 0 {
+            let firmware_message = firmware.pop_front();
+            if let Some(firmware_updater) = &self.firmware_updater {
+                firmware_updater.queue_bytes(firmware_message.unwrap());
+            }
+            log::info!("Processing firmware as noop for now");
+        }
+
+        // After all the MQTT-based channels see if the user has physically
+        // done something.
         self.this_update = Some(update.clone());
         self.process_updates();
 
+        // Update all the overlays.
         let mut overlays = core::mem::take(&mut self.overlays);
         for overlay in overlays.iter_mut() {
             overlay.draw_screen(self);
@@ -421,6 +476,8 @@ impl LockCtx {
             }
         } //end of if let Some(incoming_data)
 
+        // If MQTT is running, run its tick to process all message queues.
+        // Also schedule next periodic update.
         if let Some(mqtt_service) = self.mqtt_service.as_mut() {
             mqtt_service.tick(self.time_in_ticks);
 
@@ -642,6 +699,41 @@ impl LockCtx {
         let bytes = cloned_secret.to_bytes();
         let key_bytes = bytes.as_slice();
         SigningKey::from_slice(key_bytes).unwrap()
+    }
+
+    fn enqueue_get_latest_firmware(&self) {
+        let mut builder = FlatBufferBuilder::with_capacity(1024);
+
+        let version = Version::create(&mut builder, &VersionArgs{
+            name: None,
+            major: self.firmware.major,
+            minor: self.firmware.minor,
+            build: self.firmware.build,
+            signature: None,
+        });
+
+        let session = builder.create_string(&self.session_token);
+
+        let get_latest_firmware_request_offset = GetLatestFirmwareRequest::create(&mut builder, &GetLatestFirmwareRequestArgs{
+            version: Some(version),
+        });
+
+        let mut rng = Esp32Rng;
+        let request_id = rng.next_u64();
+
+        let firmwareMessage = FirmwareMessage::create(&mut builder, &FirmwareMessageArgs {
+            payload_type: club::subjugated::fb::message::firmware::MessagePayload::GetLatestFirmwareRequest,
+            payload: Some(get_latest_firmware_request_offset.as_union_value()),
+            request_id: request_id as i64,
+            session_token: Some(session),
+        });
+
+        builder.finish(firmwareMessage, None);
+        let data = builder.finished_data().to_vec();
+
+        let t = SignedMessageTransport::new(data, TopicType::FirmwareMessage);
+
+        self.enqueue_message(t);
     }
 
     fn enqueue_announce_message(&self) {

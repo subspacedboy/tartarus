@@ -19,7 +19,7 @@ pub struct InternalSafetyKey {
 impl Default for InternalConfig {
     fn default() -> Self {
         Self {
-            mqtt_broker_uri: "wss://tartarus-mqtt.subjugated.club:8080".to_string(),
+            mqtt_broker_uri: "wss://tartarus-mqtt.subjugated.club:4447".to_string(),
             web_uri: "https://tartarus.subjugated.club".to_string(),
             safety_keys: None,
         }

@@ -1,7 +1,9 @@
 package club.subjugated.tartarus_coordinator.services
 
 import club.subjugated.fb.bots.BotApiMessage
+import club.subjugated.fb.message.firmware.FirmwareMessage
 import club.subjugated.tartarus_coordinator.api.bots.BotApiController
+import club.subjugated.tartarus_coordinator.api.firmware.FirmwareApiController
 import club.subjugated.tartarus_coordinator.api.messages.NewLockSessionMessage
 import club.subjugated.tartarus_coordinator.components.CustomMqttSecurity
 import club.subjugated.tartarus_coordinator.events.NewCommandEvent
@@ -30,10 +32,10 @@ import java.util.concurrent.ScheduledExecutorService
 class MqttListenerService(private val transactionManager: PlatformTransactionManager) {
     private val brokerUrl: String = "tcp://localhost:1883"
     private val clientId: String = "InternalSubscriber"
-    private val topic: String = "locks/updates"
+
+    private val lockUpdateTopic: String = "locks/updates"
 
     private val transactionTemplate = TransactionTemplate(transactionManager)
-
     private val client: MqttClient = MqttClient(brokerUrl, clientId, null)
 
     private val liveClients: Cache<String, String> =
@@ -45,6 +47,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
     @Autowired lateinit var contractService: ContractService
 
     @Autowired lateinit var botApiController: BotApiController
+    @Autowired lateinit var firmwareApiController: FirmwareApiController
 
     @Autowired lateinit var security: CustomMqttSecurity
 
@@ -104,7 +107,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
 
             client.connect(options)
 
-            client.subscribe(topic) { topic, message ->
+            client.subscribe(lockUpdateTopic) { _, message ->
                 transactionTemplate.execute { status ->
                     try {
                         val keyRequirement =
@@ -148,6 +151,24 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                         }
                     } catch (ex: Exception) {
                         println("Encountered exception in processing MQTT")
+                        ex.printStackTrace()
+                        status.setRollbackOnly()
+                    }
+                }
+            }
+
+            client.subscribe("locks/firmware") {_, message ->
+                transactionTemplate.execute { status ->
+                    try {
+                        val firmwareApiMessage = FirmwareMessage.getRootAsFirmwareMessage(ByteBuffer.wrap(message.payload))
+                        println("🧱 Got Firmware API message -> ${firmwareApiMessage}")
+
+                        val response = firmwareApiController.routeRequest(firmwareApiMessage)
+
+                        client.publish("firmware/${response.sessionToken!!}", MqttMessage(response.byteBuffer.array()))
+                    }
+                    catch (ex : Exception) {
+                        println("Encountered exception in processing Firmware MQTT")
                         ex.printStackTrace()
                         status.setRollbackOnly()
                     }

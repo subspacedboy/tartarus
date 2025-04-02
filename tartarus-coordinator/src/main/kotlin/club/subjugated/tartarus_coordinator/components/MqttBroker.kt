@@ -72,6 +72,10 @@ class CustomMqttSecurity : IAuthenticator, IAuthorizatorPolicy {
             return true
         }
 
+        if (topic.toString() == "firmware/${user}") {
+            return true
+        }
+
         return false
     }
 
@@ -93,16 +97,15 @@ class CustomMqttSecurity : IAuthenticator, IAuthorizatorPolicy {
             if(topic!!.toString().startsWith("bots/inbox_events_b-")) {
                 return true
             }
-        }
 
-        // Locks can read write to the main response channel.
-        if (topic!!.toString() == "locks/updates") {
-            return true
-        }
+            // Locks can read write to the main response channel.
+            if (topic.toString() == "locks/updates") {
+                return true
+            }
 
-        // Their own configuration channel.
-        if (topic.toString() == "devices/status") {
-            return true
+            if (topic.toString() == "locks/firmware") {
+                return true
+            }
         }
 
         return false
@@ -131,7 +134,10 @@ class MqttBroker(private val security: CustomMqttSecurity) {
     @PostConstruct
     fun start() {
         val properties =
-            Properties().apply { setProperty("websocket_port", wsPortNumber.toString()) }
+            Properties().apply {
+                setProperty("websocket_port", wsPortNumber.toString())
+                setProperty("netty.mqtt.message_size", "2097152");
+            }
 
         val config: IConfig = MemoryConfig(properties)
         val handlers: List<InterceptHandler> = emptyList()

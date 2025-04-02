@@ -4,6 +4,7 @@ flatc --rust flatbuffers/*.fbs
 mv contract_generated.rs src/
 mv configuration_generated.rs src/
 mv event_generated.rs src/
+mv firmware_generated.rs src/
 
 flatc --python flatbuffers/*.fbs
 rm -rf tartarus-bot-example/src/club

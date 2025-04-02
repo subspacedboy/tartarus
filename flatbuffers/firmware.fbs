@@ -1,0 +1,58 @@
+namespace club.subjugated.fb.message.firmware;
+
+table Version {
+  name: string;
+  major: ushort;
+  minor: ushort;
+  build: ushort;
+  signature: [ubyte];
+}
+
+table FirmwareChallengeRequest {
+    nonce: [ubyte];
+}
+
+table FirmwareChallengeResponse {
+    signature: [ubyte];
+    version: Version;
+}
+
+table GetLatestFirmwareRequest {
+    version: Version;
+}
+
+table GetLatestFirmwareResponse {
+    firmware: [ubyte];
+    signature: [ubyte];
+    version : Version;
+    name : string;
+    size: ushort;
+}
+
+table GetFirmwareChunkRequest {
+    name: string;
+    offset: ushort;
+    bytes: ushort;
+}
+
+table GetFirmwareChunkResponse {
+    chunk: [ubyte];
+    size: ushort;
+}
+
+union MessagePayload {
+    FirmwareChallengeRequest,
+    FirmwareChallengeResponse,
+    GetLatestFirmwareRequest,
+    GetLatestFirmwareResponse,
+    GetFirmwareChunkRequest,
+    GetFirmwareChunkResponse
+}
+
+table FirmwareMessage {
+    payload: MessagePayload;
+    request_id: long;
+    session_token : string;
+}
+
+root_type FirmwareMessage;

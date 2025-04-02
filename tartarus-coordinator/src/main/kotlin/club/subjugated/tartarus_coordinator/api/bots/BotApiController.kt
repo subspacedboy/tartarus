@@ -37,8 +37,7 @@ import java.util.*
 class ResponseBuilderContext<T>(
     var builder: FlatBufferBuilder,
     var messageOffset: Int,
-) {
-}
+)
 
 @Controller
 class BotApiController {
