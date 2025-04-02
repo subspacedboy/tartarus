@@ -3,5 +3,4 @@ pub enum ScreenId {
     Boot,
     DisplayContract,
     UnderContract,
-    CatchAll
 }

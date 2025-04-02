@@ -1,44 +1,25 @@
-use std::fmt::Error;
-use std::io::Read;
-use std::time::Duration;
-use base64::Engine;
-use base64::engine::general_purpose;
-use base64::prelude::{BASE64_STANDARD, BASE64_URL_SAFE};
-use data_encoding::{BASE32_NOPAD, BASE64, BASE64_NOPAD};
-use display_interface_spi::SPIInterface;
-use embedded_graphics::mono_font::ascii::FONT_6X10;
-use embedded_graphics::mono_font::MonoTextStyle;
-use embedded_graphics::prelude::Primitive;
-use embedded_graphics::primitives::PrimitiveStyleBuilder;
-use embedded_graphics::text::{Text, TextStyle};
-use embedded_graphics_core::Drawable;
+use crate::boot_screen::BootScreen;
+use crate::contract_generated::club::subjugated::fb::message::{Contract, LockUpdateEvent, LockUpdateEventArgs, MessagePayload, SignedMessage, SignedMessageArgs, UpdateType};
+use crate::internal_contract::InternalContract;
+use crate::overlays::{ButtonPressOverlay, WifiOverlay};
+use crate::prelude::prelude::{DynOverlay, DynScreen, MyDisplay, MySPI};
+use crate::wifi_util::{connect_wifi, parse_wifi_qr};
+use crate::Esp32Rng;
+use data_encoding::{BASE32_NOPAD, BASE64};
 use embedded_graphics_core::pixelcolor::Rgb565;
-use embedded_graphics_core::prelude::{DrawTarget, Point, RgbColor, Size};
-use embedded_graphics_core::primitives::Rectangle;
-use esp_idf_hal::gpio::{Gpio40, Gpio41, Gpio45, GpioError, Output, PinDriver};
-use esp_idf_hal::spi::{SpiDeviceDriver, SpiDriver};
+use embedded_graphics_core::prelude::{DrawTarget, RgbColor};
+use embedded_svc::http::client::Client as HttpClient;
+use esp_idf_hal::gpio::{GpioError, Output, PinDriver};
+use esp_idf_hal::io::Write;
 use esp_idf_svc::http::client::EspHttpConnection;
 use esp_idf_svc::nvs::{EspNvs, NvsDefault};
 use esp_idf_svc::wifi::{BlockingWifi, EspWifi};
 use p256::{PublicKey, SecretKey};
-use p256::pkcs8::{EncodePublicKey, LineEnding};
 use rand_core::RngCore;
-use st7789::ST7789;
-use crate::boot_screen::BootScreen;
-use crate::contract_generated::club::subjugated::fb::message::{Contract, LockUpdateEvent, LockUpdateEventArgs, MessagePayload, SignedMessage, SignedMessageArgs, UpdateType};
-use crate::Esp32Rng;
-use crate::internal_contract::InternalContract;
-use crate::overlays::{ButtonPressOverlay, WifiOverlay};
-use crate::prelude::prelude;
-use crate::prelude::prelude::{DynOverlay, DynScreen, MyDisplay, MySPI};
-use crate::screen_state::ScreenState;
-use crate::wifi_util::{connect_wifi, parse_wifi_qr};
-use embedded_svc::http::client::Client as HttpClient;
-use esp_idf_hal::io::Write;
-
-use esp_idf_svc::mqtt::client::{EspMqttClient, EspMqttConnection, EspMqttEvent, MqttClientConfiguration, QoS};
-use embedded_svc::mqtt::client::{Client, Publish, QoS as EmbeddedQoS};
-use embedded_svc::mqtt::client::QoS::AtMostOnce;
+use std::time::Duration;
+use base64::Engine;
+use base64::prelude::BASE64_URL_SAFE;
+use esp_idf_svc::mqtt::client::{EspMqttClient, EspMqttConnection, MqttClientConfiguration, QoS};
 use flatbuffers::FlatBufferBuilder;
 use p256::ecdsa::signature::Signer;
 use p256::ecdsa::{Signature, SigningKey};
@@ -166,14 +147,14 @@ impl LockCtx {
 
         let private_key : SecretKey = if let Some(base64_key) = existing_key {
             log::info!("Loaded existing EC private key.");
-            let key_bytes = general_purpose::STANDARD.decode(base64_key).unwrap();
+            let key_bytes = BASE64.decode(base64_key).unwrap();
             SecretKey::from_slice(&key_bytes).expect("Failed to parse private key")
         } else {
             log::info!("Generating a new EC private key...");
             let sk = SecretKey::random(&mut rng);
 
             let key_bytes = sk.to_bytes();
-            let encoded_key = general_purpose::STANDARD.encode(key_bytes);
+            let encoded_key = BASE64.encode(&key_bytes);
             self.nvs.set_blob(key_name, encoded_key.as_bytes()).unwrap();
             log::info!("Saved new EC private key to NVS.");
             sk
@@ -246,10 +227,10 @@ impl LockCtx {
 
     }
 
-    pub fn cycle_lock(&mut self) -> () {
-        log::info!("Cycling lock");
-        self.is_locked ^= self.is_locked;
-    }
+    // pub fn cycle_lock(&mut self) -> () {
+    //     log::info!("Cycling lock");
+    //     self.is_locked ^= self.is_locked;
+    // }
 
     pub fn lock(&mut self) -> () {
         log::info!("Locking");
@@ -270,7 +251,6 @@ impl LockCtx {
         if let Some(pub_key) = self.public_key {
             let compressed_bytes = pub_key.to_sec1_bytes();
             let encoded_key = BASE64_URL_SAFE.encode(&compressed_bytes);
-            // let encoded_pub_key = general_purpose::STANDARD.encode(pub_key.to_public_key_pem(LineEnding::CR).unwrap());
             Ok(format!("{}?public={}&session={}", COORDINATOR, encoded_key, self.session_token))
         } else {
             Err("Wasn't able to make the url?!".parse().unwrap())
@@ -278,7 +258,7 @@ impl LockCtx {
 
     }
 
-    pub fn accept_contract(&mut self, contract : &InternalContract) -> () {
+    pub fn accept_contract(&mut self, _contract : &InternalContract) -> () {
     }
 
     fn mqtt_announce(&self) {
@@ -325,13 +305,9 @@ impl LockCtx {
                     loop {
                         if let Err(e) = client.subscribe("test/topic", QoS::AtMostOnce) {
                             log::error!("Failed to subscribe to topic : {e}, retrying...");
-
-                            // Re-try in 0.5s
-                            std::thread::sleep(Duration::from_millis(500));
-
+                            std::thread::sleep(Duration::from_secs(2));
                             continue;
                         }
-
                         log::info!("Subscribed to topic ");
 
                         // Just to give a chance of our connection to get even the first published message
@@ -340,21 +316,16 @@ impl LockCtx {
                         let payload = "Hello from esp-mqtt-demo!";
 
                         loop {
-                            client.enqueue("test/topic", QoS::AtMostOnce, false, payload.as_bytes()).unwrap();
+                            client.enqueue("test/topic", QoS::AtLeastOnce, false, payload.as_bytes()).unwrap();
 
                             log::info!("Published \"{payload}\" to topic ");
-
                             let sleep_secs = 2;
-
                             log::info!("Now sleeping for {sleep_secs}s...");
                             std::thread::sleep(Duration::from_secs(sleep_secs));
                         }
                     }
                 })
                 .unwrap();
-
-        // });
-
     }
 
     fn start_announce_to_coordinator(&self) {
@@ -363,7 +334,7 @@ impl LockCtx {
         let mut client = HttpClient::wrap(&mut pos);
 
         let mut builder = FlatBufferBuilder::with_capacity(1024);
-        let public_key: Vec<u8> = self.public_key.unwrap().to_sec1_bytes().as_ref().clone().to_vec();
+        let public_key: Vec<u8> = self.public_key.unwrap().to_sec1_bytes().as_ref().to_vec();
         let session = builder.create_string(&self.session_token);
         let this_update_type = UpdateType::Started;
         let body = builder.create_string("lock update body");
@@ -379,8 +350,8 @@ impl LockCtx {
             },
         );
 
-        let payload_type = MessagePayload::LockUpdateEvent; // Union type
-        let payload_value = lock_update_event.as_union_value();
+        let _payload_type = MessagePayload::LockUpdateEvent; // Union type
+        let _payload_value = lock_update_event.as_union_value();
 
         builder.finish(lock_update_event, None);
         let buffer = builder.finished_data();
@@ -396,7 +367,7 @@ impl LockCtx {
         // UGH. We have to build the whole message over again because of the way
         // Rust implements flatbuffers.
         let mut builder = FlatBufferBuilder::with_capacity(1024);
-        let public_key: Vec<u8> = self.public_key.unwrap().to_sec1_bytes().as_ref().clone().to_vec();
+        let public_key: Vec<u8> = self.public_key.unwrap().to_sec1_bytes().as_ref().to_vec();
         let session = builder.create_string(&self.session_token);
         let this_update_type = UpdateType::Started;
         let body = builder.create_string("lock update body");
@@ -416,7 +387,7 @@ impl LockCtx {
         let payload_value = lock_update_event.as_union_value();
 
         let secret = self.secret_key.as_ref().unwrap();
-        let pem = secret.to_sec1_pem(Default::default()).unwrap();
+        // let pem = secret.to_sec1_pem(Default::default()).unwrap();
 
         let cloned_secret = secret.clone();
         let bytes = cloned_secret.to_bytes();
@@ -443,7 +414,7 @@ impl LockCtx {
         let data = builder.finished_data().to_vec();
 
         if let Ok(mut request) = client.post(&URL, &[("Content-Type","application/octet-stream")]) {
-            if let Ok(result) =request.write_all(data.as_slice()) {
+            if let Ok(_result) =request.write_all(data.as_slice()) {
                 if let Ok(_) = request.flush() {}
             }
 

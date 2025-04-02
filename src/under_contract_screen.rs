@@ -1,22 +1,15 @@
-use base64::engine::general_purpose;
-use embedded_graphics::mono_font::ascii::FONT_10X20;
-use embedded_graphics::mono_font::MonoTextStyle;
-use embedded_graphics::primitives::PrimitiveStyleBuilder;
-use embedded_graphics::text::{Alignment, Text};
-use embedded_graphics_core::Drawable;
-use embedded_graphics_core::geometry::{Point, Size};
-use embedded_graphics_core::pixelcolor::Rgb565;
-use embedded_graphics_core::prelude::{DrawTarget, RgbColor};
-use embedded_graphics_core::primitives::Rectangle;
-use embedded_hal::digital::OutputPin;
-use p256::pkcs8::LineEnding;
-use qrcode::{Color, QrCode};
-use crate::boot_screen::BootScreen;
 use crate::lock_ctx::LockCtx;
 use crate::prelude::prelude::DynScreen;
 use crate::screen_ids::ScreenId;
 use crate::screen_state::ScreenState;
-use crate::verifier::{ContractVerifier, VerifiedType};
+use embedded_graphics::mono_font::ascii::FONT_10X20;
+use embedded_graphics::mono_font::MonoTextStyle;
+use embedded_graphics::text::{Alignment, Text};
+use embedded_graphics_core::geometry::Point;
+use embedded_graphics_core::pixelcolor::Rgb565;
+use embedded_graphics_core::prelude::{DrawTarget, RgbColor};
+use embedded_graphics_core::Drawable;
+use embedded_hal::digital::OutputPin;
 
 pub struct UnderContractScreen<SPI, DC, RST, PinE> {
     _spi: core::marker::PhantomData<SPI>,

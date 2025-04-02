@@ -4,24 +4,21 @@
 
 import { Contract } from '../../../../club/subjugated/fb/message/contract.js';
 import { LockUpdateEvent } from '../../../../club/subjugated/fb/message/lock-update-event.js';
-import { PartialContract } from '../../../../club/subjugated/fb/message/partial-contract.js';
 
 
 export enum MessagePayload {
   NONE = 0,
   Contract = 1,
-  PartialContract = 2,
-  LockUpdateEvent = 3
+  LockUpdateEvent = 2
 }
 
 export function unionToMessagePayload(
   type: MessagePayload,
-  accessor: (obj:Contract|LockUpdateEvent|PartialContract) => Contract|LockUpdateEvent|PartialContract|null
-): Contract|LockUpdateEvent|PartialContract|null {
+  accessor: (obj:Contract|LockUpdateEvent) => Contract|LockUpdateEvent|null
+): Contract|LockUpdateEvent|null {
   switch(MessagePayload[type]) {
     case 'NONE': return null; 
     case 'Contract': return accessor(new Contract())! as Contract;
-    case 'PartialContract': return accessor(new PartialContract())! as PartialContract;
     case 'LockUpdateEvent': return accessor(new LockUpdateEvent())! as LockUpdateEvent;
     default: return null;
   }
@@ -29,13 +26,12 @@ export function unionToMessagePayload(
 
 export function unionListToMessagePayload(
   type: MessagePayload, 
-  accessor: (index: number, obj:Contract|LockUpdateEvent|PartialContract) => Contract|LockUpdateEvent|PartialContract|null, 
+  accessor: (index: number, obj:Contract|LockUpdateEvent) => Contract|LockUpdateEvent|null, 
   index: number
-): Contract|LockUpdateEvent|PartialContract|null {
+): Contract|LockUpdateEvent|null {
   switch(MessagePayload[type]) {
     case 'NONE': return null; 
     case 'Contract': return accessor(index, new Contract())! as Contract;
-    case 'PartialContract': return accessor(index, new PartialContract())! as PartialContract;
     case 'LockUpdateEvent': return accessor(index, new LockUpdateEvent())! as LockUpdateEvent;
     default: return null;
   }

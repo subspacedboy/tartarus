@@ -1,5 +1,3 @@
-use crate::screen_state::ScreenState;
-
 pub mod prelude {
     use display_interface_spi::SPIInterface;
     use esp_idf_hal::gpio::{Gpio40, Gpio41, Gpio45, GpioError, Output, PinDriver};

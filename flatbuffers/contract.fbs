@@ -1,13 +1,10 @@
 namespace club.subjugated.fb.message;
 
-enum Capabilities : byte { Online = 1, Time }
-
 table TimeEndCondition {
   seconds: ulong;
 }
 
 table WhenISaySo {
-
 }
 
 union EndCondition {
@@ -23,7 +20,6 @@ table TemporaryUnlockRules {
   // If greater than zero it should act like a counter.
   max_unlocks: ushort;
 
-  // This only makes sense if capabilities has Time and Online.
   time_limit: ushort;
 }
 
@@ -35,31 +31,17 @@ table Contract {
   session: string;
   notes: string;
 
-  // capabilities: [Capabilities];
-
   // If this contract is able to be loaded, it cannot be removed
   // without explicit permission.
   is_unremovable: bool;
 
   end_condition: EndCondition;
 
-  // If participants is non-zero specified then capabilities must contain Online.
   webhooks: [WebHook];
-
-  // If true the lock will cycle immediately on read and verification.
-  // is_lock_on_accept: bool;
 
   // If true, subject can freely cycle the lock.
   is_temporary_unlock_allowed: bool;
   unlock_rules : TemporaryUnlockRules;
-}
-
-// Partial contracts require online capability. The hardware is limited
-// to 254 bytes in a single message so this lets us make a scannable stub
-// that we can then get the full body over WiFi.
-table PartialContract {
-  public_key: [ubyte];
-  complete_contract_address: string;
 }
 
 enum UpdateType : byte { Undefined = 0, Started, Locked, Unlocked }
@@ -74,7 +56,7 @@ table LockUpdateEvent {
 }
 
 union MessagePayload {
-  Contract, PartialContract, LockUpdateEvent
+  Contract, LockUpdateEvent
 }
 
 table SignedMessage {

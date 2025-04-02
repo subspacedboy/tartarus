@@ -43,91 +43,6 @@ pub mod message {
   use self::flatbuffers::{EndianScalar, Follow};
 
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
-pub const ENUM_MIN_CAPABILITIES: i8 = 1;
-#[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
-pub const ENUM_MAX_CAPABILITIES: i8 = 2;
-#[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
-#[allow(non_camel_case_types)]
-pub const ENUM_VALUES_CAPABILITIES: [Capabilities; 2] = [
-  Capabilities::Online,
-  Capabilities::Time,
-];
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-#[repr(transparent)]
-pub struct Capabilities(pub i8);
-#[allow(non_upper_case_globals)]
-impl Capabilities {
-  pub const Online: Self = Self(1);
-  pub const Time: Self = Self(2);
-
-  pub const ENUM_MIN: i8 = 1;
-  pub const ENUM_MAX: i8 = 2;
-  pub const ENUM_VALUES: &'static [Self] = &[
-    Self::Online,
-    Self::Time,
-  ];
-  /// Returns the variant's name or "" if unknown.
-  pub fn variant_name(self) -> Option<&'static str> {
-    match self {
-      Self::Online => Some("Online"),
-      Self::Time => Some("Time"),
-      _ => None,
-    }
-  }
-}
-impl core::fmt::Debug for Capabilities {
-  fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-    if let Some(name) = self.variant_name() {
-      f.write_str(name)
-    } else {
-      f.write_fmt(format_args!("<UNKNOWN {:?}>", self.0))
-    }
-  }
-}
-impl<'a> flatbuffers::Follow<'a> for Capabilities {
-  type Inner = Self;
-  #[inline]
-  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-    let b = flatbuffers::read_scalar_at::<i8>(buf, loc);
-    Self(b)
-  }
-}
-
-impl flatbuffers::Push for Capabilities {
-    type Output = Capabilities;
-    #[inline]
-    unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
-        flatbuffers::emplace_scalar::<i8>(dst, self.0);
-    }
-}
-
-impl flatbuffers::EndianScalar for Capabilities {
-  type Scalar = i8;
-  #[inline]
-  fn to_little_endian(self) -> i8 {
-    self.0.to_le()
-  }
-  #[inline]
-  #[allow(clippy::wrong_self_convention)]
-  fn from_little_endian(v: i8) -> Self {
-    let b = i8::from_le(v);
-    Self(b)
-  }
-}
-
-impl<'a> flatbuffers::Verifiable for Capabilities {
-  #[inline]
-  fn run_verifier(
-    v: &mut flatbuffers::Verifier, pos: usize
-  ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
-    use self::flatbuffers::Verifiable;
-    i8::run_verifier(v, pos)
-  }
-}
-
-impl flatbuffers::SimpleToVerifyInSlice for Capabilities {}
-#[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
 pub const ENUM_MIN_END_CONDITION: u8 = 0;
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
 pub const ENUM_MAX_END_CONDITION: u8 = 2;
@@ -314,13 +229,12 @@ impl flatbuffers::SimpleToVerifyInSlice for UpdateType {}
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
 pub const ENUM_MIN_MESSAGE_PAYLOAD: u8 = 0;
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
-pub const ENUM_MAX_MESSAGE_PAYLOAD: u8 = 3;
+pub const ENUM_MAX_MESSAGE_PAYLOAD: u8 = 2;
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
 #[allow(non_camel_case_types)]
-pub const ENUM_VALUES_MESSAGE_PAYLOAD: [MessagePayload; 4] = [
+pub const ENUM_VALUES_MESSAGE_PAYLOAD: [MessagePayload; 3] = [
   MessagePayload::NONE,
   MessagePayload::Contract,
-  MessagePayload::PartialContract,
   MessagePayload::LockUpdateEvent,
 ];
 
@@ -331,15 +245,13 @@ pub struct MessagePayload(pub u8);
 impl MessagePayload {
   pub const NONE: Self = Self(0);
   pub const Contract: Self = Self(1);
-  pub const PartialContract: Self = Self(2);
-  pub const LockUpdateEvent: Self = Self(3);
+  pub const LockUpdateEvent: Self = Self(2);
 
   pub const ENUM_MIN: u8 = 0;
-  pub const ENUM_MAX: u8 = 3;
+  pub const ENUM_MAX: u8 = 2;
   pub const ENUM_VALUES: &'static [Self] = &[
     Self::NONE,
     Self::Contract,
-    Self::PartialContract,
     Self::LockUpdateEvent,
   ];
   /// Returns the variant's name or "" if unknown.
@@ -347,7 +259,6 @@ impl MessagePayload {
     match self {
       Self::NONE => Some("NONE"),
       Self::Contract => Some("Contract"),
-      Self::PartialContract => Some("PartialContract"),
       Self::LockUpdateEvent => Some("LockUpdateEvent"),
       _ => None,
     }
@@ -1114,120 +1025,6 @@ impl core::fmt::Debug for Contract<'_> {
       ds.finish()
   }
 }
-pub enum PartialContractOffset {}
-#[derive(Copy, Clone, PartialEq)]
-
-pub struct PartialContract<'a> {
-  pub _tab: flatbuffers::Table<'a>,
-}
-
-impl<'a> flatbuffers::Follow<'a> for PartialContract<'a> {
-  type Inner = PartialContract<'a>;
-  #[inline]
-  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-    Self { _tab: flatbuffers::Table::new(buf, loc) }
-  }
-}
-
-impl<'a> PartialContract<'a> {
-  pub const VT_PUBLIC_KEY: flatbuffers::VOffsetT = 4;
-  pub const VT_COMPLETE_CONTRACT_ADDRESS: flatbuffers::VOffsetT = 6;
-
-  #[inline]
-  pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-    PartialContract { _tab: table }
-  }
-  #[allow(unused_mut)]
-  pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: flatbuffers::Allocator + 'bldr>(
-    _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
-    args: &'args PartialContractArgs<'args>
-  ) -> flatbuffers::WIPOffset<PartialContract<'bldr>> {
-    let mut builder = PartialContractBuilder::new(_fbb);
-    if let Some(x) = args.complete_contract_address { builder.add_complete_contract_address(x); }
-    if let Some(x) = args.public_key { builder.add_public_key(x); }
-    builder.finish()
-  }
-
-
-  #[inline]
-  pub fn public_key(&self) -> Option<flatbuffers::Vector<'a, u8>> {
-    // Safety:
-    // Created from valid Table for this object
-    // which contains a valid value in this slot
-    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(PartialContract::VT_PUBLIC_KEY, None)}
-  }
-  #[inline]
-  pub fn complete_contract_address(&self) -> Option<&'a str> {
-    // Safety:
-    // Created from valid Table for this object
-    // which contains a valid value in this slot
-    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(PartialContract::VT_COMPLETE_CONTRACT_ADDRESS, None)}
-  }
-}
-
-impl flatbuffers::Verifiable for PartialContract<'_> {
-  #[inline]
-  fn run_verifier(
-    v: &mut flatbuffers::Verifier, pos: usize
-  ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
-    use self::flatbuffers::Verifiable;
-    v.visit_table(pos)?
-     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, u8>>>("public_key", Self::VT_PUBLIC_KEY, false)?
-     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("complete_contract_address", Self::VT_COMPLETE_CONTRACT_ADDRESS, false)?
-     .finish();
-    Ok(())
-  }
-}
-pub struct PartialContractArgs<'a> {
-    pub public_key: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
-    pub complete_contract_address: Option<flatbuffers::WIPOffset<&'a str>>,
-}
-impl<'a> Default for PartialContractArgs<'a> {
-  #[inline]
-  fn default() -> Self {
-    PartialContractArgs {
-      public_key: None,
-      complete_contract_address: None,
-    }
-  }
-}
-
-pub struct PartialContractBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
-}
-impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> PartialContractBuilder<'a, 'b, A> {
-  #[inline]
-  pub fn add_public_key(&mut self, public_key: flatbuffers::WIPOffset<flatbuffers::Vector<'b , u8>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(PartialContract::VT_PUBLIC_KEY, public_key);
-  }
-  #[inline]
-  pub fn add_complete_contract_address(&mut self, complete_contract_address: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(PartialContract::VT_COMPLETE_CONTRACT_ADDRESS, complete_contract_address);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>) -> PartialContractBuilder<'a, 'b, A> {
-    let start = _fbb.start_table();
-    PartialContractBuilder {
-      fbb_: _fbb,
-      start_: start,
-    }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<PartialContract<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
-}
-
-impl core::fmt::Debug for PartialContract<'_> {
-  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-    let mut ds = f.debug_struct("PartialContract");
-      ds.field("public_key", &self.public_key());
-      ds.field("complete_contract_address", &self.complete_contract_address());
-      ds.finish()
-  }
-}
 pub enum LockUpdateEventOffset {}
 #[derive(Copy, Clone, PartialEq)]
 
@@ -1451,21 +1248,6 @@ impl<'a> SignedMessage<'a> {
 
   #[inline]
   #[allow(non_snake_case)]
-  pub fn payload_as_partial_contract(&self) -> Option<PartialContract<'a>> {
-    if self.payload_type() == MessagePayload::PartialContract {
-      self.payload().map(|t| {
-       // Safety:
-       // Created from a valid Table for this object
-       // Which contains a valid union in this slot
-       unsafe { PartialContract::init_from_table(t) }
-     })
-    } else {
-      None
-    }
-  }
-
-  #[inline]
-  #[allow(non_snake_case)]
   pub fn payload_as_lock_update_event(&self) -> Option<LockUpdateEvent<'a>> {
     if self.payload_type() == MessagePayload::LockUpdateEvent {
       self.payload().map(|t| {
@@ -1492,7 +1274,6 @@ impl flatbuffers::Verifiable for SignedMessage<'_> {
      .visit_union::<MessagePayload, _>("payload_type", Self::VT_PAYLOAD_TYPE, "payload", Self::VT_PAYLOAD, false, |key, v, pos| {
         match key {
           MessagePayload::Contract => v.verify_union_variant::<flatbuffers::ForwardsUOffset<Contract>>("MessagePayload::Contract", pos),
-          MessagePayload::PartialContract => v.verify_union_variant::<flatbuffers::ForwardsUOffset<PartialContract>>("MessagePayload::PartialContract", pos),
           MessagePayload::LockUpdateEvent => v.verify_union_variant::<flatbuffers::ForwardsUOffset<LockUpdateEvent>>("MessagePayload::LockUpdateEvent", pos),
           _ => Ok(()),
         }
@@ -1557,13 +1338,6 @@ impl core::fmt::Debug for SignedMessage<'_> {
       match self.payload_type() {
         MessagePayload::Contract => {
           if let Some(x) = self.payload_as_contract() {
-            ds.field("payload", &x)
-          } else {
-            ds.field("payload", &"InvalidFlatbuffer: Union discriminant does not match value.")
-          }
-        },
-        MessagePayload::PartialContract => {
-          if let Some(x) = self.payload_as_partial_contract() {
             ds.field("payload", &x)
           } else {
             ds.field("payload", &"InvalidFlatbuffer: Union discriminant does not match value.")

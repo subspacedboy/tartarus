@@ -1,6 +1,5 @@
 mod contract_generated;
 mod verifier;
-mod lock_state_machine;
 mod wifi_util;
 mod screen_state;
 mod screen_ids;
@@ -13,10 +12,11 @@ mod under_contract_screen;
 mod display_contract_screen;
 mod internal_contract;
 
+use esp_idf_svc::wifi::BlockingWifi;
+use esp_idf_svc::wifi::EspWifi;
 use std::thread::sleep;
 use std::time::Duration;
 
-use aes_gcm::{Aes256Gcm, KeyInit};
 use display_interface_spi::SPIInterface;
 use embedded_hal::spi::MODE_3;
 use esp_idf_hal::delay::{NON_BLOCK};
@@ -30,20 +30,18 @@ use esp_idf_hal::units::KiloHertz;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::hal::delay;
 use esp_idf_svc::hal::gpio;
-use esp_idf_svc::http::client::EspHttpConnection;
 use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs, NvsDefault};
 use esp_idf_svc::sys::esp_random;
-use esp_idf_svc::wifi::{AuthMethod, BlockingWifi, ClientConfiguration, Configuration, EspWifi};
+// use esp_idf_svc::wifi::{AuthMethod, BlockingWifi, ClientConfiguration, Configuration, EspWifi};
 
 use crate::lock_ctx::{LockCtx, TickUpdate};
-use crate::lock_state_machine::{LockStateMachine, State};
 
-use crate::wifi_util::{connect_wifi, parse_wifi_qr};
-use embedded_svc::http::client::Client as HttpClient;
-use embedded_svc::io::Write;
-use esp_idf_hal::sys::EspError;
+use crate::wifi_util::{connect_wifi};
+// use embedded_svc::http::client::Client as HttpClient;
+// use embedded_svc::io::Write;
+// use esp_idf_hal::sys::EspError;
 use rand_core::{CryptoRng, RngCore};
-use st7789::{Error, Orientation, ST7789};
+use st7789::{Orientation, ST7789};
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::mono_font::ascii::FONT_10X20;
@@ -85,7 +83,6 @@ impl RngCore for Esp32Rng {
 }
 
 impl CryptoRng for Esp32Rng {}
-
 
 
 //noinspection RsUnresolvedMethod
@@ -176,67 +173,10 @@ fn main() {
     let nvs_partition = EspDefaultNvsPartition::take().expect("EspDefaultNvsPartition to be available");
     let nvs: EspNvs<NvsDefault> = EspNvs::new(nvs_partition.clone(), "storage", true).unwrap();
 
-    // let key_name = "ec_private";
-    // let mut buffer : [u8; 256] = [0; 256];
-    // let existing_key: Option<&[u8]> = nvs.get_blob(key_name, &mut buffer).ok().expect("The NVS mechanism should have worked");
-    // let mut rng = Esp32Rng;
-    //
-    // let private_key : SecretKey = if let Some(base64_key) = existing_key {
-    //     log::info!("Loaded existing EC private key.");
-    //     let key_bytes = general_purpose::STANDARD.decode(base64_key).unwrap();
-    //     SecretKey::from_slice(&key_bytes).expect("Failed to parse private key")
-    // } else {
-    //     log::info!("Generating a new EC private key...");
-    //     let sk = SecretKey::random(&mut rng);
-    //
-    //     let key_bytes = sk.to_bytes();
-    //     let encoded_key = general_purpose::STANDARD.encode(key_bytes);
-    //     nvs.set_blob(key_name, encoded_key.as_bytes()).unwrap();
-    //     log::info!("Saved new EC private key to NVS.");
-    //     sk
-    // };
-
-    // let my_public = PublicKey::from_secret_scalar(&private_key.to_nonzero_scalar());
-
-    // let encoded_cert = general_purpose::STANDARD.encode(&my_public.to_public_key_pem(LineEnding::CR).unwrap());
-
-    // const COORDINATOR: &str = "http://192.168.1.168:5002";
-    // let whole_message = format!("{}/?public={}", COORDINATOR, encoded_cert);
-
-    // log::info!("Message: {}", whole_message);
-
-    // let qr = QrCode::new(whole_message).expect("Valid QR code");
-    // let qr_width = qr.width() as u32;
-    //
-    // log::info!("Generated code with version: {:?}", qr.version());
-    // log::info!("Has width: {:?}", qr_width);
-
-    // Scale factor and positioning
-    // let scale = 2;
-    // let offset_x = (240 - qr_width * scale) / 2;
-    // let offset_y = (240 - qr_width * scale) / 2;
-    //
-    // for y in 0..qr_width {
-    //     for x in 0..qr_width {
-    //         let color = if qr[(x as usize, y as usize)] == Color::Dark {
-    //             Rgb565::BLACK
-    //         } else {
-    //             Rgb565::WHITE
-    //         };
-    //         let rect = Rectangle::new(
-    //             Point::new((offset_x + x * scale) as i32, (offset_y + y * scale) as i32),
-    //             Size::new(scale, scale),
-    //         )
-    //             .into_styled(PrimitiveStyleBuilder::new().fill_color(color).build());
-    //         rect.draw(&mut display).expect("Expected to draw");
-    //     }
-    // }
-
     // Warming up wifi
     log::info!("Putting wifi on standby");
 
     let sys_loop = EspSystemEventLoop::take().expect("EspSystemEventLoop to be available");
-    let mut wifi_connected = false;
     let mut wifi: BlockingWifi<EspWifi> = BlockingWifi::wrap(
         EspWifi::new(peripherals.modem, sys_loop.clone(), Some(nvs_partition)).expect("EspWifi to work"),
         sys_loop,
@@ -255,7 +195,6 @@ fn main() {
                 let password = String::from_utf8(actual_pass.to_vec()).ok().unwrap();
                 if let Ok(_) = connect_wifi(&mut wifi, &ssid, &password) {
                     log::info!("Was able to join wifi from stored credentials :-)");
-                    wifi_connected = true;
                 } else {
                     log::info!("Was NOT able to join wifi :-( ");
                 }
@@ -264,20 +203,6 @@ fn main() {
     } else {
         log::info!("No stored wifi credentials. Deferring wifi");
     }
-
-    // if wifi_connected {
-    //     let url = format!("/announce");
-    //     let mut pos = EspHttpConnection::new(&mut Default::default()).expect("HTTP client should be available");
-    //     let mut client = HttpClient::wrap(&mut pos);
-    //
-    //     let mut request = client.post(&url, &[]).unwrap();
-    //     let payload = b"{\"key\": \"value\"}";
-    //     request.write_all(payload).expect("All to write");
-    //     request.flush().expect("Flush to succeed");
-    //
-    //     let response = request.submit().expect("Failed to send");
-    //     log::info!("Response status: {}", response.status());
-    // }
 
     log::info!("Initializing code reader");
     const READER_ADDRESS: u8 = 0x0c;
@@ -297,9 +222,7 @@ fn main() {
 
 
     log::info!("Ready :-)");
-    let sm = LockStateMachine::new();
-    // let mut public_key : Option<PublicKey> = None;
-    let cipher : Option<Aes256Gcm> = None;
+    // let cipher : Option<Aes256Gcm> = None;
     const SLEEP_DURATION : Duration = Duration::from_millis(150);
 
     let mut lock_ctx = LockCtx::new(display, nvs, wifi);
@@ -341,30 +264,6 @@ fn main() {
         };
 
         lock_ctx.tick(this_update);
-
-        // match sm.current_state() {
-        //     State::Start => {
-        //         if let Some(incoming_data) = data {
-        //             let verifier = ContractVerifier {};
-        //             if let Ok(verified_type) = verifier.verify(&incoming_data) {
-        //                 match verified_type {
-        //                     VerifiedType::Contract(_contract) => {
-        //                         log::info!("Contract verified!");
-        //                         // sm.transition(State::CertificateLoaded);
-        //                     }
-        //                     VerifiedType::PartialContract(partial_contract) => {
-        //                         log::info!("Partial Contract verified!", );
-        //                         if let Some(address) = partial_contract.complete_contract_address() {
-        //                             log::info!("Address for full contract -> {address}");
-        //                         }
-        //                         // log::info!("Partial Contract verified! -> {partial_contract}", );
-        //                         // sm.transition(State::CertificateLoaded);
-        //                     }
-        //                     _ => {}
-        //                 }
-        //             }
-        //         }
-        //     }
         //     State::CertificateLoaded => {
         //         if let Some(incoming_data) = data {
         //             if let Ok(maybe_b64_string) = String::from_utf8(incoming_data) {
@@ -395,11 +294,6 @@ fn main() {
         //             }
         //         }
         //     }
-        //     State::CodeConfirmed => {
-        //         log::info!("Locked!");
-        //     }
-        //     State::Reset => {}
-        // }
 
         sleep(SLEEP_DURATION);
 

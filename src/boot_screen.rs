@@ -1,25 +1,18 @@
-use base64::Engine;
-use base64::engine::general_purpose;
+use crate::display_contract_screen::DisplayContractScreen;
+use crate::lock_ctx::LockCtx;
+use crate::prelude::prelude::{DynScreen, MySPI};
 use crate::screen_ids::ScreenId;
 use crate::screen_state::ScreenState;
+use crate::verifier::{ContractVerifier, VerifiedType};
 use embedded_graphics::pixelcolor::{Rgb565, RgbColor};
 use embedded_graphics::prelude::Primitive;
 use embedded_graphics::primitives::PrimitiveStyleBuilder;
-use embedded_graphics_core::draw_target::DrawTarget;
-use embedded_graphics_core::Drawable;
 use embedded_graphics_core::geometry::{Point, Size};
 use embedded_graphics_core::primitives::Rectangle;
+use embedded_graphics_core::Drawable;
 use embedded_hal::digital::OutputPin;
 use esp_idf_hal::gpio::{GpioError, Output, PinDriver};
-use p256::pkcs8::{EncodePublicKey, LineEnding};
 use qrcode::{Color, QrCode};
-use st7789::ST7789;
-use crate::display_contract_screen::DisplayContractScreen;
-use crate::lock_ctx::LockCtx;
-use crate::under_contract_screen::UnderContractScreen;
-use crate::prelude::prelude::{DynScreen, MySPI};
-use crate::screen_ids::ScreenId::DisplayContract;
-use crate::verifier::{ContractVerifier, VerifiedType};
 
 pub struct BootScreen<SPI, DC, RST, PinE> {
     _spi: core::marker::PhantomData<SPI>,
@@ -71,10 +64,6 @@ where
                                     GpioError
                                 >::new());
                             return Some(display_contract);
-                        }
-                        VerifiedType::PartialContract(partial_contract) => {
-                            log::info!("Partial Contract verified!", );
-                            log::info!("Address for full contract -> {}", partial_contract.full_address);
                         }
                         _ => {}
                     }

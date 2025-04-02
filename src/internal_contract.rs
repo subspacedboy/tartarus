@@ -1,5 +1,5 @@
 use p256::ecdsa::VerifyingKey;
-use crate::contract_generated::club::subjugated::fb::message::{Contract, EndCondition, PartialContract};
+use crate::contract_generated::club::subjugated::fb::message::{Contract, EndCondition};
 
 #[derive(Debug)]
 pub struct InternalContract {
@@ -10,10 +10,6 @@ pub struct InternalContract {
     pub public_key: VerifyingKey
 }
 
-#[derive(Debug)]
-pub struct InternalPartialContract {
-    pub full_address: String
-}
 
 #[derive(Debug)]
 pub enum EndCriteria {
@@ -53,13 +49,5 @@ impl From<Contract<'_>> for InternalContract {
         }
 
         ic
-    }
-}
-
-impl From<PartialContract<'_>> for InternalPartialContract {
-    fn from(contract: PartialContract<'_>) -> InternalPartialContract {
-        Self {
-            full_address: contract.complete_contract_address().unwrap().to_string()
-        }
     }
 }
