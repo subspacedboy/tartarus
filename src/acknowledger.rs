@@ -3,7 +3,7 @@ use p256::ecdsa::{Signature, SigningKey};
 use p256::ecdsa::signature::Signer;
 use p256::PublicKey;
 use sha2::{Digest, Sha256};
-use crate::contract_generated::club::subjugated::fb::message::{Acknowledgement, AcknowledgementArgs, Error, ErrorArgs, MessagePayload, SignedMessage, SignedMessageArgs, StartedUpdate, StartedUpdateArgs};
+use crate::contract_generated::club::subjugated::fb::message::{Acknowledgement, AcknowledgementArgs, Error, ErrorArgs, MessagePayload, SignedMessage, SignedMessageArgs};
 use crate::verifier::{VerificationError, VerifiedType};
 
 pub(crate) struct Acknowledger {
@@ -37,7 +37,7 @@ impl Acknowledger {
         let pub_key_holder = builder.create_vector(&public_key_bytes);
         let session = builder.create_string(&session_token);
 
-        let mut ack = Acknowledgement::create(&mut builder,
+        let ack = Acknowledgement::create(&mut builder,
         &AcknowledgementArgs {
             public_key: Some(pub_key_holder),
             session: Some(session),
@@ -67,7 +67,7 @@ impl Acknowledger {
         let pub_key_holder = builder.create_vector(&public_key_bytes);
         let session = builder.create_string(&session_token);
 
-        let mut ack = Acknowledgement::create(&mut builder,
+        let ack = Acknowledgement::create(&mut builder,
                                               &AcknowledgementArgs {
                                                   public_key: Some(pub_key_holder),
                                                   session: Some(session),
@@ -119,7 +119,7 @@ impl Acknowledger {
         let pub_key_holder = builder.create_vector(&public_key_bytes);
         let session = builder.create_string(&session_token);
         let message_offset = builder.create_string(message);
-        let mut error_message = Error::create(&mut builder,
+        let error_message = Error::create(&mut builder,
                                               &ErrorArgs {
                                                   public_key: Some(pub_key_holder),
                                                   session: Some(session),
@@ -150,7 +150,7 @@ impl Acknowledger {
         let pub_key_holder = builder.create_vector(&public_key_bytes);
         let session = builder.create_string(&session_token);
         let message_offset = builder.create_string(message);
-        let mut error_message = Error::create(&mut builder,
+        let error_message = Error::create(&mut builder,
                                               &ErrorArgs {
                                         public_key: Some(pub_key_holder),
                                         session: Some(session),
@@ -186,7 +186,7 @@ impl Acknowledger {
         let pub_key_holder = builder.create_vector(&public_key_bytes);
         let session = builder.create_string(&session_token);
         let message_offset = builder.create_string(&err.message);
-        let mut error_message = Error::create(&mut builder,
+        let error_message = Error::create(&mut builder,
                                               &ErrorArgs {
                                                   public_key: Some(pub_key_holder),
                                                   session: Some(session),
@@ -217,7 +217,7 @@ impl Acknowledger {
         let pub_key_holder = builder.create_vector(&public_key_bytes);
         let session = builder.create_string(&session_token);
         let message_offset = builder.create_string(&err.message);
-        let mut error_message = Error::create(&mut builder,
+        let error_message = Error::create(&mut builder,
                                               &ErrorArgs {
                                                   public_key: Some(pub_key_holder),
                                                   session: Some(session),

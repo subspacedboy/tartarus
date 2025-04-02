@@ -9,7 +9,6 @@ mod prelude;
 mod overlay;
 mod overlays;
 mod under_contract_screen;
-mod display_contract_screen;
 mod internal_contract;
 mod acknowledger;
 mod servo;
@@ -221,7 +220,7 @@ fn main() {
             .resolution(Resolution::Bits14),
     ).unwrap();
 
-    let mut driver: LedcDriver = LedcDriver::new(
+    let driver: LedcDriver = LedcDriver::new(
         peripherals.ledc.channel0,
         timer_driver,
         servo_pwm_pin,

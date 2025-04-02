@@ -1,4 +1,3 @@
-use display_interface::DisplayError;
 use embedded_hal::digital::OutputPin;
 use crate::lock_ctx::LockCtx;
 use crate::prelude::prelude::DynScreen;

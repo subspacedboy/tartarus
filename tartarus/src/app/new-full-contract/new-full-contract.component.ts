@@ -80,7 +80,7 @@ export class NewFullContractComponent {
     Contract.startContract(builder);
     Contract.addSerialNumber(builder, serialNumber);
     Contract.addPublicKey(builder, publicKeyOffset);
-    Contract.addIsTemporaryUnlockAllowed(builder, true);
+    Contract.addIsTemporaryUnlockAllowed(builder, false);
     Contract.addEndCondition(builder, whenISaySoOffset);
     Contract.addEndConditionType(builder, EndCondition.WhenISaySo);
     //Contractact.addSession(builder, sessionOffset);
@@ -89,7 +89,7 @@ export class NewFullContractComponent {
     let fullContractOffset = Contract.endContract(builder);
     builder.finish(fullContractOffset);
 
-    const contractName = this.idHelperService.generateBase32Id()
+    // const contractName = this.idHelperService.generateBase32Id()
 
     const contractBytes = builder.asUint8Array();
     const offsetToTable = contractBytes[0] | (contractBytes[1] << 8);

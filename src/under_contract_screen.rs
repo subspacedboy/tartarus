@@ -64,14 +64,20 @@ where
                 }
             }
 
-            // if update.d1_pressed && !lock_ctx.is_locked() {
-            //     // Relock
-            //     if contract.temporary_unlock_allowed {
-            //         lock_ctx.lock();
-            //         self.text = "Locked :-)".to_string();
-            //         self.needs_redraw = true;
-            //     }
-            // }
+        }
+
+        if let Some(update) = &lock_ctx.this_update {
+            if update.d2_pressed  {
+                lock_ctx.end_contract();
+                let boot_screen = Box::new(
+                    BootScreen::<
+                        MySPI<'static>,
+                        PinDriver<'static, _, Output>,
+                        PinDriver<'static, _, Output>,
+                        GpioError
+                    >::new());
+                return Some(boot_screen)
+            }
         }
         None
     }
@@ -92,7 +98,7 @@ where
                 Ok(None)
             },
             VerifiedType::ReleaseCommand(_) => {
-                lock_ctx.release();
+                lock_ctx.end_contract();
 
                 let boot_screen = Box::new(
                     BootScreen::<

@@ -3,8 +3,7 @@ use esp_idf_hal::ledc::LedcDriver;
 pub struct Servo<'a> {
     driver: LedcDriver<'a>,
     min_limit: u32,
-    max_limit: u32,
-    max_duty: u32
+    max_limit: u32
 }
 
 const OPEN_ANGLE : u32 = 1;
@@ -23,7 +22,6 @@ impl<'a> Servo<'a> {
             driver,
             min_limit,
             max_limit,
-            max_duty
         }
     }
 

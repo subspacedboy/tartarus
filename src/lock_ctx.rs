@@ -1,8 +1,8 @@
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use crate::boot_screen::BootScreen;
-use crate::contract_generated::club::subjugated::fb::message::{root_as_signed_message, Contract, MessagePayload, SignedMessage, SignedMessageArgs, StartedUpdate, StartedUpdateArgs};
-use crate::internal_contract::InternalContract;
+use crate::contract_generated::club::subjugated::fb::message::{MessagePayload, SignedMessage, SignedMessageArgs, StartedUpdate, StartedUpdateArgs};
+use crate::internal_contract::{InternalContract, SaveState};
 use crate::overlays::{ButtonPressOverlay, WifiOverlay};
 use crate::prelude::prelude::{DynOverlay, DynScreen, MyDisplay, MySPI};
 use crate::wifi_util::{connect_wifi, parse_wifi_qr};
@@ -10,10 +10,7 @@ use crate::Esp32Rng;
 use data_encoding::{BASE32_NOPAD, BASE64};
 use embedded_graphics_core::pixelcolor::Rgb565;
 use embedded_graphics_core::prelude::{DrawTarget, RgbColor};
-use embedded_svc::http::client::Client as HttpClient;
 use esp_idf_hal::gpio::{GpioError, Output, PinDriver};
-use esp_idf_hal::io::Write;
-use esp_idf_svc::http::client::EspHttpConnection;
 use esp_idf_svc::nvs::{EspNvs, NvsDefault};
 use esp_idf_svc::wifi::{BlockingWifi, EspWifi};
 use p256::{PublicKey, SecretKey};
@@ -21,15 +18,16 @@ use rand_core::RngCore;
 use std::time::Duration;
 use base64::Engine;
 use base64::prelude::BASE64_URL_SAFE;
-use embedded_svc::mqtt::client::{EventPayload, MessageId};
 use embedded_svc::mqtt::client::EventPayload::Received;
-use esp_idf_svc::mqtt::client::{EspMqttClient, EspMqttConnection, EspMqttEvent, LwtConfiguration, MqttClientConfiguration, QoS};
+use esp_idf_svc::mqtt::client::{EspMqttClient, EspMqttConnection, LwtConfiguration, MqttClientConfiguration, QoS};
 use flatbuffers::FlatBufferBuilder;
 use p256::ecdsa::signature::Signer;
 use p256::ecdsa::{Signature, SigningKey, VerifyingKey};
+use postcard::{from_bytes};
 use sha2::{Digest, Sha256};
 use crate::acknowledger::Acknowledger;
 use crate::servo::Servo;
+use crate::under_contract_screen::UnderContractScreen;
 use crate::verifier::{SignedMessageVerifier, VerifiedType};
 
 #[derive(Debug, Clone)]
@@ -53,8 +51,8 @@ pub struct LockCtx {
     overlays: Vec<Box<DynOverlay<'static>>>,
     wifi: BlockingWifi<EspWifi<'static>>,
     pub(crate) wifi_connected: bool,
-    pub(crate) secret_key: Option<SecretKey>,
-    pub(crate) public_key: Option<PublicKey>,
+    pub(crate) lock_secret_key: Option<SecretKey>,
+    pub(crate) lock_public_key: Option<PublicKey>,
     pub(crate) this_update: Option<TickUpdate>,
     pub(crate) contract: Option<InternalContract>,
     is_locked: bool,
@@ -62,6 +60,7 @@ pub struct LockCtx {
     incoming_messages: Arc<Mutex<VecDeque<SignedMessageTransport>>>,
     outgoing_message: Arc<Mutex<VecDeque<SignedMessageTransport>>>,
     servo: Servo<'static>,
+    dirty: bool
 }
 
 impl LockCtx {
@@ -73,8 +72,8 @@ impl LockCtx {
             wifi_connected: false,
             overlays: Vec::new(),
             current_screen: None,
-            secret_key: None,
-            public_key: None,
+            lock_secret_key: None,
+            lock_public_key: None,
             this_update: None,
             contract: None,
             is_locked: false,
@@ -82,14 +81,15 @@ impl LockCtx {
             incoming_messages : Arc::new(Mutex::new(VecDeque::new())),
             outgoing_message : Arc::new(Mutex::new(VecDeque::new())),
             servo,
+            dirty: false
         };
 
         lck.session_token = lck.load_or_create_session_id();
         let secret_key = lck.load_or_create_key();
         let my_public = PublicKey::from_secret_scalar(&secret_key.to_nonzero_scalar());
 
-        lck.secret_key = Some(secret_key);
-        lck.public_key = Some(my_public);
+        lck.lock_secret_key = Some(secret_key);
+        lck.lock_public_key = Some(my_public);
 
         // This must come after key loading because we're announcing to the coordinator with our
         // public key.
@@ -98,11 +98,43 @@ impl LockCtx {
 
             lck.start_mqtt();
             lck.enqueue_announce_message();
-            // lck.start_announce_to_coordinator();
         }
 
-        //TODO Load state.
-        lck.unlock();
+        log::info!("Seeing if we have previous state...");
+        let maybe_state = lck.read_contract();
+        if let Some(state) = maybe_state {
+            log::info!("Restoring contract state.");
+            lck.contract = Some(state.internal_contract);
+            if state.is_locked {
+                lck.lock();
+            }
+
+            // Back to UnderContract.
+            let under_contract: Box<DynScreen<'static>> = Box::new(
+                UnderContractScreen::<
+                    MySPI<'static>,
+                    PinDriver<'static, _, Output>,
+                    PinDriver<'static, _, Output>,
+                    GpioError
+                >::new()
+            );
+            lck.current_screen = Some(under_contract);
+        } else {
+            // No state. Set as unlocked.
+            log::info!("No previous state.");
+            lck.unlock();
+
+            // Use normal boot screen since we don't have state.
+            let boot_screen: Box<DynScreen<'static>> = Box::new(
+                BootScreen::<
+                    MySPI<'static>,
+                    PinDriver<'static, _, Output>,
+                    PinDriver<'static, _, Output>,
+                    GpioError
+                >::new()
+            );
+            lck.current_screen = Some(boot_screen);
+        }
 
         let wifi_overlay: Box<DynOverlay<'static>> = Box::new(
             WifiOverlay::<
@@ -123,19 +155,10 @@ impl LockCtx {
             >::new()
         );
         lck.overlays.push(button_overlay);
-
-        let boot_screen: Box<DynScreen<'static>> = Box::new(
-            BootScreen::<
-                MySPI<'static>,
-                PinDriver<'static, _, Output>,
-                PinDriver<'static, _, Output>,
-                GpioError
-            >::new()
-        );
-        lck.current_screen = Some(boot_screen);
-
         lck.display.clear(Rgb565::BLACK).unwrap();
 
+        // Manually clear the dirty flag because we literally just loaded it.
+        lck.dirty = false;
         lck
     }
 
@@ -190,7 +213,7 @@ impl LockCtx {
         let mut commands : VecDeque<Vec<u8>> = VecDeque::new();
 
         if let Ok(mut message_queue) = self.incoming_messages.lock() {
-            while(message_queue.len() > 0) {
+            while message_queue.len() > 0 {
                 let current = message_queue.pop_front();
                 if let Some(message) = current {
                     log::info!("Received: {:?}", message);
@@ -198,11 +221,11 @@ impl LockCtx {
                 }
             }
         }
-        while(commands.len() > 0) {
+        while commands.len() > 0 {
             let buffer = commands.pop_front().unwrap();
             let verifier = SignedMessageVerifier::new();
             let contract_public_key : Option<&VerifyingKey> = if let Some(k) = &self.contract {
-                Some(&k.public_key)
+                k.public_key.as_ref()
             } else {
                 None
             };
@@ -215,7 +238,7 @@ impl LockCtx {
                         Ok(_) => {
                             let acknowledger = Acknowledger::new();
                             let signing_key = self.get_signing_key();
-                            let ack_buffer = acknowledger.build_acknowledgement(for_acknowledgement, &self.session_token, &self.public_key.unwrap(), &signing_key);
+                            let ack_buffer = acknowledger.build_acknowledgement(for_acknowledgement, &self.session_token, &self.lock_public_key.unwrap(), &signing_key);
                             let ack_message = SignedMessageTransport {
                                 buffer: ack_buffer
                             };
@@ -224,7 +247,7 @@ impl LockCtx {
                         Err(e) => {
                             let acknowledger = Acknowledger::new();
                             let signing_key = self.get_signing_key();
-                            let ack_buffer = acknowledger.build_error_for_command(for_acknowledgement, &self.session_token, &self.public_key.unwrap(), &signing_key, &e);
+                            let ack_buffer = acknowledger.build_error_for_command(for_acknowledgement, &self.session_token, &self.lock_public_key.unwrap(), &signing_key, &e);
                             let ack_message = SignedMessageTransport {
                                 buffer: ack_buffer
                             };
@@ -236,7 +259,7 @@ impl LockCtx {
                     log::info!("Verification error {:?}", verification_error);
                     let acknowledger = Acknowledger::new();
                     let signing_key = self.get_signing_key();
-                    let ack_buffer = acknowledger.build_error(verification_error, &self.session_token, &self.public_key.unwrap(), &signing_key);
+                    let ack_buffer = acknowledger.build_error(verification_error, &self.session_token, &self.lock_public_key.unwrap(), &signing_key);
                     let ack_message = SignedMessageTransport {
                         buffer: ack_buffer
                     };
@@ -254,6 +277,8 @@ impl LockCtx {
         }
         self.overlays = overlays;
 
+        // TODO: Relocate this block into a struct that can receive QR data
+        // and sensibly process it so it's not just sitting here in tick().
         if let Some(incoming_data) = update.qr_data.clone() {
             if let Ok(maybe_string) = String::from_utf8(incoming_data) {
                 if maybe_string.starts_with("WIFI:") {
@@ -339,25 +364,23 @@ impl LockCtx {
             }
         }
 
-        Ok(true)
-    }
+        self.save_state_if_dirty();
 
-    pub fn release(&mut self) -> () {
-        log::info!("Released");
-        self.unlock();
-        self.contract = None;
+        Ok(true)
     }
 
     pub fn lock(&mut self) -> () {
         log::info!("Locking");
         self.is_locked = true;
         self.servo.close_position();
+        self.dirty = true;
     }
 
     pub fn unlock(&mut self) -> () {
         log::info!("Unlocking");
         self.is_locked = false;
         self.servo.open_position();
+        self.dirty = true;
     }
 
     pub fn is_locked(&self) -> bool {
@@ -366,7 +389,7 @@ impl LockCtx {
 
     pub fn get_lock_url(&self) -> Result<String, String> {
         const COORDINATOR: &str = "http://192.168.1.180:4200/lock-start";
-        if let Some(pub_key) = self.public_key {
+        if let Some(pub_key) = self.lock_public_key {
             let compressed_bytes = pub_key.to_sec1_bytes();
             let encoded_key = BASE64_URL_SAFE.encode(&compressed_bytes);
             Ok(format!("{}?public={}&session={}", COORDINATOR, encoded_key, self.session_token))
@@ -377,8 +400,64 @@ impl LockCtx {
     }
 
     pub fn accept_contract(&mut self, _contract : &InternalContract) -> () {
-        //TODO (Save the contract)
+        self.contract = Some(_contract.clone());
         self.lock();
+        self.dirty = true;
+    }
+
+    fn save_state_if_dirty(&mut self) {
+        use postcard::to_vec;
+        if self.dirty {
+            if let Some(internal_contract) = self.contract.as_ref() {
+                let key = internal_contract.public_key.unwrap();
+                let key_bytes = key.to_encoded_point(true).as_bytes().to_vec();
+
+                let save_state = SaveState {
+                    internal_contract: internal_contract.clone(),
+                    is_locked: self.is_locked,
+                    verifying_key_bytes: key_bytes,
+                };
+
+                if let Ok(bytes) = to_vec::<_, 1024>(&save_state) {
+                    if let Ok(_) = self.nvs.set_blob("contract", bytes.as_slice()) {
+                        log::info!("Contract saved to NVS");
+                    }
+                }
+            } else {
+                log::info!("Called save state with no contract. Skipping");
+            }
+        }
+
+        self.dirty = false;
+    }
+
+    pub fn end_contract(&mut self) -> () {
+        self.unlock();
+        if let Ok(_) = self.nvs.remove("contract") {
+            log::info!("Contract removed");
+        }
+        self.contract = None;
+    }
+
+    pub fn read_contract(&mut self) -> Option<SaveState> {
+        let key_name = "contract";
+        let mut buffer : [u8; 1024] = [0; 1024];
+        if let Ok(maybe_byte_buffer) = self.nvs.get_blob(key_name, &mut buffer) {
+            if let Some(_byte_buffer) = maybe_byte_buffer {
+                if let Ok(deserialized_state) = from_bytes(&buffer) {
+                    Some(deserialized_state)
+                } else {
+                    log::error!("Failed to deserialize save state");
+                    None
+                }
+            } else {
+                log::info!("No contract data was present");
+                None
+            }
+        } else {
+            log::info!("No contract key was set");
+            None
+        }
     }
 
     fn start_mqtt(&self) {
@@ -390,13 +469,13 @@ impl LockCtx {
         config.password = Some("maybe?");
         config.username = Some(self.session_token.as_ref());
 
-        let lwtConfig = LwtConfiguration {
+        let lwt_config = LwtConfiguration {
             topic: "devices/status",
             payload: "Vanished".as_bytes(),
             qos: QoS::AtLeastOnce,
             retain: true,
         };
-        config.lwt = Some(lwtConfig);
+        config.lwt = Some(lwt_config);
 
         log::info!("Attempting to connect to MQTT");
         let (mut client, mut connection): (EspMqttClient, EspMqttConnection) =
@@ -425,7 +504,7 @@ impl LockCtx {
                 while let Ok(event) = connection.next() {
                     if let Ok(mut message_queue) = queue_ref.lock() {
                         match event.payload() {
-                            EventPayload::Received { data, .. } => {
+                            Received { data, .. } => {
                                 message_queue.push_back(SignedMessageTransport {
                                     buffer: data.to_vec(), // Convert slice to Vec<u8>
                                 });
@@ -480,7 +559,7 @@ impl LockCtx {
     }
 
     fn get_signing_key(&self) -> SigningKey {
-        let secret = self.secret_key.as_ref().unwrap();
+        let secret = self.lock_secret_key.as_ref().unwrap();
 
         let cloned_secret = secret.clone();
         let bytes = cloned_secret.to_bytes();
@@ -490,7 +569,7 @@ impl LockCtx {
 
     fn enqueue_announce_message(&self) {
         let mut builder = FlatBufferBuilder::with_capacity(1024);
-        let public_key: Vec<u8> = self.public_key.unwrap().to_sec1_bytes().as_ref().to_vec();
+        let public_key: Vec<u8> = self.lock_public_key.unwrap().to_sec1_bytes().as_ref().to_vec();
         let session = builder.create_string(&self.session_token);
 
         let pub_key_holder = builder.create_vector(&public_key);
@@ -521,7 +600,7 @@ impl LockCtx {
         // UGH. We have to build the whole message over again because of the way
         // Rust implements flatbuffers.
         let mut builder = FlatBufferBuilder::with_capacity(1024);
-        let public_key: Vec<u8> = self.public_key.unwrap().to_sec1_bytes().as_ref().to_vec();
+        let public_key: Vec<u8> = self.lock_public_key.unwrap().to_sec1_bytes().as_ref().to_vec();
         let session = builder.create_string(&self.session_token);
 
         let pub_key_holder = builder.create_vector(&public_key);
@@ -538,7 +617,7 @@ impl LockCtx {
         let payload_type = MessagePayload::StartedUpdate; // Union type
         let payload_value = lock_update_event.as_union_value();
 
-        let secret = self.secret_key.as_ref().unwrap();
+        let secret = self.lock_secret_key.as_ref().unwrap();
 
         let cloned_secret = secret.clone();
         let bytes = cloned_secret.to_bytes();

@@ -1,4 +1,3 @@
-use crate::display_contract_screen::DisplayContractScreen;
 use crate::lock_ctx::LockCtx;
 use crate::prelude::prelude::{DynScreen, MySPI};
 use crate::screen_ids::ScreenId;
