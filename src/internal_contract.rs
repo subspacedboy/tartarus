@@ -38,28 +38,28 @@ pub struct InternalPermission {
 
 #[derive(Debug, Clone)]
 pub struct InternalUnlockCommand {
-    pub contract_serial_number: u16,
+    contract_serial_number: u16,
     pub serial_number: u16,
     pub counter: u16,
 }
 
 #[derive(Debug, Clone)]
 pub struct InternalLockCommand {
-    pub contract_serial_number: u16,
+    contract_serial_number: u16,
     pub serial_number: u16,
     pub counter: u16,
 }
 
 #[derive(Debug, Clone)]
 pub struct InternalReleaseCommand {
-    pub contract_serial_number: u16,
+    contract_serial_number: u16,
     pub serial_number: u16,
     pub counter: u16,
 }
 
 #[derive(Debug, Clone)]
 pub struct InternalAbortCommand {
-    pub contract_serial_number: u16,
+    contract_serial_number: u16,
     pub serial_number: u16,
     pub counter: u16,
 }
@@ -93,16 +93,14 @@ impl From<Contract<'_>> for InternalContract {
             println!("No bots found in the contract.");
         }
 
-        let ic = Self {
+        Self {
             serial_number: contract.serial_number(),
             temporary_unlock_allowed: contract.is_temporary_unlock_allowed(),
             public_key: Some(verifying_key),
             original_bytes,
             command_counter: 0,
             bots: internal_bots,
-        };
-
-        ic
+        }
     }
 }
 
@@ -148,11 +146,8 @@ impl From<AbortCommand<'_>> for InternalAbortCommand {
 
 impl From<Bot<'_>> for InternalBot {
     fn from(bot: Bot) -> InternalBot {
-        let internal_permission: Option<InternalPermission> = if let Some(p) = &bot.permissions() {
-            Some((*p).into())
-        } else {
-            None
-        };
+        let internal_permission: Option<InternalPermission> =
+            bot.permissions().as_ref().map(|p| (*p).into());
 
         let verifying_key = VerifyingKey::from_sec1_bytes(bot.public_key().unwrap().bytes())
             .expect("Valid public key");

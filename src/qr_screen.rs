@@ -1,7 +1,6 @@
 use crate::config_verifier::ConfigVerifier;
 use crate::lock_ctx::LockCtx;
-use crate::prelude::prelude::MySPI;
-use crate::screen_ids::ScreenId;
+use crate::prelude::MySPI;
 use crate::screen_state::ScreenState;
 use crate::verifier::{SignedMessageVerifier, VerifiedType};
 use embedded_graphics::mono_font::ascii::FONT_10X20;
@@ -49,16 +48,12 @@ impl ScreenState for QrCodeScreen {
                     let verifier = SignedMessageVerifier::new();
 
                     let keys = lock_ctx.get_keyring();
-                    if let Ok(verified_type) = verifier.verify(qr_data.clone(), &keys, 0, 0) {
-                        match verified_type {
-                            VerifiedType::Contract(contract) => {
-                                lock_ctx.accept_contract(&contract);
-
-                                lock_ctx.contract = Some(contract);
-                                return Some(1);
-                            }
-                            _ => {}
-                        }
+                    if let Ok(VerifiedType::Contract(contract)) =
+                        verifier.verify(qr_data.clone(), &keys, 0, 0)
+                    {
+                        lock_ctx.accept_contract(&contract);
+                        lock_ctx.contract = Some(contract);
+                        return Some(1);
                     }
                 }
             }
@@ -150,9 +145,9 @@ impl ScreenState for QrCodeScreen {
         self.needs_redraw = false;
     }
 
-    fn get_id(&self) -> ScreenId {
-        ScreenId::Boot
-    }
+    // fn get_id(&self) -> ScreenId {
+    //     ScreenId::Boot
+    // }
 
     fn needs_redraw(&self) -> bool {
         self.needs_redraw

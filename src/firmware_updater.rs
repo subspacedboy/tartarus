@@ -3,7 +3,7 @@ use crate::firmware_generated::club::subjugated::fb::message::firmware::{
     FirmwareChallengeResponse, FirmwareChallengeResponseArgs, FirmwareMessageArgs,
     GetFirmwareChunkRequest, GetFirmwareChunkRequestArgs, MessagePayload,
 };
-use crate::generated::generated::get_challenge_key;
+use crate::generated::get_challenge_key;
 use crate::internal_firmware::{
     FirmwareMessageType, InternalChallenge, InternalFirmwareChunk, InternalFirmwareResponse,
 };
@@ -25,21 +25,21 @@ use std::thread;
 use std::time::Duration;
 
 pub struct FirmwareAssembler {
-    pub current_message: Box<Vec<u8>>,
+    pub current_message: Vec<u8>,
     pub started: bool,
 }
 
 impl FirmwareAssembler {
     pub fn new() -> Self {
         Self {
-            current_message: Box::new(vec![]),
+            current_message: vec![],
             started: false,
         }
     }
 
     pub fn new_with_size(size: usize) -> Self {
         Self {
-            current_message: Box::new(Vec::with_capacity(size)),
+            current_message: Vec::with_capacity(size),
             started: false,
         }
     }
@@ -131,7 +131,7 @@ impl FirmwareManager {
     pub fn respond_to_challenge(
         &self,
         challenge: &InternalChallenge,
-        session_token: &String,
+        session_token: &str,
     ) -> Vec<u8> {
         let mut builder = FlatBufferBuilder::with_capacity(1024);
 
@@ -143,12 +143,12 @@ impl FirmwareManager {
                 .expect("Nonce should be 32 bytes and fixed");
             let signature_bytes = signature.to_bytes();
 
-            Some(builder.create_vector(&signature_bytes.as_slice()))
+            Some(builder.create_vector(signature_bytes.as_slice()))
         } else {
             None
         };
 
-        let session_offset = builder.create_string(&session_token);
+        let session_offset = builder.create_string(session_token);
 
         let firmware_challenge_offset = FirmwareChallengeResponse::create(
             &mut builder,
@@ -225,11 +225,11 @@ impl FirmwareManager {
         }
     }
 
-    pub fn request_firmware_chunk(&self, session_token: &String) -> Vec<u8> {
+    pub fn request_firmware_chunk(&self, session_token: &str) -> Vec<u8> {
         let mut builder = FlatBufferBuilder::with_capacity(1024);
 
         let firmware_name_offset = builder.create_string(self.next_firmware_name.as_ref().unwrap());
-        let session_offset = builder.create_string(&session_token);
+        let session_offset = builder.create_string(session_token);
 
         let request_offset = if self.acked_size == 0 {
             0
@@ -337,18 +337,13 @@ impl FirmwareUpdater {
 
         thread::spawn(move || {
             let mut ota = EspOta::new().expect("Ota new");
-            match ota.get_boot_slot() {
-                Ok(slot) => {
-                    log::info!("Firmware updater got boot slot {:?}", slot);
-                }
-                Err(_) => {}
+
+            if let Ok(slot) = ota.get_boot_slot() {
+                log::info!("Firmware updater got boot slot {:?}", slot);
             }
 
-            match ota.get_running_slot() {
-                Ok(slot) => {
-                    log::info!("Firmware updater got running slot {:?}", slot);
-                }
-                Err(_) => {}
+            if let Ok(slot) = ota.get_running_slot() {
+                log::info!("Firmware updater got running slot {:?}", slot);
             }
 
             match ota.get_update_slot() {

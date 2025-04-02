@@ -78,7 +78,7 @@ pub enum MqttStateMachine {
 
 impl MqttService {
     pub fn new(config: InternalConfig, session_token: String) -> MqttService {
-        let mqtt_service = Self {
+        Self {
             mqtt_state_machine: Arc::new(Mutex::new(MqttStateMachine::NotRunning)),
             schedule_restart_mqtt: None,
             mqtt_thread_1: None,
@@ -89,9 +89,7 @@ impl MqttService {
 
             configuration: config,
             session_token,
-        };
-
-        mqtt_service
+        }
     }
 
     pub fn tick(&mut self, time_in_ticks: u64) {
@@ -135,25 +133,26 @@ impl MqttService {
     pub fn start_mqtt(&mut self) {
         let broker_url = &self.configuration.mqtt_broker_uri; // Replace with your MQTT broker
 
-        let mut config = MqttClientConfiguration::default();
-        config.client_id = Some(self.session_token.as_ref());
-        config.network_timeout = Duration::from_secs(5);
-        // This isn't used. It just needs a value.
-        config.password = Some("tartarus");
-        config.username = Some(self.session_token.as_ref());
-        config.reconnect_timeout = Some(Duration::from_secs(5));
-        config.keep_alive_interval = Some(Duration::from_secs(20));
-
-        // Requires -> CONFIG_MBEDTLS_CERTIFICATE_BUNDLE in sdkconfig.defaults
-        config.crt_bundle_attach = Some(esp_idf_svc::sys::esp_crt_bundle_attach);
-
         let lwt_config = LwtConfiguration {
             topic: "devices/status",
             payload: "Vanished".as_bytes(),
             qos: QoS::AtLeastOnce,
             retain: true,
         };
-        config.lwt = Some(lwt_config);
+
+        let config = MqttClientConfiguration::<'_> {
+            client_id: Some(self.session_token.as_ref()),
+            network_timeout: Duration::from_secs(5),
+            // Password is not used. Just needs a value.
+            password: Some("tartarus"),
+            username: Some(self.session_token.as_ref()),
+            reconnect_timeout: Some(Duration::from_secs(5)),
+            keep_alive_interval: Some(Duration::from_secs(20)),
+            // Requires -> CONFIG_MBEDTLS_CERTIFICATE_BUNDLE in sdkconfig.defaults
+            crt_bundle_attach: Some(esp_idf_svc::sys::esp_crt_bundle_attach),
+            lwt: Some(lwt_config),
+            ..Default::default()
+        };
 
         log::info!("Attempting to connect to MQTT");
         let (mut client, mut connection): (EspMqttClient, EspMqttConnection) =
@@ -303,7 +302,7 @@ impl MqttService {
 
                 'outer: loop {
                     'inner: for q in queues_to_subscribe_to.iter() {
-                        if let Err(e) = client.subscribe(&*q, QoS::AtMostOnce) {
+                        if let Err(e) = client.subscribe(q, QoS::AtMostOnce) {
                             log::error!("Failed to subscribe to topic : {e}, retrying...");
                             std::thread::sleep(Duration::from_secs(1));
                             continue 'inner;
@@ -381,8 +380,7 @@ impl MqttService {
                         std::thread::sleep(Duration::from_secs(sleep_secs));
                     }
                 }
-
-                return;
+                //Will return
             })
             .unwrap();
 

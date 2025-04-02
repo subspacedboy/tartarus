@@ -1,7 +1,5 @@
 use crate::lock_ctx::LockCtx;
-use crate::prelude::prelude::{DynScreen, MySPI};
-use crate::qr_screen::QrCodeScreen;
-use crate::screen_ids::ScreenId;
+use crate::prelude::MySPI;
 use crate::screen_state::ScreenState;
 use crate::verifier::VerifiedType;
 use embedded_graphics::mono_font::ascii::FONT_10X20;
@@ -11,7 +9,6 @@ use embedded_graphics_core::geometry::Point;
 use embedded_graphics_core::pixelcolor::Rgb565;
 use embedded_graphics_core::prelude::{DrawTarget, RgbColor};
 use embedded_graphics_core::Drawable;
-use embedded_hal::digital::OutputPin;
 use esp_idf_hal::gpio::{Gpio41, Gpio45, GpioError, Output, PinDriver};
 
 pub struct LockstateScreen {
@@ -118,9 +115,9 @@ impl ScreenState for LockstateScreen {
         self.needs_redraw = false;
     }
 
-    fn get_id(&self) -> ScreenId {
-        ScreenId::UnderContract
-    }
+    // fn get_id(&self) -> ScreenId {
+    //     ScreenId::UnderContract
+    // }
 
     fn needs_redraw(&self) -> bool {
         self.needs_redraw

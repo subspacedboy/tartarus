@@ -23,14 +23,13 @@ use crate::lock_state_screen::LockstateScreen;
 use crate::mqtt_service::TopicType::FirmwareMessage as TopicFirmwareMessage;
 use crate::mqtt_service::{MqttService, SignedMessageTransport, TopicType};
 use crate::overlays::{ButtonPressOverlay, WifiOverlay};
-use crate::prelude::prelude::{DynOverlay, DynScreen, MyDisplay, MySPI};
+use crate::prelude::{DynOverlay, MyDisplay, MySPI};
 use crate::qr_screen::QrCodeScreen;
-use crate::screen_ids::ScreenId;
 use crate::screen_state::ScreenState;
 use crate::servo::Servo;
 use crate::verifier::{SignedMessageVerifier, VerifiedType};
 use crate::wifi_info_screen::WifiInfoScreen;
-use crate::wifi_util::{connect_wifi, parse_wifi_qr};
+use crate::wifi_util::connect_wifi;
 use crate::Esp32Rng;
 use data_encoding::{BASE32_NOPAD, BASE64, BASE64URL};
 use embedded_graphics_core::pixelcolor::Rgb565;
@@ -218,7 +217,7 @@ impl LockCtx {
         self.configuration = config.clone();
 
         if let Ok(bytes) = to_vec::<_, 1024>(&config) {
-            if let Ok(_) = self.nvs.set_blob("config", bytes.as_slice()) {
+            if self.nvs.set_blob("config", bytes.as_slice()).is_ok() {
                 log::info!("Configuration saved to NVS");
             }
         }
@@ -249,7 +248,6 @@ impl LockCtx {
         let existing_key: Option<&[u8]> = self
             .nvs
             .get_blob(key_name, &mut buffer)
-            .ok()
             .expect("The NVS mechanism should have worked");
         let mut rng = Esp32Rng;
 
@@ -275,7 +273,6 @@ impl LockCtx {
         let existing_key: Option<&[u8]> = self
             .nvs
             .get_blob(key_name, &mut buffer)
-            .ok()
             .expect("The NVS mechanism should have worked");
         let mut rng = Esp32Rng;
 
@@ -299,7 +296,7 @@ impl LockCtx {
 
     /// The primary event loop of the firmware. This is called by main in fixed intervals of milliseconds.
     /// If the buttons on the face are pressed they'll be passed in here as part of the TickUpdate.
-    pub fn tick(&mut self, update: TickUpdate) -> () {
+    pub fn tick(&mut self, update: TickUpdate) {
         // Update time
         self.time_in_ticks += update.since_last.as_millis() as u64;
         let mut screen_changed = false;
@@ -318,7 +315,7 @@ impl LockCtx {
             Vec::new()
         };
 
-        while message_queue.len() > 0 {
+        while !message_queue.is_empty() {
             let message = message_queue.remove(0);
             match message.topic() {
                 SignedMessages => {
@@ -339,7 +336,7 @@ impl LockCtx {
             }
         }
 
-        while commands.len() > 0 {
+        while !commands.is_empty() {
             let buffer = commands.pop_front().unwrap();
             let verifier = SignedMessageVerifier::new();
 
@@ -409,7 +406,7 @@ impl LockCtx {
             }
         }
 
-        while configuration.len() > 0 {
+        while !configuration.is_empty() {
             // Configuration delivered through this channel is considered trusted.
             let configuration = configuration.pop_front().unwrap();
             if let Ok(valid_config) = ConfigVerifier::read_configuration(configuration) {
@@ -419,7 +416,7 @@ impl LockCtx {
             }
         }
 
-        while firmware.len() > 0 {
+        while !firmware.is_empty() {
             let firmware_data = firmware.pop_front().unwrap();
 
             if let Ok(msg) = read_as_firmware_message(firmware_data.as_slice()) {
@@ -649,7 +646,7 @@ impl LockCtx {
         let mut tries = 2;
         let mut connected = false;
         while tries > 0 && !connected {
-            if let Ok(_) = connect_wifi(&mut self.wifi, &ssid, password) {
+            if connect_wifi(&mut self.wifi, ssid, password).is_ok() {
                 log::info!("Connected!");
                 self.wifi_connected = true;
                 connected = true;
@@ -710,7 +707,7 @@ impl LockCtx {
         }
     }
 
-    pub fn local_lock(&mut self) -> () {
+    pub fn local_lock(&mut self) {
         log::info!("Local Locking");
         self.is_locked = true;
         self.servo.close_position();
@@ -719,7 +716,7 @@ impl LockCtx {
         self.dirty = true;
     }
 
-    pub fn lock(&mut self) -> () {
+    pub fn lock(&mut self) {
         log::info!("Locking");
         self.is_locked = true;
         self.servo.close_position();
@@ -728,14 +725,14 @@ impl LockCtx {
         self.dirty = true;
     }
 
-    pub fn lock_without_update(&mut self) -> () {
+    pub fn lock_without_update(&mut self) {
         log::info!("Locking");
         self.is_locked = true;
         self.servo.close_position();
         self.dirty = true;
     }
 
-    pub fn local_unlock(&mut self) -> () {
+    pub fn local_unlock(&mut self) {
         log::info!("Unlocking");
         self.is_locked = false;
         self.servo.open_position();
@@ -744,7 +741,7 @@ impl LockCtx {
         self.dirty = true;
     }
 
-    pub fn unlock(&mut self) -> () {
+    pub fn unlock(&mut self) {
         log::info!("Unlocking");
         self.is_locked = false;
         self.servo.open_position();
@@ -753,7 +750,7 @@ impl LockCtx {
         self.dirty = true;
     }
 
-    pub fn unlock_without_update(&mut self) -> () {
+    pub fn unlock_without_update(&mut self) {
         log::info!("Unlocking");
         self.is_locked = false;
         self.servo.open_position();
@@ -779,7 +776,7 @@ impl LockCtx {
         }
     }
 
-    pub fn accept_contract(&mut self, _contract: &InternalContract) -> () {
+    pub fn accept_contract(&mut self, _contract: &InternalContract) {
         self.contract = Some(_contract.clone());
         self.enqueue_bot_event(EventType::AcceptContract);
         self.lock();
@@ -796,7 +793,7 @@ impl LockCtx {
                 };
 
                 if let Ok(bytes) = to_vec::<_, 1024>(&save_state) {
-                    if let Ok(_) = self.nvs.set_blob("contract", bytes.as_slice()) {
+                    if self.nvs.set_blob("contract", bytes.as_slice()).is_ok() {
                         log::info!("Contract saved to NVS");
                     }
                 }
@@ -808,7 +805,7 @@ impl LockCtx {
         self.dirty = false;
     }
 
-    pub fn end_contract(&mut self) -> () {
+    pub fn end_contract(&mut self) {
         // NB: Order matters. If we clear the contract before enqueueing bot events
         // we won't have bot records for sending data.
         self.unlock();
@@ -840,7 +837,7 @@ impl LockCtx {
 
     fn clear_contract(&mut self) {
         log::info!("Cleared contract");
-        if let Ok(_) = self.nvs.remove("contract") {
+        if self.nvs.remove("contract").is_ok() {
             log::info!("Contract removed");
         }
         self.contract = None;
@@ -959,7 +956,7 @@ impl LockCtx {
         let bytes = cloned_secret.to_bytes();
         let key_bytes = bytes.as_slice();
         let signing_key = SigningKey::from_slice(key_bytes).unwrap();
-        let signature: Signature = signing_key.sign(&hash.as_slice());
+        let signature: Signature = signing_key.sign(hash.as_slice());
 
         let sig_bytes = signature.to_bytes();
 
@@ -1009,7 +1006,7 @@ impl LockCtx {
         builder.finish(periodic_update_event, None);
         let buffer = builder.finished_data();
 
-        let signature = calculate_signature(&buffer, &self.get_signing_key());
+        let signature = calculate_signature(buffer, &self.get_signing_key());
 
         let mut builder = FlatBufferBuilder::with_capacity(1024);
         let session = builder.create_string(&self.session_token);
@@ -1077,7 +1074,7 @@ impl LockCtx {
         builder.finish(event, None);
         let buffer = builder.finished_data();
 
-        let signature = calculate_signature(&buffer, &self.get_signing_key());
+        let signature = calculate_signature(buffer, &self.get_signing_key());
 
         let mut builder = FlatBufferBuilder::with_capacity(1024);
         let session = builder.create_string(&self.session_token);
@@ -1132,16 +1129,16 @@ impl LockCtx {
         if let Some(contract) = &self.contract {
             keys.insert(
                 "contract".to_string(),
-                &contract.public_key.as_ref().unwrap(),
+                contract.public_key.as_ref().unwrap(),
             );
 
             for bot in &contract.bots {
-                keys.insert(bot.name.clone(), &bot.public_key.as_ref().unwrap());
+                keys.insert(bot.name.clone(), bot.public_key.as_ref().unwrap());
             }
         }
         if let Some(safety_keys) = &self.configuration.safety_keys {
             for k in safety_keys {
-                keys.insert(k.name.clone(), &k.public_key.as_ref().unwrap());
+                keys.insert(k.name.clone(), k.public_key.as_ref().unwrap());
             }
         }
         keys

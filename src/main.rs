@@ -45,7 +45,7 @@ use esp_idf_hal::i2c::{I2cConfig, I2cDriver};
 use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_hal::prelude::FromValueType;
 use esp_idf_hal::spi;
-use esp_idf_hal::spi::{SpiConfig, SpiDeviceDriver, SpiDriver};
+use esp_idf_hal::spi::{SpiDeviceDriver, SpiDriver};
 use esp_idf_hal::units::KiloHertz;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::hal::delay;
@@ -76,7 +76,7 @@ struct Esp32Rng;
 
 impl RngCore for Esp32Rng {
     fn next_u32(&mut self) -> u32 {
-        unsafe { return esp_random() as u32 }
+        unsafe { esp_random() as u32 }
     }
 
     fn next_u64(&mut self) -> u64 {
@@ -115,9 +115,11 @@ fn main() {
 
     let peripherals = Peripherals::take().expect("Peripherals to be available");
 
-    let mut config = SpiConfig::default();
-    config.baudrate = 10_000_000.Hz();
-    config.data_mode = MODE_3;
+    let _config = esp_idf_hal::spi::config::Config {
+        baudrate: 10_000_000.Hz(),
+        data_mode: MODE_3,
+        ..Default::default()
+    };
 
     // Declare all the pins in one spot.
     let mut tft_power = PinDriver::output(peripherals.pins.gpio7).expect("pin to be available");
@@ -230,7 +232,7 @@ fn main() {
             if let Some(actual_pass) = pass {
                 let ssid = String::from_utf8(actual_ssid.to_vec()).ok().unwrap();
                 let password = String::from_utf8(actual_pass.to_vec()).ok().unwrap();
-                if let Ok(_) = connect_wifi(&mut wifi, &ssid, &password) {
+                if connect_wifi(&mut wifi, &ssid, &password).is_ok() {
                     log::info!("Was able to join wifi from stored credentials :-)");
                 } else {
                     log::info!("Was NOT able to join wifi :-( ");
@@ -289,15 +291,15 @@ fn main() {
         }
 
         let mut data: Option<Vec<u8>> = None;
-        match i2c_driver.read(READER_ADDRESS, &mut rx_buf, NON_BLOCK) {
-            Ok(_) => {
-                let size: usize = rx_buf[0] as usize;
-                if size > 0 {
-                    // See rx_buf for 2 and +2 info.
-                    data = Some(rx_buf[2..size + 2].to_vec())
-                }
+        if i2c_driver
+            .read(READER_ADDRESS, &mut rx_buf, NON_BLOCK)
+            .is_ok()
+        {
+            let size: usize = rx_buf[0] as usize;
+            if size > 0 {
+                // See rx_buf for 2 and +2 info.
+                data = Some(rx_buf[2..size + 2].to_vec())
             }
-            Err(_) => {}
         }
 
         let this_update = TickUpdate {

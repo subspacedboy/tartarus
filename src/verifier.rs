@@ -52,11 +52,11 @@ impl_has_table!(
 );
 
 pub trait HashTableBytes<T> {
-    fn calculate_hash(&self, incoming_data: &Vec<u8>) -> Output<Sha256>;
+    fn calculate_hash(&self, incoming_data: &[u8]) -> Output<Sha256>;
 }
 
 impl<T: HasTable> HashTableBytes<T> for T {
-    fn calculate_hash(&self, incoming_data: &Vec<u8>) -> Output<Sha256> {
+    fn calculate_hash(&self, incoming_data: &[u8]) -> Output<Sha256> {
         let message_table_start = self.loc();
         let vtable_offset = u16::from_le_bytes(
             incoming_data[message_table_start..message_table_start + 2]
@@ -73,7 +73,7 @@ impl<T: HasTable> HashTableBytes<T> for T {
             contract_end,
             message_buffer.bytes()
         );
-        let hash: Output<Sha256> = Sha256::digest(&message_buffer);
+        let hash: Output<Sha256> = Sha256::digest(message_buffer);
         log::info!("Hash: {:?}", hash);
         hash
     }
@@ -112,53 +112,51 @@ impl SignedMessageVerifier {
                             message: "Required a key but it wasn't available".to_string(),
                         });
                     }
+                } else if let Some(contract_key) = verifying_keys.get("contract") {
+                    Some(contract_key)
                 } else {
-                    if let Some(contract_key) = verifying_keys.get("contract") {
-                        Some(contract_key)
-                    } else {
-                        // The only remaining acceptable condition is that this is a new contract
-                        // and we're going to make a verifying key out of the public key on that
-                        // one message. Any other type and we fail. We have this large ugly block
-                        // because we need the serial number of the command to actually ERROR the message.
-                        match signed_msg.payload_type() {
-                            MessagePayload::Contract => None,
-                            MessagePayload::LockCommand => {
-                                return Err(VerificationError {
-                                    serial_number: signed_msg
-                                        .payload_as_lock_command()
-                                        .unwrap()
-                                        .serial_number(),
-                                    counter: 0,
-                                    message: "Required a key but it wasn't available".to_string(),
-                                });
-                            }
-                            MessagePayload::UnlockCommand => {
-                                return Err(VerificationError {
-                                    serial_number: signed_msg
-                                        .payload_as_unlock_command()
-                                        .unwrap()
-                                        .serial_number(),
-                                    counter: 0,
-                                    message: "Required a key but it wasn't available".to_string(),
-                                });
-                            }
-                            MessagePayload::ReleaseCommand => {
-                                return Err(VerificationError {
-                                    serial_number: signed_msg
-                                        .payload_as_release_command()
-                                        .unwrap()
-                                        .serial_number(),
-                                    counter: 0,
-                                    message: "Required a key but it wasn't available".to_string(),
-                                });
-                            }
-                            _ => {
-                                return Err(VerificationError {
-                                    serial_number: 0,
-                                    counter: 0,
-                                    message: "Required a key but it wasn't available".to_string(),
-                                });
-                            }
+                    // The only remaining acceptable condition is that this is a new contract
+                    // and we're going to make a verifying key out of the public key on that
+                    // one message. Any other type and we fail. We have this large ugly block
+                    // because we need the serial number of the command to actually ERROR the message.
+                    match signed_msg.payload_type() {
+                        MessagePayload::Contract => None,
+                        MessagePayload::LockCommand => {
+                            return Err(VerificationError {
+                                serial_number: signed_msg
+                                    .payload_as_lock_command()
+                                    .unwrap()
+                                    .serial_number(),
+                                counter: 0,
+                                message: "Required a key but it wasn't available".to_string(),
+                            });
+                        }
+                        MessagePayload::UnlockCommand => {
+                            return Err(VerificationError {
+                                serial_number: signed_msg
+                                    .payload_as_unlock_command()
+                                    .unwrap()
+                                    .serial_number(),
+                                counter: 0,
+                                message: "Required a key but it wasn't available".to_string(),
+                            });
+                        }
+                        MessagePayload::ReleaseCommand => {
+                            return Err(VerificationError {
+                                serial_number: signed_msg
+                                    .payload_as_release_command()
+                                    .unwrap()
+                                    .serial_number(),
+                                counter: 0,
+                                message: "Required a key but it wasn't available".to_string(),
+                            });
+                        }
+                        _ => {
+                            return Err(VerificationError {
+                                serial_number: 0,
+                                counter: 0,
+                                message: "Required a key but it wasn't available".to_string(),
+                            });
                         }
                     }
                 };

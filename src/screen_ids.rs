@@ -1,6 +1,6 @@
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum ScreenId {
-    Boot,
-    UnderContract,
-    WifiInfo,
-}
+// #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+// pub enum ScreenId {
+//     Boot,
+//     UnderContract,
+//     WifiInfo,
+// }

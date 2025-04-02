@@ -1,6 +1,5 @@
 use crate::lock_ctx::LockCtx;
-use crate::prelude::prelude::MySPI;
-use crate::screen_ids::ScreenId;
+use crate::prelude::MySPI;
 use crate::screen_state::ScreenState;
 use crate::verifier::VerifiedType;
 use crate::wifi_util::parse_wifi_qr;
@@ -43,7 +42,7 @@ impl ScreenState for WifiInfoScreen {
                         let maybe_creds = parse_wifi_qr(maybe_string);
 
                         if let Some((ssid, password)) = maybe_creds {
-                            if let Ok(_) = lock_ctx.connect_wifi(&ssid, &password) {
+                            if lock_ctx.connect_wifi(&ssid, &password).is_ok() {
                                 self.text = ssid;
                             } else {
                                 self.text = "Couldn't connect".to_string()
@@ -60,8 +59,8 @@ impl ScreenState for WifiInfoScreen {
 
     fn process_command(
         &mut self,
-        lock_ctx: &mut LockCtx,
-        command: VerifiedType,
+        _lock_ctx: &mut LockCtx,
+        _command: VerifiedType,
     ) -> Result<Option<usize>, String> {
         Ok(None)
     }
@@ -128,9 +127,9 @@ impl ScreenState for WifiInfoScreen {
         self.needs_redraw = false;
     }
 
-    fn get_id(&self) -> ScreenId {
-        ScreenId::WifiInfo
-    }
+    // fn get_id(&self) -> ScreenId {
+    //     ScreenId::WifiInfo
+    // }
 
     fn needs_redraw(&self) -> bool {
         self.needs_redraw

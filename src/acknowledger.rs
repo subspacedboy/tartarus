@@ -18,7 +18,7 @@ impl Acknowledger {
     pub fn build_acknowledgement(
         &self,
         command: VerifiedType,
-        session_token: &String,
+        session_token: &str,
         public_key: &PublicKey,
         signing_key: &SigningKey,
     ) -> Vec<u8> {
@@ -34,7 +34,7 @@ impl Acknowledger {
 
         let public_key_bytes: Vec<u8> = public_key.to_sec1_bytes().to_vec();
         let pub_key_holder = builder.create_vector(&public_key_bytes);
-        let session = builder.create_string(&session_token);
+        let session = builder.create_string(session_token);
 
         let ack = Acknowledgement::create(
             &mut builder,
@@ -57,7 +57,7 @@ impl Acknowledger {
 
         let public_key_bytes: Vec<u8> = public_key.to_sec1_bytes().to_vec();
         let pub_key_holder = builder.create_vector(&public_key_bytes);
-        let session = builder.create_string(&session_token);
+        let session = builder.create_string(session_token);
 
         let ack = Acknowledgement::create(
             &mut builder,
@@ -91,10 +91,10 @@ impl Acknowledger {
     pub fn build_error_for_command(
         &self,
         command: VerifiedType,
-        session_token: &String,
+        session_token: &str,
         public_key: &PublicKey,
         signing_key: &SigningKey,
-        message: &String,
+        message: &str,
     ) -> Vec<u8> {
         let mut builder = FlatBufferBuilder::with_capacity(1024);
 
@@ -110,7 +110,7 @@ impl Acknowledger {
 
         let public_key_bytes: Vec<u8> = public_key.to_sec1_bytes().to_vec();
         let pub_key_holder = builder.create_vector(&public_key_bytes);
-        let session = builder.create_string(&session_token);
+        let session = builder.create_string(session_token);
         let message_offset = builder.create_string(message);
         let error_message = Error::create(
             &mut builder,
@@ -134,7 +134,7 @@ impl Acknowledger {
 
         let public_key_bytes: Vec<u8> = public_key.to_sec1_bytes().to_vec();
         let pub_key_holder = builder.create_vector(&public_key_bytes);
-        let session = builder.create_string(&session_token);
+        let session = builder.create_string(session_token);
         let message_offset = builder.create_string(message);
         let error_message = Error::create(
             &mut builder,
@@ -169,7 +169,7 @@ impl Acknowledger {
     pub fn build_error(
         &self,
         err: VerificationError,
-        session_token: &String,
+        session_token: &str,
         public_key: &PublicKey,
         signing_key: &SigningKey,
     ) -> Vec<u8> {
@@ -177,7 +177,7 @@ impl Acknowledger {
 
         let public_key_bytes: Vec<u8> = public_key.to_sec1_bytes().to_vec();
         let pub_key_holder = builder.create_vector(&public_key_bytes);
-        let session = builder.create_string(&session_token);
+        let session = builder.create_string(session_token);
         let message_offset = builder.create_string(&err.message);
         let error_message = Error::create(
             &mut builder,
@@ -199,7 +199,7 @@ impl Acknowledger {
 
         let public_key_bytes: Vec<u8> = public_key.to_sec1_bytes().to_vec();
         let pub_key_holder = builder.create_vector(&public_key_bytes);
-        let session = builder.create_string(&session_token);
+        let session = builder.create_string(session_token);
         let message_offset = builder.create_string(&err.message);
         let error_message = Error::create(
             &mut builder,
