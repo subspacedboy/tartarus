@@ -7,6 +7,7 @@ import club.subjugated.tartarus_coordinator.services.AuthorSessionService
 import club.subjugated.tartarus_coordinator.services.LockSessionService
 import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromCompressedKeyByteArray
 import jakarta.ws.rs.core.MediaType
+import org.bouncycastle.crypto.CryptoException
 import java.util.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
@@ -66,7 +67,7 @@ class LockSessionController {
         try {
             // Validate the public key
             getECPublicKeyFromCompressedKeyByteArray(decodedKeyBytes)
-        } catch (e: Exception) {
+        } catch (e: CryptoException) {
             return ResponseEntity.badRequest().build()
         }
 

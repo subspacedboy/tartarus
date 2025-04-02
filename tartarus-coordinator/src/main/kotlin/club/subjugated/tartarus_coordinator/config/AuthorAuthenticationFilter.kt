@@ -2,10 +2,13 @@ import club.subjugated.tartarus_coordinator.services.AuthorSessionService
 import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromCompressedKeyByteArray
 import com.nimbusds.jose.crypto.ECDSAVerifier
 import com.nimbusds.jwt.SignedJWT
+import jakarta.persistence.PersistenceException
 import jakarta.servlet.FilterChain
 import jakarta.servlet.ServletException
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.util.*
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
@@ -17,6 +20,8 @@ import org.springframework.web.filter.OncePerRequestFilter
 
 class AuthorAuthenticationFilter(private val authorSessionService: AuthorSessionService) :
     OncePerRequestFilter() {
+
+    private val filterLogger: Logger = LoggerFactory.getLogger(AuthorAuthenticationFilter::class.java)
 
     @Throws(IOException::class, ServletException::class)
     override fun doFilterInternal(
@@ -58,7 +63,8 @@ class AuthorAuthenticationFilter(private val authorSessionService: AuthorSession
 
                     SecurityContextHolder.getContext().authentication = authentication
                 }
-            } catch (ex: Exception) {
+            } catch (ex: PersistenceException) {
+                this.filterLogger.warn("We got a token but no backing session. $ex")
                 filterChain.doFilter(request, response)
             }
         }

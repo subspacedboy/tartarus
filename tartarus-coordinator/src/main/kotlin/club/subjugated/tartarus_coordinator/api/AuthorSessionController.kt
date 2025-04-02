@@ -4,6 +4,7 @@ import club.subjugated.tartarus_coordinator.api.messages.AuthorSessionMessage
 import club.subjugated.tartarus_coordinator.api.messages.NewAuthorSessionMessage
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
 import jakarta.ws.rs.core.MediaType
+import org.bouncycastle.crypto.CryptoException
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Controller
@@ -23,7 +24,9 @@ class AuthorSessionController {
         try {
             // Validate the public key
             newAuthorSessionMessage.validateOrThrow()
-        } catch (e: Exception) {
+        } catch (e: CryptoException) {
+            return ResponseEntity.badRequest().build()
+        } catch(e : IllegalStateException) {
             return ResponseEntity.badRequest().build()
         }
 

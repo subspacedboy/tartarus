@@ -1,6 +1,5 @@
 package club.subjugated.tartarus_coordinator.models
 
-import club.subjugated.tartarus_coordinator.models.LockSession.Companion.generateId
 import com.fasterxml.jackson.annotation.JsonFormat
 import jakarta.persistence.*
 import java.time.OffsetDateTime

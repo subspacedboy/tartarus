@@ -8,4 +8,4 @@ class AcknowledgedCommandEvent(
     source: Any,
     val command: Command,
     val acknowledgement: Acknowledgement,
-) : ApplicationEvent(source) {}
+) : ApplicationEvent(source)

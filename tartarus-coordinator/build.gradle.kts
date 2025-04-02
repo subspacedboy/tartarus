@@ -3,14 +3,15 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 plugins {
-    kotlin("jvm") version "1.9.25"
-    kotlin("plugin.spring") version "1.9.25"
+    kotlin("jvm") version "2.0.21"
+    kotlin("plugin.spring") version "2.0.21"
     id("org.springframework.boot") version "3.4.3"
     id("io.spring.dependency-management") version "1.1.7"
-    kotlin("plugin.jpa") version "1.9.25"
+    kotlin("plugin.jpa") version "2.0.21"
 
     id("idea")
     id("com.ncorti.ktfmt.gradle") version "0.22.0"
+    id("io.gitlab.arturbosch.detekt") version "1.23.8"
 }
 
 group = "club.subjugated"
@@ -68,6 +69,19 @@ kotlin { compilerOptions { freeCompilerArgs.addAll("-Xjsr305=strict") } }
 ktfmt {
     // KotlinLang style - 4 space indentation - From kotlinlang.org/docs/coding-conventions.html
     kotlinLangStyle()
+}
+
+detekt {
+    buildUponDefaultConfig = true // preconfigure defaults
+    allRules = false // activate all available (even unstable) rules.
+    config.setFrom("$projectDir/config/detekt/detekt.yml") // point to your custom config defining rules to run, overwriting default behavior
+    baseline = file("$projectDir/config/baseline.xml") // a way of suppressing issues before introducing detekt
+
+}
+
+tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+    // include("**/special/package/**") // only analyze a sub package inside src/main/kotlin
+    exclude("**/club/subjugated/fb/message/**") // but exclude our legacy internal package
 }
 
 allOpen {

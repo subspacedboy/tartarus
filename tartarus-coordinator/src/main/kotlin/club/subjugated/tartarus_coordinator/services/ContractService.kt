@@ -2,18 +2,24 @@ package club.subjugated.tartarus_coordinator.services
 
 import club.subjugated.tartarus_coordinator.api.messages.NewContractMessage
 import club.subjugated.tartarus_coordinator.events.AcknowledgedCommandEvent
-import club.subjugated.tartarus_coordinator.models.*
+import club.subjugated.tartarus_coordinator.models.AuthorSession
+import club.subjugated.tartarus_coordinator.models.Command
+import club.subjugated.tartarus_coordinator.models.CommandState
+import club.subjugated.tartarus_coordinator.models.CommandType
+import club.subjugated.tartarus_coordinator.models.Contract
+import club.subjugated.tartarus_coordinator.models.ContractState
+import club.subjugated.tartarus_coordinator.models.LockSession
 import club.subjugated.tartarus_coordinator.storage.ContractRepository
 import club.subjugated.tartarus_coordinator.util.TimeSource
 import club.subjugated.tartarus_coordinator.util.ValidatedPayload
 import club.subjugated.tartarus_coordinator.util.signedMessageBytesValidator
 import club.subjugated.tartarus_coordinator.util.signedMessageBytesValidatorWithExternalKey
-import java.nio.ByteBuffer
-import java.util.Base64
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
+import java.nio.ByteBuffer
+import java.util.*
 
 @Service
 class ContractService {
