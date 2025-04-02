@@ -5,8 +5,6 @@ import club.subjugated.tartarus_coordinator.api.bots.BotApiController
 import club.subjugated.tartarus_coordinator.api.messages.NewLockSessionMessage
 import club.subjugated.tartarus_coordinator.components.CustomMqttSecurity
 import club.subjugated.tartarus_coordinator.events.NewCommandEvent
-import club.subjugated.tartarus_coordinator.events.PeriodicUpdateEvent
-import club.subjugated.tartarus_coordinator.models.ContractState
 import club.subjugated.tartarus_coordinator.util.*
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
@@ -25,6 +23,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionTemplate
+import java.util.concurrent.ScheduledExecutorService
 
 @Service
 @Transactional
@@ -51,11 +50,10 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
 
     private val executorService = Executors.newSingleThreadExecutor()
 
-    private val botExecutorService = Executors.newSingleThreadExecutor()
+    private val botExecutorWatchdogService = Executors.newSingleThreadScheduledExecutor()
 
-    @PostConstruct
-    fun start() {
-        botExecutorService.submit {
+    fun createBotApiExecutor(): ScheduledExecutorService {
+        return Executors.newSingleThreadScheduledExecutor().apply {
             val client = MqttClient(brokerUrl, "bot_processor", null)
             val options =
                 MqttConnectOptions().apply {
@@ -79,10 +77,21 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                         ex.printStackTrace()
                         status.setRollbackOnly()
                     }
-
                 }
             }
-        } // submit
+        }
+    }
+
+    @PostConstruct
+    fun start() {
+        var executor = createBotApiExecutor()
+
+        botExecutorWatchdogService.scheduleAtFixedRate({
+            if (botExecutorWatchdogService.isTerminated || botExecutorWatchdogService.isShutdown) {
+                println("Bot executor stopped unexpectedly, restarting...")
+                executor = createBotApiExecutor()
+            }
+        }, 1, 5, TimeUnit.SECONDS)
 
 
         executorService.submit {
@@ -239,6 +248,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
 
     @PreDestroy
     fun stop() {
+        botExecutorWatchdogService.shutdown()
         executorService.shutdown()
     }
 }

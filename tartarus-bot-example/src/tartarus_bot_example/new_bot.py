@@ -19,16 +19,17 @@ if isinstance(public_key, ec.EllipticCurvePublicKey):
 
     import requests
 
-    url = "http://localhost:5002/bots/"
+    # url = "http://localhost:5002/bots/"
+    url = "https://tartarus-api.subjugated.club:4446/bots/"
 
     data = {
         "publicKey": encoded_key,
         "description": "Timing bot"
     }
 
-    # response = requests.post(url, json=data)
+    response = requests.post(url, json=data)
 
-    # print(response.status_code)
-    # print(response.text)
+    print(response.status_code)
+    print(response.text)
 
     

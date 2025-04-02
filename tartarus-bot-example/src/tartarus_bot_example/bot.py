@@ -1,5 +1,6 @@
 import asyncio
 import argparse
+import ssl
 import paho.mqtt.client as mqtt
 import random
 from datetime import datetime, timedelta, timezone
@@ -21,11 +22,10 @@ def has_callable(obj, method_name):
     return hasattr(obj, method_name) and callable(getattr(obj, method_name))
 
 class AsyncTartarusClient:
-    def __init__(self, bot_name, broker, port, topic, websocket_path="/mqtt", callback_obj=None):
+    def __init__(self, bot_name, broker, port, websocket_path="/mqtt", callback_obj=None, require_tls=False):
         self.broker = broker
         self.port = port
         self.bot_name = bot_name
-        # self.topic = topic
         self.client = mqtt.Client(
             client_id=f"bot-{bot_name}",
             transport="websockets",)
@@ -33,6 +33,9 @@ class AsyncTartarusClient:
         self.client.keepalive = 30
 
         self.client.ws_set_options(path=websocket_path)
+
+        if require_tls:
+            self.client.tls_set(cert_reqs=ssl.CERT_REQUIRED)
 
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
@@ -189,10 +192,6 @@ class TimerBot():
         try:
             response : BotApiMessage = await asyncio.wait_for(self.response_queue.get(), timeout=5.0)
             print(f"Received response: {response}")
-
-            # data = response_as_create_contract_response(response)
-            # self.db.save(serial_number, data)
-            # self.db.save(data['contract_name'], data)
         except asyncio.TimeoutError:
             print("Response timeout!")
 
@@ -298,7 +297,10 @@ async def scan_contracts_and_release(timer: TimerBot):
 
 async def main():
     args = parse_args()
-    bot_name = "b-42R6AGO"
+
+    # bot_name = "b-JKSMF9G" # Production bot name
+
+    bot_name = "b-42R6AGO" # Local development
 
     # make_create_contract_request(args.shareableToken, "b-42R6AGO")
     # make_get_lock_session_request(bot_name, args.shareableToken)
@@ -306,7 +308,8 @@ async def main():
     timer = TimerBot(bot_name=bot_name, work_dir="/tmp/workspace")
 
     try:
-        client = AsyncTartarusClient(bot_name=bot_name, broker="localhost", port=4447, topic="test/topic", callback_obj=timer)
+        client = AsyncTartarusClient(bot_name=bot_name, broker="localhost", port=4447, callback_obj=timer)
+        # client = AsyncTartarusClient(bot_name=bot_name, broker="tartarus-mqtt.subjugated.club", port=4447, callback_obj=timer, require_tls=True)
         timer.tartarus = client
         asyncio.create_task(call_timer_method(timer, args.shareableToken))
         asyncio.create_task(scan_contracts_and_release(timer))

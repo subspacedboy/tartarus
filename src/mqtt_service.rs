@@ -118,8 +118,6 @@ impl MqttService {
 
         if let Some(scheduled_time) = self.schedule_restart_mqtt {
             if scheduled_time < time_in_ticks {
-                log::info!("Restart time: Thread 1: {:?}", self.mqtt_thread_1);
-                log::info!("Restart time: Thread 2: {:?}", self.mqtt_thread_2);
                 log::info!("Restarting mqtt");
                 self.schedule_restart_mqtt = None;
                 self.start_mqtt();
