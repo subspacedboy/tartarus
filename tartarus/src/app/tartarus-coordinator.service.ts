@@ -24,9 +24,6 @@ export class TartarusCoordinatorService {
     private configService: ConfigService,
     private toastService: ToastService,) {
     let config = this.configService.getConfig();
-    if(config === undefined || config === null) {
-      debugger;
-    }
     this.baseUrl = String(config.apiUri);
   }
 

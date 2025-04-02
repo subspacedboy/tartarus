@@ -23,9 +23,11 @@ use crate::mqtt_service::TopicType::FirmwareMessage as TopicFirmwareMessage;
 use crate::mqtt_service::{MqttService, SignedMessageTransport, TopicType};
 use crate::overlays::{ButtonPressOverlay, WifiOverlay};
 use crate::prelude::prelude::{DynOverlay, DynScreen, MyDisplay, MySPI};
+use crate::screen_ids::ScreenId;
 use crate::servo::Servo;
 use crate::under_contract_screen::UnderContractScreen;
 use crate::verifier::{SignedMessageVerifier, VerifiedType};
+use crate::wifi_info_screen::WifiInfoScreen;
 use crate::wifi_util::{connect_wifi, parse_wifi_qr};
 use crate::Esp32Rng;
 use data_encoding::{BASE32_NOPAD, BASE64, BASE64URL};
@@ -58,7 +60,7 @@ pub struct LockCtx {
     nvs: EspNvs<NvsDefault>,
     current_screen: Option<Box<DynScreen<'static>>>,
     overlays: Vec<Box<DynOverlay<'static>>>,
-    wifi: BlockingWifi<EspWifi<'static>>,
+    pub(crate) wifi: BlockingWifi<EspWifi<'static>>,
     pub(crate) wifi_connected: bool,
     pub(crate) lock_secret_key: Option<SecretKey>,
     pub(crate) lock_public_key: Option<PublicKey>,
@@ -76,6 +78,8 @@ pub struct LockCtx {
 
     schedule_next_update: Option<u64>,
     mqtt_service: Option<MqttService>,
+    active_screen_idx: usize,
+    wifi_info_screen: Option<Box<DynScreen<'static>>>,
 }
 
 impl LockCtx {
@@ -105,6 +109,8 @@ impl LockCtx {
             firmware_manager: FirmwareManager::new(),
             schedule_next_update: None,
             mqtt_service: None,
+            active_screen_idx: 0,
+            wifi_info_screen: None,
         };
 
         lck.session_token = lck.load_or_create_session_id();
@@ -167,6 +173,14 @@ impl LockCtx {
             >::new());
             lck.current_screen = Some(boot_screen);
         }
+
+        let wifi_info_screen: Box<DynScreen<'static>> = Box::new(WifiInfoScreen::<
+            MySPI<'static>,
+            PinDriver<'static, _, Output>,
+            PinDriver<'static, _, Output>,
+            GpioError,
+        >::new());
+        lck.wifi_info_screen = Some(wifi_info_screen);
 
         let wifi_overlay: Box<DynOverlay<'static>> = Box::new(WifiOverlay::<
             MySPI<'static>,
@@ -482,6 +496,11 @@ impl LockCtx {
             }
         }
 
+        if let Some(mut wifi_screen) = self.wifi_info_screen.take() {
+            wifi_screen.on_update(self);
+            self.wifi_info_screen = Some(wifi_screen);
+        }
+
         // After all the MQTT-based channels see if the user has physically
         // done something.
         self.this_update = Some(update.clone());
@@ -493,45 +512,6 @@ impl LockCtx {
             overlay.draw_screen(self);
         }
         self.overlays = overlays;
-
-        // TODO: Relocate this block into a struct that can receive QR data
-        // and sensibly process it so it's not just sitting here in tick().
-        if let Some(incoming_data) = update.qr_data.clone() {
-            if let Ok(maybe_string) = String::from_utf8(incoming_data) {
-                if maybe_string.starts_with("WIFI:") {
-                    let maybe_creds = parse_wifi_qr(maybe_string);
-                    if let Some((ssid, password)) = maybe_creds {
-                        log::info!(
-                            "Trying to connect to wifi -> SSID[{}] Password[{}]",
-                            ssid,
-                            password
-                        );
-
-                        let mut tries = 3;
-                        let mut connected = false;
-                        while tries > 0 && !connected {
-                            if let Ok(_) =
-                                connect_wifi(&mut self.wifi, &ssid, &String::from(&password))
-                            {
-                                log::info!("Connected!");
-                                self.wifi_connected = true;
-                                connected = true;
-
-                                self.nvs.set_blob("ssid", ssid.as_bytes()).unwrap();
-                                self.nvs.set_blob("password", password.as_bytes()).unwrap();
-                            } else {
-                                log::info!("Failed to connect");
-                                tries -= 1;
-                            }
-                        }
-
-                        if !connected {
-                            log::info!("Failed to connect and ran out of tries :-(");
-                        }
-                    }
-                }
-            }
-        } //end of if let Some(incoming_data)
 
         // If MQTT is running, run its tick to process all message queues.
         // Also schedule next periodic update.
@@ -552,6 +532,32 @@ impl LockCtx {
                     self.enqueue_periodic_update_message(false, false);
                 }
             }
+        }
+
+        let mut screen_changed = false;
+        if (update.d2_pressed) {
+            self.active_screen_idx = (self.active_screen_idx + 1) % 2;
+            screen_changed = true;
+        }
+
+        match self.active_screen_idx {
+            0 => {
+                if let Some(mut current_screen) = self.current_screen.take() {
+                    if screen_changed || current_screen.needs_redraw() {
+                        current_screen.draw_screen(self);
+                    }
+                    self.current_screen = Some(current_screen);
+                }
+            }
+            1 => {
+                if let Some(mut current_screen) = self.wifi_info_screen.take() {
+                    if screen_changed || current_screen.needs_redraw() {
+                        current_screen.draw_screen(self);
+                    }
+                    self.wifi_info_screen = Some(current_screen);
+                }
+            }
+            _ => {}
         }
     } // end tick
 
@@ -574,6 +580,37 @@ impl LockCtx {
                 // Put the current screen back
                 self.current_screen = Some(current_screen);
             }
+        }
+    }
+
+    pub fn connect_wifi(&mut self, ssid: &String, password: &String) -> Result<bool, String> {
+        log::info!(
+            "Trying to connect to wifi -> SSID[{}] Password[{}]",
+            ssid,
+            password
+        );
+
+        let mut tries = 2;
+        let mut connected = false;
+        while tries > 0 && !connected {
+            if let Ok(_) = connect_wifi(&mut self.wifi, &ssid, password) {
+                log::info!("Connected!");
+                self.wifi_connected = true;
+                connected = true;
+
+                self.nvs.set_blob("ssid", ssid.as_bytes()).unwrap();
+                self.nvs.set_blob("password", password.as_bytes()).unwrap();
+            } else {
+                log::info!("Failed to connect");
+                tries -= 1;
+            }
+        }
+
+        if !connected {
+            log::info!("Failed to connect and ran out of tries :-(");
+            Err("Unable to connect".to_string())
+        } else {
+            Ok(true)
         }
     }
 
@@ -607,6 +644,18 @@ impl LockCtx {
         self.save_state_if_dirty();
 
         Ok(true)
+    }
+
+    pub fn get_wifi_ssid(&mut self) -> Result<String, String> {
+        let mut buffer: [u8; 1024] = [0; 1024];
+        if let Ok(maybe_byte_buffer) = self.nvs.get_blob("ssid", &mut buffer) {
+            if let Some(ssid) = maybe_byte_buffer {
+                return Ok(String::from_utf8(ssid.to_vec()).unwrap());
+            } else {
+                return Ok("".to_string());
+            }
+        }
+        Err("Failed to get SSID from NVS".to_owned())
     }
 
     fn increment_command_counter(&mut self) {

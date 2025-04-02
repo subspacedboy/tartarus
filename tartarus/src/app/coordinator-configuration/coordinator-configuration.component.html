@@ -15,9 +15,46 @@
   </div>
 </div>
 
+<div class="row">
+  <div class="col-lg-4">
+    <div class="bs-component">
+      <h2>Which coordinator?</h2>
+      <h3>What is this for?</h3>
+      <p>You can refer to a different coordinator.</p>
 
+
+      <form [formGroup]="backendSelection" (submit)="chooseBackend()">
+        <fieldset>
+
+          <div class="col-sm-10">
+            <label for="wsUri_backend">WS URI: </label>
+            <input id="wsUri_backend" class="form-control" type="text" formControlName="wsUri" placeholder="WS URI">
+          </div>
+
+          <div class="col-sm-10">
+            <label for="apiUri_backend">API URI: </label>
+            <input id="apiUri_backend" class="form-control" type="text" formControlName="apiUri" placeholder="API URI">
+          </div>
+
+          <button class="btn btn-small btn-primary" type="submit">
+            Choose Backend
+          </button>
+
+        </fieldset>
+      </form>
+
+      <button type="button" class="btn btn-large btn-danger" (click)="resetBackend()">Reset Backend</button>
+
+    </div>
+  </div>
+</div>
 
 <div class="row" style="margin-top: 1em;">
+  <div class="col-lg-4">
+  <h2>Lock configuration</h2>
+  <h3>What is this for?</h3>
+  <p>Use these fields to generate a scannable QR code that will reconfigure your smart lock.</p>
+
   <form [formGroup]="configurationForm" (submit)="regenerate()">
     <fieldset>
       <div class="col-sm-10">
@@ -50,6 +87,7 @@
       </button>
     </fieldset>
   </form>
+  </div>
 </div>
 
 

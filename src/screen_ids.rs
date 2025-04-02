@@ -2,4 +2,5 @@
 pub enum ScreenId {
     Boot,
     UnderContract,
+    WifiInfo,
 }

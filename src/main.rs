@@ -24,6 +24,7 @@ mod verifier;
 mod wifi_util;
 
 mod generated;
+mod wifi_info_screen;
 
 use crate::servo::Servo;
 use esp_idf_hal::ledc::LedcDriver;

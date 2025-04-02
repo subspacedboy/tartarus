@@ -24,6 +24,8 @@ export class CoordinatorConfigurationComponent implements OnInit, AfterViewInit 
   configurationForm;
   configFromApi? : AppConfig;
 
+  backendSelection;
+
   private dataLoaded = new Subject<void>();
 
   constructor(private configService: ConfigService,
@@ -36,6 +38,11 @@ export class CoordinatorConfigurationComponent implements OnInit, AfterViewInit 
       apiUri: ['', [Validators.required]],
       mqttUri: ['', [Validators.required]],
       includeSafetyKeys: [false],
+    });
+
+    this.backendSelection = this.fb.group({
+      apiUri: ['', Validators.required],
+      wsUri: ['', [Validators.required]]
     });
   }
 
@@ -50,6 +57,9 @@ export class CoordinatorConfigurationComponent implements OnInit, AfterViewInit 
     this.configurationForm.get('apiUri')!.setValue(this.configFromApi!.apiUri!);
     this.configurationForm.get('mqttUri')!.setValue(this.configFromApi.mqttUri!);
 
+    this.backendSelection.get('wsUri')!.setValue(this.configFromApi!.wsUri!);
+    this.backendSelection.get('apiUri')!.setValue(this.configFromApi!.apiUri!);
+
     this.dataLoaded.next();  // Signal that data is ready
     this.dataLoaded.complete();
   }
@@ -58,6 +68,19 @@ export class CoordinatorConfigurationComponent implements OnInit, AfterViewInit 
     console.log("ngAfterViewInit");
     await firstValueFrom(this.dataLoaded);
     await this.buildConfiguration();
+  }
+
+  async chooseBackend() {
+    localStorage.clear();
+    this.configService.setOverride(
+      String(this.backendSelection.get('apiUri')!.value),
+      String(this.backendSelection.get('wsUri')!.value)
+    );
+  }
+
+  async resetBackend() {
+    localStorage.clear();
+    this.configService.clearOverride();
   }
 
   async regenerate() {

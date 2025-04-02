@@ -16,12 +16,12 @@ data class ContractMessage(
     val nextCounter: Int? = null,
     val serialNumber: Int? = null,
     val lockState: LockStateMessage? = null,
-    val messages : List<BotMessageMessage> = mutableListOf(),
+    val messages : List<BotMessageMessage>? = mutableListOf(),
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
 ) {
     companion object {
-        fun fromContract(contract: Contract): ContractMessage {
+        fun fromContract(contract: Contract, skipMessages : Boolean = false): ContractMessage {
             return ContractMessage(
                 name = contract.name,
                 shareableToken = contract.shareableToken,
@@ -29,7 +29,7 @@ data class ContractMessage(
                 authorSessionName = contract.authorSession.name,
                 body = Base64.getEncoder().encodeToString(contract.body),
                 notes = contract.notes,
-                messages = contract.messages.map { BotMessageMessage.fromMessage(it) },
+                messages = if(skipMessages) null else contract.messages.map { BotMessageMessage.fromMessage(it) },
                 lockState = if(contract.lockState == null) null else LockStateMessage(contract.lockState!!),
                 nextCounter = contract.nextCounter,
                 serialNumber = contract.serialNumber,

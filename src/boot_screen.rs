@@ -113,6 +113,8 @@ where
     }
 
     fn draw_screen(&mut self, lock_ctx: &mut LockCtx) {
+        lock_ctx.display.clear(Rgb565::BLACK).unwrap();
+
         let whole_message = lock_ctx.get_lock_url().unwrap();
         let qr = QrCode::new(whole_message).expect("Valid QR code");
 

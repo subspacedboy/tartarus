@@ -74,7 +74,7 @@ class ContractController {
     ): ResponseEntity<List<ContractMessage>> {
         val lockUserSession = lockUserSessionService.findByName(lockUser.username)
         val contracts = this.contractService.findByLockSessionId(lockUserSession.lockSession)
-        return ResponseEntity.ok(contracts.map { ContractMessage.fromContract(it) })
+        return ResponseEntity.ok(contracts.map { ContractMessage.fromContract(it, skipMessages = true) })
     }
 
     @PostMapping("/approve/{contractName}", produces = [MediaType.APPLICATION_JSON])
