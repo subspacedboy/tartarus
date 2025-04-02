@@ -3,6 +3,7 @@ package club.subjugated.tartarus_coordinator.api
 import club.subjugated.tartarus_coordinator.api.messages.ContractMessage
 import club.subjugated.tartarus_coordinator.api.messages.NewCommandMessage
 import club.subjugated.tartarus_coordinator.api.messages.NewContractMessage
+import club.subjugated.tartarus_coordinator.models.ContractState
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
 import club.subjugated.tartarus_coordinator.services.ContractService
 import club.subjugated.tartarus_coordinator.services.LockSessionService
@@ -30,7 +31,19 @@ class ContractController {
         @AuthenticationPrincipal user: UserDetails,
         @PathVariable someToken: String
     ): ResponseEntity<List<ContractMessage>> {
-        val contracts = this.contractService.findContractsByShareableToken(someToken)
+        val authorSession = this.authorSessionService.findByName(user.username)
+        val contracts = this.contractService.findContractsByAuthorSessionAndShareableToken(authorSession, someToken)
+
+        return ResponseEntity.ok(contracts.map { ContractMessage.fromContract(it) })
+    }
+
+    @GetMapping("/confirmed", produces = [MediaType.APPLICATION_JSON])
+    @ResponseBody
+    fun getAuthorActiveContracts(
+        @AuthenticationPrincipal user: UserDetails
+    ): ResponseEntity<List<ContractMessage>> {
+        val authorSession = this.authorSessionService.findByName(user.username)
+        val contracts = this.contractService.findContractsByAuthorSessionAndState(authorSession, ContractState.CONFIRMED)
 
         return ResponseEntity.ok(contracts.map { ContractMessage.fromContract(it) })
     }
@@ -50,7 +63,17 @@ class ContractController {
         @AuthenticationPrincipal lockUser: UserDetails,
     ): ResponseEntity<List<ContractMessage>> {
         val lockUserSession = lockUserSessionService.findByName(lockUser.username)
-        val contracts = this.contractService.findByLockSessionId(lockUserSession.lockSession)
+        val contracts = this.contractService.findByLockSessionIdAndState(lockUserSession.lockSession, ContractState.CREATED)
+        return ResponseEntity.ok(contracts.map { ContractMessage.fromContract(it) })
+    }
+
+    @GetMapping("/byLockSession", produces = [MediaType.APPLICATION_JSON])
+    @ResponseBody
+    fun getContractsForLockSession(
+        @AuthenticationPrincipal lockUser: UserDetails,
+    ): ResponseEntity<List<ContractMessage>> {
+        val lockUserSession = lockUserSessionService.findByName(lockUser.username)
+        val contracts = this.contractService.findByLockSessionIdAndState(lockUserSession.lockSession, ContractState.CREATED)
         return ResponseEntity.ok(contracts.map { ContractMessage.fromContract(it) })
     }
 
@@ -59,6 +82,14 @@ class ContractController {
     fun approve(@AuthenticationPrincipal lockUser: UserDetails, @PathVariable contractName : String): ResponseEntity<ContractMessage> {
         val lockUserSession = lockUserSessionService.findByName(lockUser.username)
         val contract = this.contractService.approveContract(lockUserSession.lockSession, contractName)
+        return ResponseEntity.ok(ContractMessage.fromContract(contract))
+    }
+
+    @PostMapping("/reject/{contractName}", produces = [MediaType.APPLICATION_JSON])
+    @ResponseBody
+    fun reject(@AuthenticationPrincipal lockUser: UserDetails, @PathVariable contractName : String): ResponseEntity<ContractMessage> {
+        val lockUserSession = lockUserSessionService.findByName(lockUser.username)
+        val contract = this.contractService.rejectContract(lockUserSession.lockSession, contractName)
         return ResponseEntity.ok(ContractMessage.fromContract(contract))
     }
 

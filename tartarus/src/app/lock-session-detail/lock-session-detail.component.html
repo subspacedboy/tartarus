@@ -1,18 +1,19 @@
 @if(lockSession) {
-  <div class="row">
-    <h1>Lock Session {{sessionToken}}</h1>
-  </div>
 
-  @if(lockSession?.isTotalControlToken()) {
-    <div>
-      <h2 class="text-warning">Total control token</h2>
-    </div>
-  }
+
+
 
   <div class="row">
     <div class="col-lg-4">
       <div class="bs-component">
-        <h2>Lock Session Data</h2>
+        <h2>Lock Session {{sessionToken}}</h2>
+
+        @if(lockSession?.isTotalControlToken()) {
+          <div>
+            <h2 class="text-warning">Total control token</h2>
+          </div>
+        }
+
         <h3>What is this for?</h3>
         <p>This is where you see contracts you've written for this lock + holder.</p>
       </div>
@@ -34,19 +35,24 @@
     </form>
   </div>
 
-
-  <div>
-    <a [routerLink]="['simple-contract']">Simple Contract (Works offline) </a>
+  <div class="row">
+    <div class="col-lg-4">
+      <div class="bs-component">
+        <div class="d-grid gap-2">
+          <button type="button" class="btn btn-large btn-primary" (click)="navToNewContract()">New Contract</button>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div>
-    <a [routerLink]="['full-contract']">Full Contract (Online only)</a>
-  </div>
-
-  <div>
-    @for (c of contracts; track c.name){
-      <app-contract-card [contract]="c"></app-contract-card>
-    }
+  <div class="row">
+    <div class="col-lg-4">
+      <div class="bs-component">
+        @for (c of contracts; track c.name){
+          <app-contract-card [contract]="c"></app-contract-card>
+        }
+      </div>
+    </div>
   </div>
 }
 

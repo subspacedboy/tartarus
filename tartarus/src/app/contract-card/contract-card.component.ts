@@ -15,4 +15,6 @@ import {DatePipe} from '@angular/common';
 export class ContractCardComponent {
   @Input()
   contract?: Contract;
+
+  @Input() basePath: string = '';
 }

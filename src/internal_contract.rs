@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 pub struct SaveState {
     pub(crate) internal_contract: InternalContract,
     pub(crate) is_locked: bool,
-    // pub(crate) verifying_key_bytes: Vec<u8>
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -57,13 +56,6 @@ pub enum TempUnlockRules {
     TimeLimit(u16),
 }
 
-// impl InternalContract {
-//     pub fn get_verifying_key(&self) -> VerifyingKey {
-//
-//         VerifyingKey::from_sec1_bytes(contract.public_key().unwrap().bytes()).expect("Valid public key"),
-//     }
-// }
-
 impl From<Contract<'_>> for InternalContract {
     fn from(contract: Contract<'_>) -> InternalContract {
         let end_condition = match contract.end_condition_type() {
@@ -83,7 +75,6 @@ impl From<Contract<'_>> for InternalContract {
             temporary_unlock_allowed: contract.is_temporary_unlock_allowed(),
             end_criteria: end_condition,
             public_key: Some(verifying_key),
-            // public_key: VerifyingKey::from_sec1_bytes(contract.public_key().unwrap().bytes()).expect("Valid public key"),
             original_bytes,
             command_counter: 0,
         };

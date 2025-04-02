@@ -15,18 +15,18 @@ import {CryptoService} from '../crypto.service';
   styleUrl: './new-keypair.component.scss'
 })
 export class NewKeypairComponent implements OnInit {
-  qrText: string = '';
-  scannedResult: string = '';
-  displayQRCode: boolean = false;
-
   @ViewChild('scanCanvas', { static: false }) scanCanvas!: ElementRef;
   @ViewChild('canvas', { static: false }) canvas!: ElementRef;
+  @ViewChild('qrCodeContainer', { static: false }) qrCodeContainer!: ElementRef;
 
   @ViewChild('hiddenDiv', { static: false }) hiddenDiv!: ElementRef;
+
+  showDownloadButton = false;
 
   constructor(private tartarusCoordinatorService : TartarusCoordinatorService,
               private platform: Platform,
               private cryptoService: CryptoService) {
+    this.showDownloadButton = false;
   }
 
   async ngOnInit() {
@@ -44,51 +44,66 @@ export class NewKeypairComponent implements OnInit {
     canvas.height = qrSize + textHeight;
 
     try {
-      // Generate QR Code on a temporary canvas
+      // Create a temporary canvas
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = qrSize;
-      tempCanvas.height = qrSize;
-      await QRCode.toCanvas(tempCanvas, whole_key, { width: qrSize, margin: 2 });
+      tempCanvas.height = canvas.height;
+      const ctx = tempCanvas.getContext('2d')!;
 
-      const ctx = canvas.getContext('2d');
-      // Clear canvas and draw QR code onto the main canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(tempCanvas, 0, 0);
+      // Generate the QR code on a separate QR canvas
+      const qrCanvas = document.createElement('canvas');
+      qrCanvas.width = qrSize;
+      qrCanvas.height = qrSize;
+      await QRCode.toCanvas(qrCanvas, whole_key, { width: qrSize, margin: 2 });
+
+      // Draw the QR code onto the main canvas
+      ctx.drawImage(qrCanvas, 0, 0);
 
       // Add text label below the QR code
       ctx.font = '16px Arial';
       ctx.fillStyle = 'red';
       ctx.textAlign = 'center';
-      ctx.fillText("Do Not Share", canvas.width / 2, qrSize + 20);
+      ctx.fillText("Do Not Share", qrSize / 2, qrSize + 20);
 
-      this.hiddenDiv.nativeElement.hidden = false;
-      this.tartarusCoordinatorService.saveKeyRecord(key_pair.publicKeyPEM).subscribe(r => {
-        console.log("Public key saved");
-      });
+      const pngDataUrl = tempCanvas.toDataURL('image/png');
+
+      // Create an image element
+      const qrImage = document.createElement('img');
+      qrImage.src = pngDataUrl;
+      qrImage.alt = "QR Code";
+      qrImage.style.cursor = 'pointer'; // Indicate tap & hold action
+      qrImage.style.width = `${canvas.width}px`; // Ensure proper size
+      qrImage.style.height = `${canvas.height}px`;
+
+      // Clear previous content and add the image to the page
+      const container = this.qrCodeContainer.nativeElement;
+      container.innerHTML = ''; // Remove previous QR codes
+      container.appendChild(qrImage);
+      this.showDownloadButton = true;
+
+      // this.tartarusCoordinatorService.saveKeyRecord(key_pair.publicKeyPEM).subscribe(r => {
+      //   console.log("Public key saved");
+      // });
     } catch (err) {
       console.error('Error generating QR Code:', err);
     }
   }
 
   downloadQRCode() {
-    const canvas = this.canvas.nativeElement;
-    const imageData = canvas.toDataURL('image/png');
+    const container = this.qrCodeContainer.nativeElement;
+    const qrImage = container.querySelector('img');
 
-    if (this.platform.IOS) {
-      const newWindow = window.open(imageData, '_blank');
-      if (!newWindow) {
-        const link = document.createElement('a');
-        link.href = imageData;
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-    } else {
-      const link = document.createElement('a');
-      link.href = imageData;
-      link.download = 'qrcode.png';
-      link.click();
+    if (!qrImage) {
+      console.error('No QR code image found.');
+      return;
     }
+
+    // Create a download link
+    const link = document.createElement('a');
+    link.href = qrImage.src;  // Get the image source URL
+    link.download = 'qrcode.png';  // Filename when saved
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link); // Cleanup
   }
 }

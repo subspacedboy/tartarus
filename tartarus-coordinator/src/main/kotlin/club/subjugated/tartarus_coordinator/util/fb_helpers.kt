@@ -17,6 +17,7 @@ sealed class ValidatedPayload {
     data class ReleaseCommandPayload(val releaseCommand: ReleaseCommand) : ValidatedPayload()
 
     data class StartedUpdatePayload(val startedUpdate: StartedUpdate) : ValidatedPayload()
+    data class PeriodicUpdatePayload(val periodicUpdate: PeriodicUpdate) : ValidatedPayload()
 
     data class AcknowledgementPayload(val acknowledgement: Acknowledgement) : ValidatedPayload()
 
@@ -51,6 +52,11 @@ fun findVerificationKeyRequirement(buf: ByteBuffer): ValidationKeyRequirement {
             ValidationKeyRequirement.LockSessionKey(ack.session!!)
         }
         MessagePayload.StartedUpdate -> ValidationKeyRequirement.KeyIsInMessage
+        MessagePayload.PeriodicUpdate -> {
+            val update = PeriodicUpdate()
+            signedMessage.payload(update)
+            ValidationKeyRequirement.LockSessionKey(update.session!!)
+        }
         else -> ValidationKeyRequirement.Unspecified
     }
 }
@@ -138,6 +144,15 @@ fun signedMessageBytesValidatorWithExternalKey(buf: ByteBuffer, key: ByteArray):
             signedMessage.payload(error)
             if (verifySignedMessageSignature(error, key, signatureBytes)) {
                 ValidatedPayload.ErrorPayload(error)
+            } else {
+                ValidatedPayload.UnknownPayload
+            }
+        }
+        MessagePayload.PeriodicUpdate -> {
+            val update = PeriodicUpdate()
+            signedMessage.payload(update)
+            if (verifySignedMessageSignature(update, key, signatureBytes)) {
+                ValidatedPayload.PeriodicUpdatePayload(update)
             } else {
                 ValidatedPayload.UnknownPayload
             }

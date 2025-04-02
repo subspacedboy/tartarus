@@ -8,6 +8,7 @@
 
         @if(hasLockSessions) {
           <button ngbDropdownItem><a routerLink="my-lock">My Lock</a></button>
+          <div class="dropdown-divider"></div>
         }
 
         @if(hasAuthorSession) {
@@ -31,7 +32,7 @@
   </div>
 </nav>
 
-<!--<app-toast-container></app-toast-container>-->
+<app-toast-container></app-toast-container>
 <!--<ngx-spinner bdColor = "rgba(0, 0, 0, 0.8)" size = "medium" color = "#df720c" type = "ball-atom" [fullScreen] = "true"><p style="color: white" > Reticulating Splines... </p></ngx-spinner>-->
 
 <div class="container">

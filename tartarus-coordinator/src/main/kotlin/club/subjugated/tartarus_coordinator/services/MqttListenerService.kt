@@ -86,6 +86,9 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                             is ValidatedPayload.StartedUpdatePayload -> {
                                 handleStartUpdateEvent(signedMessage)
                             }
+                            is ValidatedPayload.PeriodicUpdatePayload -> {
+                                handlePeriodicUpdate(signedMessage)
+                            }
                             is ValidatedPayload.AcknowledgementPayload -> {
                                 handleAcknowledgePayload(signedMessage)
                             }
@@ -142,6 +145,12 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
             "configuration/$sessionToken",
             MqttMessage(configData),
         )
+    }
+
+    private fun handlePeriodicUpdate(signedMessage: ValidatedPayload.PeriodicUpdatePayload) {
+        val update = signedMessage.periodicUpdate
+
+        println("👀 Periodic update from ${update.session} -> Locked? ${update.isLocked}")
     }
 
     private fun handleAcknowledgePayload(signedMessage: ValidatedPayload.AcknowledgementPayload) {

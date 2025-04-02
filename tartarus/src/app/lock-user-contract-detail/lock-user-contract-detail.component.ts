@@ -12,6 +12,7 @@ import {ContractDescription} from '../models/contract-description';
 import {EndCondition} from '../club/subjugated/fb/message/end-condition';
 import {TimeEndCondition} from '../club/subjugated/fb/message/time-end-condition';
 import {WhenISaySo} from '../club/subjugated/fb/message/when-isay-so';
+import {WebsocketService} from '../websocket.service';
 
 @Component({
   selector: 'app-lock-user-contract-detail',
@@ -28,21 +29,39 @@ export class LockUserContractDetailComponent implements OnInit {
   constructor(private tartarusCoordinatorService: TartarusCoordinatorService,
               private activatedRoute: ActivatedRoute,
               private userDataService: UserDataService,
-              private cryptoService: CryptoService) {
+              private cryptoService: CryptoService,
+              private websocketService: WebsocketService) {
 
     this.contractName = String(this.activatedRoute.snapshot.paramMap.get('contractName'));
+
+    this.websocketService.onMessage().subscribe({
+      next: (message) => this.handleMessage(message),
+      error: (err) => console.error('WebSocket error:', err),
+    });
   }
 
   ngOnInit() {
-    this.tartarusCoordinatorService.getContractByName(this.contractName).subscribe(contract => {
+    this.tartarusCoordinatorService.getContractByNameForLockUser(this.contractName).subscribe(contract => {
       this.contract = contract;
       this.parseContract();
     });
   }
 
+  handleMessage(message : string) {
+    console.log("Specific contract subscription -> Message: "+ message);
+    this.tartarusCoordinatorService.getContractByNameForLockUser(this.contractName).subscribe(contract => {
+      this.contract = contract;
+    });
+  }
+
   approve() {
     this.tartarusCoordinatorService.approveContract(this.contractName).subscribe(contract => {
-      console.log("Approved");
+      this.contract = contract;
+    })
+  }
+
+  reject() {
+    this.tartarusCoordinatorService.rejectContract(this.contractName).subscribe(contract => {
       this.contract = contract;
     })
   }

@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service
 class ConfigurationService {
     @Value("\${tartarus.api_uri}") var apiUri: String = ""
 
+    @Value("\${tartarus.ws_uri}") var wsUri: String = ""
+
     @Value("\${tartarus.web_uri}") var webUri: String = ""
 
     @Value("\${tartarus.mqtt_uri}") var mqttUri: String = ""
@@ -28,6 +30,7 @@ class ConfigurationService {
         val configuration =
             ConfigurationMessage(
                 apiUri = apiUri,
+                wsUri = wsUri,
                 webUri = webUri,
                 mqttUri = mqttUri,
                 safetyKeys = safetyKeys.map { SafetyKeyMessage.fromSafetyKey(it) },
@@ -61,11 +64,13 @@ class ConfigurationService {
 
         // Create main configuration
         val webUriOffset = builder.createString(webUri)
+        val wsUriOffset = builder.createString(wsUri)
         val mqttUriOffset = builder.createString(mqttUri)
         val apiUriOffset = builder.createString(apiUri)
 
         CoordinatorConfiguration.startCoordinatorConfiguration(builder)
         CoordinatorConfiguration.addWebUri(builder, webUriOffset)
+        CoordinatorConfiguration.addWsUri(builder, wsUriOffset)
         CoordinatorConfiguration.addMqttUri(builder, mqttUriOffset)
         CoordinatorConfiguration.addApiUri(builder, apiUriOffset)
         CoordinatorConfiguration.addSafetyKeys(builder, keysVector)

@@ -7,16 +7,19 @@
         I strongly recommend saving this to your phone camera roll or to some place it will be safe
         and probably backed up automatically. If you lose it, it's gone forever.</p>
 
-      <div>
-        <button type="button" class="btn-light" (click)="generateQRCode()">Generate Key</button>
+      <div class="d-grid gap-2">
+        <button type="button" class="btn btn-primary" (click)="generateQRCode()">Generate Key</button>
       </div>
 
-      <div #hiddenDiv hidden>
-        <h1 style="color: red">Do not share.</h1>
+      <div #qrCodeContainer>
         <canvas #canvas></canvas>
-        <h1 style="color: red">Do not share.</h1>
-        <button (click)="downloadQRCode()">Download QR Code</button>
       </div>
+
+      @if(showDownloadButton) {
+        <div class="d-grid gap-2">
+          <button class="btn btn-large btn-primary" (click)="downloadQRCode()">Download QR Code</button>
+        </div>
+      }
     </div>
   </div>
 </div>

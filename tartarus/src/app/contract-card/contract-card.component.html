@@ -4,8 +4,8 @@
       <div class="card mb-3 text-white bg-success" style="max-width: 20rem;">
         <div class="card-header">{{ contract.name }}</div>
         <div class="card-body">
-          <h4 class="card-title">Active</h4>
-          <p class="card-text"><a routerLink="contract/{{contract.name}}">Details</a></p>
+          <h4 class="card-title">🔐 Active</h4>
+          <p class="card-text"><a routerLink="{{basePath}}contract/{{contract.name}}">Details</a></p>
         </div>
       </div>
     }
@@ -14,7 +14,7 @@
         <div class="card-header">{{ contract.name }}</div>
         <div class="card-body">
           <h4 class="card-title">🏁 Released</h4>
-          <p class="card-text">Ended at {{contract.updatedAt | date : 'short' }} <a routerLink="contract/{{contract.name}}">Details</a></p>
+          <p class="card-text">Ended at {{contract.updatedAt | date : 'short' }} <a routerLink="{{basePath}}contract/{{contract.name}}">Details</a></p>
         </div>
       </div>
     }
@@ -22,13 +22,19 @@
       <div class="card mb-3 text-white bg-primary" style="max-width: 20rem;">
         <div class="card-header">{{ contract.name }}</div>
         <div class="card-body">
-          <h4 class="card-title">{{contract.state}}</h4>
-          <p class="card-text"><a routerLink="contract/{{contract.name}}">Details</a></p>
+          <h4 class="card-title">📋 Created / Being Reviewed</h4>
+          <p class="card-text"><a routerLink="{{basePath}}contract/{{contract.name}}">Details</a></p>
+        </div>
+      </div>
+    }
+    @case ('REJECTED') {
+      <div class="card mb-3 text-white bg-light" style="max-width: 20rem;">
+        <div class="card-header">{{ contract.name }}</div>
+        <div class="card-body">
+          <h4 class="card-title">🛑 Rejected</h4>
+          <p class="card-text"><a routerLink="{{basePath}}contract/{{contract.name}}">Details</a></p>
         </div>
       </div>
     }
   }
-
-
-
 }

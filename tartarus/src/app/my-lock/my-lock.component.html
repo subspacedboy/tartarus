@@ -1,36 +1,32 @@
 @if(lockSession) {
   <div class="row">
-    <div class="col-sm-10">
-
+    <div class="col-lg-4">
       <div class="bs-component">
-        <div class="alert alert-dismissible alert-info">
-          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-          <strong>Heads up!</strong> This is the link you send to contract authors when you want the ability to review.
-        </div>
+        <h3>Share Link</h3>
+        <p>Share this link to have people write contracts that you will have the option to accept/reject.</p>
+        <input class="form-control" id="lockLink" [value]="getShareLink()" [disabled]="true">
       </div>
-
-      <input class="form-control" id="lockLink" [value]="getShareLink()" [disabled]="true">
     </div>
   </div>
 
   <div class="row">
-    <div class="col-sm-10">
-
+    <div class="col-lg-4">
       <div class="bs-component">
-        <div class="alert alert-dismissible alert-info">
-          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-          <strong>Heads up!</strong> This is the link you send to contract authors when you DO NOT want the ability to review.
-          If your lock is online, they can simply activate contracts without approval. You've been warned.
-        </div>
+        <h3>Total Control Link</h3>
+        <p>Share this link to have people write and assign contracts directly. You will not be presented an option.</p>
+        <input class="form-control" id="lockLink2" [value]="getTotalControlLink()" [disabled]="true">
       </div>
-
-      <input class="form-control" id="lockLink2" [value]="getTotalControlLink()" [disabled]="true">
     </div>
   </div>
 
-  <div>
-    @for (c of contracts; track c.name){
-      <app-contract-card [contract]="c"></app-contract-card>
-    }
+  <div class="row">
+    <div class="col-lg-4">
+      <div class="bs-component">
+        <h3>Contracts</h3>
+        @for (c of contracts; track c.name){
+          <app-contract-card [contract]="c"></app-contract-card>
+        }
+      </div>
+    </div>
   </div>
 }

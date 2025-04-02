@@ -55,6 +55,10 @@ export class UserDataService {
     return String(localStorage.getItem('lock_user_session_token'));
   }
 
+  hasLockUserSession(): boolean {
+    return localStorage.getItem("lock_user_session_token") !== null;
+  }
+
   getAuthorKeypair() {
     const privatePem = localStorage.getItem("private_pem");
     const publicPem = localStorage.getItem("public_pem");

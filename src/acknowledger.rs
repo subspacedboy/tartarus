@@ -56,14 +56,14 @@ impl Acknowledger {
         let vtable_offset = buffer[table_offset] as usize;
         let actual_start = table_offset - vtable_offset;
 
-        log::info!(
-            "Update buffer w/ vtable ({},{}): {:?}",
-            vtable_offset,
-            table_offset,
-            buffer
-        );
+        // log::info!(
+        //     "Update buffer w/ vtable ({},{}): {:?}",
+        //     vtable_offset,
+        //     table_offset,
+        //     buffer
+        // );
         let hash = Sha256::digest(&buffer[actual_start..]);
-        log::info!("Hash {:?}", hash);
+        // log::info!("Hash {:?}", hash);
 
         // // UGH. We have to build the whole message over again because of the way
         // // Rust implements flatbuffers.
@@ -147,14 +147,14 @@ impl Acknowledger {
         let vtable_offset = buffer[table_offset] as usize;
         let actual_start = table_offset - vtable_offset;
 
-        log::info!(
-            "Update buffer w/ vtable ({},{}): {:?}",
-            vtable_offset,
-            table_offset,
-            buffer
-        );
+        // log::info!(
+        //     "Update buffer w/ vtable ({},{}): {:?}",
+        //     vtable_offset,
+        //     table_offset,
+        //     buffer
+        // );
         let hash = Sha256::digest(&buffer[actual_start..]);
-        log::info!("Hash {:?}", hash);
+        // log::info!("Hash {:?}", hash);
 
         // // UGH. We have to build the whole message over again because of the way
         // // Rust implements flatbuffers.
@@ -229,14 +229,14 @@ impl Acknowledger {
         let vtable_offset = buffer[table_offset] as usize;
         let actual_start = table_offset - vtable_offset;
 
-        log::info!(
-            "Update buffer w/ vtable ({},{}): {:?}",
-            vtable_offset,
-            table_offset,
-            buffer
-        );
+        // log::info!(
+        //     "Update buffer w/ vtable ({},{}): {:?}",
+        //     vtable_offset,
+        //     table_offset,
+        //     buffer
+        // );
         let hash = Sha256::digest(&buffer[actual_start..]);
-        log::info!("Hash {:?}", hash);
+        // log::info!("Hash {:?}", hash);
 
         // // UGH. We have to build the whole message over again because of the way
         // // Rust implements flatbuffers.

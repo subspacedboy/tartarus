@@ -6,6 +6,7 @@ import {LockSession} from '../models/lock-session';
 import {Contract} from '../models/contract';
 import {ContractCardComponent} from '../contract-card/contract-card.component';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
+import {ToastService} from '../toast.service';
 
 @Component({
   selector: 'app-lock-session-detail',
@@ -28,7 +29,8 @@ export class LockSessionDetailComponent implements OnInit {
               private router: Router,
               private tartarusCoordinatorService: TartarusCoordinatorService,
               private userDataService: UserDataService,
-              private fb: FormBuilder
+              private fb: FormBuilder,
+              private toastService: ToastService,
   ) {
     this.sessionToken = String(this.activatedRoute.snapshot.paramMap.get('sessionToken'));
     this.knownTokenForm = this.fb.group({
@@ -50,7 +52,11 @@ export class LockSessionDetailComponent implements OnInit {
   saveNotes() {
     const notes = this.knownTokenForm.get('notes')!.value;
     this.tartarusCoordinatorService.saveNotesForKnownToken(this.lockSession?.knownToken?.name!, notes!).subscribe(result => {
-      console.log("Saved");
+      this.toastService.showSuccess("Saved");
     })
+  }
+
+  navToNewContract() {
+    this.router.navigate(['full-contract'], {relativeTo: this.activatedRoute});
   }
 }

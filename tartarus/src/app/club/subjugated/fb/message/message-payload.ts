@@ -7,6 +7,7 @@ import { Acknowledgement } from '../../../../club/subjugated/fb/message/acknowle
 import { Contract } from '../../../../club/subjugated/fb/message/contract.js';
 import { Error } from '../../../../club/subjugated/fb/message/error.js';
 import { LockCommand } from '../../../../club/subjugated/fb/message/lock-command.js';
+import { PeriodicUpdate } from '../../../../club/subjugated/fb/message/periodic-update.js';
 import { ReleaseCommand } from '../../../../club/subjugated/fb/message/release-command.js';
 import { StartedUpdate } from '../../../../club/subjugated/fb/message/started-update.js';
 import { UnlockCommand } from '../../../../club/subjugated/fb/message/unlock-command.js';
@@ -19,15 +20,16 @@ export enum MessagePayload {
   UnlockCommand = 3,
   ReleaseCommand = 4,
   StartedUpdate = 5,
-  Acknowledgement = 6,
-  Error = 7,
-  AbortCommand = 8
+  PeriodicUpdate = 6,
+  Acknowledgement = 7,
+  Error = 8,
+  AbortCommand = 9
 }
 
 export function unionToMessagePayload(
   type: MessagePayload,
-  accessor: (obj:AbortCommand|Acknowledgement|Contract|Error|LockCommand|ReleaseCommand|StartedUpdate|UnlockCommand) => AbortCommand|Acknowledgement|Contract|Error|LockCommand|ReleaseCommand|StartedUpdate|UnlockCommand|null
-): AbortCommand|Acknowledgement|Contract|Error|LockCommand|ReleaseCommand|StartedUpdate|UnlockCommand|null {
+  accessor: (obj:AbortCommand|Acknowledgement|Contract|Error|LockCommand|PeriodicUpdate|ReleaseCommand|StartedUpdate|UnlockCommand) => AbortCommand|Acknowledgement|Contract|Error|LockCommand|PeriodicUpdate|ReleaseCommand|StartedUpdate|UnlockCommand|null
+): AbortCommand|Acknowledgement|Contract|Error|LockCommand|PeriodicUpdate|ReleaseCommand|StartedUpdate|UnlockCommand|null {
   switch(MessagePayload[type]) {
     case 'NONE': return null; 
     case 'Contract': return accessor(new Contract())! as Contract;
@@ -35,6 +37,7 @@ export function unionToMessagePayload(
     case 'UnlockCommand': return accessor(new UnlockCommand())! as UnlockCommand;
     case 'ReleaseCommand': return accessor(new ReleaseCommand())! as ReleaseCommand;
     case 'StartedUpdate': return accessor(new StartedUpdate())! as StartedUpdate;
+    case 'PeriodicUpdate': return accessor(new PeriodicUpdate())! as PeriodicUpdate;
     case 'Acknowledgement': return accessor(new Acknowledgement())! as Acknowledgement;
     case 'Error': return accessor(new Error())! as Error;
     case 'AbortCommand': return accessor(new AbortCommand())! as AbortCommand;
@@ -44,9 +47,9 @@ export function unionToMessagePayload(
 
 export function unionListToMessagePayload(
   type: MessagePayload, 
-  accessor: (index: number, obj:AbortCommand|Acknowledgement|Contract|Error|LockCommand|ReleaseCommand|StartedUpdate|UnlockCommand) => AbortCommand|Acknowledgement|Contract|Error|LockCommand|ReleaseCommand|StartedUpdate|UnlockCommand|null, 
+  accessor: (index: number, obj:AbortCommand|Acknowledgement|Contract|Error|LockCommand|PeriodicUpdate|ReleaseCommand|StartedUpdate|UnlockCommand) => AbortCommand|Acknowledgement|Contract|Error|LockCommand|PeriodicUpdate|ReleaseCommand|StartedUpdate|UnlockCommand|null, 
   index: number
-): AbortCommand|Acknowledgement|Contract|Error|LockCommand|ReleaseCommand|StartedUpdate|UnlockCommand|null {
+): AbortCommand|Acknowledgement|Contract|Error|LockCommand|PeriodicUpdate|ReleaseCommand|StartedUpdate|UnlockCommand|null {
   switch(MessagePayload[type]) {
     case 'NONE': return null; 
     case 'Contract': return accessor(index, new Contract())! as Contract;
@@ -54,6 +57,7 @@ export function unionListToMessagePayload(
     case 'UnlockCommand': return accessor(index, new UnlockCommand())! as UnlockCommand;
     case 'ReleaseCommand': return accessor(index, new ReleaseCommand())! as ReleaseCommand;
     case 'StartedUpdate': return accessor(index, new StartedUpdate())! as StartedUpdate;
+    case 'PeriodicUpdate': return accessor(index, new PeriodicUpdate())! as PeriodicUpdate;
     case 'Acknowledgement': return accessor(index, new Acknowledgement())! as Acknowledgement;
     case 'Error': return accessor(index, new Error())! as Error;
     case 'AbortCommand': return accessor(index, new AbortCommand())! as AbortCommand;

@@ -13,39 +13,43 @@ import {UserDataService} from '../user-data.service';
 import {ActivatedRoute} from '@angular/router';
 import {LockSession} from '../models/lock-session';
 import * as QRCode from 'qrcode';
+import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule} from '@angular/forms';
+import {ToastService} from '../toast.service';
 
 @Component({
   selector: 'app-new-full-contract',
-  imports: [],
+  imports: [
+    ReactiveFormsModule
+  ],
   templateUrl: './new-full-contract.component.html',
   styleUrl: './new-full-contract.component.scss'
 })
 export class NewFullContractComponent implements OnInit {
-  // @ViewChild('scanCanvas', { static: false }) scanCanvas!: ElementRef;
-  //
   @ViewChild('canvas', { static: false }) canvas!: ElementRef;
   @ViewChild('hiddenDiv', { static: false }) hiddenDiv!: ElementRef;
 
-  keyMessage = "";
-  privateKey : CryptoKey | null = null;
-  publicKey : CryptoKey | null = null;
-
   lockSessionToken: string = '';
   lockSession?: LockSession;
+
+  contractForm: FormGroup;
 
   constructor(private tartarusCoordinatorService : TartarusCoordinatorService,
               private idHelperService: IdHelperService,
               private cryptoService: CryptoService,
               private qrcodeService: QrcodeService,
               private userDataService: UserDataService,
-              private activatedRoute: ActivatedRoute,) {
-
+              private activatedRoute: ActivatedRoute,
+              private fb: FormBuilder,
+              private toastService: ToastService) {
     this.lockSessionToken = String(this.activatedRoute.snapshot.paramMap.get('sessionToken'));
+
+    this.contractForm = this.fb.group({
+      isTempUnlockAllowed: new FormControl(false),
+    });
   }
 
   ngOnInit() {
     this.tartarusCoordinatorService.getLockSession(this.lockSessionToken).subscribe(result => {
-      console.log(result);
       this.lockSession = result;
     });
   }
@@ -89,8 +93,6 @@ export class NewFullContractComponent implements OnInit {
     let fullContractOffset = Contract.endContract(builder);
     builder.finish(fullContractOffset);
 
-    // const contractName = this.idHelperService.generateBase32Id()
-
     const contractBytes = builder.asUint8Array();
     const offsetToTable = contractBytes[0] | (contractBytes[1] << 8);
     const offsetToVTable = contractBytes[offsetToTable] | (contractBytes[offsetToTable + 1] << 8);
@@ -120,39 +122,13 @@ export class NewFullContractComponent implements OnInit {
       console.log("!!! Contract is too large for QR code!!!");
     }
 
-    await this.generateQRCode(builder.asUint8Array());
+    await this.qrcodeService.generateQRCode(builder.asUint8Array(), this.canvas);
+    this.hiddenDiv.nativeElement.hidden = false;
 
     this.tartarusCoordinatorService.saveContract(this.userDataService.getAuthorName(), this.lockSessionToken, builder.asUint8Array()).subscribe(r => {
-      console.log("Saved");
+      this.toastService.showSuccess("Saved");
     })
 
     return builder.asUint8Array();
-  }
-
-  async generateQRCode( data : Uint8Array) {
-    const canvas = this.canvas.nativeElement;
-    const qrSize = 256;
-    const textHeight = 30; // Space for text
-    canvas.width = qrSize;
-    canvas.height = qrSize + textHeight;
-
-    try {
-      // Generate QR Code on a temporary canvas
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = qrSize;
-      tempCanvas.height = qrSize;
-      await QRCode.toCanvas(tempCanvas,
-        [{data : data, mode: 'byte'}],
-        { width: qrSize, margin: 2, errorCorrectionLevel: 'L' });
-
-      const ctx = canvas.getContext('2d');
-      // Clear canvas and draw QR code onto the main canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(tempCanvas, 0, 0);
-
-      this.hiddenDiv.nativeElement.hidden = false;
-    } catch (err) {
-      console.error('Error generating QR Code:', err);
-    }
   }
 }

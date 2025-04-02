@@ -2,6 +2,7 @@ package club.subjugated.tartarus_coordinator.services
 
 import club.subjugated.tartarus_coordinator.api.messages.NewContractMessage
 import club.subjugated.tartarus_coordinator.events.AcknowledgedCommandEvent
+import club.subjugated.tartarus_coordinator.events.ContractChangeEvent
 import club.subjugated.tartarus_coordinator.events.NewCommandEvent
 import club.subjugated.tartarus_coordinator.models.AuthorSession
 import club.subjugated.tartarus_coordinator.models.Command
@@ -110,8 +111,22 @@ class ContractService {
         return contract
     }
 
+    fun rejectContract(lockSession: LockSession, contractName: String) : Contract {
+        val contract = contractRepository.findByName(contractName)
+        assert(lockSession == contract.lockSession)
+        contract.state = ContractState.REJECTED
+        contractRepository.save(contract)
+
+        publisher.publishEvent(ContractChangeEvent(this, contract))
+        return contract
+    }
+
     fun findByLockSessionId(lockSession: LockSession) : List<Contract> {
         return contractRepository.findByLockSessionIdOrderByCreatedAtDesc(lockSession.id)
+    }
+
+    fun findByLockSessionIdAndState(lockSession: LockSession, state: ContractState) : List<Contract> {
+        return contractRepository.findByLockSessionIdAndStateOrderByCreatedAtDesc(lockSession.id, state)
     }
 
     fun saveCommand(
@@ -180,8 +195,12 @@ class ContractService {
         }
     }
 
-    fun findContractsByShareableToken(someToken: String): List<Contract> {
-        return this.contractRepository.findByShareableTokenOrderByCreatedAtDesc(someToken)
+    fun findContractsByAuthorSessionAndState(authorSession: AuthorSession, contractState: ContractState) : List<Contract> {
+        return contractRepository.findByAuthorSessionIdAndStateOrderByCreatedAtDesc(authorSession.id, contractState)
+    }
+
+    fun findContractsByAuthorSessionAndShareableToken(authorSession: AuthorSession, someToken: String): List<Contract> {
+        return this.contractRepository.findByAuthorSessionIdAndShareableTokenOrderByCreatedAtDesc(authorSession.id, someToken)
     }
 
     fun getByName(name: String): Contract {

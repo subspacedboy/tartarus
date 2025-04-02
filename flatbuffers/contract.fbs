@@ -24,7 +24,7 @@ table TemporaryUnlockRules {
 }
 
 table Contract {
-    serial_number: ushort;
+  serial_number: ushort;
 
   public_key: [ubyte];
 
@@ -49,6 +49,12 @@ table StartedUpdate {
 
     current_contract_serial: ushort;
     is_locked: bool;
+}
+
+table PeriodicUpdate {
+  session: string;
+  is_locked: bool;
+  current_contract_serial: ushort;
 }
 
 table Acknowledgement {
@@ -91,7 +97,7 @@ table AbortCommand {
 }
 
 union MessagePayload {
-  Contract, LockCommand, UnlockCommand, ReleaseCommand, StartedUpdate, Acknowledgement, Error, AbortCommand
+  Contract, LockCommand, UnlockCommand, ReleaseCommand, StartedUpdate, PeriodicUpdate, Acknowledgement, Error, AbortCommand
 }
 
 table SignedMessage {

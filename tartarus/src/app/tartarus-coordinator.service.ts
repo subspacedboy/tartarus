@@ -8,6 +8,7 @@ import {Contract} from './models/contract';
 import {ConfigService} from './config.service';
 import {AppConfig} from './models/app-config';
 import {KnownToken} from './models/known-token';
+import {ToastService} from './toast.service';
 
 @Injectable({
   providedIn: 'root'
@@ -15,7 +16,10 @@ import {KnownToken} from './models/known-token';
 export class TartarusCoordinatorService {
   private readonly baseUrl;
 
-  constructor(private http: HttpClient, private configService: ConfigService) {
+  constructor(
+    private http: HttpClient,
+    private configService: ConfigService,
+    private toastService: ToastService,) {
     let config = this.configService.getConfig();
     if(config === undefined || config === null) {
       debugger;
@@ -153,10 +157,21 @@ export class TartarusCoordinatorService {
     }));
   }
 
-  public getContractByName(name: string) : Observable<Contract> {
+  public getContractByNameForAuthor(name: string) : Observable<Contract> {
     const get_contracts_uri = `${this.baseUrl}/contracts/${name}`;
     return this.http.get(get_contracts_uri, {
       headers: new HttpHeaders({ 'X-Require-Author': 'requires authorization tokens' }),
+    }).pipe(map((res:any) => {
+      return new Contract(res);
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public getContractByNameForLockUser(name: string) : Observable<Contract> {
+    const get_contracts_uri = `${this.baseUrl}/contracts/${name}`;
+    return this.http.get(get_contracts_uri, {
+      headers: new HttpHeaders({ 'X-Require-LockUser': 'requires authorization tokens' }),
     }).pipe(map((res:any) => {
       return new Contract(res);
     }), catchError(error => {
@@ -181,9 +196,39 @@ export class TartarusCoordinatorService {
   }
 
   public getContractsForLockSession() : Observable<Contract[]> {
+    const get_contracts_uri = `${this.baseUrl}/contracts/byLockSession`;
+    return this.http.get(get_contracts_uri, {
+      headers: new HttpHeaders({ 'X-Require-LockUser': 'requires authorization tokens' }),
+    }).pipe(map((res:any) => {
+      const contracts : Contract[] = res.map((datum: any) => {
+        return new Contract(datum);
+      });
+
+      return contracts;
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public getContractsForLockSessionForReview() : Observable<Contract[]> {
     const get_contracts_uri = `${this.baseUrl}/contracts/reviewPending`;
     return this.http.get(get_contracts_uri, {
       headers: new HttpHeaders({ 'X-Require-LockUser': 'requires authorization tokens' }),
+    }).pipe(map((res:any) => {
+      const contracts : Contract[] = res.map((datum: any) => {
+        return new Contract(datum);
+      });
+
+      return contracts;
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public getConfirmedContractsForAuthor() : Observable<Contract[]> {
+    const get_contracts_uri = `${this.baseUrl}/contracts/confirmed`;
+    return this.http.get(get_contracts_uri, {
+      headers: new HttpHeaders({ 'X-Require-Author': 'requires authorization tokens' }),
     }).pipe(map((res:any) => {
       const contracts : Contract[] = res.map((datum: any) => {
         return new Contract(datum);
@@ -207,6 +252,18 @@ export class TartarusCoordinatorService {
     }));
   }
 
+  public rejectContract(contractName: string) : Observable<Contract> {
+    const reject_uri = `${this.baseUrl}/contracts/reject/${contractName}`;
+    const body = JSON.stringify({
+    });
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json', 'X-Require-LockUser': 'requires authorization tokens' });
+    return this.http.post(reject_uri, body, {headers} ).pipe(map((res:any) => {
+      return new Contract(res);
+    }),  catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
   // Configuration data
   public getConfigurationFromCoordinator() : Observable<AppConfig> {
     const get_configuration_uri = `${this.baseUrl}/configuration/`;
@@ -224,19 +281,19 @@ export class TartarusCoordinatorService {
     if (error.error instanceof ErrorEvent) {
       // A client-side or network error occurred. Handle it accordingly.
       console.error('An error occurred:', error.error.message);
-      // this.toastService.showError('An error occurred: ' + error.error.message);
+      this.toastService.showError('An error occurred: ' + error.error.message);
     } else {
       // The backend returned an unsuccessful response code.
       // The response body may contain clues as to what went wrong.
 
       // console.log(this.toastService);
-      // this.toastService.showError('The contract manager appears to be down...');
+      this.toastService.showError('The coordinator appears to be down...');
       console.error(
         `Backend returned code ${error.status}, ` +
         `body was: ${error.error}`);
     }
-    // this.toastService.showError(`Backend returned code ${error.status}, ` +
-    //   `body was: ${error.error}`);
+    this.toastService.showError(`Backend returned code ${error.status}, ` +
+      `body was: ${error.error}`);
     // Return an observable with a user-facing error message.
     return throwError(() => error);
   }

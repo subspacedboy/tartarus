@@ -2,7 +2,8 @@ use crate::acknowledger::Acknowledger;
 use crate::boot_screen::BootScreen;
 use crate::config_verifier::ConfigVerifier;
 use crate::contract_generated::club::subjugated::fb::message::{
-    MessagePayload, SignedMessage, SignedMessageArgs, StartedUpdate, StartedUpdateArgs,
+    MessagePayload, PeriodicUpdate, PeriodicUpdateArgs, SignedMessage, SignedMessageArgs,
+    StartedUpdate, StartedUpdateArgs,
 };
 use crate::internal_config::InternalConfig;
 use crate::internal_contract::{InternalContract, SaveState};
@@ -36,8 +37,10 @@ use p256::{PublicKey, SecretKey};
 use postcard::from_bytes;
 use rand_core::RngCore;
 use sha2::{Digest, Sha256};
+use std::cmp::PartialEq;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
+use std::thread::JoinHandle;
 use std::time::Duration;
 
 #[derive(Debug, Clone)]
@@ -62,6 +65,15 @@ pub struct SignedMessageTransport {
     topic: TopicType,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum MqttStateMachine {
+    NOT_RUNNING,
+    RUNNING,
+    CONNECTED,
+    DISCONNECTED,
+    RESTARTING,
+}
+
 pub struct LockCtx {
     pub(crate) display: MyDisplay<'static>,
     nvs: EspNvs<NvsDefault>,
@@ -79,11 +91,21 @@ pub struct LockCtx {
     outgoing_message: Arc<Mutex<VecDeque<SignedMessageTransport>>>,
     servo: Servo<'static>,
     dirty: bool,
+    mqtt_state_machine: Arc<Mutex<MqttStateMachine>>,
     restart_mqtt: Arc<Mutex<bool>>,
     schedule_restart_mqtt: Option<u64>,
     time_in_ticks: u64,
     configuration: InternalConfig,
+    schedule_next_update: Option<u64>,
+    mqtt_thread_1: Option<JoinHandle<()>>,
+    mqtt_thread_2: Option<JoinHandle<()>>,
 }
+
+// impl PartialEq for MqttStateMachine {
+//     fn eq(&self, other: &Self) -> bool {
+//         todo!()
+//     }
+// }
 
 impl LockCtx {
     pub fn new(
@@ -113,6 +135,10 @@ impl LockCtx {
             schedule_restart_mqtt: None,
             time_in_ticks: 0,
             configuration: InternalConfig::default(),
+            mqtt_state_machine: Arc::new(Mutex::new(MqttStateMachine::NOT_RUNNING)),
+            schedule_next_update: None,
+            mqtt_thread_1: None,
+            mqtt_thread_2: None,
         };
 
         lck.session_token = lck.load_or_create_session_id();
@@ -133,6 +159,7 @@ impl LockCtx {
             lck.wifi_connected = connected;
 
             lck.start_mqtt();
+            std::thread::sleep(Duration::from_secs(2));
             lck.enqueue_announce_message();
         }
 
@@ -192,6 +219,8 @@ impl LockCtx {
 
     pub fn save_configuration(&mut self, config: &InternalConfig) {
         use postcard::to_vec;
+
+        self.configuration = config.clone();
 
         if let Ok(bytes) = to_vec::<_, 1024>(&config) {
             if let Ok(_) = self.nvs.set_blob("config", bytes.as_slice()) {
@@ -409,13 +438,11 @@ impl LockCtx {
                             password
                         );
 
-                        let password = "H0la Chic0s";
-
                         let mut tries = 3;
                         let mut connected = false;
                         while tries > 0 && !connected {
                             if let Ok(_) =
-                                connect_wifi(&mut self.wifi, &ssid, &String::from(password))
+                                connect_wifi(&mut self.wifi, &ssid, &String::from(&password))
                             {
                                 log::info!("Connected!");
                                 self.wifi_connected = true;
@@ -438,21 +465,61 @@ impl LockCtx {
         } //end of if let Some(incoming_data)
 
         // Let's see if MQTT is alright.
-        if let Ok(needs_restart) = self.restart_mqtt.lock() {
-            if *needs_restart && self.schedule_restart_mqtt.is_none() {
+        let mut do_restart = false;
+        if let Ok(mut state) = self.mqtt_state_machine.lock() {
+            if *state == MqttStateMachine::DISCONNECTED && self.schedule_restart_mqtt.is_none() {
+                *state = MqttStateMachine::RESTARTING;
+                do_restart = true;
+
+                // Check the threads
                 log::info!("Scheduling restart of MQTT for 6 seconds");
                 self.schedule_restart_mqtt =
                     Some(self.time_in_ticks + Duration::from_secs(6).as_millis() as u64);
             }
+
+            if *state != MqttStateMachine::NOT_RUNNING && self.schedule_next_update.is_none() {
+                log::info!("Scheduling next periodic update for 60 seconds");
+                self.schedule_next_update =
+                    Some(self.time_in_ticks + Duration::from_secs(60).as_millis() as u64);
+            }
+        }
+
+        if do_restart {
+            log::info!(
+                "Thread 1: {:?}",
+                self.mqtt_thread_1.as_ref().unwrap().is_finished()
+            );
+            log::info!(
+                "Thread 2: {:?}",
+                self.mqtt_thread_2.as_ref().unwrap().is_finished()
+            );
+
+            // Join
+            log::info!("Thread 1 joining");
+            let t1 = self.mqtt_thread_1.take().unwrap();
+            t1.join().unwrap();
+            log::info!("Thread 2 joining");
+            let t2 = self.mqtt_thread_2.take().unwrap();
+            t2.join().unwrap();
         }
 
         if let Some(scheduled_time) = self.schedule_restart_mqtt {
             if scheduled_time < self.time_in_ticks {
+                log::info!("Restart time: Thread 1: {:?}", self.mqtt_thread_1);
+                log::info!("Restart time: Thread 2: {:?}", self.mqtt_thread_2);
                 log::info!("Restarting mqtt");
                 self.schedule_restart_mqtt = None;
                 self.start_mqtt();
-                // TODO - Make a more advananced state machine here.
-                self.enqueue_announce_message();
+                self.enqueue_periodic_update_message();
+            }
+        }
+
+        if let Some(scheduled_time) = self.schedule_next_update {
+            if scheduled_time < self.time_in_ticks {
+                log::info!("Sending update + rescheduling");
+                self.schedule_next_update =
+                    Some(self.time_in_ticks + Duration::from_secs(60).as_millis() as u64);
+                self.enqueue_periodic_update_message();
             }
         }
     } // end tick
@@ -569,7 +636,6 @@ impl LockCtx {
                 let save_state = SaveState {
                     internal_contract: internal_contract.clone(),
                     is_locked: self.is_locked,
-                    // verifying_key_bytes: key_bytes,
                 };
 
                 if let Ok(bytes) = to_vec::<_, 1024>(&save_state) {
@@ -614,7 +680,7 @@ impl LockCtx {
         }
     }
 
-    fn start_mqtt(&self) {
+    fn start_mqtt(&mut self) {
         let broker_url = &self.configuration.mqtt_broker_uri; // Replace with your MQTT broker
 
         let mut config = MqttClientConfiguration::default();
@@ -642,7 +708,6 @@ impl LockCtx {
             EspMqttClient::new(broker_url, &config).expect("Failed to connect to MQTT broker");
 
         // let scope = std::thread::scope(|s| {
-        log::info!("About to start the MQTT client");
 
         // Need to immediately start pumping the connection for messages, or else subscribe() and publish() below will not work
         // Note that when using the alternative constructor - `EspMqttClient::new_cb` - you don't need to
@@ -654,14 +719,19 @@ impl LockCtx {
 
         let queue_ref = Arc::clone(&self.incoming_messages);
         let out_queue_ref = Arc::clone(&self.outgoing_message);
-        let restart_mqtt_flag = Arc::clone(&self.restart_mqtt);
-        let restart_mqtt_flag_thread_2 = Arc::clone(&self.restart_mqtt);
-        // Clear the restart flag
-        *restart_mqtt_flag.lock().unwrap() = false;
+
+        let state_machine_ref_1 = Arc::clone(&self.mqtt_state_machine);
+        let state_machine_ref_2 = Arc::clone(&self.mqtt_state_machine);
+
+        // Put us to (or back) in running.
+        if let Ok(mut state) = self.mqtt_state_machine.lock() {
+            *state = MqttStateMachine::RUNNING;
+        }
+
         let session_token = self.session_token.clone();
         let session_token_2 = self.session_token.clone();
 
-        std::thread::Builder::new()
+        let t1 = std::thread::Builder::new()
             .stack_size(12000)
             .spawn(move || {
                 log::info!("MQTT Listening for messages");
@@ -670,9 +740,9 @@ impl LockCtx {
                 let configuration_queue_name = format!("configuration/{session_token_2}");
 
                 while let Ok(event) = connection.next() {
-                    if let Ok(mut message_queue) = queue_ref.lock() {
-                        match event.payload() {
-                            Received { topic, data, .. } => {
+                    match event.payload() {
+                        Received { topic, data, .. } => {
+                            if let Ok(mut message_queue) = queue_ref.lock() {
                                 if let Some(topic) = topic {
                                     match topic {
                                         x if x == inbound_queue_name.as_str() => {
@@ -693,26 +763,39 @@ impl LockCtx {
 
                                 log::info!("Received MQTT message: {} bytes", data.len());
                             }
-                            EventPayload::Disconnected => {
-                                log::info!("DISCONNECTED");
-                                break;
+                        }
+                        EventPayload::Disconnected => {
+                            if let Ok(mut state) = state_machine_ref_1.lock() {
+                                *state = MqttStateMachine::DISCONNECTED;
                             }
-                            _ => {}
+                            log::info!("DISCONNECTED");
+                            break;
+                        }
+                        EventPayload::BeforeConnect => {
+                            log::info!("Before connected");
+                        }
+                        EventPayload::Connected(_) => {
+                            log::info!("CONNECTED");
+                            if let Ok(mut state) = state_machine_ref_1.lock() {
+                                *state = MqttStateMachine::CONNECTED;
+                            }
+                        }
+                        EventPayload::Error(something) => {
+                            log::error!("Received some sort of error {}", something);
+                        }
+                        EventPayload::Published(_) => {}
+                        EventPayload::Subscribed(_) => {}
+                        other => {
+                            log::info!("Something else is happening {:?}", other);
                         }
                     }
-                }
-
-                // Mark the MQTT as needing a restart. The tick method is responsible for
-                // scheduling it to actually happen.
-                if let Ok(mut restart) = restart_mqtt_flag.lock() {
-                    *restart = true;
                 }
 
                 log::info!("Exiting MQTT Connection thread");
             })
             .unwrap();
 
-        std::thread::Builder::new()
+        let t2 = std::thread::Builder::new()
             .stack_size(12000)
             .spawn(move || {
                 log::info!("Subscribe/Publish thread");
@@ -725,48 +808,63 @@ impl LockCtx {
                 let subscription_count = 0_u8;
 
                 'outer: loop {
-                    for q in queues_to_subscribe_to.iter() {
+                    'inner: for q in queues_to_subscribe_to.iter() {
                         if let Err(e) = client.subscribe(&*q, QoS::AtMostOnce) {
                             log::error!("Failed to subscribe to topic : {e}, retrying...");
-                            std::thread::sleep(Duration::from_secs(2));
-                            continue;
+                            std::thread::sleep(Duration::from_secs(1));
+                            continue 'inner;
                         }
                         log::info!("Subscribed -> {q}");
                     }
                     // Just to give a chance of our connection to get even the first published message
                     std::thread::sleep(Duration::from_millis(800));
                     loop {
+                        // log::info!("Copying local messages");
+                        let mut local_signed_messages: Vec<SignedMessageTransport> = Vec::new();
                         if let Ok(mut message_queue) = out_queue_ref.lock() {
                             while let Some(message) = message_queue.pop_front() {
-                                match client.publish(
-                                    "locks/updates",
-                                    QoS::AtLeastOnce,
-                                    false,
-                                    message.buffer.as_ref(),
-                                ) {
-                                    Ok(id) => log::info!("Publish successful [{id:?}]"),
-                                    Err(e) => {
-                                        log::error!("Failed to publish topic: {e}, retrying...")
-                                    }
+                                local_signed_messages.push(message);
+                            }
+                        }
+                        // log::info!("Copying local messages finished");
+
+                        while (!local_signed_messages.is_empty()) {
+                            let message = local_signed_messages.remove(0);
+                            match client.publish(
+                                "locks/updates",
+                                QoS::AtLeastOnce,
+                                false,
+                                message.buffer.as_ref(),
+                            ) {
+                                Ok(id) => log::info!("Publish successful [{id:?}]"),
+                                Err(e) => {
+                                    log::error!("Failed to publish topic: {e}, retrying...")
                                 }
                             }
                         }
+                        // log::info!("Sending complete");
 
-                        if let Ok(restart_flag) = restart_mqtt_flag_thread_2.lock() {
-                            if *restart_flag {
+                        if let Ok(mut state) = state_machine_ref_2.lock() {
+                            // log::info!("State view from publisher: {:?}", state);
+                            if *state != MqttStateMachine::CONNECTED {
                                 log::info!("Exiting subscribe/publish thread");
                                 break 'outer;
                             }
                         }
-
                         // We use publish and not enqueue because this is already an independent thread.
                         // Enqueue will "wait" for its own (internal) thread while publish will go ahead and use ours.
                         let sleep_secs = 2;
                         std::thread::sleep(Duration::from_secs(sleep_secs));
                     }
                 }
+
+                log::info!("HERE");
+                return;
             })
             .unwrap();
+
+        self.mqtt_thread_1 = Some(t1);
+        self.mqtt_thread_2 = Some(t2);
     }
 
     fn get_signing_key(&self) -> SigningKey {
@@ -796,7 +894,7 @@ impl LockCtx {
                 session: Some(session),
                 started_with_local_contract: false,
                 is_locked: self.is_locked,
-                current_contract_serial: 0
+                current_contract_serial: 0,
             },
         );
 
@@ -810,14 +908,14 @@ impl LockCtx {
         let vtable_offset = buffer[table_offset] as usize;
         let actual_start = table_offset - vtable_offset;
 
-        log::info!(
-            "Update buffer w/ vtable ({},{}): {:?}",
-            vtable_offset,
-            table_offset,
-            buffer
-        );
+        // log::info!(
+        //     "Update buffer w/ vtable ({},{}): {:?}",
+        //     vtable_offset,
+        //     table_offset,
+        //     buffer
+        // );
         let hash = Sha256::digest(&buffer[actual_start..]);
-        log::info!("Hash {:?}", hash);
+        // log::info!("Hash {:?}", hash);
 
         // UGH. We have to build the whole message over again because of the way
         // Rust implements flatbuffers.
@@ -838,12 +936,106 @@ impl LockCtx {
                 session: Some(session),
                 started_with_local_contract: false,
                 is_locked: self.is_locked,
-                current_contract_serial: 0
+                current_contract_serial: 0,
             },
         );
 
         let payload_type = MessagePayload::StartedUpdate; // Union type
         let payload_value = lock_update_event.as_union_value();
+
+        let secret = self.lock_secret_key.as_ref().unwrap();
+
+        let cloned_secret = secret.clone();
+        let bytes = cloned_secret.to_bytes();
+        let key_bytes = bytes.as_slice();
+        let signing_key = SigningKey::from_slice(key_bytes).unwrap();
+        let signature: Signature = signing_key.sign(&hash.as_slice());
+
+        let sig_bytes = signature.to_bytes();
+
+        let signature_offset = builder.create_vector(sig_bytes.as_slice());
+        let signed_message = SignedMessage::create(
+            &mut builder,
+            &SignedMessageArgs {
+                signature: Some(signature_offset),
+                payload: Some(payload_value),
+                payload_type,
+            },
+        );
+
+        builder.finish(signed_message, None);
+        let data = builder.finished_data().to_vec();
+
+        let t = SignedMessageTransport {
+            buffer: data,
+            topic: SignedMessages,
+        };
+
+        self.enqueue_message(t);
+    }
+
+    fn enqueue_periodic_update_message(&self) {
+        let mut builder = FlatBufferBuilder::with_capacity(1024);
+        let public_key: Vec<u8> = self
+            .lock_public_key
+            .unwrap()
+            .to_sec1_bytes()
+            .as_ref()
+            .to_vec();
+        let session = builder.create_string(&self.session_token);
+
+        // let pub_key_holder = builder.create_vector(&public_key);
+        let periodic_update_event = PeriodicUpdate::create(
+            &mut builder,
+            &PeriodicUpdateArgs {
+                session: Some(session),
+                is_locked: self.is_locked,
+                current_contract_serial: 0,
+            },
+        );
+
+        let _payload_type = MessagePayload::StartedUpdate; // Union type
+        let _payload_value = periodic_update_event.as_union_value();
+
+        builder.finish(periodic_update_event, None);
+        let buffer = builder.finished_data();
+
+        let table_offset = buffer[0] as usize;
+        let vtable_offset = buffer[table_offset] as usize;
+        let actual_start = table_offset - vtable_offset;
+
+        // log::info!(
+        //     "Update buffer w/ vtable ({},{}): {:?}",
+        //     vtable_offset,
+        //     table_offset,
+        //     buffer
+        // );
+        let hash = Sha256::digest(&buffer[actual_start..]);
+        // log::info!("Hash {:?}", hash);
+
+        // UGH. We have to build the whole message over again because of the way
+        // Rust implements flatbuffers.
+        let mut builder = FlatBufferBuilder::with_capacity(1024);
+        // let public_key: Vec<u8> = self
+        //     .lock_public_key
+        //     .unwrap()
+        //     .to_sec1_bytes()
+        //     .as_ref()
+        //     .to_vec();
+        let session = builder.create_string(&self.session_token);
+
+        // let pub_key_holder = builder.create_vector(&public_key);
+        let periodic_update_event = PeriodicUpdate::create(
+            &mut builder,
+            &PeriodicUpdateArgs {
+                session: Some(session),
+                is_locked: self.is_locked,
+                current_contract_serial: 0,
+            },
+        );
+
+        let payload_type = MessagePayload::PeriodicUpdate; // Union type
+        let payload_value = periodic_update_event.as_union_value();
 
         let secret = self.lock_secret_key.as_ref().unwrap();
 

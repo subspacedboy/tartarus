@@ -10,6 +10,7 @@ import {SignedMessage} from '../club/subjugated/fb/message/signed-message';
 import {MessagePayload} from '../club/subjugated/fb/message/message-payload';
 import {LockCommand} from '../club/subjugated/fb/message/lock-command';
 import {ReleaseCommand} from '../club/subjugated/fb/message/release-command';
+import {WebsocketService} from '../websocket.service';
 
 @Component({
   selector: 'app-contract-detail',
@@ -25,13 +26,26 @@ export class ContractDetailComponent implements OnInit {
   constructor(private tartarusCoordinatorService: TartarusCoordinatorService,
               private activatedRoute: ActivatedRoute,
               private userDataService: UserDataService,
-              private cryptoService: CryptoService,) {
+              private cryptoService: CryptoService,
+              private websocketService: WebsocketService,) {
     this.contractName = String(this.activatedRoute.snapshot.paramMap.get('contractName'));
     this.lockSessionShareableToken = String(this.activatedRoute.snapshot.paramMap.get('sessionToken'));
   }
 
   ngOnInit() {
-    this.tartarusCoordinatorService.getContractByName(this.contractName).subscribe(contract => {
+    this.tartarusCoordinatorService.getContractByNameForAuthor(this.contractName).subscribe(contract => {
+      this.contract = contract;
+    });
+
+    this.websocketService.onMessage().subscribe({
+      next: (message) => this.handleMessage(message),
+      error: (err) => console.error('WebSocket error:', err),
+    });
+  }
+
+  handleMessage(message: string) {
+    console.log("Specific contract subscription -> Message: "+ message);
+    this.tartarusCoordinatorService.getContractByNameForAuthor(this.contractName).subscribe(contract => {
       this.contract = contract;
     });
   }

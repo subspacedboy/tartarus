@@ -1,10 +1,31 @@
-<h2>Full Contract Builder</h2>
+<div class="row">
+  <div class="col-lg-4">
+    <div class="bs-component">
+      <h2>Contract Builder</h2>
 
-<div>
-  <button (click)="createContract()">Create Contract</button>
+      <form [formGroup]="contractForm" (submit)="createContract()">
+        <fieldset>
+          <div class="form-check form-switch">
+            <label class="form-check-label" for="isTempUnlockAllowed">Is temporary unlocking allowed?</label>
+            <input id="isTempUnlockAllowed" class="form-check-input" type="checkbox" formControlName="isTempUnlockAllowed">
+          </div>
+
+          <button class="btn btn-lg btn-primary" type="submit">
+            Save
+          </button>
+        </fieldset>
+      </form>
+    </div>
+  </div>
 </div>
 
-<div #hiddenDiv hidden>
-  <h1 style="color: black">Contract</h1>
-  <canvas #canvas></canvas>
+<div class="row">
+  <div class="col-lg-4">
+    <div class="bs-component">
+      <div #hiddenDiv hidden>
+        <h3 style="color: black">Contract</h3>
+        <canvas #canvas></canvas>
+      </div>
+    </div>
+  </div>
 </div>

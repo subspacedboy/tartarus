@@ -32,6 +32,7 @@ export class CoordinatorConfigurationComponent implements OnInit, AfterViewInit 
               private qrService: QrcodeService) {
     this.configurationForm = this.fb.group({
       webUri: ['', [Validators.required]],
+      wsUri: ['', [Validators.required]],
       apiUri: ['', [Validators.required]],
       mqttUri: ['', [Validators.required]],
       includeSafetyKeys: [false],
@@ -45,6 +46,7 @@ export class CoordinatorConfigurationComponent implements OnInit, AfterViewInit 
 
     console.log("configFromApi", this.configFromApi);
     this.configurationForm.get('webUri')!.setValue(this.configFromApi!.webUri!);
+    this.configurationForm.get('wsUri')!.setValue(this.configFromApi!.wsUri!);
     this.configurationForm.get('apiUri')!.setValue(this.configFromApi!.apiUri!);
     this.configurationForm.get('mqttUri')!.setValue(this.configFromApi.mqttUri!);
 
@@ -87,11 +89,13 @@ export class CoordinatorConfigurationComponent implements OnInit, AfterViewInit 
 
     // Create main configuration
     const webUriOffset = builder.createString(this.configurationForm.get('webUri')!.value);
+    const wsUriOffset = builder.createString(this.configurationForm.get('wsUri')!.value);
     const mqttUriOffset = builder.createString(this.configurationForm.get('mqttUri')!.value);
     const apiUriOffset = builder.createString(this.configurationForm.get('apiUri')!.value);
 
     CoordinatorConfiguration.startCoordinatorConfiguration(builder);
     CoordinatorConfiguration.addWebUri(builder, webUriOffset);
+    CoordinatorConfiguration.addWebUri(builder, wsUriOffset);
     CoordinatorConfiguration.addMqttUri(builder, mqttUriOffset);
     CoordinatorConfiguration.addApiUri(builder, apiUriOffset);
 

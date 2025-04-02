@@ -20,6 +20,6 @@ export class LockSession {
   }
 
   isTotalControlToken(): boolean {
-    return this.totalControlToken !== undefined && this.totalControlToken !== null;
+    return this.totalControlToken !== undefined && this.totalControlToken !== null && this.totalControlToken !== "";
   }
 }

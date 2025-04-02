@@ -1,18 +1,37 @@
 @if(contract) {
-  <h1>Contract {{contract.name}}</h1>
-
   <div class="row">
-    State: {{contract.state}}
-  </div>
+    <div class="col-lg-4">
+      <div class="bs-component">
+        <h2>Contract Details for {{contract.name}}</h2>
+        <h3>What is this for?</h3>
+        <p>Manage your contract.</p>
 
-  @switch (contract.state) {
-    @case('CONFIRMED') {
-      <button type="button" class="btn btn-primary" (click)="unlock()">Unlock</button>
-      <button type="button" class="btn btn-primary" (click)="lock()">Lock</button>
-      <button type="button" class="btn btn-warning" (click)="release()">Release</button>
-    }
-    @case('RELEASED') {
-      Contract has ended.
-    }
-  }
+        <p>
+        State: {{contract.state}}
+        </p>
+
+        @switch (contract.state) {
+          @case('CREATED') {
+            Contract has been created and is waiting for acceptance.
+          }
+          @case('CONFIRMED') {
+            <div class="d-grid gap-2">
+              <button type="button" class="btn btn-large btn-primary" (click)="unlock()">Unlock</button>
+            </div>
+            <div class="d-grid gap-2">
+              <button type="button" class="btn btn-large btn-primary" (click)="lock()">Lock</button>
+            </div>
+            <hr>
+            <div class="d-grid gap-2">
+              <button type="button" class="btn btn-large btn-warning" (click)="release()">Release</button>
+            </div>
+          }
+          @case('RELEASED') {
+            Contract has ended.
+          }
+        }
+
+      </div>
+    </div>
+  </div>
 }
