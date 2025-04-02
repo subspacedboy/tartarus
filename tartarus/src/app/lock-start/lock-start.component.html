@@ -10,7 +10,7 @@
       </div>
     </div>
 
-    <input class="form-control" id="lockLink" [value]="lockSession?.getShareLink()" [disabled]="true">
+    <input class="form-control" id="lockLink" [value]="getShareLink()" [disabled]="true">
   </div>
 </div>
 
@@ -25,7 +25,7 @@
       </div>
     </div>
 
-    <input class="form-control" id="lockLink2" [value]="lockSession?.getTotalControlLink()" [disabled]="true">
+    <input class="form-control" id="lockLink2" [value]="getTotalControlLink()" [disabled]="true">
   </div>
 </div>
 

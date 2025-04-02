@@ -3,6 +3,7 @@ import {ActivatedRoute, Router} from '@angular/router';
 import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
 import {UserDataService} from '../user-data.service';
 import {LockSession} from '../models/lock-session';
+import {ConfigService} from '../config.service';
 
 @Component({
   selector: 'app-lock-start',
@@ -19,7 +20,8 @@ export class LockStartComponent implements OnInit {
   constructor(private activatedRoute: ActivatedRoute,
               private router: Router,
               private tartarusCoordinatorService: TartarusCoordinatorService,
-              private userDataService: UserDataService,) {
+              private userDataService: UserDataService,
+              private configService: ConfigService,) {
     this.activatedRoute.queryParamMap.subscribe(params => {
       this.session = params.get('session');
       this.publicKey = params.get('public');
@@ -35,5 +37,15 @@ export class LockStartComponent implements OnInit {
 
   showTechnicalDetails() {
     this.showDetails = true;
+  }
+
+  getShareLink(): string {
+    const baseUrl = this.configService.getConfig().url;
+    return `${baseUrl}/lock-sessions/${this.lockSession!.shareToken}`;
+  }
+
+  getTotalControlLink(): string {
+    const baseUrl = this.configService.getConfig().url;
+    return `${baseUrl}/lock-sessions/${this.lockSession!.totalControlToken}`;
   }
 }

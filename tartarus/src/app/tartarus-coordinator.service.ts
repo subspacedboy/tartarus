@@ -5,23 +5,25 @@ import * as base32 from 'hi-base32';
 import {LockSession} from './models/lock-session';
 import {AuthorSession} from './models/author-session';
 import {Contract} from './models/contract';
+import {ConfigService} from './config.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class TartarusCoordinatorService {
+  private readonly baseUrl;
 
-  constructor(private http: HttpClient) {
+  constructor(private http: HttpClient, private configService: ConfigService) {
+    this.baseUrl = String(this.configService.getConfig().apiUrl);
   }
 
   public saveKeyRecord(public_key: string) : Observable<boolean> {
-    const save_key_uri = 'http://localhost:5002/keys';
+    const save_key_uri = `${this.baseUrl}/keys`;
     const body = JSON.stringify({
       'public_key' : public_key
     });
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
     return this.http.post(save_key_uri, body, {headers} ).pipe(map((res:any) => {
-      // let t = new Ticket(res);
       return true;
     }),  catchError(error => {
       return this.handleError(error);
@@ -29,7 +31,7 @@ export class TartarusCoordinatorService {
   }
 
   public getLockSession(sessionToken: string) : Observable<LockSession> {
-    const get_lock_session_uri = `http://localhost:5002/lock_sessions/${sessionToken}`;
+    const get_lock_session_uri = `${this.baseUrl}/lock_sessions/${sessionToken}`;
     return this.http.get(get_lock_session_uri, {
     }).pipe(map((res:any) => {
       return new LockSession(res);
@@ -39,7 +41,7 @@ export class TartarusCoordinatorService {
   }
 
   public getMyLockSession(sessionToken: string) : Observable<LockSession> {
-    const get_my_lock_session_uri = `http://localhost:5002/lock_sessions/mine/${sessionToken}`;
+    const get_my_lock_session_uri = `${this.baseUrl}/lock_sessions/mine/${sessionToken}`;
     return this.http.get(get_my_lock_session_uri, {
     }).pipe(map((res:any) => {
       return new LockSession(res);
@@ -49,7 +51,7 @@ export class TartarusCoordinatorService {
   }
 
   public createAuthorSession(public_key: string, session_token: string, signature : string): Observable<AuthorSession> {
-    const save_key_uri = 'http://localhost:5002/author_sessions/';
+    const save_key_uri = `${this.baseUrl}/author_sessions/`;
     const body = JSON.stringify({
       'publicKey' : public_key,
       'sessionToken': session_token,
@@ -64,7 +66,7 @@ export class TartarusCoordinatorService {
   }
 
   public saveLockPubKeyAndSession(public_key: string, session: string) : Observable<LockSession> {
-    const save_key_uri = 'http://localhost:5002/lock_sessions/';
+    const save_key_uri = `${this.baseUrl}/lock_sessions/`;
     const body = JSON.stringify({
       'publicKey' : public_key,
       'sessionToken' : session
@@ -78,7 +80,7 @@ export class TartarusCoordinatorService {
   }
 
   public saveContract(authorName: string, shareableToken: string, signed_message: Uint8Array) : Observable<boolean> {
-    const save_contract_uri = `http://localhost:5002/contracts/`;
+    const save_contract_uri = `${this.baseUrl}/contracts/`;
     const body = JSON.stringify({
       'shareableToken' : shareableToken,
       'authorName' : authorName,
@@ -94,12 +96,9 @@ export class TartarusCoordinatorService {
   }
 
   public getContractsForShareable(shareableToken: string) : Observable<Contract[]> {
-    const get_contracts_uri = `http://localhost:5002/contracts/byShareable/${shareableToken}`;
+    const get_contracts_uri = `${this.baseUrl}/contracts/byShareable/${shareableToken}`;
     return this.http.get(get_contracts_uri, {
     }).pipe(map((res:any) => {
-      // const contracts : Contract[] = res['contracts'].map((datum: any) => {
-      //   return new Contract(datum);
-      // });
       const contracts : Contract[] = res.map((datum: any) => {
         return new Contract(datum);
       });
@@ -111,7 +110,7 @@ export class TartarusCoordinatorService {
   }
 
   public getContractByName(name: string) : Observable<Contract> {
-    const get_contracts_uri = `http://localhost:5002/contracts/${name}`;
+    const get_contracts_uri = `${this.baseUrl}/contracts/${name}`;
     return this.http.get(get_contracts_uri, {
     }).pipe(map((res:any) => {
       return new Contract(res);
@@ -120,8 +119,8 @@ export class TartarusCoordinatorService {
     }));
   }
 
-  public saveUnlock(contractName: string, authorName: string, shareableToken: string, signed_message: Uint8Array) : Observable<boolean> {
-    const save_command_uri = `http://localhost:5002/contracts/command`;
+  public saveCommand(contractName: string, authorName: string, shareableToken: string, signed_message: Uint8Array) : Observable<boolean> {
+    const save_command_uri = `${this.baseUrl}/contracts/command`;
     const body = JSON.stringify({
       'shareableToken' : shareableToken,
       'authorSessionName' : authorName,
@@ -130,7 +129,6 @@ export class TartarusCoordinatorService {
     });
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
     return this.http.post(save_command_uri, body, {headers} ).pipe(map((res:any) => {
-      // let t = new Ticket(res);
       return true;
     }),  catchError(error => {
       return this.handleError(error);

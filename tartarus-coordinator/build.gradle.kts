@@ -1,3 +1,7 @@
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.Instant
+
 plugins {
 	kotlin("jvm") version "1.9.25"
 	kotlin("plugin.spring") version "1.9.25"
@@ -73,9 +77,9 @@ allOpen {
 tasks.withType<Test> {
 	useJUnitPlatform()
 }
-/*
+
 tasks.getByName<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
 	val today = Instant.now().atZone(ZoneId.of("UTC"))
 	val formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmm")
 	this.archiveFileName.set("${archiveBaseName.get()}-${formatter.format(today)}.${archiveExtension.get()}")
-}*/
+}

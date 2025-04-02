@@ -39,7 +39,7 @@ export class ContractDetailComponent implements OnInit {
   unlock() {
     const authorName = this.userDataService.getAuthorName();
     this.makeUnlockMessage().then(unlockSignedMessage => {
-      this.tartarusCoordinatorService.saveUnlock(this.contractName, authorName, this.lockSessionShareableToken!, unlockSignedMessage).subscribe(r => {
+      this.tartarusCoordinatorService.saveCommand(this.contractName, authorName, this.lockSessionShareableToken!, unlockSignedMessage).subscribe(r => {
         console.log("Unlock code saved");
       });
     });
@@ -48,7 +48,7 @@ export class ContractDetailComponent implements OnInit {
   lock() {
     const authorName = this.userDataService.getAuthorName();
     this.makeLockMessage().then(lockSignedMessage => {
-      this.tartarusCoordinatorService.saveUnlock(this.contractName, authorName, this.lockSessionShareableToken!, lockSignedMessage).subscribe(r => {
+      this.tartarusCoordinatorService.saveCommand(this.contractName, authorName, this.lockSessionShareableToken!, lockSignedMessage).subscribe(r => {
         console.log("Lock code saved");
       });
     });
@@ -57,7 +57,7 @@ export class ContractDetailComponent implements OnInit {
   release() {
     const authorName = this.userDataService.getAuthorName();
     this.makeReleaseMessage().then(releaseSignedMessage => {
-      this.tartarusCoordinatorService.saveUnlock(this.contractName, authorName, this.lockSessionShareableToken!, releaseSignedMessage).subscribe(r => {
+      this.tartarusCoordinatorService.saveCommand(this.contractName, authorName, this.lockSessionShareableToken!, releaseSignedMessage).subscribe(r => {
         console.log("Release code saved");
       });
     });
