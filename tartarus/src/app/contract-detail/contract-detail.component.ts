@@ -11,10 +11,15 @@ import {MessagePayload} from '../club/subjugated/fb/message/message-payload';
 import {LockCommand} from '../club/subjugated/fb/message/lock-command';
 import {ReleaseCommand} from '../club/subjugated/fb/message/release-command';
 import {WebsocketService} from '../websocket.service';
+import {Command} from '../models/command';
+import {CommandCardComponent} from '../command-card/command-card.component';
+import {ToastService} from '../toast.service';
 
 @Component({
   selector: 'app-contract-detail',
-  imports: [],
+  imports: [
+    CommandCardComponent
+  ],
   templateUrl: './contract-detail.component.html',
   styleUrl: './contract-detail.component.scss'
 })
@@ -23,19 +28,21 @@ export class ContractDetailComponent implements OnInit {
   contract?: Contract;
   lockSessionShareableToken? : string;
 
+  commands : Command[];
+
   constructor(private tartarusCoordinatorService: TartarusCoordinatorService,
               private activatedRoute: ActivatedRoute,
               private userDataService: UserDataService,
               private cryptoService: CryptoService,
-              private websocketService: WebsocketService,) {
+              private websocketService: WebsocketService,
+              private toastService: ToastService,) {
     this.contractName = String(this.activatedRoute.snapshot.paramMap.get('contractName'));
     this.lockSessionShareableToken = String(this.activatedRoute.snapshot.paramMap.get('sessionToken'));
+    this.commands = [];
   }
 
   ngOnInit() {
-    this.tartarusCoordinatorService.getContractByNameForAuthor(this.contractName).subscribe(contract => {
-      this.contract = contract;
-    });
+    this.refreshData();
 
     this.websocketService.onMessage().subscribe({
       next: (message) => this.handleMessage(message),
@@ -43,11 +50,24 @@ export class ContractDetailComponent implements OnInit {
     });
   }
 
-  handleMessage(message: string) {
-    console.log("Specific contract subscription -> Message: "+ message);
+  refreshData()  {
     this.tartarusCoordinatorService.getContractByNameForAuthor(this.contractName).subscribe(contract => {
       this.contract = contract;
+
+      this.tartarusCoordinatorService.getCommandsForContractForAuthor(this.contractName).subscribe(commands => {
+        this.commands = commands;
+      })
     });
+  }
+
+  handleMessage(message: string) {
+    console.log("Specific contract subscription -> Message: "+ message);
+    this.refreshData();
+  }
+
+  bumpCounter() {
+    this.contract!.nextCounter! += 10;
+    this.toastService.showSuccess("Counter bumped by 10");
   }
 
   unlock() {

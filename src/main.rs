@@ -3,6 +3,7 @@ mod boot_screen;
 mod config_verifier;
 mod configuration_generated;
 mod contract_generated;
+mod fb_helper;
 mod internal_config;
 mod internal_contract;
 mod lock_ctx;

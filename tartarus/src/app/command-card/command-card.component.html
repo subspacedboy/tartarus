@@ -1,0 +1,34 @@
+@if (command) {
+  @switch (command.state) {
+    @case('PENDING') {
+      <div class="card mb-3 text-white bg-success" style="max-width: 20rem;">
+        <div class="card-header">{{ command.type }}</div>
+        <div class="card-body">
+          <h4 class="card-title">⏳Pending</h4>
+<!--          <p class="card-text"><a routerLink="{{basePath}}contract/{{contract.name}}">Details</a></p>-->
+        </div>
+      </div>
+    }
+    @case('ACKNOWLEDGED') {
+      <div class="card mb-3 bg-light" style="max-width: 20rem;">
+        <div class="card-header">{{ command.type }}</div>
+        <div class="card-body">
+          <h4 class="card-title">✅ Acknowledged</h4>
+          <p class="card-text">Confirmed at {{command.updatedAt | date : 'short' }}</p>
+        </div>
+      </div>
+    }
+    @case ('ERROR') {
+      <div class="card mb-3 text-white bg-primary" style="max-width: 20rem;">
+        <div class="card-header">{{ command.type }}</div>
+        <div class="card-body">
+          <h4 class="card-title">🥺 Error</h4>
+          <p class="card-text">
+            Message: {{command.message}}
+            Confirmed at {{command.updatedAt | date : 'short' }}
+          </p>
+        </div>
+      </div>
+    }
+  }
+}

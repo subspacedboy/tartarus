@@ -13,16 +13,22 @@ import {EndCondition} from '../club/subjugated/fb/message/end-condition';
 import {TimeEndCondition} from '../club/subjugated/fb/message/time-end-condition';
 import {WhenISaySo} from '../club/subjugated/fb/message/when-isay-so';
 import {WebsocketService} from '../websocket.service';
+import {Command} from '../models/command';
+import {CommandCardComponent} from '../command-card/command-card.component';
 
 @Component({
   selector: 'app-lock-user-contract-detail',
-  imports: [],
+  imports: [
+    CommandCardComponent
+  ],
   templateUrl: './lock-user-contract-detail.component.html',
   styleUrl: './lock-user-contract-detail.component.scss'
 })
 export class LockUserContractDetailComponent implements OnInit {
   contractName: string;
   contract?: Contract;
+
+  commands: Command[];
 
   contractDescription?: ContractDescription;
 
@@ -32,6 +38,7 @@ export class LockUserContractDetailComponent implements OnInit {
               private cryptoService: CryptoService,
               private websocketService: WebsocketService) {
 
+    this.commands = [];
     this.contractName = String(this.activatedRoute.snapshot.paramMap.get('contractName'));
 
     this.websocketService.onMessage().subscribe({
@@ -41,17 +48,23 @@ export class LockUserContractDetailComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.refreshData()
+  }
+
+  refreshData() {
     this.tartarusCoordinatorService.getContractByNameForLockUser(this.contractName).subscribe(contract => {
       this.contract = contract;
       this.parseContract();
+
+      this.tartarusCoordinatorService.getCommandsForContractForLockUser(this.contractName).subscribe(commands => {
+        this.commands = commands;
+      })
     });
   }
 
   handleMessage(message : string) {
     console.log("Specific contract subscription -> Message: "+ message);
-    this.tartarusCoordinatorService.getContractByNameForLockUser(this.contractName).subscribe(contract => {
-      this.contract = contract;
-    });
+    this.refreshData();
   }
 
   approve() {

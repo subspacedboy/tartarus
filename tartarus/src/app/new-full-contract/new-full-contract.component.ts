@@ -10,7 +10,7 @@ import {EndCondition} from '../club/subjugated/fb/message/end-condition';
 import {WhenISaySo} from '../club/subjugated/fb/message/when-isay-so';
 import {Contract} from '../club/subjugated/fb/message/contract';
 import {UserDataService} from '../user-data.service';
-import {ActivatedRoute} from '@angular/router';
+import {ActivatedRoute, Router} from '@angular/router';
 import {LockSession} from '../models/lock-session';
 import * as QRCode from 'qrcode';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule} from '@angular/forms';
@@ -40,7 +40,8 @@ export class NewFullContractComponent implements OnInit {
               private userDataService: UserDataService,
               private activatedRoute: ActivatedRoute,
               private fb: FormBuilder,
-              private toastService: ToastService) {
+              private toastService: ToastService,
+              private router: Router,) {
     this.lockSessionToken = String(this.activatedRoute.snapshot.paramMap.get('sessionToken'));
 
     this.contractForm = this.fb.group({
@@ -84,7 +85,7 @@ export class NewFullContractComponent implements OnInit {
     Contract.startContract(builder);
     Contract.addSerialNumber(builder, serialNumber);
     Contract.addPublicKey(builder, publicKeyOffset);
-    Contract.addIsTemporaryUnlockAllowed(builder, false);
+    Contract.addIsTemporaryUnlockAllowed(builder, this.contractForm.get('isTempUnlockAllowed')!.value!);
     Contract.addEndCondition(builder, whenISaySoOffset);
     Contract.addEndConditionType(builder, EndCondition.WhenISaySo);
     //Contractact.addSession(builder, sessionOffset);
@@ -127,6 +128,7 @@ export class NewFullContractComponent implements OnInit {
 
     this.tartarusCoordinatorService.saveContract(this.userDataService.getAuthorName(), this.lockSessionToken, builder.asUint8Array()).subscribe(r => {
       this.toastService.showSuccess("Saved");
+      this.router.navigate(['lock-sessions',this.lockSessionToken, 'contract', r.name]);
     })
 
     return builder.asUint8Array();

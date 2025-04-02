@@ -32,6 +32,28 @@
         }
 
       </div>
+
+      @if(commands.length > 0) {
+        <hr>
+        <h3>Commands</h3>
+
+        <div class="bs-component">
+          @for(c of commands; track c.name) {
+            <app-command-card [command]="c"></app-command-card>
+          }
+        </div>
+      }
+
+      <hr>
+      <h3>Advanced Stuff</h3>
+      <div class="d-grid gap-2">
+        <p>
+          Sometimes it's possible for the lock and the coordinator to desynchronize on command counter order. If you see
+          errors about counter numbers being too low then use this.
+        </p>
+        <button type="button" class="btn btn-large btn-danger" (click)="bumpCounter()">Bump command counter</button>
+      </div>
+
     </div>
   </div>
 }

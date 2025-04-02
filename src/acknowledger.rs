@@ -2,6 +2,7 @@ use crate::contract_generated::club::subjugated::fb::message::{
     Acknowledgement, AcknowledgementArgs, Error, ErrorArgs, MessagePayload, SignedMessage,
     SignedMessageArgs,
 };
+use crate::fb_helper::calculate_signature;
 use crate::verifier::{VerificationError, VerifiedType};
 use flatbuffers::FlatBufferBuilder;
 use p256::ecdsa::signature::Signer;
@@ -46,24 +47,10 @@ impl Acknowledger {
             },
         );
 
-        // let _payload_type = MessagePayload::Acknowledgement; // Union type
-        // let _payload_value = ack.as_union_value();
-
         builder.finish(ack, None);
         let buffer = builder.finished_data();
 
-        let table_offset = buffer[0] as usize;
-        let vtable_offset = buffer[table_offset] as usize;
-        let actual_start = table_offset - vtable_offset;
-
-        // log::info!(
-        //     "Update buffer w/ vtable ({},{}): {:?}",
-        //     vtable_offset,
-        //     table_offset,
-        //     buffer
-        // );
-        let hash = Sha256::digest(&buffer[actual_start..]);
-        // log::info!("Hash {:?}", hash);
+        let signature = calculate_signature(buffer, signing_key);
 
         // // UGH. We have to build the whole message over again because of the way
         // // Rust implements flatbuffers.
@@ -86,9 +73,7 @@ impl Acknowledger {
         let payload_type = MessagePayload::Acknowledgement; // Union type
         let payload_value = ack.as_union_value();
 
-        let signature: Signature = signing_key.sign(&hash.as_slice());
         let sig_bytes = signature.to_bytes();
-
         let signature_offset = builder.create_vector(sig_bytes.as_slice());
         let signed_message = SignedMessage::create(
             &mut builder,
@@ -137,24 +122,10 @@ impl Acknowledger {
             },
         );
 
-        // let _payload_type = MessagePayload::Acknowledgement; // Union type
-        // let _payload_value = ack.as_union_value();
-
         builder.finish(error_message, None);
         let buffer = builder.finished_data();
 
-        let table_offset = buffer[0] as usize;
-        let vtable_offset = buffer[table_offset] as usize;
-        let actual_start = table_offset - vtable_offset;
-
-        // log::info!(
-        //     "Update buffer w/ vtable ({},{}): {:?}",
-        //     vtable_offset,
-        //     table_offset,
-        //     buffer
-        // );
-        let hash = Sha256::digest(&buffer[actual_start..]);
-        // log::info!("Hash {:?}", hash);
+        let signature = calculate_signature(buffer, signing_key);
 
         // // UGH. We have to build the whole message over again because of the way
         // // Rust implements flatbuffers.
@@ -178,9 +149,7 @@ impl Acknowledger {
         let payload_type = MessagePayload::Error; // Union type
         let payload_value = error_message.as_union_value();
 
-        let signature: Signature = signing_key.sign(&hash.as_slice());
         let sig_bytes = signature.to_bytes();
-
         let signature_offset = builder.create_vector(sig_bytes.as_slice());
         let signed_message = SignedMessage::create(
             &mut builder,
@@ -219,27 +188,11 @@ impl Acknowledger {
             },
         );
 
-        // let _payload_type = MessagePayload::Acknowledgement; // Union type
-        // let _payload_value = ack.as_union_value();
-
         builder.finish(error_message, None);
         let buffer = builder.finished_data();
 
-        let table_offset = buffer[0] as usize;
-        let vtable_offset = buffer[table_offset] as usize;
-        let actual_start = table_offset - vtable_offset;
+        let signature = calculate_signature(buffer, signing_key);
 
-        // log::info!(
-        //     "Update buffer w/ vtable ({},{}): {:?}",
-        //     vtable_offset,
-        //     table_offset,
-        //     buffer
-        // );
-        let hash = Sha256::digest(&buffer[actual_start..]);
-        // log::info!("Hash {:?}", hash);
-
-        // // UGH. We have to build the whole message over again because of the way
-        // // Rust implements flatbuffers.
         let mut builder = FlatBufferBuilder::with_capacity(1024);
 
         let public_key_bytes: Vec<u8> = public_key.to_sec1_bytes().to_vec();
@@ -260,9 +213,7 @@ impl Acknowledger {
         let payload_type = MessagePayload::Error; // Union type
         let payload_value = error_message.as_union_value();
 
-        let signature: Signature = signing_key.sign(&hash.as_slice());
         let sig_bytes = signature.to_bytes();
-
         let signature_offset = builder.create_vector(sig_bytes.as_slice());
         let signed_message = SignedMessage::create(
             &mut builder,

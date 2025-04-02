@@ -1386,6 +1386,8 @@ pub mod club {
                     pub const VT_SESSION: flatbuffers::VOffsetT = 4;
                     pub const VT_IS_LOCKED: flatbuffers::VOffsetT = 6;
                     pub const VT_CURRENT_CONTRACT_SERIAL: flatbuffers::VOffsetT = 8;
+                    pub const VT_LOCAL_UNLOCK: flatbuffers::VOffsetT = 10;
+                    pub const VT_LOCAL_LOCK: flatbuffers::VOffsetT = 12;
 
                     #[inline]
                     pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -1406,6 +1408,8 @@ pub mod club {
                             builder.add_session(x);
                         }
                         builder.add_current_contract_serial(args.current_contract_serial);
+                        builder.add_local_lock(args.local_lock);
+                        builder.add_local_unlock(args.local_unlock);
                         builder.add_is_locked(args.is_locked);
                         builder.finish()
                     }
@@ -1444,6 +1448,28 @@ pub mod club {
                                 .unwrap()
                         }
                     }
+                    #[inline]
+                    pub fn local_unlock(&self) -> bool {
+                        // Safety:
+                        // Created from valid Table for this object
+                        // which contains a valid value in this slot
+                        unsafe {
+                            self._tab
+                                .get::<bool>(PeriodicUpdate::VT_LOCAL_UNLOCK, Some(false))
+                                .unwrap()
+                        }
+                    }
+                    #[inline]
+                    pub fn local_lock(&self) -> bool {
+                        // Safety:
+                        // Created from valid Table for this object
+                        // which contains a valid value in this slot
+                        unsafe {
+                            self._tab
+                                .get::<bool>(PeriodicUpdate::VT_LOCAL_LOCK, Some(false))
+                                .unwrap()
+                        }
+                    }
                 }
 
                 impl flatbuffers::Verifiable for PeriodicUpdate<'_> {
@@ -1465,6 +1491,8 @@ pub mod club {
                                 Self::VT_CURRENT_CONTRACT_SERIAL,
                                 false,
                             )?
+                            .visit_field::<bool>("local_unlock", Self::VT_LOCAL_UNLOCK, false)?
+                            .visit_field::<bool>("local_lock", Self::VT_LOCAL_LOCK, false)?
                             .finish();
                         Ok(())
                     }
@@ -1473,6 +1501,8 @@ pub mod club {
                     pub session: Option<flatbuffers::WIPOffset<&'a str>>,
                     pub is_locked: bool,
                     pub current_contract_serial: u16,
+                    pub local_unlock: bool,
+                    pub local_lock: bool,
                 }
                 impl<'a> Default for PeriodicUpdateArgs<'a> {
                     #[inline]
@@ -1481,6 +1511,8 @@ pub mod club {
                             session: None,
                             is_locked: false,
                             current_contract_serial: 0,
+                            local_unlock: false,
+                            local_lock: false,
                         }
                     }
                 }
@@ -1511,6 +1543,22 @@ pub mod club {
                         );
                     }
                     #[inline]
+                    pub fn add_local_unlock(&mut self, local_unlock: bool) {
+                        self.fbb_.push_slot::<bool>(
+                            PeriodicUpdate::VT_LOCAL_UNLOCK,
+                            local_unlock,
+                            false,
+                        );
+                    }
+                    #[inline]
+                    pub fn add_local_lock(&mut self, local_lock: bool) {
+                        self.fbb_.push_slot::<bool>(
+                            PeriodicUpdate::VT_LOCAL_LOCK,
+                            local_lock,
+                            false,
+                        );
+                    }
+                    #[inline]
                     pub fn new(
                         _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
                     ) -> PeriodicUpdateBuilder<'a, 'b, A> {
@@ -1533,6 +1581,8 @@ pub mod club {
                         ds.field("session", &self.session());
                         ds.field("is_locked", &self.is_locked());
                         ds.field("current_contract_serial", &self.current_contract_serial());
+                        ds.field("local_unlock", &self.local_unlock());
+                        ds.field("local_lock", &self.local_lock());
                         ds.finish()
                     }
                 }

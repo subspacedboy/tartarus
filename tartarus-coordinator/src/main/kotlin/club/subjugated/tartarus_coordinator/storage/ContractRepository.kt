@@ -12,5 +12,5 @@ interface ContractRepository : JpaRepository<Contract, Long> {
     fun findByName(name: String): Contract
 
     fun findByLockSessionIdOrderByCreatedAtDesc(lockSessionId: Long): List<Contract>
-    fun findByLockSessionIdAndStateOrderByCreatedAtDesc(lockSessionId: Long, state: ContractState): List<Contract>
+    fun findByLockSessionIdAndStateInOrderByCreatedAtDesc(lockSessionId: Long, states: List<ContractState>): List<Contract>
 }

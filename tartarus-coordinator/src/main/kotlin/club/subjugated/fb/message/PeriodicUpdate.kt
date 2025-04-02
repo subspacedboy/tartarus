@@ -49,6 +49,16 @@ class PeriodicUpdate : Table() {
             val o = __offset(8)
             return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
         }
+    val localUnlock : Boolean
+        get() {
+            val o = __offset(10)
+            return if(o != 0) 0.toByte() != bb.get(o + bb_pos) else false
+        }
+    val localLock : Boolean
+        get() {
+            val o = __offset(12)
+            return if(o != 0) 0.toByte() != bb.get(o + bb_pos) else false
+        }
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsPeriodicUpdate(_bb: ByteBuffer): PeriodicUpdate = getRootAsPeriodicUpdate(_bb, PeriodicUpdate())
@@ -56,17 +66,21 @@ class PeriodicUpdate : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createPeriodicUpdate(builder: FlatBufferBuilder, sessionOffset: Int, isLocked: Boolean, currentContractSerial: UShort) : Int {
-            builder.startTable(3)
+        fun createPeriodicUpdate(builder: FlatBufferBuilder, sessionOffset: Int, isLocked: Boolean, currentContractSerial: UShort, localUnlock: Boolean, localLock: Boolean) : Int {
+            builder.startTable(5)
             addSession(builder, sessionOffset)
             addCurrentContractSerial(builder, currentContractSerial)
+            addLocalLock(builder, localLock)
+            addLocalUnlock(builder, localUnlock)
             addIsLocked(builder, isLocked)
             return endPeriodicUpdate(builder)
         }
-        fun startPeriodicUpdate(builder: FlatBufferBuilder) = builder.startTable(3)
+        fun startPeriodicUpdate(builder: FlatBufferBuilder) = builder.startTable(5)
         fun addSession(builder: FlatBufferBuilder, session: Int) = builder.addOffset(0, session, 0)
         fun addIsLocked(builder: FlatBufferBuilder, isLocked: Boolean) = builder.addBoolean(1, isLocked, false)
         fun addCurrentContractSerial(builder: FlatBufferBuilder, currentContractSerial: UShort) = builder.addShort(2, currentContractSerial.toShort(), 0)
+        fun addLocalUnlock(builder: FlatBufferBuilder, localUnlock: Boolean) = builder.addBoolean(3, localUnlock, false)
+        fun addLocalLock(builder: FlatBufferBuilder, localLock: Boolean) = builder.addBoolean(4, localLock, false)
         fun endPeriodicUpdate(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o

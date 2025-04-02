@@ -2,8 +2,10 @@ package club.subjugated.tartarus_coordinator.services
 
 import club.subjugated.fb.message.Acknowledgement
 import club.subjugated.tartarus_coordinator.events.AcknowledgedCommandEvent
+import club.subjugated.tartarus_coordinator.models.AuthorSession
 import club.subjugated.tartarus_coordinator.models.Command
 import club.subjugated.tartarus_coordinator.models.CommandState
+import club.subjugated.tartarus_coordinator.models.Contract
 import club.subjugated.tartarus_coordinator.models.LockSession
 import club.subjugated.tartarus_coordinator.storage.CommandQueueRepository
 import club.subjugated.tartarus_coordinator.storage.CommandRepository
@@ -49,5 +51,13 @@ class CommandQueueService {
             commandQueueId,
             serialNumber,
         )
+    }
+
+    fun getByAuthorSessionIdAndContract(authorSession: AuthorSession, contract : Contract) : List<Command> {
+        return this.commandRepository.findByAuthorSessionIdAndContractIdOrderByCounterDesc(authorSession.id, contract.id)
+    }
+
+    fun getByLockSessionIdAndContract(contract : Contract) : List<Command> {
+        return this.commandRepository.findByContractIdOrderByCounterDesc(contract.id)
     }
 }

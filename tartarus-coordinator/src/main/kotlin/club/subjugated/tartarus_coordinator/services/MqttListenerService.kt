@@ -99,7 +99,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                         }
                     } catch (ex: Exception) {
                         println("Encountered exception in processing MQTT")
-                        println(ex)
+                        ex.printStackTrace()
                         status.setRollbackOnly()
                     }
                 }
@@ -128,7 +128,6 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
         val lockSession = lockSessionService.createLockSession(nlsm)
         lockSessionService.saveLockSession(lockSession)
 
-        // todo - get pending commands, send them
         val commands =
             this.commandQueueService.getPendingCommandsForSession(
                 lockSession
@@ -150,7 +149,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
     private fun handlePeriodicUpdate(signedMessage: ValidatedPayload.PeriodicUpdatePayload) {
         val update = signedMessage.periodicUpdate
 
-        println("👀 Periodic update from ${update.session} -> Locked? ${update.isLocked}")
+        println("👀 Periodic update from ${update.session} -> Locked? ${update.isLocked}, Local Lock -> ${update.localLock}, Local Unlock -> ${update.localUnlock}")
     }
 
     private fun handleAcknowledgePayload(signedMessage: ValidatedPayload.AcknowledgementPayload) {

@@ -9,6 +9,7 @@ import {ConfigService} from './config.service';
 import {AppConfig} from './models/app-config';
 import {KnownToken} from './models/known-token';
 import {ToastService} from './toast.service';
+import {Command} from './models/command';
 
 @Injectable({
   providedIn: 'root'
@@ -126,7 +127,7 @@ export class TartarusCoordinatorService {
 
   // Contracts & Commands
 
-  public saveContract(authorName: string, shareableToken: string, signed_message: Uint8Array) : Observable<boolean> {
+  public saveContract(authorName: string, shareableToken: string, signed_message: Uint8Array) : Observable<Contract> {
     const save_contract_uri = `${this.baseUrl}/contracts/`;
     const body = JSON.stringify({
       'shareableToken' : shareableToken,
@@ -136,7 +137,7 @@ export class TartarusCoordinatorService {
     const headers = new HttpHeaders({ 'Content-Type': 'application/json', 'X-Require-Author' : 'require authorization tokens' });
     return this.http.post(save_contract_uri, body, {headers} ).pipe(map((res:any) => {
       // let t = new Ticket(res);
-      return true;
+      return new Contract(res);
     }),  catchError(error => {
       return this.handleError(error);
     }));
@@ -260,6 +261,36 @@ export class TartarusCoordinatorService {
     return this.http.post(reject_uri, body, {headers} ).pipe(map((res:any) => {
       return new Contract(res);
     }),  catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public getCommandsForContractForAuthor(contractName: string) : Observable<Command[]> {
+    const get_contracts_uri = `${this.baseUrl}/contracts/${contractName}/commands/forAuthor`;
+    return this.http.get(get_contracts_uri, {
+      headers: new HttpHeaders({ 'X-Require-Author': 'requires authorization tokens' }),
+    }).pipe(map((res:any) => {
+      const commands : Command[] = res.map((datum: any) => {
+        return new Command(datum);
+      });
+
+      return commands;
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public getCommandsForContractForLockUser(contractName: string) : Observable<Command[]> {
+    const get_contracts_uri = `${this.baseUrl}/contracts/${contractName}/commands/forLockUser`;
+    return this.http.get(get_contracts_uri, {
+      headers: new HttpHeaders({ 'X-Require-LockUser': 'requires authorization tokens' }),
+    }).pipe(map((res:any) => {
+      const commands : Command[] = res.map((datum: any) => {
+        return new Command(datum);
+      });
+
+      return commands;
+    }), catchError(error => {
       return this.handleError(error);
     }));
   }

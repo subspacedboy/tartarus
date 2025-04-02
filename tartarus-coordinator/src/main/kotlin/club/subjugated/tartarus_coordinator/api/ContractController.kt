@@ -63,7 +63,7 @@ class ContractController {
         @AuthenticationPrincipal lockUser: UserDetails,
     ): ResponseEntity<List<ContractMessage>> {
         val lockUserSession = lockUserSessionService.findByName(lockUser.username)
-        val contracts = this.contractService.findByLockSessionIdAndState(lockUserSession.lockSession, ContractState.CREATED)
+        val contracts = this.contractService.findByLockSessionIdAndState(lockUserSession.lockSession, listOf(ContractState.CREATED))
         return ResponseEntity.ok(contracts.map { ContractMessage.fromContract(it) })
     }
 
@@ -73,7 +73,7 @@ class ContractController {
         @AuthenticationPrincipal lockUser: UserDetails,
     ): ResponseEntity<List<ContractMessage>> {
         val lockUserSession = lockUserSessionService.findByName(lockUser.username)
-        val contracts = this.contractService.findByLockSessionIdAndState(lockUserSession.lockSession, ContractState.CREATED)
+        val contracts = this.contractService.findByLockSessionId(lockUserSession.lockSession)
         return ResponseEntity.ok(contracts.map { ContractMessage.fromContract(it) })
     }
 

@@ -55,6 +55,9 @@ table PeriodicUpdate {
   session: string;
   is_locked: bool;
   current_contract_serial: ushort;
+
+  local_unlock: bool;
+  local_lock: bool;
 }
 
 table Acknowledgement {

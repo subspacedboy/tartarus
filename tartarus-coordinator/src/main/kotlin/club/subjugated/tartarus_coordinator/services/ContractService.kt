@@ -125,8 +125,8 @@ class ContractService {
         return contractRepository.findByLockSessionIdOrderByCreatedAtDesc(lockSession.id)
     }
 
-    fun findByLockSessionIdAndState(lockSession: LockSession, state: ContractState) : List<Contract> {
-        return contractRepository.findByLockSessionIdAndStateOrderByCreatedAtDesc(lockSession.id, state)
+    fun findByLockSessionIdAndState(lockSession: LockSession, state: List<ContractState>) : List<Contract> {
+        return contractRepository.findByLockSessionIdAndStateInOrderByCreatedAtDesc(lockSession.id, state)
     }
 
     fun saveCommand(

@@ -5,6 +5,7 @@ use crate::contract_generated::club::subjugated::fb::message::{
     MessagePayload, PeriodicUpdate, PeriodicUpdateArgs, SignedMessage, SignedMessageArgs,
     StartedUpdate, StartedUpdateArgs,
 };
+use crate::fb_helper::calculate_signature;
 use crate::internal_config::InternalConfig;
 use crate::internal_contract::{InternalContract, SaveState};
 use crate::lock_ctx::TopicType::{Acknowledgments, ConfigurationData, SignedMessages};
@@ -127,7 +128,7 @@ impl LockCtx {
             log::info!("Restoring contract state.");
             lck.contract = Some(state.internal_contract);
             if state.is_locked {
-                lck.lock();
+                lck.lock_without_update();
             }
 
             // Back to UnderContract.
@@ -141,7 +142,7 @@ impl LockCtx {
         } else {
             // No state. Set as unlocked.
             log::info!("No previous state.");
-            lck.unlock();
+            lck.unlock_without_update();
 
             // Use normal boot screen since we don't have state.
             let boot_screen: Box<DynScreen<'static>> = Box::new(BootScreen::<
@@ -431,7 +432,7 @@ impl LockCtx {
                     log::info!("Sending update + rescheduling");
                     self.schedule_next_update =
                         Some(self.time_in_ticks + Duration::from_secs(60).as_millis() as u64);
-                    self.enqueue_periodic_update_message();
+                    self.enqueue_periodic_update_message(false, false);
                 }
             }
         }
@@ -504,10 +505,26 @@ impl LockCtx {
         log::info!("Locking");
         self.is_locked = true;
         self.servo.close_position();
+        self.enqueue_periodic_update_message(false, true);
+        self.dirty = true;
+    }
+
+    pub fn lock_without_update(&mut self) -> () {
+        log::info!("Locking");
+        self.is_locked = true;
+        self.servo.close_position();
         self.dirty = true;
     }
 
     pub fn unlock(&mut self) -> () {
+        log::info!("Unlocking");
+        self.is_locked = false;
+        self.servo.open_position();
+        self.enqueue_periodic_update_message(true, false);
+        self.dirty = true;
+    }
+
+    pub fn unlock_without_update(&mut self) -> () {
         log::info!("Unlocking");
         self.is_locked = false;
         self.servo.open_position();
@@ -690,14 +707,8 @@ impl LockCtx {
         self.enqueue_message(t);
     }
 
-    fn enqueue_periodic_update_message(&self) {
+    fn enqueue_periodic_update_message(&self, local_unlock: bool, local_lock: bool) {
         let mut builder = FlatBufferBuilder::with_capacity(1024);
-        // let public_key: Vec<u8> = self
-        //     .lock_public_key
-        //     .unwrap()
-        //     .to_sec1_bytes()
-        //     .as_ref()
-        //     .to_vec();
         let session = builder.create_string(&self.session_token);
 
         // let pub_key_holder = builder.create_vector(&public_key);
@@ -707,6 +718,8 @@ impl LockCtx {
                 session: Some(session),
                 is_locked: self.is_locked,
                 current_contract_serial: 0,
+                local_unlock,
+                local_lock,
             },
         );
 
@@ -716,28 +729,9 @@ impl LockCtx {
         builder.finish(periodic_update_event, None);
         let buffer = builder.finished_data();
 
-        let table_offset = buffer[0] as usize;
-        let vtable_offset = buffer[table_offset] as usize;
-        let actual_start = table_offset - vtable_offset;
+        let signature = calculate_signature(&buffer, &self.get_signing_key());
 
-        // log::info!(
-        //     "Update buffer w/ vtable ({},{}): {:?}",
-        //     vtable_offset,
-        //     table_offset,
-        //     buffer
-        // );
-        let hash = Sha256::digest(&buffer[actual_start..]);
-        // log::info!("Hash {:?}", hash);
-
-        // UGH. We have to build the whole message over again because of the way
-        // Rust implements flatbuffers.
         let mut builder = FlatBufferBuilder::with_capacity(1024);
-        // let public_key: Vec<u8> = self
-        //     .lock_public_key
-        //     .unwrap()
-        //     .to_sec1_bytes()
-        //     .as_ref()
-        //     .to_vec();
         let session = builder.create_string(&self.session_token);
 
         // let pub_key_holder = builder.create_vector(&public_key);
@@ -747,23 +741,15 @@ impl LockCtx {
                 session: Some(session),
                 is_locked: self.is_locked,
                 current_contract_serial: 0,
+                local_unlock,
+                local_lock,
             },
         );
 
         let payload_type = MessagePayload::PeriodicUpdate; // Union type
         let payload_value = periodic_update_event.as_union_value();
 
-        let secret = self.lock_secret_key.as_ref().unwrap();
-
-        let cloned_secret = secret.clone();
-        let bytes = cloned_secret.to_bytes();
-        let key_bytes = bytes.as_slice();
-        let signing_key = SigningKey::from_slice(key_bytes).unwrap();
-        let signature: Signature = signing_key.sign(&hash.as_slice());
-
-        let sig_bytes = signature.to_bytes();
-
-        let signature_offset = builder.create_vector(sig_bytes.as_slice());
+        let signature_offset = builder.create_vector(signature.to_bytes().as_slice());
         let signed_message = SignedMessage::create(
             &mut builder,
             &SignedMessageArgs {
