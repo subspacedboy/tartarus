@@ -1,3 +1,5 @@
+use esp_idf_hal::gpio::GpioError;
+use std::convert::Infallible;
 use std::io::Read;
 use sha2::Digest;
 mod contract_generated;
@@ -44,7 +46,7 @@ use esp_idf_svc::http::client::EspHttpConnection;
 
 use embedded_svc::http::client::Client as HttpClient;
 use embedded_svc::io::Write;
-
+use esp_idf_hal::sys::EspError;
 use hkdf::Hkdf;
 use p256::{PublicKey, SecretKey};
 use p256::ecdh::diffie_hellman;
@@ -54,7 +56,7 @@ use p256::ecdsa::signature::Verifier;
 use qrcode::{Color, QrCode};
 use rand_core::{CryptoRng, RngCore};
 use sha2::{digest, Sha256};
-use st7789::{Orientation, ST7789};
+use st7789::{Error, Orientation, ST7789};
 use crate::boot_screen::BootScreen;
 use crate::contract_generated::subjugated::club::{MessagePayload, SignedMessage};
 use crate::lock_state_machine::{LockStateMachine, State};
@@ -152,6 +154,11 @@ fn main() {
     let di = SPIInterface::new(spi, gpio::PinDriver::output(tft_dc).expect("Pin driver for DC to work"));
 
     let mut display: ST7789<SPIInterface<SpiDeviceDriver<SpiDriver>, PinDriver<Gpio40, Output>>, PinDriver<Gpio41, Output>, PinDriver<Gpio45, Output>> = ST7789::new(di, Some(tft_rst), Some(tft_bl), 240, 135);
+    type DynScreen<'a> = dyn ScreenState<
+        SPI = SPIInterface<SpiDeviceDriver<'a, SpiDriver<'a>>, PinDriver<'a, Gpio40, Output>>,
+        DC = PinDriver<'a, Gpio41, Output>,
+        PinE=GpioError,
+        RST=PinDriver<'a, Gpio45, Output>>;
 
     display.init(&mut delay::Ets).expect("Display to initialize");
     display.set_orientation(Orientation::Portrait).expect("To set landscape");
@@ -286,13 +293,16 @@ fn main() {
     // let mut public_key : Option<PublicKey> = None;
     let mut cipher : Option<Aes256Gcm> = None;
 
-    // let mut screen_state: Box<dyn ScreenState> = BootScreen {};
+    let mut screen_state: Box<DynScreen<'_>> = Box::new(
+        BootScreen::<
+            SPIInterface<SpiDeviceDriver<'_, SpiDriver<'_>>, PinDriver<'_, _, Output>>,
+            PinDriver<'_, _, Output>,
+            PinDriver<'_, _, Output>,
+            GpioError
+        >::new()
+    );
 
-    let mut thingy = BootScreen {};
-    // thingy.draw_screen(&mut display);
-    thingy.draw_screen(&mut display);
-
-
+    screen_state.draw_screen(&mut display);
     loop {
         if d0_button.is_low() {
             log::info!("d0 is pressed");
