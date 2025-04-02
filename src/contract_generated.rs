@@ -10,6 +10,14 @@ extern crate flatbuffers;
 use self::flatbuffers::{EndianScalar, Follow};
 
 #[allow(unused_imports, dead_code)]
+pub mod club {
+
+  use core::mem;
+  use core::cmp::Ordering;
+
+  extern crate flatbuffers;
+  use self::flatbuffers::{EndianScalar, Follow};
+#[allow(unused_imports, dead_code)]
 pub mod subjugated {
 
   use core::mem;
@@ -18,7 +26,15 @@ pub mod subjugated {
   extern crate flatbuffers;
   use self::flatbuffers::{EndianScalar, Follow};
 #[allow(unused_imports, dead_code)]
-pub mod club {
+pub mod fb {
+
+  use core::mem;
+  use core::cmp::Ordering;
+
+  extern crate flatbuffers;
+  use self::flatbuffers::{EndianScalar, Follow};
+#[allow(unused_imports, dead_code)]
+pub mod message {
 
   use core::mem;
   use core::cmp::Ordering;
@@ -1753,6 +1769,8 @@ pub fn finish_signed_message_buffer<'a, 'b, A: flatbuffers::Allocator + 'a>(
 pub fn finish_size_prefixed_signed_message_buffer<'a, 'b, A: flatbuffers::Allocator + 'a>(fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>, root: flatbuffers::WIPOffset<SignedMessage<'a>>) {
   fbb.finish_size_prefixed(root, None);
 }
-}  // pub mod club
+}  // pub mod message
+}  // pub mod fb
 }  // pub mod subjugated
+}  // pub mod club
 

@@ -1,6 +1,5 @@
 use p256::ecdsa::VerifyingKey;
-use crate::contract_generated::subjugated;
-use crate::contract_generated::subjugated::club::EndCondition;
+use crate::contract_generated::club::subjugated::fb::message::{Contract, EndCondition, PartialContract};
 
 #[derive(Debug)]
 pub struct InternalContract {
@@ -28,8 +27,8 @@ pub enum TempUnlockRules {
     TimeLimit(u16)
 }
 
-impl From<subjugated::club::Contract<'_>> for InternalContract {
-    fn from(contract: subjugated::club::Contract<'_>) -> InternalContract {
+impl From<Contract<'_>> for InternalContract {
+    fn from(contract: Contract<'_>) -> InternalContract {
         let end_condition = match contract.end_condition_type() {
             EndCondition::WhenISaySo => EndCriteria::WhenISaySo,
             EndCondition::TimeEndCondition => EndCriteria::Time,
@@ -57,8 +56,8 @@ impl From<subjugated::club::Contract<'_>> for InternalContract {
     }
 }
 
-impl From<subjugated::club::PartialContract<'_>> for InternalPartialContract {
-    fn from(contract: subjugated::club::PartialContract<'_>) -> InternalPartialContract {
+impl From<PartialContract<'_>> for InternalPartialContract {
+    fn from(contract: PartialContract<'_>) -> InternalPartialContract {
         Self {
             full_address: contract.complete_contract_address().unwrap().to_string()
         }

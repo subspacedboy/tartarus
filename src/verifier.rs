@@ -3,8 +3,7 @@ use p256::ecdsa::{Signature, VerifyingKey};
 use p256::ecdsa::signature::Verifier;
 use p256::PublicKey;
 use sha2::{Digest, Sha256};
-use crate::contract_generated::subjugated;
-use crate::contract_generated::subjugated::club::{Contract, MessagePayload, PartialContract};
+use crate::contract_generated::club::subjugated::fb::message::{Contract, MessagePayload, PartialContract};
 use crate::internal_contract::{InternalContract, InternalPartialContract};
 use crate::State;
 
@@ -26,7 +25,7 @@ impl ContractVerifier {
         let mut result_contract : Option<Contract> = None;
         let owned_data = incoming_data.clone();
 
-        match subjugated::club::root_as_signed_message(owned_data.as_slice()) {
+        match crate::contract_generated::club::subjugated::fb::message::root_as_signed_message(owned_data.as_slice()) {
             Ok(signed_msg) => {
                 log::info!("Signed message: {:?}", signed_msg);
 

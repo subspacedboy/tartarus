@@ -14,7 +14,7 @@ use esp_idf_hal::gpio::{GpioError, Output, PinDriver};
 use p256::pkcs8::LineEnding;
 use qrcode::{Color, QrCode};
 use crate::boot_screen::BootScreen;
-use crate::contract_generated::subjugated::club::EndCondition;
+use crate::contract_generated::club::subjugated::fb::message::EndCondition;
 use crate::internal_contract::EndCriteria;
 use crate::lock_ctx::LockCtx;
 use crate::prelude::prelude::{DynScreen, MySPI};
