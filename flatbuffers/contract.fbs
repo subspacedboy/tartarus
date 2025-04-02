@@ -3,28 +3,24 @@ namespace club.subjugated.fb.message;
 table Permission {
   receive_events: bool;
   can_unlock: bool;
+  can_lock: bool;
   can_release: bool;
 }
 
 table Bot {
   name: string;
+  public_key: [ubyte];
   permissions: Permission;
 }
 
 table Contract {
   serial_number: ushort;
   public_key: [ubyte];
-
   bots: [Bot];
-
   terms: string;
-
   // If true, subject can freely cycle the lock.
   is_temporary_unlock_allowed: bool;
-  // unlock_rules : TemporaryUnlockRules;
 }
-
-// enum UpdateType : byte { Undefined = 0, Started, Acknowledgement }
 
 table StartedUpdate {
     public_key: [ubyte];
@@ -91,6 +87,9 @@ union MessagePayload {
 table SignedMessage {
   signature: [ubyte];
   payload: MessagePayload;
+  // Optional: Only used when a non-default authority signs the message.
+  // For instance bots sending commands or a safety key being used.
+  authority_identifier: string;
 }
 
 root_type SignedMessage;

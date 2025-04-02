@@ -1,5 +1,7 @@
 package club.subjugated.tartarus_coordinator.services
 
+import club.subjugated.fb.bots.BotApiMessage
+import club.subjugated.tartarus_coordinator.api.bots.BotApiController
 import club.subjugated.tartarus_coordinator.api.messages.NewLockSessionMessage
 import club.subjugated.tartarus_coordinator.components.CustomMqttSecurity
 import club.subjugated.tartarus_coordinator.events.NewCommandEvent
@@ -43,12 +45,46 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
     @Autowired lateinit var configurationService: ConfigurationService
     @Autowired lateinit var contractService: ContractService
 
+    @Autowired lateinit var botApiController: BotApiController
+
     @Autowired lateinit var security: CustomMqttSecurity
 
     private val executorService = Executors.newSingleThreadExecutor()
 
+    private val botExecutorService = Executors.newSingleThreadExecutor()
+
     @PostConstruct
     fun start() {
+        botExecutorService.submit {
+            val client = MqttClient(brokerUrl, "bot_processor", null)
+            val options =
+                MqttConnectOptions().apply {
+                    isCleanSession = true
+                    userName = "internal"
+                    password = security.passAsString.toCharArray()
+                }
+
+            client.connect(options)
+            client.subscribe("coordinator/inbox") {topic, message ->
+                transactionTemplate.execute {status ->
+                    try {
+                        val apiMessage = BotApiMessage.getRootAsBotApiMessage(ByteBuffer.wrap(message.payload))
+                        println("🧫 Got Bot API message -> ${apiMessage}")
+
+                        val response = botApiController.routeRequest(apiMessage)
+
+                        client.publish("bots/inbox_api_${apiMessage.name!!}", MqttMessage(response.byteBuffer.array()))
+                    } catch (ex : Exception) {
+                        println("Encountered exception in processing BOT MQTT")
+                        ex.printStackTrace()
+                        status.setRollbackOnly()
+                    }
+
+                }
+            }
+        } // submit
+
+
         executorService.submit {
             val options =
                 MqttConnectOptions().apply {
@@ -58,6 +94,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                 }
 
             client.connect(options)
+
             client.subscribe(topic) { topic, message ->
                 transactionTemplate.execute { status ->
                     try {

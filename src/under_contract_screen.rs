@@ -55,11 +55,11 @@ where
         if let Some(update) = &lock_ctx.this_update {
             if update.d1_pressed && contract.temporary_unlock_allowed {
                 if lock_ctx.is_locked() {
-                    lock_ctx.unlock();
+                    lock_ctx.local_unlock();
                     self.text = "Unlocked".to_string();
                     self.needs_redraw = true;
                 } else {
-                    lock_ctx.lock();
+                    lock_ctx.local_lock();
                     self.text = "Locked :-)".to_string();
                     self.needs_redraw = true;
                 }

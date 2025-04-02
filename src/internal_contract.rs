@@ -24,6 +24,8 @@ pub struct InternalContract {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InternalBot {
     pub(crate) name: String,
+    #[serde(with = "verifying_key_serde")]
+    pub public_key: Option<VerifyingKey>,
     permission: InternalPermission,
 }
 
@@ -135,11 +137,15 @@ impl From<Bot<'_>> for InternalBot {
             None
         };
 
+        let verifying_key = VerifyingKey::from_sec1_bytes(bot.public_key().unwrap().bytes())
+            .expect("Valid public key");
+
         Self {
             name: bot
                 .name()
                 .expect("Bot should always have a name")
                 .to_string(),
+            public_key: Some(verifying_key),
             permission: internal_permission.unwrap(),
         }
     }

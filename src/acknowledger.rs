@@ -81,6 +81,7 @@ impl Acknowledger {
                 signature: Some(signature_offset),
                 payload: Some(payload_value),
                 payload_type,
+                authority_identifier: None,
             },
         );
 
@@ -157,6 +158,7 @@ impl Acknowledger {
                 signature: Some(signature_offset),
                 payload: Some(payload_value),
                 payload_type,
+                authority_identifier: None,
             },
         );
 
@@ -221,6 +223,7 @@ impl Acknowledger {
                 signature: Some(signature_offset),
                 payload: Some(payload_value),
                 payload_type,
+                authority_identifier: None,
             },
         );
 

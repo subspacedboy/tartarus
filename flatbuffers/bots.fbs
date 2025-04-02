@@ -1,0 +1,40 @@
+namespace club.subjugated.fb.bots;
+
+table CreateContractRequest {
+    shareableToken: string;
+    contract: [ubyte];
+}
+
+table CreateContractResponse {
+
+}
+
+table GetContractRequest {
+    lock_session: string;
+    contract_serial_number: ushort;
+}
+
+table GetContractResponse {
+    next_counter: ushort;
+}
+
+table CreateCommandRequest {
+    command_body: [ubyte];
+}
+
+table CreateCommandResponse {
+
+}
+
+union MessagePayload {
+  GetContractRequest, GetContractResponse, CreateCommandRequest, CreateCommandResponse, CreateContractRequest, CreateContractResponse
+}
+
+table BotApiMessage {
+  name: string;
+  payload: MessagePayload;
+
+  request_id: long;
+}
+
+root_type BotApiMessage;

@@ -50,8 +50,15 @@ payload<T extends flatbuffers.Table>(obj:any):any|null {
   return offset ? this.bb!.__union(obj, this.bb_pos + offset) : null;
 }
 
+authorityIdentifier():string|null
+authorityIdentifier(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+authorityIdentifier(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
 static startSignedMessage(builder:flatbuffers.Builder) {
-  builder.startObject(3);
+  builder.startObject(4);
 }
 
 static addSignature(builder:flatbuffers.Builder, signatureOffset:flatbuffers.Offset) {
@@ -78,6 +85,10 @@ static addPayload(builder:flatbuffers.Builder, payloadOffset:flatbuffers.Offset)
   builder.addFieldOffset(2, payloadOffset, 0);
 }
 
+static addAuthorityIdentifier(builder:flatbuffers.Builder, authorityIdentifierOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(3, authorityIdentifierOffset, 0);
+}
+
 static endSignedMessage(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   return offset;
@@ -91,11 +102,12 @@ static finishSizePrefixedSignedMessageBuffer(builder:flatbuffers.Builder, offset
   builder.finish(offset, undefined, true);
 }
 
-static createSignedMessage(builder:flatbuffers.Builder, signatureOffset:flatbuffers.Offset, payloadType:MessagePayload, payloadOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createSignedMessage(builder:flatbuffers.Builder, signatureOffset:flatbuffers.Offset, payloadType:MessagePayload, payloadOffset:flatbuffers.Offset, authorityIdentifierOffset:flatbuffers.Offset):flatbuffers.Offset {
   SignedMessage.startSignedMessage(builder);
   SignedMessage.addSignature(builder, signatureOffset);
   SignedMessage.addPayloadType(builder, payloadType);
   SignedMessage.addPayload(builder, payloadOffset);
+  SignedMessage.addAuthorityIdentifier(builder, authorityIdentifierOffset);
   return SignedMessage.endSignedMessage(builder);
 }
 }

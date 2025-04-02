@@ -10,6 +10,7 @@ import {AppConfig} from './models/app-config';
 import {KnownToken} from './models/known-token';
 import {ToastService} from './toast.service';
 import {Command} from './models/command';
+import {Bot} from './models/bot';
 
 @Injectable({
   providedIn: 'root'
@@ -302,6 +303,22 @@ export class TartarusCoordinatorService {
     return this.http.get(get_configuration_uri, {
     }).pipe(map((res:any) => {
       return new AppConfig(res);
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  // Bots
+  public getBots() : Observable<Bot[]> {
+    const get_bots_uri = `${this.baseUrl}/bots/`;
+    return this.http.get(get_bots_uri, {
+      // headers: new HttpHeaders({ 'X-Require-LockUser': 'requires authorization tokens' }),
+    }).pipe(map((res:any) => {
+      const bots : Bot[] = res.map((datum: any) => {
+        return new Bot(datum);
+      });
+
+      return bots;
     }), catchError(error => {
       return this.handleError(error);
     }));

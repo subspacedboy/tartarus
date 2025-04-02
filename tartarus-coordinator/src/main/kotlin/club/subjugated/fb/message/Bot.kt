@@ -39,9 +39,23 @@ class Bot : Table() {
         }
     val nameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
     fun nameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    fun publicKey(j: Int) : UByte {
+        val o = __offset(6)
+        return if (o != 0) {
+            bb.get(__vector(o) + j * 1).toUByte()
+        } else {
+            0u
+        }
+    }
+    val publicKeyLength : Int
+        get() {
+            val o = __offset(6); return if (o != 0) __vector_len(o) else 0
+        }
+    val publicKeyAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
+    fun publicKeyInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
     val permissions : club.subjugated.fb.message.Permission? get() = permissions(club.subjugated.fb.message.Permission())
     fun permissions(obj: club.subjugated.fb.message.Permission) : club.subjugated.fb.message.Permission? {
-        val o = __offset(6)
+        val o = __offset(8)
         return if (o != 0) {
             obj.__assign(__indirect(o + bb_pos), bb)
         } else {
@@ -55,15 +69,26 @@ class Bot : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createBot(builder: FlatBufferBuilder, nameOffset: Int, permissionsOffset: Int) : Int {
-            builder.startTable(2)
+        fun createBot(builder: FlatBufferBuilder, nameOffset: Int, publicKeyOffset: Int, permissionsOffset: Int) : Int {
+            builder.startTable(3)
             addPermissions(builder, permissionsOffset)
+            addPublicKey(builder, publicKeyOffset)
             addName(builder, nameOffset)
             return endBot(builder)
         }
-        fun startBot(builder: FlatBufferBuilder) = builder.startTable(2)
+        fun startBot(builder: FlatBufferBuilder) = builder.startTable(3)
         fun addName(builder: FlatBufferBuilder, name: Int) = builder.addOffset(0, name, 0)
-        fun addPermissions(builder: FlatBufferBuilder, permissions: Int) = builder.addOffset(1, permissions, 0)
+        fun addPublicKey(builder: FlatBufferBuilder, publicKey: Int) = builder.addOffset(1, publicKey, 0)
+        @kotlin.ExperimentalUnsignedTypes
+        fun createPublicKeyVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
+            builder.startVector(1, data.size, 1)
+            for (i in data.size - 1 downTo 0) {
+                builder.addByte(data[i].toByte())
+            }
+            return builder.endVector()
+        }
+        fun startPublicKeyVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
+        fun addPermissions(builder: FlatBufferBuilder, permissions: Int) = builder.addOffset(2, permissions, 0)
         fun endBot(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o

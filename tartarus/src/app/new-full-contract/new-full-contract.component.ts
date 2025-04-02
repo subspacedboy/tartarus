@@ -11,10 +11,11 @@ import {UserDataService} from '../user-data.service';
 import {ActivatedRoute, Router} from '@angular/router';
 import {LockSession} from '../models/lock-session';
 import * as QRCode from 'qrcode';
-import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule} from '@angular/forms';
+import {FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule} from '@angular/forms';
 import {ToastService} from '../toast.service';
 import {Permission} from '../club/subjugated/fb/message/permission';
-import {Bot} from '../club/subjugated/fb/message/bot';
+import {Bot as FBBot} from '../club/subjugated/fb/message/bot';
+import {Bot} from '../models/bot';
 
 @Component({
   selector: 'app-new-full-contract',
@@ -33,6 +34,8 @@ export class NewFullContractComponent implements OnInit {
 
   contractForm: FormGroup;
 
+  bots: Bot[] = [];
+
   constructor(private tartarusCoordinatorService : TartarusCoordinatorService,
               private idHelperService: IdHelperService,
               private cryptoService: CryptoService,
@@ -43,11 +46,12 @@ export class NewFullContractComponent implements OnInit {
               private toastService: ToastService,
               private router: Router,) {
     this.lockSessionToken = String(this.activatedRoute.snapshot.paramMap.get('sessionToken'));
+    this.bots = [];
 
     this.contractForm = this.fb.group({
       notes: new FormControl('', []),
       terms: new FormControl('', []),
-      bots: new FormControl('', []),
+      bots: this.fb.array([]),
       isTempUnlockAllowed: new FormControl(false),
     });
   }
@@ -56,6 +60,28 @@ export class NewFullContractComponent implements OnInit {
     this.tartarusCoordinatorService.getLockSession(this.lockSessionToken).subscribe(result => {
       this.lockSession = result;
     });
+    this.tartarusCoordinatorService.getBots().subscribe(result => {
+      this.bots = result;
+    })
+  }
+
+  get selectedBots(): FormArray {
+    return this.contractForm.get('bots') as FormArray;
+  }
+
+  addBot(item: Bot, id : number): void {
+    const itemExists = this.selectedBots.controls.some(control => control.value.name === item.name);
+    if (!itemExists) {
+      const group = this.fb.group({
+        id: id,
+        name: item.name
+      });
+      this.selectedBots.push(group);
+    }
+  }
+
+  removeBot(index: number): void {
+    this.selectedBots.removeAt(index);
   }
 
   async createContract(): Promise<Uint8Array> {
@@ -71,7 +97,7 @@ export class NewFullContractComponent implements OnInit {
 
     const termsStringOffset = builder.createString(this.contractForm.get('terms')!.value!)
 
-    const sessionOffset = builder.createString(this.lockSession?.shareToken!);
+    // const sessionOffset = builder.createString(this.lockSession?.shareToken!);
 
     Permission.startPermission(builder);
     Permission.addReceiveEvents(builder, true);
@@ -79,13 +105,21 @@ export class NewFullContractComponent implements OnInit {
     Permission.addCanRelease(builder, true);
     const permissionOffset = Permission.endPermission(builder);
 
-    const botName1 = builder.createString("b-42R6AGO");
-    Bot.startBot(builder);
-    Bot.addName(builder, botName1);
-    Bot.addPermissions(builder, permissionOffset);
-    const bot1Offset = Bot.endBot(builder);
+    const bots = [];
+    for (const b of this.selectedBots.controls) {
+      const actualBot = this.bots.find(bot => bot.name == b.value['name'])!;
 
-    const bots = [bot1Offset];
+      const botNameOffset = builder.createString(actualBot.name);
+      const keyBytes = Uint8Array.from(atob(actualBot.publicKey!), c => c.codePointAt(0)!)
+      const keyBytesOffset = builder.createByteVector(keyBytes);
+      FBBot.startBot(builder);
+      FBBot.addName(builder, botNameOffset);
+      FBBot.addPublicKey(builder, keyBytesOffset);
+      FBBot.addPermissions(builder, permissionOffset);
+      const bot1Offset = FBBot.endBot(builder);
+      bots.push(bot1Offset);
+    }
+
     const botsVector = Contract.createBotsVector(builder, bots);
 
     // Derive secrets.

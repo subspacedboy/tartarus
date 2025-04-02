@@ -183,8 +183,12 @@ fun <T : Table> verifySignedMessageSignature(
             update(hash)
         }
 
-    val derEncodedSignature = rawToDerSignature(signature)
-    return verifier.verify(derEncodedSignature)
+    if(isDerEncoded(signature)) {
+        return verifier.verify(signature)
+    } else {
+        val derEncodedSignature = rawToDerSignature(signature)
+        return verifier.verify(derEncodedSignature)
+    }
 }
 
 fun <T : Table> getBytesOfTableWithVTable(table: T): ByteArray {

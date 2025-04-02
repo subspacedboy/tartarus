@@ -36,6 +36,10 @@ class BotService {
         return bot
     }
 
+    fun getAll() : List<Bot> {
+        return botRepository.findAll()
+    }
+
     fun getByName(name : String) : Bot {
         return botRepository.findByName(name)
     }

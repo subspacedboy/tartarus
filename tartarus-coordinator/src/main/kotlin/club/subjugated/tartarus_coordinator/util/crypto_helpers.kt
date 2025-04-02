@@ -77,6 +77,41 @@ fun getECPublicKeyFromCompressedKeyByteArray(compressedKeyBytes: ByteArray): ECP
     return keyFactory.generatePublic(spec) as ECPublicKey
 }
 
+fun isDerEncoded(signature: ByteArray): Boolean {
+    if (signature.isEmpty() || signature[0] != 0x30.toByte()) return false // Check for SEQUENCE (0x30)
+
+    val totalLength = signature[1].toInt() and 0xFF
+    if (totalLength + 2 != signature.size) return false // Validate total length
+
+    var index = 2
+
+    // Check for the first INTEGER tag (0x02) for 'r'
+    if (signature.getOrNull(index) != 0x02.toByte()) return false
+    index++
+
+    // Length of 'r' value
+    val rLength = signature.getOrNull(index)?.toInt()?.and(0xFF) ?: return false
+    index++
+
+    // Check that 'r' length is valid
+    if (index + rLength > signature.size) return false
+    index += rLength
+
+    // Check for the second INTEGER tag (0x02) for 's'
+    if (signature.getOrNull(index) != 0x02.toByte()) return false
+    index++
+
+    // Length of 's' value
+    val sLength = signature.getOrNull(index)?.toInt()?.and(0xFF) ?: return false
+    index++
+
+    // Check that 's' length is valid
+    if (index + sLength != signature.size) return false
+
+    return true
+}
+
+
 fun rawToDerSignature(rawSig: ByteArray): ByteArray {
     if (rawSig.size % 2 != 0) {
         throw IllegalArgumentException("Invalid raw signature length")

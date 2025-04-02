@@ -39,14 +39,21 @@ class Permission(object):
         return False
 
     # Permission
-    def CanRelease(self):
+    def CanLock(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
             return bool(self._tab.Get(flatbuffers.number_types.BoolFlags, o + self._tab.Pos))
         return False
 
+    # Permission
+    def CanRelease(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        if o != 0:
+            return bool(self._tab.Get(flatbuffers.number_types.BoolFlags, o + self._tab.Pos))
+        return False
+
 def PermissionStart(builder):
-    builder.StartObject(3)
+    builder.StartObject(4)
 
 def Start(builder):
     PermissionStart(builder)
@@ -63,8 +70,14 @@ def PermissionAddCanUnlock(builder, canUnlock):
 def AddCanUnlock(builder, canUnlock):
     PermissionAddCanUnlock(builder, canUnlock)
 
+def PermissionAddCanLock(builder, canLock):
+    builder.PrependBoolSlot(2, canLock, 0)
+
+def AddCanLock(builder, canLock):
+    PermissionAddCanLock(builder, canLock)
+
 def PermissionAddCanRelease(builder, canRelease):
-    builder.PrependBoolSlot(2, canRelease, 0)
+    builder.PrependBoolSlot(3, canRelease, 0)
 
 def AddCanRelease(builder, canRelease):
     PermissionAddCanRelease(builder, canRelease)

@@ -212,6 +212,17 @@ class ContractService {
         return contract
     }
 
+    fun getBySerialAndLockSessionForBot(lockSession: LockSession, serial: Int, botName: String) : Contract {
+        val contract = this.contractRepository.findByLockSessionIdAndSerialNumber(lockSession.id, serial)
+        val embeddedBots = contract.getEmbeddedBots()
+        val bot = embeddedBots.firstOrNull { it.name == botName }
+        if(bot == null){
+            throw IllegalArgumentException("Bot isn't listed in the contract")
+        }
+
+        return contract
+    }
+
     @EventListener
     fun handleMessageEvent(event: AcknowledgedCommandEvent) {
         val command = event.command

@@ -27,10 +27,14 @@ class Bot (
     }
 
     fun canReadMqtt(topic: String) : Boolean {
-        return listOf("bots/inbox_${name}").contains(topic)
+        return listOf("bots/inbox_api_${name}", "bots/inbox_events_${name}").contains(topic)
     }
 
     fun canWriteMqtt(topic: String) : Boolean {
-        return listOf("status/${name}", "bots/outbox_${name}", "coordinator/inbox").contains(topic)
+        // Bots can always write to lock queues?
+        if(topic.startsWith("locks/")) {
+            return true
+        }
+        return listOf("status/${name}", "coordinator/inbox").contains(topic)
     }
 }

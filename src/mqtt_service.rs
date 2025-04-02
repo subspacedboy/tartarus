@@ -306,7 +306,7 @@ impl MqttService {
                                 }
                                 TopicType::BotMessage => {
                                     match client.publish(
-                                        format!("bots/inbox_{}", message.bot_name.unwrap())
+                                        format!("bots/inbox_events_{}", message.bot_name.unwrap())
                                             .as_str(),
                                         QoS::AtLeastOnce,
                                         false,

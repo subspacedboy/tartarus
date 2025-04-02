@@ -190,7 +190,8 @@ pub mod club {
                 impl<'a> Permission<'a> {
                     pub const VT_RECEIVE_EVENTS: flatbuffers::VOffsetT = 4;
                     pub const VT_CAN_UNLOCK: flatbuffers::VOffsetT = 6;
-                    pub const VT_CAN_RELEASE: flatbuffers::VOffsetT = 8;
+                    pub const VT_CAN_LOCK: flatbuffers::VOffsetT = 8;
+                    pub const VT_CAN_RELEASE: flatbuffers::VOffsetT = 10;
 
                     #[inline]
                     pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -208,6 +209,7 @@ pub mod club {
                     ) -> flatbuffers::WIPOffset<Permission<'bldr>> {
                         let mut builder = PermissionBuilder::new(_fbb);
                         builder.add_can_release(args.can_release);
+                        builder.add_can_lock(args.can_lock);
                         builder.add_can_unlock(args.can_unlock);
                         builder.add_receive_events(args.receive_events);
                         builder.finish()
@@ -236,6 +238,17 @@ pub mod club {
                         }
                     }
                     #[inline]
+                    pub fn can_lock(&self) -> bool {
+                        // Safety:
+                        // Created from valid Table for this object
+                        // which contains a valid value in this slot
+                        unsafe {
+                            self._tab
+                                .get::<bool>(Permission::VT_CAN_LOCK, Some(false))
+                                .unwrap()
+                        }
+                    }
+                    #[inline]
                     pub fn can_release(&self) -> bool {
                         // Safety:
                         // Created from valid Table for this object
@@ -258,6 +271,7 @@ pub mod club {
                         v.visit_table(pos)?
                             .visit_field::<bool>("receive_events", Self::VT_RECEIVE_EVENTS, false)?
                             .visit_field::<bool>("can_unlock", Self::VT_CAN_UNLOCK, false)?
+                            .visit_field::<bool>("can_lock", Self::VT_CAN_LOCK, false)?
                             .visit_field::<bool>("can_release", Self::VT_CAN_RELEASE, false)?
                             .finish();
                         Ok(())
@@ -266,6 +280,7 @@ pub mod club {
                 pub struct PermissionArgs {
                     pub receive_events: bool,
                     pub can_unlock: bool,
+                    pub can_lock: bool,
                     pub can_release: bool,
                 }
                 impl<'a> Default for PermissionArgs {
@@ -274,6 +289,7 @@ pub mod club {
                         PermissionArgs {
                             receive_events: false,
                             can_unlock: false,
+                            can_lock: false,
                             can_release: false,
                         }
                     }
@@ -296,6 +312,11 @@ pub mod club {
                     pub fn add_can_unlock(&mut self, can_unlock: bool) {
                         self.fbb_
                             .push_slot::<bool>(Permission::VT_CAN_UNLOCK, can_unlock, false);
+                    }
+                    #[inline]
+                    pub fn add_can_lock(&mut self, can_lock: bool) {
+                        self.fbb_
+                            .push_slot::<bool>(Permission::VT_CAN_LOCK, can_lock, false);
                     }
                     #[inline]
                     pub fn add_can_release(&mut self, can_release: bool) {
@@ -324,6 +345,7 @@ pub mod club {
                         let mut ds = f.debug_struct("Permission");
                         ds.field("receive_events", &self.receive_events());
                         ds.field("can_unlock", &self.can_unlock());
+                        ds.field("can_lock", &self.can_lock());
                         ds.field("can_release", &self.can_release());
                         ds.finish()
                     }
@@ -347,7 +369,8 @@ pub mod club {
 
                 impl<'a> Bot<'a> {
                     pub const VT_NAME: flatbuffers::VOffsetT = 4;
-                    pub const VT_PERMISSIONS: flatbuffers::VOffsetT = 6;
+                    pub const VT_PUBLIC_KEY: flatbuffers::VOffsetT = 6;
+                    pub const VT_PERMISSIONS: flatbuffers::VOffsetT = 8;
 
                     #[inline]
                     pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -367,6 +390,9 @@ pub mod club {
                         if let Some(x) = args.permissions {
                             builder.add_permissions(x);
                         }
+                        if let Some(x) = args.public_key {
+                            builder.add_public_key(x);
+                        }
                         if let Some(x) = args.name {
                             builder.add_name(x);
                         }
@@ -381,6 +407,19 @@ pub mod club {
                         unsafe {
                             self._tab
                                 .get::<flatbuffers::ForwardsUOffset<&str>>(Bot::VT_NAME, None)
+                        }
+                    }
+                    #[inline]
+                    pub fn public_key(&self) -> Option<flatbuffers::Vector<'a, u8>> {
+                        // Safety:
+                        // Created from valid Table for this object
+                        // which contains a valid value in this slot
+                        unsafe {
+                            self._tab
+                                .get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(
+                                    Bot::VT_PUBLIC_KEY,
+                                    None,
+                                )
                         }
                     }
                     #[inline]
@@ -405,22 +444,16 @@ pub mod club {
                     ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
                         use self::flatbuffers::Verifiable;
                         v.visit_table(pos)?
-                            .visit_field::<flatbuffers::ForwardsUOffset<&str>>(
-                                "name",
-                                Self::VT_NAME,
-                                false,
-                            )?
-                            .visit_field::<flatbuffers::ForwardsUOffset<Permission>>(
-                                "permissions",
-                                Self::VT_PERMISSIONS,
-                                false,
-                            )?
-                            .finish();
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("name", Self::VT_NAME, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, u8>>>("public_key", Self::VT_PUBLIC_KEY, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<Permission>>("permissions", Self::VT_PERMISSIONS, false)?
+     .finish();
                         Ok(())
                     }
                 }
                 pub struct BotArgs<'a> {
                     pub name: Option<flatbuffers::WIPOffset<&'a str>>,
+                    pub public_key: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
                     pub permissions: Option<flatbuffers::WIPOffset<Permission<'a>>>,
                 }
                 impl<'a> Default for BotArgs<'a> {
@@ -428,6 +461,7 @@ pub mod club {
                     fn default() -> Self {
                         BotArgs {
                             name: None,
+                            public_key: None,
                             permissions: None,
                         }
                     }
@@ -442,6 +476,16 @@ pub mod club {
                     pub fn add_name(&mut self, name: flatbuffers::WIPOffset<&'b str>) {
                         self.fbb_
                             .push_slot_always::<flatbuffers::WIPOffset<_>>(Bot::VT_NAME, name);
+                    }
+                    #[inline]
+                    pub fn add_public_key(
+                        &mut self,
+                        public_key: flatbuffers::WIPOffset<flatbuffers::Vector<'b, u8>>,
+                    ) {
+                        self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
+                            Bot::VT_PUBLIC_KEY,
+                            public_key,
+                        );
                     }
                     #[inline]
                     pub fn add_permissions(
@@ -475,6 +519,7 @@ pub mod club {
                     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                         let mut ds = f.debug_struct("Bot");
                         ds.field("name", &self.name());
+                        ds.field("public_key", &self.public_key());
                         ds.field("permissions", &self.permissions());
                         ds.finish()
                     }
@@ -2243,6 +2288,7 @@ pub mod club {
                     pub const VT_SIGNATURE: flatbuffers::VOffsetT = 4;
                     pub const VT_PAYLOAD_TYPE: flatbuffers::VOffsetT = 6;
                     pub const VT_PAYLOAD: flatbuffers::VOffsetT = 8;
+                    pub const VT_AUTHORITY_IDENTIFIER: flatbuffers::VOffsetT = 10;
 
                     #[inline]
                     pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -2259,6 +2305,9 @@ pub mod club {
                         args: &'args SignedMessageArgs<'args>,
                     ) -> flatbuffers::WIPOffset<SignedMessage<'bldr>> {
                         let mut builder = SignedMessageBuilder::new(_fbb);
+                        if let Some(x) = args.authority_identifier {
+                            builder.add_authority_identifier(x);
+                        }
                         if let Some(x) = args.payload {
                             builder.add_payload(x);
                         }
@@ -2307,6 +2356,18 @@ pub mod club {
                                     SignedMessage::VT_PAYLOAD,
                                     None,
                                 )
+                        }
+                    }
+                    #[inline]
+                    pub fn authority_identifier(&self) -> Option<&'a str> {
+                        // Safety:
+                        // Created from valid Table for this object
+                        // which contains a valid value in this slot
+                        unsafe {
+                            self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(
+                                SignedMessage::VT_AUTHORITY_IDENTIFIER,
+                                None,
+                            )
                         }
                     }
                     #[inline]
@@ -2468,6 +2529,7 @@ pub mod club {
           _ => Ok(()),
         }
      })?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("authority_identifier", Self::VT_AUTHORITY_IDENTIFIER, false)?
      .finish();
                         Ok(())
                     }
@@ -2476,6 +2538,7 @@ pub mod club {
                     pub signature: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
                     pub payload_type: MessagePayload,
                     pub payload: Option<flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>>,
+                    pub authority_identifier: Option<flatbuffers::WIPOffset<&'a str>>,
                 }
                 impl<'a> Default for SignedMessageArgs<'a> {
                     #[inline]
@@ -2484,6 +2547,7 @@ pub mod club {
                             signature: None,
                             payload_type: MessagePayload::NONE,
                             payload: None,
+                            authority_identifier: None,
                         }
                     }
                 }
@@ -2519,6 +2583,16 @@ pub mod club {
                         self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
                             SignedMessage::VT_PAYLOAD,
                             payload,
+                        );
+                    }
+                    #[inline]
+                    pub fn add_authority_identifier(
+                        &mut self,
+                        authority_identifier: flatbuffers::WIPOffset<&'b str>,
+                    ) {
+                        self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
+                            SignedMessage::VT_AUTHORITY_IDENTIFIER,
+                            authority_identifier,
                         );
                     }
                     #[inline]
@@ -2612,6 +2686,7 @@ pub mod club {
                                 ds.field("payload", &x)
                             }
                         };
+                        ds.field("authority_identifier", &self.authority_identifier());
                         ds.finish()
                     }
                 }

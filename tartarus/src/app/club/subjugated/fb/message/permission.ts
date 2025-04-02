@@ -32,13 +32,18 @@ canUnlock():boolean {
   return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
 }
 
-canRelease():boolean {
+canLock():boolean {
   const offset = this.bb!.__offset(this.bb_pos, 8);
   return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
 }
 
+canRelease():boolean {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
+}
+
 static startPermission(builder:flatbuffers.Builder) {
-  builder.startObject(3);
+  builder.startObject(4);
 }
 
 static addReceiveEvents(builder:flatbuffers.Builder, receiveEvents:boolean) {
@@ -49,8 +54,12 @@ static addCanUnlock(builder:flatbuffers.Builder, canUnlock:boolean) {
   builder.addFieldInt8(1, +canUnlock, +false);
 }
 
+static addCanLock(builder:flatbuffers.Builder, canLock:boolean) {
+  builder.addFieldInt8(2, +canLock, +false);
+}
+
 static addCanRelease(builder:flatbuffers.Builder, canRelease:boolean) {
-  builder.addFieldInt8(2, +canRelease, +false);
+  builder.addFieldInt8(3, +canRelease, +false);
 }
 
 static endPermission(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -58,10 +67,11 @@ static endPermission(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createPermission(builder:flatbuffers.Builder, receiveEvents:boolean, canUnlock:boolean, canRelease:boolean):flatbuffers.Offset {
+static createPermission(builder:flatbuffers.Builder, receiveEvents:boolean, canUnlock:boolean, canLock:boolean, canRelease:boolean):flatbuffers.Offset {
   Permission.startPermission(builder);
   Permission.addReceiveEvents(builder, receiveEvents);
   Permission.addCanUnlock(builder, canUnlock);
+  Permission.addCanLock(builder, canLock);
   Permission.addCanRelease(builder, canRelease);
   return Permission.endPermission(builder);
 }

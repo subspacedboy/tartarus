@@ -18,6 +18,7 @@ use embedded_graphics_core::Drawable;
 use embedded_hal::digital::OutputPin;
 use esp_idf_hal::gpio::{GpioError, Output, PinDriver};
 use qrcode::{Color, QrCode};
+use std::collections::HashMap;
 
 pub struct BootScreen<SPI, DC, RST, PinE> {
     _spi: core::marker::PhantomData<SPI>,
@@ -63,7 +64,9 @@ where
                     self.needs_redraw = true;
                 } else {
                     let verifier = SignedMessageVerifier::new();
-                    if let Ok(verified_type) = verifier.verify(qr_data.clone(), None, 0, 0) {
+
+                    let keys = lock_ctx.get_keyring();
+                    if let Ok(verified_type) = verifier.verify(qr_data.clone(), &keys, 0, 0) {
                         match verified_type {
                             VerifiedType::Contract(contract) => {
                                 lock_ctx.accept_contract(&contract);

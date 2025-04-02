@@ -38,6 +38,27 @@ class AuthorSessionService {
         return authorSession
     }
 
+    fun saveAuthorSessionForBot(publicKey: String) : AuthorSession {
+        val maybeSession =
+            this.authorSessionRepository.findByPublicKey(publicKey)
+
+        if (maybeSession != null) {
+            // Ok, this author already had a session from some other time. Return that
+            return maybeSession
+        }
+
+        val authorSession =
+            AuthorSession(
+                publicKey = publicKey,
+                createdAt = timeSource.nowInUtc(),
+                updatedAt = timeSource.nowInUtc(),
+            )
+
+        this.authorSessionRepository.save(authorSession)
+
+        return authorSession
+    }
+
     fun findByName(name: String): AuthorSession {
         return this.authorSessionRepository.findByName(name)
     }

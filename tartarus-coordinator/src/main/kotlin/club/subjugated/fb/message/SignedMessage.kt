@@ -50,6 +50,17 @@ class SignedMessage : Table() {
     fun payload(obj: Table) : Table? {
         val o = __offset(8); return if (o != 0) __union(obj, o + bb_pos) else null
     }
+    val authorityIdentifier : String?
+        get() {
+            val o = __offset(10)
+            return if (o != 0) {
+                __string(o + bb_pos)
+            } else {
+                null
+            }
+        }
+    val authorityIdentifierAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(10, 1)
+    fun authorityIdentifierInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 10, 1)
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsSignedMessage(_bb: ByteBuffer): SignedMessage = getRootAsSignedMessage(_bb, SignedMessage())
@@ -57,14 +68,15 @@ class SignedMessage : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createSignedMessage(builder: FlatBufferBuilder, signatureOffset: Int, payloadType: UByte, payloadOffset: Int) : Int {
-            builder.startTable(3)
+        fun createSignedMessage(builder: FlatBufferBuilder, signatureOffset: Int, payloadType: UByte, payloadOffset: Int, authorityIdentifierOffset: Int) : Int {
+            builder.startTable(4)
+            addAuthorityIdentifier(builder, authorityIdentifierOffset)
             addPayload(builder, payloadOffset)
             addSignature(builder, signatureOffset)
             addPayloadType(builder, payloadType)
             return endSignedMessage(builder)
         }
-        fun startSignedMessage(builder: FlatBufferBuilder) = builder.startTable(3)
+        fun startSignedMessage(builder: FlatBufferBuilder) = builder.startTable(4)
         fun addSignature(builder: FlatBufferBuilder, signature: Int) = builder.addOffset(0, signature, 0)
         @kotlin.ExperimentalUnsignedTypes
         fun createSignatureVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
@@ -77,6 +89,7 @@ class SignedMessage : Table() {
         fun startSignatureVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
         fun addPayloadType(builder: FlatBufferBuilder, payloadType: UByte) = builder.addByte(1, payloadType.toByte(), 0)
         fun addPayload(builder: FlatBufferBuilder, payload: Int) = builder.addOffset(2, payload, 0)
+        fun addAuthorityIdentifier(builder: FlatBufferBuilder, authorityIdentifier: Int) = builder.addOffset(3, authorityIdentifier, 0)
         fun endSignedMessage(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o

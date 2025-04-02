@@ -32,8 +32,35 @@ class Bot(object):
         return None
 
     # Bot
-    def Permissions(self):
+    def PublicKey(self, j):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        if o != 0:
+            a = self._tab.Vector(o)
+            return self._tab.Get(flatbuffers.number_types.Uint8Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 1))
+        return 0
+
+    # Bot
+    def PublicKeyAsNumpy(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        if o != 0:
+            return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Uint8Flags, o)
+        return 0
+
+    # Bot
+    def PublicKeyLength(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        if o != 0:
+            return self._tab.VectorLen(o)
+        return 0
+
+    # Bot
+    def PublicKeyIsNone(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        return o == 0
+
+    # Bot
+    def Permissions(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
             x = self._tab.Indirect(o + self._tab.Pos)
             from club.subjugated.fb.message.Permission import Permission
@@ -43,7 +70,7 @@ class Bot(object):
         return None
 
 def BotStart(builder):
-    builder.StartObject(2)
+    builder.StartObject(3)
 
 def Start(builder):
     BotStart(builder)
@@ -54,8 +81,20 @@ def BotAddName(builder, name):
 def AddName(builder, name):
     BotAddName(builder, name)
 
+def BotAddPublicKey(builder, publicKey):
+    builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(publicKey), 0)
+
+def AddPublicKey(builder, publicKey):
+    BotAddPublicKey(builder, publicKey)
+
+def BotStartPublicKeyVector(builder, numElems):
+    return builder.StartVector(1, numElems, 1)
+
+def StartPublicKeyVector(builder, numElems):
+    return BotStartPublicKeyVector(builder, numElems)
+
 def BotAddPermissions(builder, permissions):
-    builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(permissions), 0)
+    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(permissions), 0)
 
 def AddPermissions(builder, permissions):
     BotAddPermissions(builder, permissions)

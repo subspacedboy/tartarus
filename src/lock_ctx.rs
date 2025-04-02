@@ -35,7 +35,7 @@ use p256::{PublicKey, SecretKey};
 use postcard::from_bytes;
 use rand_core::RngCore;
 use sha2::{Digest, Sha256};
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::time::Duration;
 
 #[derive(Debug, Clone)]
@@ -309,7 +309,7 @@ impl LockCtx {
 
             match verifier.verify(
                 buffer,
-                contract_public_key,
+                &self.get_keyring(),
                 min_counter,
                 contract_serial_number,
             ) {
@@ -504,12 +504,21 @@ impl LockCtx {
         }
     }
 
-    pub fn lock(&mut self) -> () {
-        log::info!("Locking");
+    pub fn local_lock(&mut self) -> () {
+        log::info!("Local Locking");
         self.is_locked = true;
         self.servo.close_position();
         self.enqueue_periodic_update_message(false, true);
         self.enqueue_bot_event(EventType::LocalLock);
+        self.dirty = true;
+    }
+
+    pub fn lock(&mut self) -> () {
+        log::info!("Locking");
+        self.is_locked = true;
+        self.servo.close_position();
+        self.enqueue_periodic_update_message(false, false);
+        self.enqueue_bot_event(EventType::Lock);
         self.dirty = true;
     }
 
@@ -520,12 +529,21 @@ impl LockCtx {
         self.dirty = true;
     }
 
+    pub fn local_unlock(&mut self) -> () {
+        log::info!("Unlocking");
+        self.is_locked = false;
+        self.servo.open_position();
+        self.enqueue_periodic_update_message(false, false);
+        self.enqueue_bot_event(EventType::LocalUnlock);
+        self.dirty = true;
+    }
+
     pub fn unlock(&mut self) -> () {
         log::info!("Unlocking");
         self.is_locked = false;
         self.servo.open_position();
-        self.enqueue_periodic_update_message(true, false);
-        self.enqueue_bot_event(EventType::LocalUnlock);
+        self.enqueue_periodic_update_message(false, false);
+        self.enqueue_bot_event(EventType::Unlock);
         self.dirty = true;
     }
 
@@ -703,6 +721,7 @@ impl LockCtx {
                 signature: Some(signature_offset),
                 payload: Some(payload_value),
                 payload_type,
+                authority_identifier: None,
             },
         );
 
@@ -768,6 +787,7 @@ impl LockCtx {
                 signature: Some(signature_offset),
                 payload: Some(payload_value),
                 payload_type,
+                authority_identifier: None,
             },
         );
 
@@ -856,5 +876,25 @@ impl LockCtx {
         if let Some(mqtt_service) = self.mqtt_service.as_ref() {
             mqtt_service.enqueue_message(message);
         }
+    }
+
+    pub fn get_keyring(&self) -> HashMap<String, &VerifyingKey> {
+        let mut keys: HashMap<String, &VerifyingKey> = HashMap::new();
+        if let Some(contract) = &self.contract {
+            keys.insert(
+                "contract".to_string(),
+                &contract.public_key.as_ref().unwrap(),
+            );
+
+            for bot in &contract.bots {
+                keys.insert(bot.name.clone(), &bot.public_key.as_ref().unwrap());
+            }
+        }
+        if let Some(safety_keys) = &self.configuration.safety_keys {
+            for k in safety_keys {
+                keys.insert(k.name.clone(), &k.public_key.as_ref().unwrap());
+            }
+        }
+        keys
     }
 }

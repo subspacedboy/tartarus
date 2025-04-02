@@ -38,9 +38,14 @@ class Permission : Table() {
             val o = __offset(6)
             return if(o != 0) 0.toByte() != bb.get(o + bb_pos) else false
         }
-    val canRelease : Boolean
+    val canLock : Boolean
         get() {
             val o = __offset(8)
+            return if(o != 0) 0.toByte() != bb.get(o + bb_pos) else false
+        }
+    val canRelease : Boolean
+        get() {
+            val o = __offset(10)
             return if(o != 0) 0.toByte() != bb.get(o + bb_pos) else false
         }
     companion object {
@@ -50,17 +55,19 @@ class Permission : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createPermission(builder: FlatBufferBuilder, receiveEvents: Boolean, canUnlock: Boolean, canRelease: Boolean) : Int {
-            builder.startTable(3)
+        fun createPermission(builder: FlatBufferBuilder, receiveEvents: Boolean, canUnlock: Boolean, canLock: Boolean, canRelease: Boolean) : Int {
+            builder.startTable(4)
             addCanRelease(builder, canRelease)
+            addCanLock(builder, canLock)
             addCanUnlock(builder, canUnlock)
             addReceiveEvents(builder, receiveEvents)
             return endPermission(builder)
         }
-        fun startPermission(builder: FlatBufferBuilder) = builder.startTable(3)
+        fun startPermission(builder: FlatBufferBuilder) = builder.startTable(4)
         fun addReceiveEvents(builder: FlatBufferBuilder, receiveEvents: Boolean) = builder.addBoolean(0, receiveEvents, false)
         fun addCanUnlock(builder: FlatBufferBuilder, canUnlock: Boolean) = builder.addBoolean(1, canUnlock, false)
-        fun addCanRelease(builder: FlatBufferBuilder, canRelease: Boolean) = builder.addBoolean(2, canRelease, false)
+        fun addCanLock(builder: FlatBufferBuilder, canLock: Boolean) = builder.addBoolean(2, canLock, false)
+        fun addCanRelease(builder: FlatBufferBuilder, canRelease: Boolean) = builder.addBoolean(3, canRelease, false)
         fun endPermission(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o

@@ -68,8 +68,15 @@ class SignedMessage(object):
             return obj
         return None
 
+    # SignedMessage
+    def AuthorityIdentifier(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        if o != 0:
+            return self._tab.String(o + self._tab.Pos)
+        return None
+
 def SignedMessageStart(builder):
-    builder.StartObject(3)
+    builder.StartObject(4)
 
 def Start(builder):
     SignedMessageStart(builder)
@@ -97,6 +104,12 @@ def SignedMessageAddPayload(builder, payload):
 
 def AddPayload(builder, payload):
     SignedMessageAddPayload(builder, payload)
+
+def SignedMessageAddAuthorityIdentifier(builder, authorityIdentifier):
+    builder.PrependUOffsetTRelativeSlot(3, flatbuffers.number_types.UOffsetTFlags.py_type(authorityIdentifier), 0)
+
+def AddAuthorityIdentifier(builder, authorityIdentifier):
+    SignedMessageAddAuthorityIdentifier(builder, authorityIdentifier)
 
 def SignedMessageEnd(builder):
     return builder.EndObject()

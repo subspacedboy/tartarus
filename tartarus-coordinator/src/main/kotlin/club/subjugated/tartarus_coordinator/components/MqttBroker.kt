@@ -90,7 +90,7 @@ class CustomMqttSecurity : IAuthenticator, IAuthorizatorPolicy {
         }
 
         if(isLockUser(user)){
-            if(topic!!.toString().startsWith("bots/inbox_b-")) {
+            if(topic!!.toString().startsWith("bots/inbox_events_b-")) {
                 return true
             }
         }

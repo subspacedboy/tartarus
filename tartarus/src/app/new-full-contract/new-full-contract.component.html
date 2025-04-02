@@ -20,10 +20,26 @@
             <textarea id="notes" class="form-control" type="text" formControlName="notes" placeholder="Only shown on website" rows="3"></textarea>
           </div>
 
+<!--          <div>-->
+<!--            <label class="form-label" for="bots">Bot Names</label>-->
+<!--            <textarea id="bots" class="form-control" type="text" formControlName="bots" placeholder="Bot names" rows="3"></textarea>-->
+<!--          </div>-->
+
           <div>
-            <label class="form-label" for="bots">Bot Names</label>
-            <textarea id="bots" class="form-control" type="text" formControlName="bots" placeholder="Bot names" rows="3"></textarea>
+            <h4>Available Bots</h4>
+            <ul class="list-group">
+            @for (b of bots; track b.name; let i = $index) {
+              <li class="list-group-item d-flex justify-content-between align-items-center" (click)="addBot(b, i)">{{b.name}} - {{b.description}}</li>
+            }
+            </ul>
           </div>
+
+          <ul class="list-group">
+            <h4>Chosen Bots</h4>
+            @for(b of selectedBots.controls; track b; let i = $index){
+              <li class="list-group-item d-flex justify-content-between align-items-center">{{ b.value.name }} <button class="btn btn-primary" type="button" (click)="removeBot(i); $event.stopPropagation();">Remove</button></li>
+            }
+          </ul>
 
           <button class="btn btn-lg btn-primary" type="submit">
             Save

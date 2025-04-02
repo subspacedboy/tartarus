@@ -8,6 +8,7 @@ use aes_gcm::aes::cipher::crypto_common::Output;
 use p256::ecdsa::signature::Verifier;
 use p256::ecdsa::{Signature, VerifyingKey};
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use std::io::Read;
 
 pub(crate) struct SignedMessageVerifier;
@@ -82,7 +83,7 @@ impl SignedMessageVerifier {
     pub fn verify(
         self,
         incoming_data: Vec<u8>,
-        contract_public_key: Option<&VerifyingKey>,
+        verifying_keys: &HashMap<String, &VerifyingKey>,
         minimum_counter: u16,
         contract_serial_number: u16,
     ) -> Result<VerifiedType, VerificationError> {
@@ -93,6 +94,30 @@ impl SignedMessageVerifier {
         ) {
             Ok(signed_msg) => {
                 log::info!("Signed message: {:?}", signed_msg);
+
+                let verifying_key = if let Some(authority) = signed_msg.authority_identifier() {
+                    if let Some(other_key) = verifying_keys.get(authority) {
+                        other_key
+                    } else {
+                        log::error!("We received a message that specifies an authority we don't have a key for");
+                        return Err(VerificationError {
+                            serial_number: 0,
+                            counter: 0,
+                            message: "Required a key but it wasn't available".to_string(),
+                        });
+                    }
+                } else {
+                    if let Some(contract_key) = verifying_keys.get("contract") {
+                        contract_key
+                    } else {
+                        log::error!("We received a message that specifies an authority we don't have a key for");
+                        return Err(VerificationError {
+                            serial_number: 0,
+                            counter: 0,
+                            message: "Required a key but it wasn't available".to_string(),
+                        });
+                    }
+                };
 
                 let signature_bytes = signed_msg.signature();
                 log::debug!("Signature: {:?}", signature_bytes);
@@ -142,18 +167,18 @@ impl SignedMessageVerifier {
                         log::info!("Processing unlock command");
                         let unlock = signed_msg.payload_as_unlock_command().unwrap();
 
-                        let verifying_key = match contract_public_key {
-                            Some(verifying_key) => verifying_key,
-                            None => {
-                                log::error!("We received a message that requires a contract without having a public key already loaded.");
-                                return Err(VerificationError {
-                                    serial_number: unlock.serial_number(),
-                                    counter: unlock.counter(),
-                                    message: "Required a contract key but none was loaded"
-                                        .to_string(),
-                                });
-                            }
-                        };
+                        // let verifying_key = match contract_public_key {
+                        //     Some(verifying_key) => verifying_key,
+                        //     None => {
+                        //         log::error!("We received a message that requires a contract without having a public key already loaded.");
+                        //         return Err(VerificationError {
+                        //             serial_number: unlock.serial_number(),
+                        //             counter: unlock.counter(),
+                        //             message: "Required a contract key but none was loaded"
+                        //                 .to_string(),
+                        //         });
+                        //     }
+                        // };
                         let hash = unlock.calculate_hash(&incoming_data);
                         match verifying_key.verify(&hash, &signature) {
                             Ok(_) => {
@@ -192,18 +217,18 @@ impl SignedMessageVerifier {
                         log::info!("Processing lock command");
                         let lock = signed_msg.payload_as_lock_command().unwrap();
 
-                        let verifying_key = match contract_public_key {
-                            Some(verifying_key) => verifying_key,
-                            None => {
-                                log::error!("We received a message that requires a contract without having a public key already loaded.");
-                                return Err(VerificationError {
-                                    serial_number: lock.serial_number(),
-                                    counter: lock.counter(),
-                                    message: "Required a contract key but none was loaded"
-                                        .to_string(),
-                                });
-                            }
-                        };
+                        // let verifying_key = match contract_public_key {
+                        //     Some(verifying_key) => verifying_key,
+                        //     None => {
+                        //         log::error!("We received a message that requires a contract without having a public key already loaded.");
+                        //         return Err(VerificationError {
+                        //             serial_number: lock.serial_number(),
+                        //             counter: lock.counter(),
+                        //             message: "Required a contract key but none was loaded"
+                        //                 .to_string(),
+                        //         });
+                        //     }
+                        // };
                         let hash = lock.calculate_hash(&incoming_data);
                         match verifying_key.verify(&hash, &signature) {
                             Ok(_) => {
@@ -241,18 +266,18 @@ impl SignedMessageVerifier {
                         log::info!("Processing release command");
                         let release = signed_msg.payload_as_release_command().unwrap();
 
-                        let verifying_key = match contract_public_key {
-                            Some(verifying_key) => verifying_key,
-                            None => {
-                                log::error!("We received a message that requires a contract without having a public key already loaded.");
-                                return Err(VerificationError {
-                                    serial_number: release.serial_number(),
-                                    counter: release.counter(),
-                                    message: "Required a contract key but none was loaded"
-                                        .to_string(),
-                                });
-                            }
-                        };
+                        // let verifying_key = match contract_public_key {
+                        //     Some(verifying_key) => verifying_key,
+                        //     None => {
+                        //         log::error!("We received a message that requires a contract without having a public key already loaded.");
+                        //         return Err(VerificationError {
+                        //             serial_number: release.serial_number(),
+                        //             counter: release.counter(),
+                        //             message: "Required a contract key but none was loaded"
+                        //                 .to_string(),
+                        //         });
+                        //     }
+                        // };
                         let hash = release.calculate_hash(&incoming_data);
                         match verifying_key.verify(&hash, &signature) {
                             Ok(_) => {
