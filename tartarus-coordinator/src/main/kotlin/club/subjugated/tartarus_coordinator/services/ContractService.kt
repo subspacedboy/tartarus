@@ -152,7 +152,7 @@ class ContractService {
             this.contractRepository.save(contract)
         } else if(command.contract.nextCounter!! > 0) {
             val contract = command.contract
-            contract.nextCounter = command.counter!! + 1
+            contract.nextCounter = event.acknowledgement.counter.toInt() + 1
             this.contractRepository.save(contract)
         }
 

@@ -1,5 +1,6 @@
 package club.subjugated.tartarus_coordinator.services
 
+import club.subjugated.fb.message.Acknowledgement
 import club.subjugated.tartarus_coordinator.events.AcknowledgedCommandEvent
 import club.subjugated.tartarus_coordinator.models.Command
 import club.subjugated.tartarus_coordinator.models.CommandState
@@ -30,9 +31,9 @@ class CommandQueueService {
         this.commandRepository.save(command)
     }
 
-    fun acknowledgeCommand(command: Command) {
+    fun acknowledgeCommand(command: Command, ack : Acknowledgement) {
         command.state = CommandState.ACKNOWLEDGED
-        publisher.publishEvent(AcknowledgedCommandEvent(this, command))
+        publisher.publishEvent(AcknowledgedCommandEvent(this, command, ack))
         saveCommand(command)
     }
 

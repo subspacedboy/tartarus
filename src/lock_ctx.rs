@@ -224,15 +224,18 @@ impl LockCtx {
         while commands.len() > 0 {
             let buffer = commands.pop_front().unwrap();
             let verifier = SignedMessageVerifier::new();
+            let mut min_counter = 0_u16;
             let contract_public_key : Option<&VerifyingKey> = if let Some(k) = &self.contract {
+                min_counter = k.command_counter;
                 k.public_key.as_ref()
             } else {
                 None
             };
 
-            match verifier.verify(buffer, contract_public_key) {
+            match verifier.verify(buffer, contract_public_key, min_counter) {
                 Ok(verified_message) => {
                     let for_acknowledgement = verified_message.clone();
+                    self.increment_command_counter();
 
                     match self.process_command(verified_message) {
                         Ok(_) => {
@@ -367,6 +370,15 @@ impl LockCtx {
         self.save_state_if_dirty();
 
         Ok(true)
+    }
+
+    fn increment_command_counter(&mut self) {
+        let contract = self.contract.take();
+        if let Some(mut internal_contract) = contract {
+            internal_contract.command_counter += 1;
+            self.dirty = true;
+            self.contract = Some(internal_contract);
+        }
     }
 
     pub fn lock(&mut self) -> () {

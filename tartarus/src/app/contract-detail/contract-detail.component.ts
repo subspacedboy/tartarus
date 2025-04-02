@@ -41,6 +41,7 @@ export class ContractDetailComponent implements OnInit {
     this.makeUnlockMessage().then(unlockSignedMessage => {
       this.tartarusCoordinatorService.saveCommand(this.contractName, authorName, this.lockSessionShareableToken!, unlockSignedMessage).subscribe(r => {
         console.log("Unlock code saved");
+        this.contract!.nextCounter = (this.contract?.nextCounter ?? 0) + 1;
       });
     });
   }
@@ -50,6 +51,7 @@ export class ContractDetailComponent implements OnInit {
     this.makeLockMessage().then(lockSignedMessage => {
       this.tartarusCoordinatorService.saveCommand(this.contractName, authorName, this.lockSessionShareableToken!, lockSignedMessage).subscribe(r => {
         console.log("Lock code saved");
+        this.contract!.nextCounter = (this.contract?.nextCounter ?? 0) + 1;
       });
     });
   }
@@ -59,6 +61,7 @@ export class ContractDetailComponent implements OnInit {
     this.makeReleaseMessage().then(releaseSignedMessage => {
       this.tartarusCoordinatorService.saveCommand(this.contractName, authorName, this.lockSessionShareableToken!, releaseSignedMessage).subscribe(r => {
         console.log("Release code saved");
+        this.contract!.nextCounter = (this.contract?.nextCounter ?? 0) + 1;
       });
     });
   }

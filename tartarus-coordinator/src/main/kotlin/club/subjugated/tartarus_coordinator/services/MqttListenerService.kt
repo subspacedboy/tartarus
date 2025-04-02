@@ -102,7 +102,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
 
                                 val lockSession = this.lockSessionService.findBySessionToken(ack.session!!)
                                 val command = this.commandQueueService.getCommandBySessionAndSerial(lockSession, ack.serialNumber.toInt())
-                                this.commandQueueService.acknowledgeCommand(command)
+                                this.commandQueueService.acknowledgeCommand(command, ack)
 
                                 println("🥕 Received ack: $ack")
                             }

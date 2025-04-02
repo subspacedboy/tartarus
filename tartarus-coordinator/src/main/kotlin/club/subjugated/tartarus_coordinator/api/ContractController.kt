@@ -2,7 +2,7 @@ package club.subjugated.tartarus_coordinator.api
 
 import club.subjugated.tartarus_coordinator.api.messages.ContractMessage
 import club.subjugated.tartarus_coordinator.api.messages.NewContractMessage
-import club.subjugated.tartarus_coordinator.api.messages.NewUnlockCommandMessage
+import club.subjugated.tartarus_coordinator.api.messages.NewCommandMessage
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
 import club.subjugated.tartarus_coordinator.services.ContractService
 import club.subjugated.tartarus_coordinator.services.LockSessionService
@@ -51,12 +51,12 @@ class ContractController {
 
     @PostMapping("/command", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
-    fun command(@RequestBody newUnlockCommandMessage: NewUnlockCommandMessage) : ResponseEntity<Void> {
-        val authorSession = this.authorSessionService.findByName(newUnlockCommandMessage.authorSessionName!!)
-        val lockSession = this.lockSessionService.findByShareableToken(newUnlockCommandMessage.shareableToken!!)
-        val contract = this.contractService.getByName(newUnlockCommandMessage.contractName!!)
+    fun command(@RequestBody newCommandMessage: NewCommandMessage) : ResponseEntity<Void> {
+        val authorSession = this.authorSessionService.findByName(newCommandMessage.authorSessionName!!)
+        val lockSession = this.lockSessionService.findByShareableToken(newCommandMessage.shareableToken!!)
+        val contract = this.contractService.getByName(newCommandMessage.contractName!!)
 
-        this.contractService.saveCommand(authorSession, lockSession!!, contract, newUnlockCommandMessage.signedMessage!!)
+        this.contractService.saveCommand(authorSession, lockSession!!, contract, newCommandMessage.signedMessage!!)
         return ResponseEntity.ok().build()
     }
 }
