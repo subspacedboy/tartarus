@@ -2,31 +2,38 @@
 
 package club.subjugated.fb.message
 
+import com.google.flatbuffers.BaseVector
+import com.google.flatbuffers.BooleanVector
+import com.google.flatbuffers.ByteVector
 import com.google.flatbuffers.Constants
+import com.google.flatbuffers.DoubleVector
 import com.google.flatbuffers.FlatBufferBuilder
+import com.google.flatbuffers.FloatVector
+import com.google.flatbuffers.LongVector
+import com.google.flatbuffers.StringVector
+import com.google.flatbuffers.Struct
 import com.google.flatbuffers.Table
+import com.google.flatbuffers.UnionVector
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.math.sign
 
 @Suppress("unused")
 class Contract : Table() {
 
-    fun __init(_i: Int, _bb: ByteBuffer) {
+    fun __init(_i: Int, _bb: ByteBuffer)  {
         __reset(_i, _bb)
     }
-
-    fun __assign(_i: Int, _bb: ByteBuffer): Contract {
+    fun __assign(_i: Int, _bb: ByteBuffer) : Contract {
         __init(_i, _bb)
         return this
     }
-
-    val serialNumber: UShort
+    val serialNumber : UShort
         get() {
             val o = __offset(4)
-            return if (o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
         }
-
-    fun publicKey(j: Int): UByte {
+    fun publicKey(j: Int) : UByte {
         val o = __offset(6)
         return if (o != 0) {
             bb.get(__vector(o) + j * 1).toUByte()
@@ -34,19 +41,13 @@ class Contract : Table() {
             0u
         }
     }
-
-    val publicKeyLength: Int
+    val publicKeyLength : Int
         get() {
-            val o = __offset(6)
-            return if (o != 0) __vector_len(o) else 0
+            val o = __offset(6); return if (o != 0) __vector_len(o) else 0
         }
-
-    val publicKeyAsByteBuffer: ByteBuffer
-        get() = __vector_as_bytebuffer(6, 1)
-
-    fun publicKeyInByteBuffer(_bb: ByteBuffer): ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
-
-    fun nonce(j: Int): UByte {
+    val publicKeyAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
+    fun publicKeyInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
+    fun nonce(j: Int) : UByte {
         val o = __offset(8)
         return if (o != 0) {
             bb.get(__vector(o) + j * 1).toUByte()
@@ -54,19 +55,13 @@ class Contract : Table() {
             0u
         }
     }
-
-    val nonceLength: Int
+    val nonceLength : Int
         get() {
-            val o = __offset(8)
-            return if (o != 0) __vector_len(o) else 0
+            val o = __offset(8); return if (o != 0) __vector_len(o) else 0
         }
-
-    val nonceAsByteBuffer: ByteBuffer
-        get() = __vector_as_bytebuffer(8, 1)
-
-    fun nonceInByteBuffer(_bb: ByteBuffer): ByteBuffer = __vector_in_bytebuffer(_bb, 8, 1)
-
-    fun confirmCode(j: Int): UByte {
+    val nonceAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(8, 1)
+    fun nonceInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 8, 1)
+    fun confirmCode(j: Int) : UByte {
         val o = __offset(10)
         return if (o != 0) {
             bb.get(__vector(o) + j * 1).toUByte()
@@ -74,36 +69,22 @@ class Contract : Table() {
             0u
         }
     }
-
-    val confirmCodeLength: Int
+    val confirmCodeLength : Int
         get() {
-            val o = __offset(10)
-            return if (o != 0) __vector_len(o) else 0
+            val o = __offset(10); return if (o != 0) __vector_len(o) else 0
         }
-
-    val confirmCodeAsByteBuffer: ByteBuffer
-        get() = __vector_as_bytebuffer(10, 1)
-
-    fun confirmCodeInByteBuffer(_bb: ByteBuffer): ByteBuffer = __vector_in_bytebuffer(_bb, 10, 1)
-
-    val endConditionType: UByte
+    val confirmCodeAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(10, 1)
+    fun confirmCodeInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 10, 1)
+    val endConditionType : UByte
         get() {
             val o = __offset(12)
-            return if (o != 0) bb.get(o + bb_pos).toUByte() else 0u
+            return if(o != 0) bb.get(o + bb_pos).toUByte() else 0u
         }
-
-    fun endCondition(obj: Table): Table? {
-        val o = __offset(14)
-        return if (o != 0) __union(obj, o + bb_pos) else null
+    fun endCondition(obj: Table) : Table? {
+        val o = __offset(14); return if (o != 0) __union(obj, o + bb_pos) else null
     }
-
-    fun webhooks(j: Int): club.subjugated.fb.message.WebHook? =
-        webhooks(club.subjugated.fb.message.WebHook(), j)
-
-    fun webhooks(
-        obj: club.subjugated.fb.message.WebHook,
-        j: Int,
-    ): club.subjugated.fb.message.WebHook? {
+    fun webhooks(j: Int) : club.subjugated.fb.message.WebHook? = webhooks(club.subjugated.fb.message.WebHook(), j)
+    fun webhooks(obj: club.subjugated.fb.message.WebHook, j: Int) : club.subjugated.fb.message.WebHook? {
         val o = __offset(16)
         return if (o != 0) {
             obj.__assign(__indirect(__vector(o) + j * 4), bb)
@@ -111,25 +92,17 @@ class Contract : Table() {
             null
         }
     }
-
-    val webhooksLength: Int
+    val webhooksLength : Int
         get() {
-            val o = __offset(16)
-            return if (o != 0) __vector_len(o) else 0
+            val o = __offset(16); return if (o != 0) __vector_len(o) else 0
         }
-
-    val isTemporaryUnlockAllowed: Boolean
+    val isTemporaryUnlockAllowed : Boolean
         get() {
             val o = __offset(18)
-            return if (o != 0) 0.toByte() != bb.get(o + bb_pos) else false
+            return if(o != 0) 0.toByte() != bb.get(o + bb_pos) else false
         }
-
-    val unlockRules: club.subjugated.fb.message.TemporaryUnlockRules?
-        get() = unlockRules(club.subjugated.fb.message.TemporaryUnlockRules())
-
-    fun unlockRules(
-        obj: club.subjugated.fb.message.TemporaryUnlockRules
-    ): club.subjugated.fb.message.TemporaryUnlockRules? {
+    val unlockRules : club.subjugated.fb.message.TemporaryUnlockRules? get() = unlockRules(club.subjugated.fb.message.TemporaryUnlockRules())
+    fun unlockRules(obj: club.subjugated.fb.message.TemporaryUnlockRules) : club.subjugated.fb.message.TemporaryUnlockRules? {
         val o = __offset(20)
         return if (o != 0) {
             obj.__assign(__indirect(o + bb_pos), bb)
@@ -137,29 +110,14 @@ class Contract : Table() {
             null
         }
     }
-
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
-
         fun getRootAsContract(_bb: ByteBuffer): Contract = getRootAsContract(_bb, Contract())
-
         fun getRootAsContract(_bb: ByteBuffer, obj: Contract): Contract {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-
-        fun createContract(
-            builder: FlatBufferBuilder,
-            serialNumber: UShort,
-            publicKeyOffset: Int,
-            nonceOffset: Int,
-            confirmCodeOffset: Int,
-            endConditionType: UByte,
-            endConditionOffset: Int,
-            webhooksOffset: Int,
-            isTemporaryUnlockAllowed: Boolean,
-            unlockRulesOffset: Int,
-        ): Int {
+        fun createContract(builder: FlatBufferBuilder, serialNumber: UShort, publicKeyOffset: Int, nonceOffset: Int, confirmCodeOffset: Int, endConditionType: UByte, endConditionOffset: Int, webhooksOffset: Int, isTemporaryUnlockAllowed: Boolean, unlockRulesOffset: Int) : Int {
             builder.startTable(9)
             addUnlockRules(builder, unlockRulesOffset)
             addWebhooks(builder, webhooksOffset)
@@ -172,85 +130,52 @@ class Contract : Table() {
             addEndConditionType(builder, endConditionType)
             return endContract(builder)
         }
-
         fun startContract(builder: FlatBufferBuilder) = builder.startTable(9)
-
-        fun addSerialNumber(builder: FlatBufferBuilder, serialNumber: UShort) =
-            builder.addShort(0, serialNumber.toShort(), 0)
-
-        fun addPublicKey(builder: FlatBufferBuilder, publicKey: Int) =
-            builder.addOffset(1, publicKey, 0)
-
+        fun addSerialNumber(builder: FlatBufferBuilder, serialNumber: UShort) = builder.addShort(0, serialNumber.toShort(), 0)
+        fun addPublicKey(builder: FlatBufferBuilder, publicKey: Int) = builder.addOffset(1, publicKey, 0)
         @kotlin.ExperimentalUnsignedTypes
-        fun createPublicKeyVector(builder: FlatBufferBuilder, data: UByteArray): Int {
+        fun createPublicKeyVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
             builder.startVector(1, data.size, 1)
             for (i in data.size - 1 downTo 0) {
                 builder.addByte(data[i].toByte())
             }
             return builder.endVector()
         }
-
-        fun startPublicKeyVector(builder: FlatBufferBuilder, numElems: Int) =
-            builder.startVector(1, numElems, 1)
-
+        fun startPublicKeyVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
         fun addNonce(builder: FlatBufferBuilder, nonce: Int) = builder.addOffset(2, nonce, 0)
-
         @kotlin.ExperimentalUnsignedTypes
-        fun createNonceVector(builder: FlatBufferBuilder, data: UByteArray): Int {
+        fun createNonceVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
             builder.startVector(1, data.size, 1)
             for (i in data.size - 1 downTo 0) {
                 builder.addByte(data[i].toByte())
             }
             return builder.endVector()
         }
-
-        fun startNonceVector(builder: FlatBufferBuilder, numElems: Int) =
-            builder.startVector(1, numElems, 1)
-
-        fun addConfirmCode(builder: FlatBufferBuilder, confirmCode: Int) =
-            builder.addOffset(3, confirmCode, 0)
-
+        fun startNonceVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
+        fun addConfirmCode(builder: FlatBufferBuilder, confirmCode: Int) = builder.addOffset(3, confirmCode, 0)
         @kotlin.ExperimentalUnsignedTypes
-        fun createConfirmCodeVector(builder: FlatBufferBuilder, data: UByteArray): Int {
+        fun createConfirmCodeVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
             builder.startVector(1, data.size, 1)
             for (i in data.size - 1 downTo 0) {
                 builder.addByte(data[i].toByte())
             }
             return builder.endVector()
         }
-
-        fun startConfirmCodeVector(builder: FlatBufferBuilder, numElems: Int) =
-            builder.startVector(1, numElems, 1)
-
-        fun addEndConditionType(builder: FlatBufferBuilder, endConditionType: UByte) =
-            builder.addByte(4, endConditionType.toByte(), 0)
-
-        fun addEndCondition(builder: FlatBufferBuilder, endCondition: Int) =
-            builder.addOffset(5, endCondition, 0)
-
-        fun addWebhooks(builder: FlatBufferBuilder, webhooks: Int) =
-            builder.addOffset(6, webhooks, 0)
-
-        fun createWebhooksVector(builder: FlatBufferBuilder, data: IntArray): Int {
+        fun startConfirmCodeVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
+        fun addEndConditionType(builder: FlatBufferBuilder, endConditionType: UByte) = builder.addByte(4, endConditionType.toByte(), 0)
+        fun addEndCondition(builder: FlatBufferBuilder, endCondition: Int) = builder.addOffset(5, endCondition, 0)
+        fun addWebhooks(builder: FlatBufferBuilder, webhooks: Int) = builder.addOffset(6, webhooks, 0)
+        fun createWebhooksVector(builder: FlatBufferBuilder, data: IntArray) : Int {
             builder.startVector(4, data.size, 4)
             for (i in data.size - 1 downTo 0) {
                 builder.addOffset(data[i])
             }
             return builder.endVector()
         }
-
-        fun startWebhooksVector(builder: FlatBufferBuilder, numElems: Int) =
-            builder.startVector(4, numElems, 4)
-
-        fun addIsTemporaryUnlockAllowed(
-            builder: FlatBufferBuilder,
-            isTemporaryUnlockAllowed: Boolean,
-        ) = builder.addBoolean(7, isTemporaryUnlockAllowed, false)
-
-        fun addUnlockRules(builder: FlatBufferBuilder, unlockRules: Int) =
-            builder.addOffset(8, unlockRules, 0)
-
-        fun endContract(builder: FlatBufferBuilder): Int {
+        fun startWebhooksVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(4, numElems, 4)
+        fun addIsTemporaryUnlockAllowed(builder: FlatBufferBuilder, isTemporaryUnlockAllowed: Boolean) = builder.addBoolean(7, isTemporaryUnlockAllowed, false)
+        fun addUnlockRules(builder: FlatBufferBuilder, unlockRules: Int) = builder.addOffset(8, unlockRules, 0)
+        fun endContract(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o
         }

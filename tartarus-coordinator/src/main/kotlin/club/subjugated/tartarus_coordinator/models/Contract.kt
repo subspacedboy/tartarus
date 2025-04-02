@@ -11,6 +11,7 @@ class Contract(
     var shareableToken: String?,
     @Enumerated(EnumType.STRING) var state: ContractState = ContractState.UNSPECIFIED,
     @ManyToOne @JoinColumn(name = "author_id") var authorSession: AuthorSession,
+    @ManyToOne @JoinColumn(name = "lock_session_id") var lockSession: LockSession,
     var body: ByteArray? = null,
     @OneToMany(mappedBy = "id", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     var commands: MutableList<Command> = mutableListOf(),

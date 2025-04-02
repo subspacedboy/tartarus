@@ -12,6 +12,7 @@ import {LockSessionDetailComponent} from './lock-session-detail/lock-session-det
 import {ContractDetailComponent} from './contract-detail/contract-detail.component';
 import {CoordinatorConfigurationComponent} from './coordinator-configuration/coordinator-configuration.component';
 import {LogoutAuthorComponent} from './logout-author/logout-author.component';
+import {LockUserContractDetailComponent} from './lock-user-contract-detail/lock-user-contract-detail.component';
 
 export const routes: Routes = [
   {
@@ -61,6 +62,10 @@ export const routes: Routes = [
   {
     path: 'my-lock',
     component: MyLockComponent
+  },
+  {
+    path: 'my-lock/contract/:contractName',
+    component: LockUserContractDetailComponent
   },
   {
     path: 'configuration',

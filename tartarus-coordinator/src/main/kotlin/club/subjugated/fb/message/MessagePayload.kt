@@ -13,5 +13,6 @@ class MessagePayload private constructor() {
         const val StartedUpdate: UByte = 5u
         const val Acknowledgement: UByte = 6u
         const val Error: UByte = 7u
+        const val AbortCommand: UByte = 8u
     }
 }

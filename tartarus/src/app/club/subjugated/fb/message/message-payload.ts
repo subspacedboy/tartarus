@@ -2,6 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
+import { AbortCommand } from '../../../../club/subjugated/fb/message/abort-command.js';
 import { Acknowledgement } from '../../../../club/subjugated/fb/message/acknowledgement.js';
 import { Contract } from '../../../../club/subjugated/fb/message/contract.js';
 import { Error } from '../../../../club/subjugated/fb/message/error.js';
@@ -19,13 +20,14 @@ export enum MessagePayload {
   ReleaseCommand = 4,
   StartedUpdate = 5,
   Acknowledgement = 6,
-  Error = 7
+  Error = 7,
+  AbortCommand = 8
 }
 
 export function unionToMessagePayload(
   type: MessagePayload,
-  accessor: (obj:Acknowledgement|Contract|Error|LockCommand|ReleaseCommand|StartedUpdate|UnlockCommand) => Acknowledgement|Contract|Error|LockCommand|ReleaseCommand|StartedUpdate|UnlockCommand|null
-): Acknowledgement|Contract|Error|LockCommand|ReleaseCommand|StartedUpdate|UnlockCommand|null {
+  accessor: (obj:AbortCommand|Acknowledgement|Contract|Error|LockCommand|ReleaseCommand|StartedUpdate|UnlockCommand) => AbortCommand|Acknowledgement|Contract|Error|LockCommand|ReleaseCommand|StartedUpdate|UnlockCommand|null
+): AbortCommand|Acknowledgement|Contract|Error|LockCommand|ReleaseCommand|StartedUpdate|UnlockCommand|null {
   switch(MessagePayload[type]) {
     case 'NONE': return null; 
     case 'Contract': return accessor(new Contract())! as Contract;
@@ -35,15 +37,16 @@ export function unionToMessagePayload(
     case 'StartedUpdate': return accessor(new StartedUpdate())! as StartedUpdate;
     case 'Acknowledgement': return accessor(new Acknowledgement())! as Acknowledgement;
     case 'Error': return accessor(new Error())! as Error;
+    case 'AbortCommand': return accessor(new AbortCommand())! as AbortCommand;
     default: return null;
   }
 }
 
 export function unionListToMessagePayload(
   type: MessagePayload, 
-  accessor: (index: number, obj:Acknowledgement|Contract|Error|LockCommand|ReleaseCommand|StartedUpdate|UnlockCommand) => Acknowledgement|Contract|Error|LockCommand|ReleaseCommand|StartedUpdate|UnlockCommand|null, 
+  accessor: (index: number, obj:AbortCommand|Acknowledgement|Contract|Error|LockCommand|ReleaseCommand|StartedUpdate|UnlockCommand) => AbortCommand|Acknowledgement|Contract|Error|LockCommand|ReleaseCommand|StartedUpdate|UnlockCommand|null, 
   index: number
-): Acknowledgement|Contract|Error|LockCommand|ReleaseCommand|StartedUpdate|UnlockCommand|null {
+): AbortCommand|Acknowledgement|Contract|Error|LockCommand|ReleaseCommand|StartedUpdate|UnlockCommand|null {
   switch(MessagePayload[type]) {
     case 'NONE': return null; 
     case 'Contract': return accessor(index, new Contract())! as Contract;
@@ -53,6 +56,7 @@ export function unionListToMessagePayload(
     case 'StartedUpdate': return accessor(index, new StartedUpdate())! as StartedUpdate;
     case 'Acknowledgement': return accessor(index, new Acknowledgement())! as Acknowledgement;
     case 'Error': return accessor(index, new Error())! as Error;
+    case 'AbortCommand': return accessor(index, new AbortCommand())! as AbortCommand;
     default: return null;
   }
 }

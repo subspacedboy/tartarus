@@ -60,9 +60,9 @@ class ConfigurationService {
             CoordinatorConfiguration.createSafetyKeysVector(builder, keyOffsets.toIntArray())
 
         // Create main configuration
-        val webUriOffset = builder.createString("http://192.168.1.180:4200")
-        val mqttUriOffset = builder.createString("ws://192.168.1.180:8080/mqtt")
-        val apiUriOffset = builder.createString("ws://192.168.1.180:5002")
+        val webUriOffset = builder.createString(webUri)
+        val mqttUriOffset = builder.createString(mqttUri)
+        val apiUriOffset = builder.createString(apiUri)
 
         CoordinatorConfiguration.startCoordinatorConfiguration(builder)
         CoordinatorConfiguration.addWebUri(builder, webUriOffset)

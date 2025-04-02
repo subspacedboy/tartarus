@@ -2,25 +2,33 @@
 
 package club.subjugated.fb.message
 
+import com.google.flatbuffers.BaseVector
+import com.google.flatbuffers.BooleanVector
+import com.google.flatbuffers.ByteVector
 import com.google.flatbuffers.Constants
+import com.google.flatbuffers.DoubleVector
 import com.google.flatbuffers.FlatBufferBuilder
+import com.google.flatbuffers.FloatVector
+import com.google.flatbuffers.LongVector
+import com.google.flatbuffers.StringVector
+import com.google.flatbuffers.Struct
 import com.google.flatbuffers.Table
+import com.google.flatbuffers.UnionVector
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.math.sign
 
 @Suppress("unused")
 class SignedMessage : Table() {
 
-    fun __init(_i: Int, _bb: ByteBuffer) {
+    fun __init(_i: Int, _bb: ByteBuffer)  {
         __reset(_i, _bb)
     }
-
-    fun __assign(_i: Int, _bb: ByteBuffer): SignedMessage {
+    fun __assign(_i: Int, _bb: ByteBuffer) : SignedMessage {
         __init(_i, _bb)
         return this
     }
-
-    fun signature(j: Int): UByte {
+    fun signature(j: Int) : UByte {
         val o = __offset(4)
         return if (o != 0) {
             bb.get(__vector(o) + j * 1).toUByte()
@@ -28,84 +36,52 @@ class SignedMessage : Table() {
             0u
         }
     }
-
-    val signatureLength: Int
+    val signatureLength : Int
         get() {
-            val o = __offset(4)
-            return if (o != 0) __vector_len(o) else 0
+            val o = __offset(4); return if (o != 0) __vector_len(o) else 0
         }
-
-    val signatureAsByteBuffer: ByteBuffer
-        get() = __vector_as_bytebuffer(4, 1)
-
-    fun signatureInByteBuffer(_bb: ByteBuffer): ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
-
-    val payloadType: UByte
+    val signatureAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
+    fun signatureInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val payloadType : UByte
         get() {
             val o = __offset(6)
-            return if (o != 0) bb.get(o + bb_pos).toUByte() else 0u
+            return if(o != 0) bb.get(o + bb_pos).toUByte() else 0u
         }
-
-    fun payload(obj: Table): Table? {
-        val o = __offset(8)
-        return if (o != 0) __union(obj, o + bb_pos) else null
+    fun payload(obj: Table) : Table? {
+        val o = __offset(8); return if (o != 0) __union(obj, o + bb_pos) else null
     }
-
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
-
-        fun getRootAsSignedMessage(_bb: ByteBuffer): SignedMessage =
-            getRootAsSignedMessage(_bb, SignedMessage())
-
+        fun getRootAsSignedMessage(_bb: ByteBuffer): SignedMessage = getRootAsSignedMessage(_bb, SignedMessage())
         fun getRootAsSignedMessage(_bb: ByteBuffer, obj: SignedMessage): SignedMessage {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-
-        fun createSignedMessage(
-            builder: FlatBufferBuilder,
-            signatureOffset: Int,
-            payloadType: UByte,
-            payloadOffset: Int,
-        ): Int {
+        fun createSignedMessage(builder: FlatBufferBuilder, signatureOffset: Int, payloadType: UByte, payloadOffset: Int) : Int {
             builder.startTable(3)
             addPayload(builder, payloadOffset)
             addSignature(builder, signatureOffset)
             addPayloadType(builder, payloadType)
             return endSignedMessage(builder)
         }
-
         fun startSignedMessage(builder: FlatBufferBuilder) = builder.startTable(3)
-
-        fun addSignature(builder: FlatBufferBuilder, signature: Int) =
-            builder.addOffset(0, signature, 0)
-
+        fun addSignature(builder: FlatBufferBuilder, signature: Int) = builder.addOffset(0, signature, 0)
         @kotlin.ExperimentalUnsignedTypes
-        fun createSignatureVector(builder: FlatBufferBuilder, data: UByteArray): Int {
+        fun createSignatureVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
             builder.startVector(1, data.size, 1)
             for (i in data.size - 1 downTo 0) {
                 builder.addByte(data[i].toByte())
             }
             return builder.endVector()
         }
-
-        fun startSignatureVector(builder: FlatBufferBuilder, numElems: Int) =
-            builder.startVector(1, numElems, 1)
-
-        fun addPayloadType(builder: FlatBufferBuilder, payloadType: UByte) =
-            builder.addByte(1, payloadType.toByte(), 0)
-
+        fun startSignatureVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
+        fun addPayloadType(builder: FlatBufferBuilder, payloadType: UByte) = builder.addByte(1, payloadType.toByte(), 0)
         fun addPayload(builder: FlatBufferBuilder, payload: Int) = builder.addOffset(2, payload, 0)
-
-        fun endSignedMessage(builder: FlatBufferBuilder): Int {
+        fun endSignedMessage(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o
         }
-
-        fun finishSignedMessageBuffer(builder: FlatBufferBuilder, offset: Int) =
-            builder.finish(offset)
-
-        fun finishSizePrefixedSignedMessageBuffer(builder: FlatBufferBuilder, offset: Int) =
-            builder.finishSizePrefixed(offset)
+        fun finishSignedMessageBuffer(builder: FlatBufferBuilder, offset: Int) = builder.finish(offset)
+        fun finishSizePrefixedSignedMessageBuffer(builder: FlatBufferBuilder, offset: Int) = builder.finishSizePrefixed(offset)
     }
 }

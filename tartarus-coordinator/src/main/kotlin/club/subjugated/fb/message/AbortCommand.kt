@@ -19,12 +19,12 @@ import java.nio.ByteOrder
 import kotlin.math.sign
 
 @Suppress("unused")
-class ReleaseCommand : Table() {
+class AbortCommand : Table() {
 
     fun __init(_i: Int, _bb: ByteBuffer)  {
         __reset(_i, _bb)
     }
-    fun __assign(_i: Int, _bb: ByteBuffer) : ReleaseCommand {
+    fun __assign(_i: Int, _bb: ByteBuffer) : AbortCommand {
         __init(_i, _bb)
         return this
     }
@@ -45,23 +45,23 @@ class ReleaseCommand : Table() {
         }
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
-        fun getRootAsReleaseCommand(_bb: ByteBuffer): ReleaseCommand = getRootAsReleaseCommand(_bb, ReleaseCommand())
-        fun getRootAsReleaseCommand(_bb: ByteBuffer, obj: ReleaseCommand): ReleaseCommand {
+        fun getRootAsAbortCommand(_bb: ByteBuffer): AbortCommand = getRootAsAbortCommand(_bb, AbortCommand())
+        fun getRootAsAbortCommand(_bb: ByteBuffer, obj: AbortCommand): AbortCommand {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createReleaseCommand(builder: FlatBufferBuilder, contractSerialNumber: UShort, serialNumber: UShort, counter: UShort) : Int {
+        fun createAbortCommand(builder: FlatBufferBuilder, contractSerialNumber: UShort, serialNumber: UShort, counter: UShort) : Int {
             builder.startTable(3)
             addCounter(builder, counter)
             addSerialNumber(builder, serialNumber)
             addContractSerialNumber(builder, contractSerialNumber)
-            return endReleaseCommand(builder)
+            return endAbortCommand(builder)
         }
-        fun startReleaseCommand(builder: FlatBufferBuilder) = builder.startTable(3)
+        fun startAbortCommand(builder: FlatBufferBuilder) = builder.startTable(3)
         fun addContractSerialNumber(builder: FlatBufferBuilder, contractSerialNumber: UShort) = builder.addShort(0, contractSerialNumber.toShort(), 0)
         fun addSerialNumber(builder: FlatBufferBuilder, serialNumber: UShort) = builder.addShort(1, serialNumber.toShort(), 0)
         fun addCounter(builder: FlatBufferBuilder, counter: UShort) = builder.addShort(2, counter.toShort(), 0)
-        fun endReleaseCommand(builder: FlatBufferBuilder) : Int {
+        fun endAbortCommand(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o
         }

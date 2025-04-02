@@ -2,6 +2,7 @@ package club.subjugated.tartarus_coordinator.config
 
 import AuthorAuthenticationFilter
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
+import club.subjugated.tartarus_coordinator.services.LockUserSessionService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -17,11 +18,12 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @EnableWebSecurity
 @EnableMethodSecurity
 class SecurityConfiguration() {
+    @Autowired lateinit var lockUserSessionService: LockUserSessionService
     @Autowired lateinit var authorSessionService: AuthorSessionService
 
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
-        val authorAuthenticationFilter = AuthorAuthenticationFilter(authorSessionService)
+        val authorAuthenticationFilter = AuthorAuthenticationFilter(authorSessionService, lockUserSessionService)
 
         http
             .cors { it.configurationSource(corsConfigurationSource()) }

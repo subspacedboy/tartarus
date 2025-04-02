@@ -27,4 +27,10 @@
       <input class="form-control" id="lockLink2" [value]="getTotalControlLink()" [disabled]="true">
     </div>
   </div>
+
+  <div>
+    @for (c of contracts; track c.name){
+      <app-contract-card [contract]="c"></app-contract-card>
+    }
+  </div>
 }

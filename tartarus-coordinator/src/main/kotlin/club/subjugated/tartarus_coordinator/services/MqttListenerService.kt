@@ -97,6 +97,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                                     NewLockSessionMessage(
                                         publicKey = Base64.getEncoder().encodeToString(key),
                                         sessionToken = theUpdate.session!!,
+                                        userSessionPublicKey = ""
                                     )
 
                                 val lockSession = lockSessionService.createLockSession(nlsm)

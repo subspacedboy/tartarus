@@ -1,0 +1,28 @@
+@if(contract) {
+  <h1>Contract {{contract.name}}</h1>
+
+  <div class="row">
+    State: {{contract.state}}
+  </div>
+
+  @switch (contract.state) {
+    @case('CONFIRMED') {
+    }
+    @case('RELEASED') {
+      Contract has ended.
+    }
+    @case('CREATED'){
+      Review
+      <button type="button" class="btn btn-primary" (click)="approve()">Accept</button>
+    }
+  }
+
+  @if(contractDescription) {
+    <div>
+      Temporary unlock allowed: {{contractDescription.isTemporaryUnlockAllowed}}
+    </div>
+    <div>
+      End Condition: {{contractDescription.endCondition}}
+    </div>
+  }
+}

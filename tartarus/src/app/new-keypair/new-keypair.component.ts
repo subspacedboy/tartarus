@@ -4,6 +4,7 @@ import {FormsModule} from '@angular/forms';
 import * as QRCode from 'qrcode';
 import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
 import {Platform} from '@angular/cdk/platform';
+import {CryptoService} from '../crypto.service';
 
 @Component({
   selector: 'app-new-keypair',
@@ -24,7 +25,8 @@ export class NewKeypairComponent implements OnInit {
   @ViewChild('hiddenDiv', { static: false }) hiddenDiv!: ElementRef;
 
   constructor(private tartarusCoordinatorService : TartarusCoordinatorService,
-              private platform: Platform,) {
+              private platform: Platform,
+              private cryptoService: CryptoService) {
   }
 
   async ngOnInit() {
@@ -32,7 +34,7 @@ export class NewKeypairComponent implements OnInit {
   }
 
   async generateQRCode() {
-    let key_pair = await this.generateKeyPair();
+    let key_pair = await this.cryptoService.generateKeyPair();
     let whole_key : string = key_pair.privateKeyPEM + "\n" + key_pair.publicKeyPEM;
 
     const canvas = this.canvas.nativeElement;
@@ -88,30 +90,5 @@ export class NewKeypairComponent implements OnInit {
       link.download = 'qrcode.png';
       link.click();
     }
-  }
-
-  async generateKeyPair(): Promise<{ privateKeyPEM: string; publicKeyPEM: string }> {
-    // Generate key pair using WebCrypto API
-    const keyPair = await crypto.subtle.generateKey(
-      { name: "ECDSA", namedCurve: "P-256" },
-      true, // Extractable keys
-      ["sign", "verify"]
-    );
-
-    // Export the private key (PKCS#8 format)
-    const privateKeyDER = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
-    const privateKeyPEM = this.derToPem(new Uint8Array(privateKeyDER), "PRIVATE KEY");
-
-    // Export the public key (SPKI format)
-    const publicKeyDER = await crypto.subtle.exportKey("spki", keyPair.publicKey);
-    const publicKeyPEM = this.derToPem(new Uint8Array(publicKeyDER), "PUBLIC KEY");
-
-    return { privateKeyPEM, publicKeyPEM };
-  }
-
-  derToPem(der: Uint8Array, label: string): string {
-    const base64 = btoa(String.fromCharCode(...der));
-    const formatted = base64.match(/.{1,64}/g)?.join("\n") ?? "";
-    return `-----BEGIN ${label}-----\n${formatted}\n-----END ${label}-----`;
   }
 }

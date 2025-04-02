@@ -30,6 +30,31 @@ export class UserDataService {
     return this.getLockSessions().length > 0;
   }
 
+  hasLockUserSessionKeyPair() {
+    return localStorage.getItem("lock_user_private_pem") !== null;
+  }
+
+  getLockUserSessionKeyPair() {
+    const privatePem = localStorage.getItem("lock_user_private_pem");
+    const publicPem = localStorage.getItem("lock_user_public_pem");
+
+    return { privatePem, publicPem} ;
+  }
+
+  addPublicAndPrivateKeyToLocalUserSession(privatePem: string, publicPem: string) {
+    localStorage.setItem('lock_user_private_pem', privatePem);
+    localStorage.setItem('lock_user_public_pem', publicPem);
+  }
+
+  setLockUserSessionToken(token: string) {
+    localStorage.setItem('has_lock_user_session', 'true');
+    localStorage.setItem('lock_user_session_token', token);
+  }
+
+  getLockUserSessionToken() : string {
+    return String(localStorage.getItem('lock_user_session_token'));
+  }
+
   getAuthorKeypair() {
     const privatePem = localStorage.getItem("private_pem");
     const publicPem = localStorage.getItem("public_pem");

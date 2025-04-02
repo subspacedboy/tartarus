@@ -3,15 +3,20 @@ import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
 import {UserDataService} from '../user-data.service';
 import {LockSession} from '../models/lock-session';
 import {ConfigService} from '../config.service';
+import {ContractCardComponent} from '../contract-card/contract-card.component';
+import {Contract} from '../models/contract';
 
 @Component({
   selector: 'app-my-lock',
-  imports: [],
+  imports: [
+    ContractCardComponent
+  ],
   templateUrl: './my-lock.component.html',
   styleUrl: './my-lock.component.scss'
 })
 export class MyLockComponent implements OnInit {
   lockSession? : LockSession;
+  contracts? : Contract[];
 
   constructor(private tartarusCoordinatorService: TartarusCoordinatorService,
               private userDataService: UserDataService,
@@ -24,6 +29,11 @@ export class MyLockComponent implements OnInit {
     this.tartarusCoordinatorService.getMyLockSession(sessionToken).subscribe(lockSession => {
       this.lockSession = lockSession;
     });
+
+    this.tartarusCoordinatorService.getContractsForLockSession().subscribe(contracts => {
+      this.contracts = contracts;
+    });
+
   }
 
   getShareLink(): string {

@@ -28,6 +28,7 @@ create table contract(
     next_counter SMALLINT UNSIGNED NOT NULL,
     serial_number SMALLINT UNSIGNED NOT NULL,
     author_id bigint NOT NULL,
+    lock_session_id bigint NOT NULL,
     body BLOB NOT NULL,
     created_at DATETIME,
     updated_at DATETIME,
@@ -78,5 +79,15 @@ create table known_token (
     notes varchar(255) NOT NULL,
     shareable_token varchar(10) NOT NULL,
     created_at DATETIME,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+create table lock_user_session(
+    id bigint NOT NULL AUTO_INCREMENT,
+    name varchar(25) NOT NULL,
+    public_key varchar(255) NOT NULL,
+    lock_session_id bigint NOT NULL,
+    created_at DATETIME,
+    updated_at DATETIME,
     PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

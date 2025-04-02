@@ -17,6 +17,10 @@ class LockSession(
     var totalControlToken: String?,
     @OneToMany(mappedBy = "id", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     var commandQueue: MutableList<CommandQueue> = mutableListOf(),
+    @OneToMany(mappedBy = "id", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    var lockUserSessions: MutableList<LockUserSession> = mutableListOf(),
+    @OneToMany(mappedBy = "id", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    var contracts: MutableList<Contract> = mutableListOf(),
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
 ) {

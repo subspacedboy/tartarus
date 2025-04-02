@@ -42,6 +42,7 @@ class ContractService {
                 val contract =
                     Contract(
                         shareableToken = newContractMessage.shareableToken,
+                        lockSession = lockSession,
                         state = ContractState.CREATED,
                         body = Base64.getDecoder().decode(newContractMessage.signedMessage),
                         authorSession = authorSession,
@@ -81,6 +82,35 @@ class ContractService {
                 throw IllegalArgumentException("Invalid signature")
             }
         }
+    }
+
+    fun approveContract(lockSession: LockSession, contractName: String) : Contract {
+        val contract = contractRepository.findByName(contractName)
+        assert(lockSession == contract.lockSession)
+
+        contract.state = ContractState.ACCEPTED
+        val command =
+            Command(
+                commandQueue = lockSession.commandQueue.first(),
+                state = CommandState.PENDING,
+                type = CommandType.ACCEPT_CONTRACT,
+                serialNumber = contract.serialNumber,
+                counter = 0,
+                body = contract.body,
+                authorSession = contract.authorSession,
+                createdAt = timeSource.nowInUtc(),
+                updatedAt = timeSource.nowInUtc(),
+                contract = contract,
+            )
+        this.commandQueueService.saveCommand(command)
+
+        publisher.publishEvent(NewCommandEvent(this, lockSession.sessionToken!!))
+
+        return contract
+    }
+
+    fun findByLockSessionId(lockSession: LockSession) : List<Contract> {
+        return contractRepository.findByLockSessionIdOrderByCreatedAtDesc(lockSession.id)
     }
 
     fun saveCommand(

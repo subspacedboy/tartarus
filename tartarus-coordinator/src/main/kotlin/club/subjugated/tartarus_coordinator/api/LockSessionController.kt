@@ -5,6 +5,7 @@ import club.subjugated.tartarus_coordinator.api.messages.LockSessionMessage
 import club.subjugated.tartarus_coordinator.api.messages.NewLockSessionMessage
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
 import club.subjugated.tartarus_coordinator.services.LockSessionService
+import club.subjugated.tartarus_coordinator.services.LockUserSessionService
 import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromCompressedKeyByteArray
 import jakarta.ws.rs.core.MediaType
 import org.bouncycastle.crypto.CryptoException
@@ -21,13 +22,14 @@ import org.springframework.web.bind.annotation.*
 @Controller
 class LockSessionController {
     @Autowired lateinit var lockSessionService: LockSessionService
+    @Autowired lateinit var lockUserSessionService: LockUserSessionService
     @Autowired lateinit var authorSessionService: AuthorSessionService
 
     @GetMapping("/mine/{someToken}", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
-    fun findMyLockSession(@PathVariable someToken: String): ResponseEntity<LockSessionMessage> {
+    fun findMyLockSession(@AuthenticationPrincipal user: UserDetails, @PathVariable someToken: String): ResponseEntity<LockSessionMessage> {
         val maybeSession = this.lockSessionService.findBySessionToken(someToken)
-        return ResponseEntity.ok(LockSessionMessage.fromLockSession(maybeSession))
+        return ResponseEntity.ok(LockSessionMessage.fromLockSession(maybeSession, null, false))
     }
 
     @GetMapping("/{someToken}", produces = [MediaType.APPLICATION_JSON])
@@ -43,7 +45,8 @@ class LockSessionController {
         val authorSession = this.authorSessionService.findByName(user.username)
         this.authorSessionService.authorKnowsToken(authorSession, someToken)
 
-        return ResponseEntity.ok(LockSessionMessage.fromLockSession(maybeSession))
+        val suppressTotalControl = someToken != maybeSession.totalControlToken
+        return ResponseEntity.ok(LockSessionMessage.fromLockSession(maybeSession, null, suppressTotalControl))
     }
 
     @GetMapping("/known", produces = [MediaType.APPLICATION_JSON])
@@ -72,7 +75,8 @@ class LockSessionController {
         }
 
         val session = lockSessionService.createLockSession(newLockSessionMessage)
+        val userSession = lockUserSessionService.saveNewLockUserSession(session, newLockSessionMessage.userSessionPublicKey)
 
-        return ResponseEntity.ok(LockSessionMessage.fromLockSession(session))
+        return ResponseEntity.ok(LockSessionMessage.fromLockSession(session, userSession, false))
     }
 }

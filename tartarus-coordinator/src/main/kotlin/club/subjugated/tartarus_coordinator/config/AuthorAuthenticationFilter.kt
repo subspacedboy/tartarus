@@ -1,4 +1,5 @@
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
+import club.subjugated.tartarus_coordinator.services.LockUserSessionService
 import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromCompressedKeyByteArray
 import com.nimbusds.jose.crypto.ECDSAVerifier
 import com.nimbusds.jwt.SignedJWT
@@ -18,7 +19,9 @@ import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource
 import org.springframework.web.filter.OncePerRequestFilter
 
-class AuthorAuthenticationFilter(private val authorSessionService: AuthorSessionService) :
+class AuthorAuthenticationFilter(
+    private val authorSessionService: AuthorSessionService,
+    private val lockUserSessionService: LockUserSessionService) :
     OncePerRequestFilter() {
 
     private val filterLogger: Logger = LoggerFactory.getLogger(AuthorAuthenticationFilter::class.java)
@@ -37,15 +40,22 @@ class AuthorAuthenticationFilter(private val authorSessionService: AuthorSession
             val signedJWT = SignedJWT.parse(token)
             val claimsSet = signedJWT.jwtClaimsSet
 
-            val authorSessionTokenName = claimsSet.subject
+            val sessionTokenName = claimsSet.subject
             try {
-                val authorSession = this.authorSessionService.findByName(authorSessionTokenName)
+                val publicKey = if(sessionTokenName.startsWith("as-")) {
+                    val authorSession = this.authorSessionService.findByName(sessionTokenName)
+                    Base64.getDecoder().decode(authorSession.publicKey)
+                } else {
+                    val lockUserSession = this.lockUserSessionService.findByName(sessionTokenName)
+                    Base64.getDecoder().decode(lockUserSession.publicKey)
+                }
 
-                val authorPublicECKey =
+
+                val sessionPublicECKey =
                     getECPublicKeyFromCompressedKeyByteArray(
-                        Base64.getDecoder().decode(authorSession.publicKey)
+                        publicKey
                     )
-                val verifier = ECDSAVerifier(authorPublicECKey)
+                val verifier = ECDSAVerifier(sessionPublicECKey)
                 if (signedJWT.verify(verifier)) {
                     val userDetails: UserDetails =
                         User.withUsername(claimsSet.subject)

@@ -36,9 +36,11 @@ export class TartarusCoordinatorService {
     }));
   }
 
+  // Lock sessions
   public getLockSession(sessionToken: string) : Observable<LockSession> {
     const get_lock_session_uri = `${this.baseUrl}/lock_sessions/${sessionToken}`;
     return this.http.get(get_lock_session_uri, {
+      headers: new HttpHeaders({ 'X-Require-Author': 'requires authorization tokens' }),
     }).pipe(map((res:any) => {
       return new LockSession(res);
     }), catchError(error => {
@@ -49,6 +51,7 @@ export class TartarusCoordinatorService {
   public getMyLockSession(sessionToken: string) : Observable<LockSession> {
     const get_my_lock_session_uri = `${this.baseUrl}/lock_sessions/mine/${sessionToken}`;
     return this.http.get(get_my_lock_session_uri, {
+      headers: new HttpHeaders({ 'X-Require-LockUser': 'requires authorization tokens' }),
     }).pipe(map((res:any) => {
       return new LockSession(res);
     }), catchError(error => {
@@ -56,6 +59,37 @@ export class TartarusCoordinatorService {
     }));
   }
 
+  public getKnownTokensForAuthor() : Observable<KnownToken[]> {
+    const get_tokens_uri = `${this.baseUrl}/lock_sessions/known`;
+    return this.http.get(get_tokens_uri, {
+      headers: new HttpHeaders({ 'X-Require-Author': 'requires authorization tokens' }),
+    }).pipe(map((res:any) => {
+      const knownTokens : KnownToken[] = res.map((datum: any) => {
+        return new KnownToken(datum);
+      });
+
+      return knownTokens;
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public saveLockPubKeyAndSession(public_key: string, session: string, userSessionPublicPem: string) : Observable<LockSession> {
+    const save_key_uri = `${this.baseUrl}/lock_sessions/`;
+    const body = JSON.stringify({
+      'publicKey' : public_key,
+      'sessionToken' : session,
+      'userSessionPublicKey' : userSessionPublicPem,
+    });
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+    return this.http.post(save_key_uri, body, {headers} ).pipe(map((res:any) => {
+      return new LockSession(res);
+    }),  catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  // Author sessions
   public createAuthorSession(public_key: string, session_token: string, signature : string): Observable<AuthorSession> {
     const save_key_uri = `${this.baseUrl}/author_sessions/`;
     const body = JSON.stringify({
@@ -71,19 +105,7 @@ export class TartarusCoordinatorService {
     }));
   }
 
-  public saveLockPubKeyAndSession(public_key: string, session: string) : Observable<LockSession> {
-    const save_key_uri = `${this.baseUrl}/lock_sessions/`;
-    const body = JSON.stringify({
-      'publicKey' : public_key,
-      'sessionToken' : session
-    });
-    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-    return this.http.post(save_key_uri, body, {headers} ).pipe(map((res:any) => {
-      return new LockSession(res);
-    }),  catchError(error => {
-      return this.handleError(error);
-    }));
-  }
+  // Contracts & Commands
 
   public saveContract(authorName: string, shareableToken: string, signed_message: Uint8Array) : Observable<boolean> {
     const save_contract_uri = `${this.baseUrl}/contracts/`;
@@ -92,7 +114,7 @@ export class TartarusCoordinatorService {
       'authorName' : authorName,
       'signedMessage' : btoa(String.fromCharCode(...signed_message))
     });
-    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json', 'X-Require-Author' : 'require authorization tokens' });
     return this.http.post(save_contract_uri, body, {headers} ).pipe(map((res:any) => {
       // let t = new Ticket(res);
       return true;
@@ -104,6 +126,7 @@ export class TartarusCoordinatorService {
   public getContractsForShareable(shareableToken: string) : Observable<Contract[]> {
     const get_contracts_uri = `${this.baseUrl}/contracts/byShareable/${shareableToken}`;
     return this.http.get(get_contracts_uri, {
+      headers: new HttpHeaders({ 'X-Require-Author': 'requires authorization tokens' }),
     }).pipe(map((res:any) => {
       const contracts : Contract[] = res.map((datum: any) => {
         return new Contract(datum);
@@ -115,36 +138,12 @@ export class TartarusCoordinatorService {
     }));
   }
 
-  public getKnownTokensForAuthor() : Observable<KnownToken[]> {
-    const get_tokens_uri = `${this.baseUrl}/lock_sessions/known`;
-    return this.http.get(get_tokens_uri, {
-      headers: new HttpHeaders({ 'X-Require-Auth': 'requires authorization tokens' }),
-    }).pipe(map((res:any) => {
-      const knownTokens : KnownToken[] = res.map((datum: any) => {
-        return new KnownToken(datum);
-      });
-
-      return knownTokens;
-    }), catchError(error => {
-      return this.handleError(error);
-    }));
-  }
-
   public getContractByName(name: string) : Observable<Contract> {
     const get_contracts_uri = `${this.baseUrl}/contracts/${name}`;
     return this.http.get(get_contracts_uri, {
+      headers: new HttpHeaders({ 'X-Require-Author': 'requires authorization tokens' }),
     }).pipe(map((res:any) => {
       return new Contract(res);
-    }), catchError(error => {
-      return this.handleError(error);
-    }));
-  }
-
-  public getConfigurationFromCoordinator() : Observable<AppConfig> {
-    const get_configuration_uri = `${this.baseUrl}/configuration/`;
-    return this.http.get(get_configuration_uri, {
-    }).pipe(map((res:any) => {
-      return new AppConfig(res);
     }), catchError(error => {
       return this.handleError(error);
     }));
@@ -158,13 +157,53 @@ export class TartarusCoordinatorService {
       'contractName': contractName,
       'signedMessage' : btoa(String.fromCharCode(...signed_message))
     });
-    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json', 'X-Require-Author': 'requires authorization tokens' });
     return this.http.post(save_command_uri, body, {headers} ).pipe(map((res:any) => {
       return true;
     }),  catchError(error => {
       return this.handleError(error);
     }));
   }
+
+  public getContractsForLockSession() : Observable<Contract[]> {
+    const get_contracts_uri = `${this.baseUrl}/contracts/reviewPending`;
+    return this.http.get(get_contracts_uri, {
+      headers: new HttpHeaders({ 'X-Require-LockUser': 'requires authorization tokens' }),
+    }).pipe(map((res:any) => {
+      const contracts : Contract[] = res.map((datum: any) => {
+        return new Contract(datum);
+      });
+
+      return contracts;
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public approveContract(contractName: string) : Observable<Contract> {
+    const approve_uri = `${this.baseUrl}/contracts/approve/${contractName}`;
+    const body = JSON.stringify({
+    });
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json', 'X-Require-LockUser': 'requires authorization tokens' });
+    return this.http.post(approve_uri, body, {headers} ).pipe(map((res:any) => {
+      return new Contract(res);
+    }),  catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  // Configuration data
+  public getConfigurationFromCoordinator() : Observable<AppConfig> {
+    const get_configuration_uri = `${this.baseUrl}/configuration/`;
+    return this.http.get(get_configuration_uri, {
+    }).pipe(map((res:any) => {
+      return new AppConfig(res);
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  // Error handling
 
   private handleError(error: HttpErrorResponse) {
     if (error.error instanceof ErrorEvent) {

@@ -1,9 +1,12 @@
+import {LockUserSession} from './lock-user-session';
+
 export class LockSession {
   // public_key is secp1 compressed, web crypto can't use it.
   publicKey?: string;
   publicPem?: string;
   shareToken?: string;
   totalControlToken?: string;
+  lockUserSession?: LockUserSession;
 
   constructor(init?:Partial<LockSession>) {
     // if (init!.associatedTask) {

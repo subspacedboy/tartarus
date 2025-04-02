@@ -7,6 +7,31 @@ export class CryptoService {
 
   constructor() { }
 
+  async generateKeyPair(): Promise<{ privateKeyPEM: string; publicKeyPEM: string }> {
+    // Generate key pair using WebCrypto API
+    const keyPair = await crypto.subtle.generateKey(
+      { name: "ECDSA", namedCurve: "P-256" },
+      true, // Extractable keys
+      ["sign", "verify"]
+    );
+
+    // Export the private key (PKCS#8 format)
+    const privateKeyDER = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
+    const privateKeyPEM = this.derToPem(new Uint8Array(privateKeyDER), "PRIVATE KEY");
+
+    // Export the public key (SPKI format)
+    const publicKeyDER = await crypto.subtle.exportKey("spki", keyPair.publicKey);
+    const publicKeyPEM = this.derToPem(new Uint8Array(publicKeyDER), "PUBLIC KEY");
+
+    return { privateKeyPEM, publicKeyPEM };
+  }
+
+  derToPem(der: Uint8Array, label: string): string {
+    const base64 = btoa(String.fromCharCode(...der));
+    const formatted = base64.match(/.{1,64}/g)?.join("\n") ?? "";
+    return `-----BEGIN ${label}-----\n${formatted}\n-----END ${label}-----`;
+  }
+
   async generateCompressedPublicKey(publicKey : CryptoKey): Promise<Uint8Array> {
     console.log("publicKey: " + publicKey);
     // Export and compress public key
@@ -133,7 +158,6 @@ export class CryptoService {
       ["deriveBits"] // Required for ECDH key exchange
     );
   }
-
 
   async importPublicKeyOnlyFromPem(pem: string): Promise<CryptoKey> {
     // Extract Base64 content from PEM
