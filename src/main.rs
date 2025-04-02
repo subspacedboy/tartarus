@@ -1,10 +1,12 @@
 use std::convert::Infallible;
 use std::error::Error;
+use std::thread::sleep;
+use std::time::Duration;
 
-use aes_gcm::{AeadCore, Aes256Gcm, Key, KeyInit};
-use aes_gcm::aead::{Aead, Nonce};
+use aes_gcm::{aead, AeadCore, Aes256Gcm, Key, KeyInit};
+use aes_gcm::aead::{Aead, Nonce, Payload};
 use aes_gcm::aead::generic_array::GenericArray;
-use base64::{encode, Engine};
+use base64::{decode, encode, Engine};
 use base64::engine::general_purpose;
 use display_interface_spi::SPIInterfaceNoCS;
 use embedded_graphics::Drawable;
@@ -26,14 +28,19 @@ use esp_idf_hal::spi::config::DriverConfig;
 use esp_idf_svc::hal::delay;
 use esp_idf_svc::hal::gpio;
 use esp_idf_svc::sys::esp_random;
+use esp_idf_svc::nvs::{EspNvs, EspNvsPartition, NvsDefault};
+use hkdf::Hkdf;
 use p256::{ecdh, PublicKey, SecretKey, U32};
 use p256::ecdh::{diffie_hellman, SharedSecret};
 use p256::ecdsa::{Signature, SigningKey, VerifyingKey};
 use p256::ecdsa::signature::Signer;
-use p256::pkcs8::{EncodePublicKey, LineEnding};
+use p256::pkcs8::{DecodePublicKey, EncodePublicKey, LineEnding};
 use qrcode::{Color, QrCode};
 use rand_core::{CryptoRng, RngCore};
+use sha2::Sha256;
 use st7789::{Orientation, ST7789};
+use typenum::U12;
+
 
 struct Esp32Rng;
 
@@ -133,46 +140,97 @@ fn main() {
     //
     // circle1.draw(&mut display).expect("Circle to be drawn");
 
+    let partition = EspNvsPartition::<NvsDefault>::take().unwrap();
+    let mut nvs = EspNvs::new(partition, "storage", true).unwrap();
+
+    let key_name = "ec_private";
+    let mut buffer : [u8; 256] = [0; 256];
+    let existing_key: Option<&[u8]> = nvs.get_blob(key_name, &mut buffer).ok().expect("The NVS mechanism should have worked");
     let mut rng = Esp32Rng;
 
-    let sender_secret = SecretKey::random(&mut rng);
-    let sender_public = PublicKey::from_secret_scalar(&sender_secret.to_nonzero_scalar());
+    let private_key : SecretKey = if let Some(base64_key) = existing_key {
+        log::info!("Loaded existing EC private key.");
+        let key_bytes = decode(base64_key).unwrap();
+        SecretKey::from_slice(&key_bytes).expect("Failed to parse private key")
+    } else {
+        log::info!("Generating a new EC private key...");
+        let sk = SecretKey::random(&mut rng);
+
+        // // Serialize & encode in base64
+        let key_bytes = sk.to_bytes();
+        let encoded_key = encode(key_bytes);
+        nvs.set_blob(key_name, encoded_key.as_bytes()).unwrap();
+        log::info!("Saved new EC private key to NVS.");
+        sk
+    };
+
+    let my_public = PublicKey::from_secret_scalar(&private_key.to_nonzero_scalar());
 
     // Simulate receiver's key pair
-    let receiver_secret = SecretKey::random(&mut rng);
-    let receiver_public = PublicKey::from_secret_scalar(&receiver_secret.to_nonzero_scalar());
+    // let receiver_secret = SecretKey::random(&mut rng);
+    // let receiver_public = PublicKey::from_secret_scalar(&receiver_secret.to_nonzero_scalar());
+
+    const REMOTE_PUB_KEY: &str = "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFa3dVUDJmbjhMQVJkYi8rSDZrMFJzMEtaeE4zUApsTHVlTzQxdHFPRktGZlFWeC9CcHpVNGdYSmYzbEdKTjFDdXBGMlExbVcralV1cVJuMlpvSS82U3VBPT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==";
+    let pub_key = String::from_utf8(general_purpose::STANDARD.decode(REMOTE_PUB_KEY).expect("Key didn't parse")).expect("String to be valid");
+    let receiver_public = PublicKey::from_public_key_pem(pub_key.as_str()).expect("Valid key");
 
     let shared_secret = diffie_hellman(
-        sender_secret.to_nonzero_scalar(),
+        private_key.to_nonzero_scalar(),
         receiver_public.as_affine()
     );
 
     // let symmetric_key: &Key<Aes256Gcm> = Key::from_slice(shared_secret.raw_secret_bytes()).into();
-    let symmetric_key: &Key<Aes256Gcm> = shared_secret.raw_secret_bytes().into();
+
+    let hk = Hkdf::<Sha256>::new(None, &shared_secret.raw_secret_bytes());
+    let mut aes_key = [0u8; 32]; // Buffer for AES-256 key
+    const NONCE: &str = "8w/3FFyYUcwwKxnp";
+    const CIPHER_TEXT: &str = "jiAH8/ExuAumT476Z/OC/Jc3dsM=";
+    hk.expand("AES-GCM key derivation".as_bytes(), &mut aes_key).expect("HKDF expansion failed");
+    log::info!("Derived key: {:x?}", aes_key);
+
+    // let symmetric_key: &Key<Aes256Gcm> = shared_secret.raw_secret_bytes().into();
+    let symmetric_key: &Key<Aes256Gcm> = (&aes_key).into();
     let cipher = Aes256Gcm::new(symmetric_key);
-    // let mut nonce_bytes : [u8; 12] = [0; 12];
-    // rng.fill_bytes(&mut nonce_bytes);
-    // let nonce = Nonce::from_slice(&nonce_bytes);
-    let nonce = Aes256Gcm::generate_nonce(&mut rng);
 
-    let message = b"internal state";
+    let nonce = general_purpose::STANDARD.decode(NONCE).expect("Nonce didn't parse");
+    let nonce_bytes : [u8; 12] = nonce.try_into().expect("wrong size");
+    let nonce: Nonce<Aes256Gcm> = *GenericArray::from_slice(&nonce_bytes);
 
-    let cipher_text = cipher.encrypt(&nonce, message.as_ref()).expect("Encryption failure!");
+    let cipher_text = general_purpose::STANDARD.decode(CIPHER_TEXT).expect("Nonce didn't parse");
+
+    log::info!("ciphertext : {:x?}", cipher_text);
+    match cipher.decrypt(&nonce, Payload { msg: &cipher_text, aad: &[] }) {
+        Ok(plaintext) => {
+            println!("Decrypted message: {:?}", String::from_utf8_lossy(&plaintext));
+        }
+        Err(_) => {
+            println!("Decryption failed! Check key, nonce, or ciphertext.");
+        }
+    }
+
+    // cchandler: These are for encryption only.
+    // let nonce = Aes256Gcm::generate_nonce(&mut rng);
+    // let message = b"internal state";
+    // let cipher_text = cipher.encrypt(&nonce, message.as_ref()).expect("Encryption failure!");
 
     // let signing_key = SigningKey::random(&mut rng);
     // let verifying_key = VerifyingKey::from(&signing_key);
-
-
     // let mut signature: Signature = signing_key.sign(message);
 
     // let thingy = signature.as_ref();
-    let whole_message = format!("{},{}", sender_public.to_public_key_pem(LineEnding::CR).unwrap(), String::from_utf8_lossy(&cipher_text));
-    let base64_signature = general_purpose::STANDARD.encode(&whole_message);
+    // let whole_message = format!("http://192.168.1.168:5002?public={}", my_public.to_public_key_pem(LineEnding::CR).unwrap(), String::from_utf8_lossy(&cipher_text));
 
-    let qr = QrCode::new(base64_signature).expect("Valid QR code");
+    let encoded_cert = general_purpose::STANDARD.encode(&my_public.to_public_key_pem(LineEnding::CR).unwrap());
+    let whole_message = format!("http://192.168.1.168:5002/?public={}", encoded_cert);
+    // let whole_message = format!("public=asdf");
+
+    log::info!("Message: {}", whole_message);
+
+    let qr = QrCode::new(whole_message).expect("Valid QR code");
     let qr_width = qr.width() as u32;
 
     log::info!("Generated code with version: {:?}", qr.version());
+
     log::info!("Has width: {:?}", qr_width);
 
     // Scale factor and positioning
@@ -201,6 +259,8 @@ fn main() {
     log::info!("Ready :-)");
 
     loop {
-        continue; // keep optimizer from removing in --release
+        sleep(Duration::from_millis(100));
+
+        // continue; // keep optimizer from removing in --release
     }
 }
