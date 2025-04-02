@@ -3,36 +3,44 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
 import { Contract } from '../../subjugated/club/contract.js';
+import { LockUpdateEvent } from '../../subjugated/club/lock-update-event.js';
 import { PartialContract } from '../../subjugated/club/partial-contract.js';
+import { SessionStart } from '../../subjugated/club/session-start.js';
 
 
 export enum MessagePayload {
   NONE = 0,
   Contract = 1,
-  PartialContract = 2
+  PartialContract = 2,
+  LockUpdateEvent = 3,
+  SessionStart = 4
 }
 
 export function unionToMessagePayload(
   type: MessagePayload,
-  accessor: (obj:Contract|PartialContract) => Contract|PartialContract|null
-): Contract|PartialContract|null {
+  accessor: (obj:Contract|LockUpdateEvent|PartialContract|SessionStart) => Contract|LockUpdateEvent|PartialContract|SessionStart|null
+): Contract|LockUpdateEvent|PartialContract|SessionStart|null {
   switch(MessagePayload[type]) {
     case 'NONE': return null; 
     case 'Contract': return accessor(new Contract())! as Contract;
     case 'PartialContract': return accessor(new PartialContract())! as PartialContract;
+    case 'LockUpdateEvent': return accessor(new LockUpdateEvent())! as LockUpdateEvent;
+    case 'SessionStart': return accessor(new SessionStart())! as SessionStart;
     default: return null;
   }
 }
 
 export function unionListToMessagePayload(
   type: MessagePayload, 
-  accessor: (index: number, obj:Contract|PartialContract) => Contract|PartialContract|null, 
+  accessor: (index: number, obj:Contract|LockUpdateEvent|PartialContract|SessionStart) => Contract|LockUpdateEvent|PartialContract|SessionStart|null, 
   index: number
-): Contract|PartialContract|null {
+): Contract|LockUpdateEvent|PartialContract|SessionStart|null {
   switch(MessagePayload[type]) {
     case 'NONE': return null; 
     case 'Contract': return accessor(index, new Contract())! as Contract;
     case 'PartialContract': return accessor(index, new PartialContract())! as PartialContract;
+    case 'LockUpdateEvent': return accessor(index, new LockUpdateEvent())! as LockUpdateEvent;
+    case 'SessionStart': return accessor(index, new SessionStart())! as SessionStart;
     default: return null;
   }
 }

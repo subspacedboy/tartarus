@@ -75,33 +75,6 @@ export class NewKeypairComponent implements OnInit {
     link.click();
   }
 
-  onFileSelected(event: any) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e: any) => {
-      const img = new Image();
-      img.src = e.target.result;
-      img.onload = () => this.scanQRCode(img);
-    };
-    reader.readAsDataURL(file);
-  }
-
-  scanQRCode(img: HTMLImageElement) {
-    const canvas = this.scanCanvas.nativeElement;
-    const ctx = canvas.getContext('2d');
-    canvas.width = img.width;
-    canvas.height = img.height;
-    ctx.drawImage(img, 0, 0, img.width, img.height);
-
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const qrCode = jsQR(imageData.data, imageData.width, imageData.height);
-
-    this.scannedResult = qrCode ? qrCode.data : 'No QR code found.';
-  }
-
-
   async generateKeyPair(): Promise<{ privateKeyPEM: string; publicKeyPEM: string }> {
     // Generate key pair using WebCrypto API
     const keyPair = await crypto.subtle.generateKey(

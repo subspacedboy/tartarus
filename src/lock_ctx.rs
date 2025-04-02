@@ -1,6 +1,9 @@
+use std::fmt::Error;
 use std::time::Duration;
 use base64::Engine;
 use base64::engine::general_purpose;
+use base64::prelude::{BASE64_STANDARD, BASE64_URL_SAFE};
+use data_encoding::{BASE32_NOPAD, BASE64, BASE64_NOPAD};
 use display_interface_spi::SPIInterface;
 use embedded_graphics::mono_font::ascii::FONT_6X10;
 use embedded_graphics::mono_font::MonoTextStyle;
@@ -17,6 +20,7 @@ use esp_idf_svc::nvs::{EspNvs, NvsDefault};
 use esp_idf_svc::wifi::{BlockingWifi, EspWifi};
 use p256::{PublicKey, SecretKey};
 use p256::pkcs8::{EncodePublicKey, LineEnding};
+use rand_core::RngCore;
 use st7789::ST7789;
 use crate::boot_screen::BootScreen;
 use crate::contract_generated::subjugated;
@@ -50,6 +54,7 @@ pub struct LockCtx {
     pub(crate) this_update: Option<TickUpdate>,
     pub(crate) contract: Option<InternalContract>,
     is_locked: bool,
+    session_token: String,
 }
 
 impl LockCtx {
@@ -66,12 +71,14 @@ impl LockCtx {
             this_update: None,
             contract: None,
             is_locked: false,
+            session_token: String::new(),
         };
 
         if let Ok(connected) = lck.wifi.is_connected() {
             lck.wifi_connected = connected;
         }
 
+        lck.session_token = lck.load_or_create_session_id();
         let secret_key = lck.load_or_create_key();
         let my_public = PublicKey::from_secret_scalar(&secret_key.to_nonzero_scalar());
 
@@ -111,6 +118,28 @@ impl LockCtx {
         lck.display.clear(Rgb565::WHITE).unwrap();
 
         lck
+    }
+
+    fn load_or_create_session_id(&mut self) -> String {
+        let key_name = "session_key";
+        let mut buffer : [u8; 32] = [0; 32];
+        let existing_key: Option<&[u8]> = self.nvs.get_blob(key_name, &mut buffer).ok().expect("The NVS mechanism should have worked");
+        let mut rng = Esp32Rng;
+
+        let session_id : String = if let Some(token_bytes) = existing_key {
+            let token = String::from_utf8(token_bytes.to_vec()).unwrap();
+            log::info!("Loaded existing session ID: {:?}", token);
+            token
+        } else {
+            log::info!("Generating a new session ID...");
+            let mut bytes = [0u8; 5]; // 5 bytes -> ~6 base32 chars
+            rng.fill_bytes(&mut bytes);
+            let token = BASE32_NOPAD.encode(&bytes)[..6].to_string();
+            self.nvs.set_blob(key_name, token.as_bytes()).unwrap();
+            token
+        };
+
+        session_id
     }
 
     fn load_or_create_key(&mut self) -> SecretKey {
@@ -218,6 +247,19 @@ impl LockCtx {
 
     pub fn is_locked(&self) -> bool {
         self.is_locked
+    }
+
+    pub fn get_lock_url(&self) -> Result<String, String> {
+        const COORDINATOR: &str = "http://192.168.1.180:4200/lock-start";
+        if let Some(pub_key) = self.public_key {
+            let compressed_bytes = pub_key.to_sec1_bytes();
+            let encoded_key = BASE64_URL_SAFE.encode(&compressed_bytes);
+            // let encoded_pub_key = general_purpose::STANDARD.encode(pub_key.to_public_key_pem(LineEnding::CR).unwrap());
+            Ok(format!("{}?public={}&session={}", COORDINATOR, encoded_key, self.session_token))
+        } else {
+            Err("Wasn't able to make the url?!".parse().unwrap())
+        }
+
     }
 
     pub fn accept_contract(&mut self, contract : &InternalContract) -> () {

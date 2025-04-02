@@ -21,7 +21,7 @@ export class CryptoService {
     return await crypto.subtle.digest("SHA-256", data);
   }
 
-  async signData(privateKey: CryptoKey, data: Uint8Array): Promise<ArrayBuffer> {
+  async hashAndSignData(privateKey: CryptoKey, data: Uint8Array): Promise<ArrayBuffer> {
     console.log("Hashing data: " + new Uint8Array(data));
     const hash = await this.sha256(data); // Compute hash first
 

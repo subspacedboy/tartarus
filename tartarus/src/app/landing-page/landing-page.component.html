@@ -1,10 +1,45 @@
-<p>landing-page works!</p>
-<div>
-  <a [routerLink]="['/keypair']">Keypair</a>
+<div class="row">
+  <h1>I want to write contracts and hold keys...</h1>
 </div>
-<div>
-  <a [routerLink]="['/simple-contract']">Simple Contract (Offline only)</a>
+
+
+<div class="row">
+  <h2>Step 1</h2>
+  <div>
+    You need a key. It will work as your login and is required to do pretty much anything
+    so make sure not to lose it 😇. You only need one no matter how many contracts you write or
+    for any number of people. It's also important to <strong>not</strong> share it.
+  </div>
+
+  <div class="row">
+    You can get one here: <a [routerLink]="['/keypair']">Make a key</a>
+  </div>
 </div>
+
+
+<h2>Step 1.5</h2>
+<div class="row">
+  Come back here to login with your key.
+  <div class="row">
+    You can get one here: <a [routerLink]="['/login']">Login</a>
+  </div>
+</div>
+
+<h2>Step 2</h2>
 <div>
-  <a [routerLink]="['/full-contract']">Full Contract</a>
+  When you want to write a contract for someone they will send you a session link.
+  Follow that link :-).
+</div>
+<!--<div>-->
+<!--  <a [routerLink]="['/simple-contract']">Simple Contract (Offline only)</a>-->
+<!--</div>-->
+<!--<div>-->
+<!--  <a [routerLink]="['/full-contract']">Full Contract</a>-->
+<!--</div>-->
+
+<h1>I want to have my keys held...</h1>
+<div>
+  Your journey starts with the smart lock.
+  When the lock starts up it will display a QR code that as a link in it.
+  Follow that link.
 </div>

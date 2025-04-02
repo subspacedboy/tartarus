@@ -31,8 +31,35 @@ class Configuration(object):
             return self._tab.String(o + self._tab.Pos)
         return None
 
+    # Configuration
+    def SafetyKey(self, j):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        if o != 0:
+            a = self._tab.Vector(o)
+            return self._tab.Get(flatbuffers.number_types.Uint8Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 1))
+        return 0
+
+    # Configuration
+    def SafetyKeyAsNumpy(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        if o != 0:
+            return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Uint8Flags, o)
+        return 0
+
+    # Configuration
+    def SafetyKeyLength(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        if o != 0:
+            return self._tab.VectorLen(o)
+        return 0
+
+    # Configuration
+    def SafetyKeyIsNone(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        return o == 0
+
 def ConfigurationStart(builder):
-    builder.StartObject(1)
+    builder.StartObject(2)
 
 def Start(builder):
     ConfigurationStart(builder)
@@ -42,6 +69,18 @@ def ConfigurationAddCoordinatorAddress(builder, coordinatorAddress):
 
 def AddCoordinatorAddress(builder, coordinatorAddress):
     ConfigurationAddCoordinatorAddress(builder, coordinatorAddress)
+
+def ConfigurationAddSafetyKey(builder, safetyKey):
+    builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(safetyKey), 0)
+
+def AddSafetyKey(builder, safetyKey):
+    ConfigurationAddSafetyKey(builder, safetyKey)
+
+def ConfigurationStartSafetyKeyVector(builder, numElems):
+    return builder.StartVector(1, numElems, 1)
+
+def StartSafetyKeyVector(builder, numElems):
+    return ConfigurationStartSafetyKeyVector(builder, numElems)
 
 def ConfigurationEnd(builder):
     return builder.EndObject()

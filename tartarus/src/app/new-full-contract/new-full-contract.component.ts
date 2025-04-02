@@ -71,7 +71,7 @@ export class NewFullContractComponent {
     const vTableStart = offsetToTable - offsetToVTable;
     const vtableAndContract = contractBytes.slice(vTableStart);
 
-    const signature = await this.cryptoService.signData(this.privateKey!, vtableAndContract);
+    const signature = await this.cryptoService.hashAndSignData(this.privateKey!, vtableAndContract);
 
     // const partialLocationOffset = builder.createString(`http://192.168.1.168:5200/contract/${contractName}`)
 

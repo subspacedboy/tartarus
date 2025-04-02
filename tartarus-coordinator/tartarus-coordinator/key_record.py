@@ -11,4 +11,4 @@ class KeyRecord(Base):
 
     id: str = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     public_key: str = Column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

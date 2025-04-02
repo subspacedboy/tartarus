@@ -87,14 +87,14 @@ where
 
 
     fn draw_screen(&mut self, lock_ctx : &mut LockCtx) {
-        let whole_message = if let Some(key) = lock_ctx.public_key {
-            let encoded_pub_key = general_purpose::STANDARD.encode(key.to_public_key_pem(LineEnding::CR).unwrap());
-            const COORDINATOR: &str = "http://192.168.1.180:5002";
-            format!("{}/announce?public={}", COORDINATOR, encoded_pub_key)
-        } else {
-            "http://192.168.1.180:5002/announce".parse().unwrap()
-        };
-
+        // let whole_message = if let Some(key) = lock_ctx.public_key {
+        //     let encoded_pub_key = general_purpose::STANDARD.encode(key.to_public_key_pem(LineEnding::CR).unwrap());
+        //     const COORDINATOR: &str = "http://192.168.1.180:5002";
+        //     format!("{}/announce?public={}", COORDINATOR, encoded_pub_key)
+        // } else {
+        //     "http://192.168.1.180:5002/announce".parse().unwrap()
+        // };
+        let whole_message = lock_ctx.get_lock_url().unwrap();
         let qr = QrCode::new(whole_message).expect("Valid QR code");
 
         let qr_width = qr.width() as u32;
@@ -104,7 +104,8 @@ where
 
         // Scale factor and positioning
         let scale = 2;
-        let offset_y = (135 - qr_width * scale) / 2;
+        // let offset_y = (240 - qr_width * scale) / 2;
+        let offset_y = 0;
         // let offset_y = (240 - qr_width * scale) / 2;
         let offset_x = 70;
 

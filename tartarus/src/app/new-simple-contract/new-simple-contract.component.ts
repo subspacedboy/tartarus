@@ -10,6 +10,9 @@ import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
 import {IdHelperService} from '../id-helper.service';
 import {EndCondition, PartialContract, WhenISaySo} from '../subjugated/club';
 import {CryptoService} from '../crypto.service';
+import {ActivatedRoute} from '@angular/router';
+import {UserDataService} from '../user-data.service';
+import {LockSession} from '../models/lock-session';
 
 @Component({
   selector: 'app-new-simple-contract',
@@ -23,27 +26,40 @@ export class NewSimpleContractComponent implements OnInit {
   @ViewChild('canvas', { static: false }) canvas!: ElementRef;
   @ViewChild('hiddenDiv', { static: false }) hiddenDiv!: ElementRef;
 
-  keyMessage = "";
-  privateKey : CryptoKey | null = null;
-  publicKey : CryptoKey | null = null;
+  lockSessionToken: string = '';
+  lockSession?: LockSession;
 
   constructor(private tartarusCoordinatorService : TartarusCoordinatorService,
               private idHelperService: IdHelperService,
-              private cryptoService: CryptoService) {
+              private cryptoService: CryptoService,
+              private activatedRoute: ActivatedRoute,
+              private userDataService: UserDataService,) {
+
+    this.lockSessionToken = String(this.activatedRoute.snapshot.paramMap.get('sessionToken'));
   }
 
   ngOnInit() {
+    this.tartarusCoordinatorService.getLockSession(this.lockSessionToken).subscribe(result => {
+      console.log(result);
+      this.lockSession = result;
+    });
   }
 
   async createContract(): Promise<Uint8Array> {
     const builder = new flatbuffers.Builder(1024);
 
-    const compressedPublicKey = await this.cryptoService.generateCompressedPublicKey(this.publicKey!);
+    const {privatePem, publicPem} = this.userDataService.getAuthorKeypair();
+    const keys = await this.cryptoService.importKeyPair(String(privatePem) + String(publicPem));
+
+    const compressedPublicKey = await this.cryptoService.generateCompressedPublicKey(keys.publicKey);
     // Create a public key string
     const publicKeyOffset = builder.createByteVector(compressedPublicKey);
 
     WhenISaySo.startWhenISaySo(builder);
     const whenISaySoOffset = WhenISaySo.endWhenISaySo(builder);
+
+    const notesOffset = builder.createString("Notes!");
+    const sessionOffset = builder.createString(this.lockSession?.session!);
 
     Contract.startContract(builder);
     Contract.addPublicKey(builder, publicKeyOffset);
@@ -52,6 +68,8 @@ export class NewSimpleContractComponent implements OnInit {
     Contract.addEndCondition(builder, whenISaySoOffset);
     Contract.addEndConditionType(builder, EndCondition.WhenISaySo);
     Contract.addIsUnremovable(builder, true);
+    Contract.addSession(builder, sessionOffset);
+    Contract.addNotes(builder, notesOffset);
     let fullContractOffset = Contract.endContract(builder);
     builder.finish(fullContractOffset);
 
@@ -65,7 +83,7 @@ export class NewSimpleContractComponent implements OnInit {
 
     const vtableAndContract = contractBytes.slice(vTableStart);
 
-    const signature = await this.cryptoService.signData(this.privateKey!, vtableAndContract);
+    const signature = await this.cryptoService.hashAndSignData(keys.privateKey, vtableAndContract);
 
     const signatureOffset = SignedMessage.createSignatureVector(builder, new Uint8Array(signature));
 
@@ -100,43 +118,6 @@ export class NewSimpleContractComponent implements OnInit {
     })
 
     return builder.asUint8Array();
-  }
-
-  onFileSelected(event: any) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e: any) => {
-      const img = new Image();
-      img.src = e.target.result;
-      img.onload = () => this.scanQRCode(img);
-    };
-    reader.readAsDataURL(file);
-  }
-
-  scanQRCode(img: HTMLImageElement) {
-    const canvas = this.scanCanvas.nativeElement;
-    const ctx = canvas.getContext('2d');
-    canvas.width = img.width;
-    canvas.height = img.height;
-    ctx.drawImage(img, 0, 0, img.width, img.height);
-
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const qrCode = jsQR(imageData.data, imageData.width, imageData.height);
-
-    if(qrCode) {
-      console.log(qrCode.data);
-
-      this.cryptoService.importKeyPair(qrCode.data).then(keys => {
-        console.log(keys);
-        this.privateKey = keys.privateKey;
-        this.publicKey = keys.publicKey;
-        this.keyMessage = qrCode ? 'Valid key' : 'No QR code found.';
-      }, e => {
-        this.keyMessage = "Invalid key";
-      })
-    }
   }
 
   async generateQRCode( data : Uint8Array) {

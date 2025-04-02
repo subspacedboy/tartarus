@@ -29,12 +29,43 @@ coordinatorAddress(optionalEncoding?:any):string|Uint8Array|null {
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
+safetyKey(index: number):number|null {
+  const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
+}
+
+safetyKeyLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+safetyKeyArray():Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
+}
+
 static startConfiguration(builder:flatbuffers.Builder) {
-  builder.startObject(1);
+  builder.startObject(2);
 }
 
 static addCoordinatorAddress(builder:flatbuffers.Builder, coordinatorAddressOffset:flatbuffers.Offset) {
   builder.addFieldOffset(0, coordinatorAddressOffset, 0);
+}
+
+static addSafetyKey(builder:flatbuffers.Builder, safetyKeyOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, safetyKeyOffset, 0);
+}
+
+static createSafetyKeyVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
+  builder.startVector(1, data.length, 1);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addInt8(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startSafetyKeyVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(1, numElems, 1);
 }
 
 static endConfiguration(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -42,9 +73,10 @@ static endConfiguration(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createConfiguration(builder:flatbuffers.Builder, coordinatorAddressOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createConfiguration(builder:flatbuffers.Builder, coordinatorAddressOffset:flatbuffers.Offset, safetyKeyOffset:flatbuffers.Offset):flatbuffers.Offset {
   Configuration.startConfiguration(builder);
   Configuration.addCoordinatorAddress(builder, coordinatorAddressOffset);
+  Configuration.addSafetyKey(builder, safetyKeyOffset);
   return Configuration.endConfiguration(builder);
 }
 }

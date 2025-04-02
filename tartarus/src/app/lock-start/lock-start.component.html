@@ -1,1 +1,28 @@
-<p>lock-start works!</p>
+<h1>Lock Start</h1>
+
+<div class="row">
+  <div class="col-sm-10">
+
+    <div class="bs-component">
+      <div class="alert alert-dismissible alert-info">
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <strong>Heads up!</strong> This is the link you send to contract authors.
+      </div>
+    </div>
+
+    <input class="form-control" id="lockLink" [value]="getSessionLink()" [disabled]="true">
+  </div>
+</div>
+
+<button type="button" class="btn btn-light" (click)="showTechnicalDetails()">Show Technical Details</button>
+
+@if(showDetails) {
+  <div class="row">
+    <div>
+      Public key: {{publicKey}}
+    </div>
+    <div>
+      Session ID: {{session}}
+    </div>
+  </div>
+}

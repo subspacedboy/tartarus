@@ -30,6 +30,9 @@ table TemporaryUnlockRules {
 table Contract {
   public_key: [ubyte];
 
+  session: string;
+  notes: string;
+
   capabilities: [Capabilities];
 
   // If this contract is able to be loaded, it cannot be removed
@@ -62,8 +65,17 @@ table PartialContract {
   complete_contract_address: string;
 }
 
+table LockUpdateEvent {
+
+}
+
+table SessionStart {
+    public_key: [ubyte];
+    session_token: string;
+}
+
 union MessagePayload {
-  Contract, PartialContract
+  Contract, PartialContract, LockUpdateEvent, SessionStart
 }
 
 table SignedMessage {
@@ -73,6 +85,7 @@ table SignedMessage {
 
 table Configuration {
   coordinator_address: string;
+  safety_key: [ubyte];
 }
 
 root_type SignedMessage;

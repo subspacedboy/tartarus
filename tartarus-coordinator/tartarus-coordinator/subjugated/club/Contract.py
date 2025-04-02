@@ -52,8 +52,22 @@ class Contract(object):
         return o == 0
 
     # Contract
-    def Capabilities(self, j):
+    def Session(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        if o != 0:
+            return self._tab.String(o + self._tab.Pos)
+        return None
+
+    # Contract
+    def Notes(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
+        if o != 0:
+            return self._tab.String(o + self._tab.Pos)
+        return None
+
+    # Contract
+    def Capabilities(self, j):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
         if o != 0:
             a = self._tab.Vector(o)
             return self._tab.Get(flatbuffers.number_types.Int8Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 1))
@@ -61,40 +75,40 @@ class Contract(object):
 
     # Contract
     def CapabilitiesAsNumpy(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
         if o != 0:
             return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Int8Flags, o)
         return 0
 
     # Contract
     def CapabilitiesLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
         if o != 0:
             return self._tab.VectorLen(o)
         return 0
 
     # Contract
     def CapabilitiesIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
         return o == 0
 
     # Contract
     def IsUnremovable(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
         if o != 0:
             return bool(self._tab.Get(flatbuffers.number_types.BoolFlags, o + self._tab.Pos))
         return False
 
     # Contract
     def IsBlind(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
         if o != 0:
             return bool(self._tab.Get(flatbuffers.number_types.BoolFlags, o + self._tab.Pos))
         return False
 
     # Contract
     def EncryptedContract(self, j):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(16))
         if o != 0:
             a = self._tab.Vector(o)
             return self._tab.Get(flatbuffers.number_types.Uint8Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 1))
@@ -102,33 +116,33 @@ class Contract(object):
 
     # Contract
     def EncryptedContractAsNumpy(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(16))
         if o != 0:
             return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Uint8Flags, o)
         return 0
 
     # Contract
     def EncryptedContractLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(16))
         if o != 0:
             return self._tab.VectorLen(o)
         return 0
 
     # Contract
     def EncryptedContractIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(16))
         return o == 0
 
     # Contract
     def EndConditionType(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(18))
         if o != 0:
             return self._tab.Get(flatbuffers.number_types.Uint8Flags, o + self._tab.Pos)
         return 0
 
     # Contract
     def EndCondition(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(16))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(20))
         if o != 0:
             from flatbuffers.table import Table
             obj = Table(bytearray(), 0)
@@ -137,8 +151,8 @@ class Contract(object):
         return None
 
     # Contract
-    def Participants(self, j):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(18))
+    def Webhooks(self, j):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(22))
         if o != 0:
             x = self._tab.Vector(o)
             x += flatbuffers.number_types.UOffsetTFlags.py_type(j) * 4
@@ -150,34 +164,34 @@ class Contract(object):
         return None
 
     # Contract
-    def ParticipantsLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(18))
+    def WebhooksLength(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(22))
         if o != 0:
             return self._tab.VectorLen(o)
         return 0
 
     # Contract
-    def ParticipantsIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(18))
+    def WebhooksIsNone(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(22))
         return o == 0
 
     # Contract
     def IsLockOnAccept(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(20))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(24))
         if o != 0:
             return bool(self._tab.Get(flatbuffers.number_types.BoolFlags, o + self._tab.Pos))
         return False
 
     # Contract
     def IsTemporaryUnlockAllowed(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(22))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(26))
         if o != 0:
             return bool(self._tab.Get(flatbuffers.number_types.BoolFlags, o + self._tab.Pos))
         return False
 
     # Contract
     def UnlockRules(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(24))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(28))
         if o != 0:
             x = self._tab.Indirect(o + self._tab.Pos)
             from subjugated.club.TemporaryUnlockRules import TemporaryUnlockRules
@@ -187,7 +201,7 @@ class Contract(object):
         return None
 
 def ContractStart(builder):
-    builder.StartObject(11)
+    builder.StartObject(13)
 
 def Start(builder):
     ContractStart(builder)
@@ -204,8 +218,20 @@ def ContractStartPublicKeyVector(builder, numElems):
 def StartPublicKeyVector(builder, numElems):
     return ContractStartPublicKeyVector(builder, numElems)
 
+def ContractAddSession(builder, session):
+    builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(session), 0)
+
+def AddSession(builder, session):
+    ContractAddSession(builder, session)
+
+def ContractAddNotes(builder, notes):
+    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(notes), 0)
+
+def AddNotes(builder, notes):
+    ContractAddNotes(builder, notes)
+
 def ContractAddCapabilities(builder, capabilities):
-    builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(capabilities), 0)
+    builder.PrependUOffsetTRelativeSlot(3, flatbuffers.number_types.UOffsetTFlags.py_type(capabilities), 0)
 
 def AddCapabilities(builder, capabilities):
     ContractAddCapabilities(builder, capabilities)
@@ -217,19 +243,19 @@ def StartCapabilitiesVector(builder, numElems):
     return ContractStartCapabilitiesVector(builder, numElems)
 
 def ContractAddIsUnremovable(builder, isUnremovable):
-    builder.PrependBoolSlot(2, isUnremovable, 0)
+    builder.PrependBoolSlot(4, isUnremovable, 0)
 
 def AddIsUnremovable(builder, isUnremovable):
     ContractAddIsUnremovable(builder, isUnremovable)
 
 def ContractAddIsBlind(builder, isBlind):
-    builder.PrependBoolSlot(3, isBlind, 0)
+    builder.PrependBoolSlot(5, isBlind, 0)
 
 def AddIsBlind(builder, isBlind):
     ContractAddIsBlind(builder, isBlind)
 
 def ContractAddEncryptedContract(builder, encryptedContract):
-    builder.PrependUOffsetTRelativeSlot(4, flatbuffers.number_types.UOffsetTFlags.py_type(encryptedContract), 0)
+    builder.PrependUOffsetTRelativeSlot(6, flatbuffers.number_types.UOffsetTFlags.py_type(encryptedContract), 0)
 
 def AddEncryptedContract(builder, encryptedContract):
     ContractAddEncryptedContract(builder, encryptedContract)
@@ -241,43 +267,43 @@ def StartEncryptedContractVector(builder, numElems):
     return ContractStartEncryptedContractVector(builder, numElems)
 
 def ContractAddEndConditionType(builder, endConditionType):
-    builder.PrependUint8Slot(5, endConditionType, 0)
+    builder.PrependUint8Slot(7, endConditionType, 0)
 
 def AddEndConditionType(builder, endConditionType):
     ContractAddEndConditionType(builder, endConditionType)
 
 def ContractAddEndCondition(builder, endCondition):
-    builder.PrependUOffsetTRelativeSlot(6, flatbuffers.number_types.UOffsetTFlags.py_type(endCondition), 0)
+    builder.PrependUOffsetTRelativeSlot(8, flatbuffers.number_types.UOffsetTFlags.py_type(endCondition), 0)
 
 def AddEndCondition(builder, endCondition):
     ContractAddEndCondition(builder, endCondition)
 
-def ContractAddParticipants(builder, participants):
-    builder.PrependUOffsetTRelativeSlot(7, flatbuffers.number_types.UOffsetTFlags.py_type(participants), 0)
+def ContractAddWebhooks(builder, webhooks):
+    builder.PrependUOffsetTRelativeSlot(9, flatbuffers.number_types.UOffsetTFlags.py_type(webhooks), 0)
 
-def AddParticipants(builder, participants):
-    ContractAddParticipants(builder, participants)
+def AddWebhooks(builder, webhooks):
+    ContractAddWebhooks(builder, webhooks)
 
-def ContractStartParticipantsVector(builder, numElems):
+def ContractStartWebhooksVector(builder, numElems):
     return builder.StartVector(4, numElems, 4)
 
-def StartParticipantsVector(builder, numElems):
-    return ContractStartParticipantsVector(builder, numElems)
+def StartWebhooksVector(builder, numElems):
+    return ContractStartWebhooksVector(builder, numElems)
 
 def ContractAddIsLockOnAccept(builder, isLockOnAccept):
-    builder.PrependBoolSlot(8, isLockOnAccept, 0)
+    builder.PrependBoolSlot(10, isLockOnAccept, 0)
 
 def AddIsLockOnAccept(builder, isLockOnAccept):
     ContractAddIsLockOnAccept(builder, isLockOnAccept)
 
 def ContractAddIsTemporaryUnlockAllowed(builder, isTemporaryUnlockAllowed):
-    builder.PrependBoolSlot(9, isTemporaryUnlockAllowed, 0)
+    builder.PrependBoolSlot(11, isTemporaryUnlockAllowed, 0)
 
 def AddIsTemporaryUnlockAllowed(builder, isTemporaryUnlockAllowed):
     ContractAddIsTemporaryUnlockAllowed(builder, isTemporaryUnlockAllowed)
 
 def ContractAddUnlockRules(builder, unlockRules):
-    builder.PrependUOffsetTRelativeSlot(10, flatbuffers.number_types.UOffsetTFlags.py_type(unlockRules), 0)
+    builder.PrependUOffsetTRelativeSlot(12, flatbuffers.number_types.UOffsetTFlags.py_type(unlockRules), 0)
 
 def AddUnlockRules(builder, unlockRules):
     ContractAddUnlockRules(builder, unlockRules)

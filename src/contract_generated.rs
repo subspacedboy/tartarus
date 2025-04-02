@@ -205,13 +205,15 @@ pub struct EndConditionUnionTableOffset {}
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
 pub const ENUM_MIN_MESSAGE_PAYLOAD: u8 = 0;
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
-pub const ENUM_MAX_MESSAGE_PAYLOAD: u8 = 2;
+pub const ENUM_MAX_MESSAGE_PAYLOAD: u8 = 4;
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
 #[allow(non_camel_case_types)]
-pub const ENUM_VALUES_MESSAGE_PAYLOAD: [MessagePayload; 3] = [
+pub const ENUM_VALUES_MESSAGE_PAYLOAD: [MessagePayload; 5] = [
   MessagePayload::NONE,
   MessagePayload::Contract,
   MessagePayload::PartialContract,
+  MessagePayload::LockUpdateEvent,
+  MessagePayload::SessionStart,
 ];
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
@@ -222,13 +224,17 @@ impl MessagePayload {
   pub const NONE: Self = Self(0);
   pub const Contract: Self = Self(1);
   pub const PartialContract: Self = Self(2);
+  pub const LockUpdateEvent: Self = Self(3);
+  pub const SessionStart: Self = Self(4);
 
   pub const ENUM_MIN: u8 = 0;
-  pub const ENUM_MAX: u8 = 2;
+  pub const ENUM_MAX: u8 = 4;
   pub const ENUM_VALUES: &'static [Self] = &[
     Self::NONE,
     Self::Contract,
     Self::PartialContract,
+    Self::LockUpdateEvent,
+    Self::SessionStart,
   ];
   /// Returns the variant's name or "" if unknown.
   pub fn variant_name(self) -> Option<&'static str> {
@@ -236,6 +242,8 @@ impl MessagePayload {
       Self::NONE => Some("NONE"),
       Self::Contract => Some("Contract"),
       Self::PartialContract => Some("PartialContract"),
+      Self::LockUpdateEvent => Some("LockUpdateEvent"),
+      Self::SessionStart => Some("SessionStart"),
       _ => None,
     }
   }
@@ -697,16 +705,18 @@ impl<'a> flatbuffers::Follow<'a> for Contract<'a> {
 
 impl<'a> Contract<'a> {
   pub const VT_PUBLIC_KEY: flatbuffers::VOffsetT = 4;
-  pub const VT_CAPABILITIES: flatbuffers::VOffsetT = 6;
-  pub const VT_IS_UNREMOVABLE: flatbuffers::VOffsetT = 8;
-  pub const VT_IS_BLIND: flatbuffers::VOffsetT = 10;
-  pub const VT_ENCRYPTED_CONTRACT: flatbuffers::VOffsetT = 12;
-  pub const VT_END_CONDITION_TYPE: flatbuffers::VOffsetT = 14;
-  pub const VT_END_CONDITION: flatbuffers::VOffsetT = 16;
-  pub const VT_PARTICIPANTS: flatbuffers::VOffsetT = 18;
-  pub const VT_IS_LOCK_ON_ACCEPT: flatbuffers::VOffsetT = 20;
-  pub const VT_IS_TEMPORARY_UNLOCK_ALLOWED: flatbuffers::VOffsetT = 22;
-  pub const VT_UNLOCK_RULES: flatbuffers::VOffsetT = 24;
+  pub const VT_SESSION: flatbuffers::VOffsetT = 6;
+  pub const VT_NOTES: flatbuffers::VOffsetT = 8;
+  pub const VT_CAPABILITIES: flatbuffers::VOffsetT = 10;
+  pub const VT_IS_UNREMOVABLE: flatbuffers::VOffsetT = 12;
+  pub const VT_IS_BLIND: flatbuffers::VOffsetT = 14;
+  pub const VT_ENCRYPTED_CONTRACT: flatbuffers::VOffsetT = 16;
+  pub const VT_END_CONDITION_TYPE: flatbuffers::VOffsetT = 18;
+  pub const VT_END_CONDITION: flatbuffers::VOffsetT = 20;
+  pub const VT_WEBHOOKS: flatbuffers::VOffsetT = 22;
+  pub const VT_IS_LOCK_ON_ACCEPT: flatbuffers::VOffsetT = 24;
+  pub const VT_IS_TEMPORARY_UNLOCK_ALLOWED: flatbuffers::VOffsetT = 26;
+  pub const VT_UNLOCK_RULES: flatbuffers::VOffsetT = 28;
 
   #[inline]
   pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -719,10 +729,12 @@ impl<'a> Contract<'a> {
   ) -> flatbuffers::WIPOffset<Contract<'bldr>> {
     let mut builder = ContractBuilder::new(_fbb);
     if let Some(x) = args.unlock_rules { builder.add_unlock_rules(x); }
-    if let Some(x) = args.participants { builder.add_participants(x); }
+    if let Some(x) = args.webhooks { builder.add_webhooks(x); }
     if let Some(x) = args.end_condition { builder.add_end_condition(x); }
     if let Some(x) = args.encrypted_contract { builder.add_encrypted_contract(x); }
     if let Some(x) = args.capabilities { builder.add_capabilities(x); }
+    if let Some(x) = args.notes { builder.add_notes(x); }
+    if let Some(x) = args.session { builder.add_session(x); }
     if let Some(x) = args.public_key { builder.add_public_key(x); }
     builder.add_is_temporary_unlock_allowed(args.is_temporary_unlock_allowed);
     builder.add_is_lock_on_accept(args.is_lock_on_accept);
@@ -739,6 +751,20 @@ impl<'a> Contract<'a> {
     // Created from valid Table for this object
     // which contains a valid value in this slot
     unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(Contract::VT_PUBLIC_KEY, None)}
+  }
+  #[inline]
+  pub fn session(&self) -> Option<&'a str> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(Contract::VT_SESSION, None)}
+  }
+  #[inline]
+  pub fn notes(&self) -> Option<&'a str> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(Contract::VT_NOTES, None)}
   }
   #[inline]
   pub fn capabilities(&self) -> Option<flatbuffers::Vector<'a, Capabilities>> {
@@ -783,11 +809,11 @@ impl<'a> Contract<'a> {
     unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Table<'a>>>(Contract::VT_END_CONDITION, None)}
   }
   #[inline]
-  pub fn participants(&self) -> Option<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<WebHook<'a>>>> {
+  pub fn webhooks(&self) -> Option<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<WebHook<'a>>>> {
     // Safety:
     // Created from valid Table for this object
     // which contains a valid value in this slot
-    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<WebHook>>>>(Contract::VT_PARTICIPANTS, None)}
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<WebHook>>>>(Contract::VT_WEBHOOKS, None)}
   }
   #[inline]
   pub fn is_lock_on_accept(&self) -> bool {
@@ -850,6 +876,8 @@ impl flatbuffers::Verifiable for Contract<'_> {
     use self::flatbuffers::Verifiable;
     v.visit_table(pos)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, u8>>>("public_key", Self::VT_PUBLIC_KEY, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("session", Self::VT_SESSION, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("notes", Self::VT_NOTES, false)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, Capabilities>>>("capabilities", Self::VT_CAPABILITIES, false)?
      .visit_field::<bool>("is_unremovable", Self::VT_IS_UNREMOVABLE, false)?
      .visit_field::<bool>("is_blind", Self::VT_IS_BLIND, false)?
@@ -861,7 +889,7 @@ impl flatbuffers::Verifiable for Contract<'_> {
           _ => Ok(()),
         }
      })?
-     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<WebHook>>>>("participants", Self::VT_PARTICIPANTS, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<WebHook>>>>("webhooks", Self::VT_WEBHOOKS, false)?
      .visit_field::<bool>("is_lock_on_accept", Self::VT_IS_LOCK_ON_ACCEPT, false)?
      .visit_field::<bool>("is_temporary_unlock_allowed", Self::VT_IS_TEMPORARY_UNLOCK_ALLOWED, false)?
      .visit_field::<flatbuffers::ForwardsUOffset<TemporaryUnlockRules>>("unlock_rules", Self::VT_UNLOCK_RULES, false)?
@@ -871,13 +899,15 @@ impl flatbuffers::Verifiable for Contract<'_> {
 }
 pub struct ContractArgs<'a> {
     pub public_key: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
+    pub session: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub notes: Option<flatbuffers::WIPOffset<&'a str>>,
     pub capabilities: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, Capabilities>>>,
     pub is_unremovable: bool,
     pub is_blind: bool,
     pub encrypted_contract: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
     pub end_condition_type: EndCondition,
     pub end_condition: Option<flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>>,
-    pub participants: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<WebHook<'a>>>>>,
+    pub webhooks: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<WebHook<'a>>>>>,
     pub is_lock_on_accept: bool,
     pub is_temporary_unlock_allowed: bool,
     pub unlock_rules: Option<flatbuffers::WIPOffset<TemporaryUnlockRules<'a>>>,
@@ -887,13 +917,15 @@ impl<'a> Default for ContractArgs<'a> {
   fn default() -> Self {
     ContractArgs {
       public_key: None,
+      session: None,
+      notes: None,
       capabilities: None,
       is_unremovable: false,
       is_blind: false,
       encrypted_contract: None,
       end_condition_type: EndCondition::NONE,
       end_condition: None,
-      participants: None,
+      webhooks: None,
       is_lock_on_accept: false,
       is_temporary_unlock_allowed: false,
       unlock_rules: None,
@@ -909,6 +941,14 @@ impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> ContractBuilder<'a, 'b, A> {
   #[inline]
   pub fn add_public_key(&mut self, public_key: flatbuffers::WIPOffset<flatbuffers::Vector<'b , u8>>) {
     self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Contract::VT_PUBLIC_KEY, public_key);
+  }
+  #[inline]
+  pub fn add_session(&mut self, session: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Contract::VT_SESSION, session);
+  }
+  #[inline]
+  pub fn add_notes(&mut self, notes: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Contract::VT_NOTES, notes);
   }
   #[inline]
   pub fn add_capabilities(&mut self, capabilities: flatbuffers::WIPOffset<flatbuffers::Vector<'b , Capabilities>>) {
@@ -935,8 +975,8 @@ impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> ContractBuilder<'a, 'b, A> {
     self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Contract::VT_END_CONDITION, end_condition);
   }
   #[inline]
-  pub fn add_participants(&mut self, participants: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<WebHook<'b >>>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Contract::VT_PARTICIPANTS, participants);
+  pub fn add_webhooks(&mut self, webhooks: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<WebHook<'b >>>>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Contract::VT_WEBHOOKS, webhooks);
   }
   #[inline]
   pub fn add_is_lock_on_accept(&mut self, is_lock_on_accept: bool) {
@@ -969,6 +1009,8 @@ impl core::fmt::Debug for Contract<'_> {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     let mut ds = f.debug_struct("Contract");
       ds.field("public_key", &self.public_key());
+      ds.field("session", &self.session());
+      ds.field("notes", &self.notes());
       ds.field("capabilities", &self.capabilities());
       ds.field("is_unremovable", &self.is_unremovable());
       ds.field("is_blind", &self.is_blind());
@@ -994,7 +1036,7 @@ impl core::fmt::Debug for Contract<'_> {
           ds.field("end_condition", &x)
         },
       };
-      ds.field("participants", &self.participants());
+      ds.field("webhooks", &self.webhooks());
       ds.field("is_lock_on_accept", &self.is_lock_on_accept());
       ds.field("is_temporary_unlock_allowed", &self.is_temporary_unlock_allowed());
       ds.field("unlock_rules", &self.unlock_rules());
@@ -1115,6 +1157,199 @@ impl core::fmt::Debug for PartialContract<'_> {
       ds.finish()
   }
 }
+pub enum LockUpdateEventOffset {}
+#[derive(Copy, Clone, PartialEq)]
+
+pub struct LockUpdateEvent<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for LockUpdateEvent<'a> {
+  type Inner = LockUpdateEvent<'a>;
+  #[inline]
+  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    Self { _tab: flatbuffers::Table::new(buf, loc) }
+  }
+}
+
+impl<'a> LockUpdateEvent<'a> {
+
+  #[inline]
+  pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+    LockUpdateEvent { _tab: table }
+  }
+  #[allow(unused_mut)]
+  pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: flatbuffers::Allocator + 'bldr>(
+    _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
+    _args: &'args LockUpdateEventArgs
+  ) -> flatbuffers::WIPOffset<LockUpdateEvent<'bldr>> {
+    let mut builder = LockUpdateEventBuilder::new(_fbb);
+    builder.finish()
+  }
+
+}
+
+impl flatbuffers::Verifiable for LockUpdateEvent<'_> {
+  #[inline]
+  fn run_verifier(
+    v: &mut flatbuffers::Verifier, pos: usize
+  ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
+    use self::flatbuffers::Verifiable;
+    v.visit_table(pos)?
+     .finish();
+    Ok(())
+  }
+}
+pub struct LockUpdateEventArgs {
+}
+impl<'a> Default for LockUpdateEventArgs {
+  #[inline]
+  fn default() -> Self {
+    LockUpdateEventArgs {
+    }
+  }
+}
+
+pub struct LockUpdateEventBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> LockUpdateEventBuilder<'a, 'b, A> {
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>) -> LockUpdateEventBuilder<'a, 'b, A> {
+    let start = _fbb.start_table();
+    LockUpdateEventBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<LockUpdateEvent<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+impl core::fmt::Debug for LockUpdateEvent<'_> {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    let mut ds = f.debug_struct("LockUpdateEvent");
+      ds.finish()
+  }
+}
+pub enum SessionStartOffset {}
+#[derive(Copy, Clone, PartialEq)]
+
+pub struct SessionStart<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for SessionStart<'a> {
+  type Inner = SessionStart<'a>;
+  #[inline]
+  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    Self { _tab: flatbuffers::Table::new(buf, loc) }
+  }
+}
+
+impl<'a> SessionStart<'a> {
+  pub const VT_PUBLIC_KEY: flatbuffers::VOffsetT = 4;
+  pub const VT_SESSION_TOKEN: flatbuffers::VOffsetT = 6;
+
+  #[inline]
+  pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+    SessionStart { _tab: table }
+  }
+  #[allow(unused_mut)]
+  pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: flatbuffers::Allocator + 'bldr>(
+    _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
+    args: &'args SessionStartArgs<'args>
+  ) -> flatbuffers::WIPOffset<SessionStart<'bldr>> {
+    let mut builder = SessionStartBuilder::new(_fbb);
+    if let Some(x) = args.session_token { builder.add_session_token(x); }
+    if let Some(x) = args.public_key { builder.add_public_key(x); }
+    builder.finish()
+  }
+
+
+  #[inline]
+  pub fn public_key(&self) -> Option<flatbuffers::Vector<'a, u8>> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(SessionStart::VT_PUBLIC_KEY, None)}
+  }
+  #[inline]
+  pub fn session_token(&self) -> Option<&'a str> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(SessionStart::VT_SESSION_TOKEN, None)}
+  }
+}
+
+impl flatbuffers::Verifiable for SessionStart<'_> {
+  #[inline]
+  fn run_verifier(
+    v: &mut flatbuffers::Verifier, pos: usize
+  ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
+    use self::flatbuffers::Verifiable;
+    v.visit_table(pos)?
+     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, u8>>>("public_key", Self::VT_PUBLIC_KEY, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("session_token", Self::VT_SESSION_TOKEN, false)?
+     .finish();
+    Ok(())
+  }
+}
+pub struct SessionStartArgs<'a> {
+    pub public_key: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
+    pub session_token: Option<flatbuffers::WIPOffset<&'a str>>,
+}
+impl<'a> Default for SessionStartArgs<'a> {
+  #[inline]
+  fn default() -> Self {
+    SessionStartArgs {
+      public_key: None,
+      session_token: None,
+    }
+  }
+}
+
+pub struct SessionStartBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> SessionStartBuilder<'a, 'b, A> {
+  #[inline]
+  pub fn add_public_key(&mut self, public_key: flatbuffers::WIPOffset<flatbuffers::Vector<'b , u8>>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(SessionStart::VT_PUBLIC_KEY, public_key);
+  }
+  #[inline]
+  pub fn add_session_token(&mut self, session_token: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(SessionStart::VT_SESSION_TOKEN, session_token);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>) -> SessionStartBuilder<'a, 'b, A> {
+    let start = _fbb.start_table();
+    SessionStartBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<SessionStart<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+impl core::fmt::Debug for SessionStart<'_> {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    let mut ds = f.debug_struct("SessionStart");
+      ds.field("public_key", &self.public_key());
+      ds.field("session_token", &self.session_token());
+      ds.finish()
+  }
+}
 pub enum SignedMessageOffset {}
 #[derive(Copy, Clone, PartialEq)]
 
@@ -1203,6 +1438,36 @@ impl<'a> SignedMessage<'a> {
     }
   }
 
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn payload_as_lock_update_event(&self) -> Option<LockUpdateEvent<'a>> {
+    if self.payload_type() == MessagePayload::LockUpdateEvent {
+      self.payload().map(|t| {
+       // Safety:
+       // Created from a valid Table for this object
+       // Which contains a valid union in this slot
+       unsafe { LockUpdateEvent::init_from_table(t) }
+     })
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn payload_as_session_start(&self) -> Option<SessionStart<'a>> {
+    if self.payload_type() == MessagePayload::SessionStart {
+      self.payload().map(|t| {
+       // Safety:
+       // Created from a valid Table for this object
+       // Which contains a valid union in this slot
+       unsafe { SessionStart::init_from_table(t) }
+     })
+    } else {
+      None
+    }
+  }
+
 }
 
 impl flatbuffers::Verifiable for SignedMessage<'_> {
@@ -1217,6 +1482,8 @@ impl flatbuffers::Verifiable for SignedMessage<'_> {
         match key {
           MessagePayload::Contract => v.verify_union_variant::<flatbuffers::ForwardsUOffset<Contract>>("MessagePayload::Contract", pos),
           MessagePayload::PartialContract => v.verify_union_variant::<flatbuffers::ForwardsUOffset<PartialContract>>("MessagePayload::PartialContract", pos),
+          MessagePayload::LockUpdateEvent => v.verify_union_variant::<flatbuffers::ForwardsUOffset<LockUpdateEvent>>("MessagePayload::LockUpdateEvent", pos),
+          MessagePayload::SessionStart => v.verify_union_variant::<flatbuffers::ForwardsUOffset<SessionStart>>("MessagePayload::SessionStart", pos),
           _ => Ok(()),
         }
      })?
@@ -1292,6 +1559,20 @@ impl core::fmt::Debug for SignedMessage<'_> {
             ds.field("payload", &"InvalidFlatbuffer: Union discriminant does not match value.")
           }
         },
+        MessagePayload::LockUpdateEvent => {
+          if let Some(x) = self.payload_as_lock_update_event() {
+            ds.field("payload", &x)
+          } else {
+            ds.field("payload", &"InvalidFlatbuffer: Union discriminant does not match value.")
+          }
+        },
+        MessagePayload::SessionStart => {
+          if let Some(x) = self.payload_as_session_start() {
+            ds.field("payload", &x)
+          } else {
+            ds.field("payload", &"InvalidFlatbuffer: Union discriminant does not match value.")
+          }
+        },
         _ => {
           let x: Option<()> = None;
           ds.field("payload", &x)
@@ -1317,6 +1598,7 @@ impl<'a> flatbuffers::Follow<'a> for Configuration<'a> {
 
 impl<'a> Configuration<'a> {
   pub const VT_COORDINATOR_ADDRESS: flatbuffers::VOffsetT = 4;
+  pub const VT_SAFETY_KEY: flatbuffers::VOffsetT = 6;
 
   #[inline]
   pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -1328,6 +1610,7 @@ impl<'a> Configuration<'a> {
     args: &'args ConfigurationArgs<'args>
   ) -> flatbuffers::WIPOffset<Configuration<'bldr>> {
     let mut builder = ConfigurationBuilder::new(_fbb);
+    if let Some(x) = args.safety_key { builder.add_safety_key(x); }
     if let Some(x) = args.coordinator_address { builder.add_coordinator_address(x); }
     builder.finish()
   }
@@ -1340,6 +1623,13 @@ impl<'a> Configuration<'a> {
     // which contains a valid value in this slot
     unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(Configuration::VT_COORDINATOR_ADDRESS, None)}
   }
+  #[inline]
+  pub fn safety_key(&self) -> Option<flatbuffers::Vector<'a, u8>> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(Configuration::VT_SAFETY_KEY, None)}
+  }
 }
 
 impl flatbuffers::Verifiable for Configuration<'_> {
@@ -1350,18 +1640,21 @@ impl flatbuffers::Verifiable for Configuration<'_> {
     use self::flatbuffers::Verifiable;
     v.visit_table(pos)?
      .visit_field::<flatbuffers::ForwardsUOffset<&str>>("coordinator_address", Self::VT_COORDINATOR_ADDRESS, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, u8>>>("safety_key", Self::VT_SAFETY_KEY, false)?
      .finish();
     Ok(())
   }
 }
 pub struct ConfigurationArgs<'a> {
     pub coordinator_address: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub safety_key: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
 }
 impl<'a> Default for ConfigurationArgs<'a> {
   #[inline]
   fn default() -> Self {
     ConfigurationArgs {
       coordinator_address: None,
+      safety_key: None,
     }
   }
 }
@@ -1374,6 +1667,10 @@ impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> ConfigurationBuilder<'a, 'b, A>
   #[inline]
   pub fn add_coordinator_address(&mut self, coordinator_address: flatbuffers::WIPOffset<&'b  str>) {
     self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Configuration::VT_COORDINATOR_ADDRESS, coordinator_address);
+  }
+  #[inline]
+  pub fn add_safety_key(&mut self, safety_key: flatbuffers::WIPOffset<flatbuffers::Vector<'b , u8>>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Configuration::VT_SAFETY_KEY, safety_key);
   }
   #[inline]
   pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>) -> ConfigurationBuilder<'a, 'b, A> {
@@ -1394,6 +1691,7 @@ impl core::fmt::Debug for Configuration<'_> {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     let mut ds = f.debug_struct("Configuration");
       ds.field("coordinator_address", &self.coordinator_address());
+      ds.field("safety_key", &self.safety_key());
       ds.finish()
   }
 }

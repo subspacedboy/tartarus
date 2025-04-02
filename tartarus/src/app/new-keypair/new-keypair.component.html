@@ -1,26 +1,21 @@
 <div>
   <h1>Key Generator</h1>
 
-  <div>
-    In order to make and sign contracts, you need a key.
-    This will generate you a key in the form of a QR code image.
+  <div class="row">
+    This will make you a key. A key is really just an image containing a QR code.
+    I strongly recommend saving this to your phone camera roll or to some place it will be safe
+    and probably backed up automatically.
   </div>
-  <!-- QR Code Input -->
-  <button (click)="generateQRCode()">Generate Key</button>
 
+  <div>
+    <button (click)="generateQRCode()">Generate Key</button>
+  </div>
   <!-- QR Code Display -->
 
     <div #hiddenDiv hidden>
       <h1 style="color: red">Do not share.</h1>
       <canvas #canvas></canvas>
-      <button (click)="downloadQRCode()">Download QR Code</button>
       <h1 style="color: red">Do not share.</h1>
+      <button (click)="downloadQRCode()">Download QR Code</button>
     </div>
-
-
-
-<!--  <h2>Scan QR Code from Image</h2>-->
-<!--  <input type="file" (change)="onFileSelected($event)" accept="image/*">-->
-<!--  <canvas #scanCanvas style="display: none;"></canvas>-->
-<!--  <p>Scanned QR Code Data: <strong>{{ scannedResult }}</strong></p>-->
 </div>

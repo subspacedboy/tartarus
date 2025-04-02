@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import {HttpClient, HttpErrorResponse, HttpHeaders} from '@angular/common/http';
 import {catchError, map, Observable, throwError} from 'rxjs';
 import * as base32 from 'hi-base32';
+import {LockSession} from './models/lock-session';
 
 @Injectable({
   providedIn: 'root'
@@ -19,6 +20,46 @@ export class TartarusCoordinatorService {
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
     return this.http.post(save_key_uri, body, {headers} ).pipe(map((res:any) => {
       // let t = new Ticket(res);
+      return true;
+    }),  catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public getLockSession(sessionToken: string) : Observable<LockSession> {
+    const get_lock_session_uri = `http://localhost:5002/lock_sessions/${sessionToken}`;
+    return this.http.get(get_lock_session_uri, {
+    }).pipe(map((res:any) => {
+      return new LockSession(res);
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public createAuthorSession(public_key: string, session_token: string, signature : string): Observable<boolean> {
+    const save_key_uri = 'http://localhost:5002/author_sessions';
+    const body = JSON.stringify({
+      'public_key' : public_key,
+      'session': session_token,
+      'signature': signature
+    });
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+    return this.http.post(save_key_uri, body, {headers} ).pipe(map((res:any) => {
+      // let t = new Ticket(res);
+      return true;
+    }),  catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public saveLockPubKeyAndSession(public_key: string, session: string) : Observable<boolean> {
+    const save_key_uri = 'http://localhost:5002/lock_sessions';
+    const body = JSON.stringify({
+      'public_key' : public_key,
+      'session' : session
+    });
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+    return this.http.post(save_key_uri, body, {headers} ).pipe(map((res:any) => {
       return true;
     }),  catchError(error => {
       return this.handleError(error);

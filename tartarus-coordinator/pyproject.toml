@@ -18,6 +18,7 @@ dependencies = [
     "sqlalchemy (>=2.0.38,<3.0.0)",
     "sqlalchemy-orm (>=1.2.10,<2.0.0)",
     "flask-cors (>=5.0.0,<6.0.0)",
+    "ruff (>=0.9.9,<0.10.0)",
 ]
 
 
