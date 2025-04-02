@@ -9,6 +9,8 @@ mod wifi_util;
 mod screen_state;
 mod screen_ids;
 mod boot_screen;
+mod lock_ctx;
+mod prelude;
 
 use contract_generated::*;
 
@@ -40,7 +42,7 @@ use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::hal::delay;
 use esp_idf_svc::hal::gpio;
 use esp_idf_svc::sys::esp_random;
-use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs};
+use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs, NvsDefault};
 use esp_idf_svc::wifi::{AuthMethod, BlockingWifi, ClientConfiguration, Configuration, EspWifi};
 use esp_idf_svc::http::client::EspHttpConnection;
 
@@ -59,6 +61,7 @@ use sha2::{digest, Sha256};
 use st7789::{Error, Orientation, ST7789};
 use crate::boot_screen::BootScreen;
 use crate::contract_generated::subjugated::club::{MessagePayload, SignedMessage};
+use crate::lock_ctx::LockCtx;
 use crate::lock_state_machine::{LockStateMachine, State};
 use crate::screen_state::ScreenState;
 use crate::verifier::{ContractVerifier, VerifiedType};
@@ -95,6 +98,8 @@ impl RngCore for Esp32Rng {
 }
 
 impl CryptoRng for Esp32Rng {}
+
+
 
 //noinspection RsUnresolvedMethod
 fn main() {
@@ -139,7 +144,6 @@ fn main() {
     tft_power.set_high().expect("tft power to be high");
     tft_rst.set_low().expect("Reset to be low");
     tft_bl.set_high().expect("BL to be high");
-    // let old_bl = OldOutputPin::new(tft_bl);
 
     let spi: SpiDeviceDriver<SpiDriver> = spi::SpiDeviceDriver::new_single(
         peripherals.spi2,
@@ -151,78 +155,72 @@ fn main() {
         &spi::SpiConfig::new().baudrate(10.MHz().into()),
     ).expect("SpiDeviceDriver to work");
 
-    let di = SPIInterface::new(spi, gpio::PinDriver::output(tft_dc).expect("Pin driver for DC to work"));
+    let spi_interface = SPIInterface::new(spi, gpio::PinDriver::output(tft_dc).expect("Pin driver for DC to work"));
 
-    let mut display: ST7789<SPIInterface<SpiDeviceDriver<SpiDriver>, PinDriver<Gpio40, Output>>, PinDriver<Gpio41, Output>, PinDriver<Gpio45, Output>> = ST7789::new(di, Some(tft_rst), Some(tft_bl), 240, 135);
-    type DynScreen<'a> = dyn ScreenState<
-        SPI = SPIInterface<SpiDeviceDriver<'a, SpiDriver<'a>>, PinDriver<'a, Gpio40, Output>>,
-        DC = PinDriver<'a, Gpio41, Output>,
-        PinE=GpioError,
-        RST=PinDriver<'a, Gpio45, Output>>;
-
+    let mut display = ST7789::new(spi_interface, Some(tft_rst), Some(tft_bl), 240, 135);
     display.init(&mut delay::Ets).expect("Display to initialize");
     display.set_orientation(Orientation::Portrait).expect("To set landscape");
     display.clear(Rgb565::WHITE).expect("Display to clear");
 
     // Warm up NVS (non-volatile storage)
     let nvs_partition = EspDefaultNvsPartition::take().expect("EspDefaultNvsPartition to be available");
-    let mut nvs = EspNvs::new(nvs_partition.clone(), "storage", true).unwrap();
+    let mut nvs: EspNvs<NvsDefault> = EspNvs::new(nvs_partition.clone(), "storage", true).unwrap();
 
-    let key_name = "ec_private";
-    let mut buffer : [u8; 256] = [0; 256];
-    let existing_key: Option<&[u8]> = nvs.get_blob(key_name, &mut buffer).ok().expect("The NVS mechanism should have worked");
-    let mut rng = Esp32Rng;
+    // let key_name = "ec_private";
+    // let mut buffer : [u8; 256] = [0; 256];
+    // let existing_key: Option<&[u8]> = nvs.get_blob(key_name, &mut buffer).ok().expect("The NVS mechanism should have worked");
+    // let mut rng = Esp32Rng;
+    //
+    // let private_key : SecretKey = if let Some(base64_key) = existing_key {
+    //     log::info!("Loaded existing EC private key.");
+    //     let key_bytes = general_purpose::STANDARD.decode(base64_key).unwrap();
+    //     SecretKey::from_slice(&key_bytes).expect("Failed to parse private key")
+    // } else {
+    //     log::info!("Generating a new EC private key...");
+    //     let sk = SecretKey::random(&mut rng);
+    //
+    //     let key_bytes = sk.to_bytes();
+    //     let encoded_key = general_purpose::STANDARD.encode(key_bytes);
+    //     nvs.set_blob(key_name, encoded_key.as_bytes()).unwrap();
+    //     log::info!("Saved new EC private key to NVS.");
+    //     sk
+    // };
 
-    let private_key : SecretKey = if let Some(base64_key) = existing_key {
-        log::info!("Loaded existing EC private key.");
-        let key_bytes = general_purpose::STANDARD.decode(base64_key).unwrap();
-        SecretKey::from_slice(&key_bytes).expect("Failed to parse private key")
-    } else {
-        log::info!("Generating a new EC private key...");
-        let sk = SecretKey::random(&mut rng);
+    // let my_public = PublicKey::from_secret_scalar(&private_key.to_nonzero_scalar());
 
-        // // Serialize & encode in base64
-        let key_bytes = sk.to_bytes();
-        let encoded_key = general_purpose::STANDARD.encode(key_bytes);
-        nvs.set_blob(key_name, encoded_key.as_bytes()).unwrap();
-        log::info!("Saved new EC private key to NVS.");
-        sk
-    };
+    // let encoded_cert = general_purpose::STANDARD.encode(&my_public.to_public_key_pem(LineEnding::CR).unwrap());
 
-    let my_public = PublicKey::from_secret_scalar(&private_key.to_nonzero_scalar());
-    let encoded_cert = general_purpose::STANDARD.encode(&my_public.to_public_key_pem(LineEnding::CR).unwrap());
+    // const COORDINATOR: &str = "http://192.168.1.168:5002";
+    // let whole_message = format!("{}/?public={}", COORDINATOR, encoded_cert);
 
-    const COORDINATOR: &str = "http://192.168.1.168:5002";
-    let whole_message = format!("{}/?public={}", COORDINATOR, encoded_cert);
+    // log::info!("Message: {}", whole_message);
 
-    log::info!("Message: {}", whole_message);
-
-    let qr = QrCode::new(whole_message).expect("Valid QR code");
-    let qr_width = qr.width() as u32;
-
-    log::info!("Generated code with version: {:?}", qr.version());
-    log::info!("Has width: {:?}", qr_width);
+    // let qr = QrCode::new(whole_message).expect("Valid QR code");
+    // let qr_width = qr.width() as u32;
+    //
+    // log::info!("Generated code with version: {:?}", qr.version());
+    // log::info!("Has width: {:?}", qr_width);
 
     // Scale factor and positioning
-    let scale = 2;
-    let offset_x = (240 - qr_width * scale) / 2;
-    let offset_y = (240 - qr_width * scale) / 2;
-
-    for y in 0..qr_width {
-        for x in 0..qr_width {
-            let color = if qr[(x as usize, y as usize)] == Color::Dark {
-                Rgb565::BLACK
-            } else {
-                Rgb565::WHITE
-            };
-            let rect = Rectangle::new(
-                Point::new((offset_x + x * scale) as i32, (offset_y + y * scale) as i32),
-                Size::new(scale, scale),
-            )
-                .into_styled(PrimitiveStyleBuilder::new().fill_color(color).build());
-            rect.draw(&mut display).expect("Expected to draw");
-        }
-    }
+    // let scale = 2;
+    // let offset_x = (240 - qr_width * scale) / 2;
+    // let offset_y = (240 - qr_width * scale) / 2;
+    //
+    // for y in 0..qr_width {
+    //     for x in 0..qr_width {
+    //         let color = if qr[(x as usize, y as usize)] == Color::Dark {
+    //             Rgb565::BLACK
+    //         } else {
+    //             Rgb565::WHITE
+    //         };
+    //         let rect = Rectangle::new(
+    //             Point::new((offset_x + x * scale) as i32, (offset_y + y * scale) as i32),
+    //             Size::new(scale, scale),
+    //         )
+    //             .into_styled(PrimitiveStyleBuilder::new().fill_color(color).build());
+    //         rect.draw(&mut display).expect("Expected to draw");
+    //     }
+    // }
 
     // Warming up wifi
     log::info!("Putting wifi on standby");
@@ -258,7 +256,7 @@ fn main() {
     }
 
     if wifi_connected {
-        let url = format!("{}/announce?public={}", COORDINATOR, encoded_cert);
+        let url = format!("/announce");
         let mut pos = EspHttpConnection::new(&mut Default::default()).expect("HTTP client should be available");
         let mut client = HttpClient::wrap(&mut pos);
 
@@ -293,17 +291,11 @@ fn main() {
     // let mut public_key : Option<PublicKey> = None;
     let mut cipher : Option<Aes256Gcm> = None;
 
-    let mut screen_state: Box<DynScreen<'_>> = Box::new(
-        BootScreen::<
-            SPIInterface<SpiDeviceDriver<'_, SpiDriver<'_>>, PinDriver<'_, _, Output>>,
-            PinDriver<'_, _, Output>,
-            PinDriver<'_, _, Output>,
-            GpioError
-        >::new()
-    );
+    let mut lock_ctx = LockCtx::new(display, nvs);
 
-    screen_state.draw_screen(&mut display);
     loop {
+        lock_ctx.tick();
+
         if d0_button.is_low() {
             log::info!("d0 is pressed");
         }
@@ -343,8 +335,8 @@ fn main() {
                                 log::info!("Connected!");
                                 connected = true;
 
-                                nvs.set_blob("ssid", ssid.as_bytes()).unwrap();
-                                nvs.set_blob("password", password.as_bytes()).unwrap();
+                                // nvs.set_blob("ssid", ssid.as_bytes()).unwrap();
+                                // nvs.set_blob("password", password.as_bytes()).unwrap();
                             } else {
                                 log::info!("Failed to connect");
                                 tries -=1;
