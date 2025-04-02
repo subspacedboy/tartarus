@@ -11,6 +11,8 @@ mod screen_ids;
 mod boot_screen;
 mod lock_ctx;
 mod prelude;
+mod overlay;
+mod overlays;
 
 use contract_generated::*;
 
@@ -61,11 +63,14 @@ use sha2::{digest, Sha256};
 use st7789::{Error, Orientation, ST7789};
 use crate::boot_screen::BootScreen;
 use crate::contract_generated::subjugated::club::{MessagePayload, SignedMessage};
-use crate::lock_ctx::LockCtx;
+use crate::lock_ctx::{LockCtx, TickUpdate};
 use crate::lock_state_machine::{LockStateMachine, State};
 use crate::screen_state::ScreenState;
 use crate::verifier::{ContractVerifier, VerifiedType};
 use crate::wifi_util::{connect_wifi, parse_wifi_qr};
+use embedded_graphics_core::geometry::OriginDimensions;
+use embedded_graphics_core::pixelcolor::raw::RawU16;
+use embedded_graphics_core::prelude::RawData;
 
 struct Esp32Rng;
 
@@ -157,10 +162,28 @@ fn main() {
 
     let spi_interface = SPIInterface::new(spi, gpio::PinDriver::output(tft_dc).expect("Pin driver for DC to work"));
 
-    let mut display = ST7789::new(spi_interface, Some(tft_rst), Some(tft_bl), 240, 135);
+    let mut display = ST7789::new(spi_interface, Some(tft_rst), Some(tft_bl), 135, 240, 40, 53);
+    log::info!("Display size: {:?}", display.size());
     display.init(&mut delay::Ets).expect("Display to initialize");
-    display.set_orientation(Orientation::Portrait).expect("To set landscape");
+
+    display.set_orientation(Orientation::Landscape).expect("To set landscape");
     display.clear(Rgb565::WHITE).expect("Display to clear");
+
+    // let sq_size = 50_u16;
+
+    // The Correct 0,0 offset for the set_pixels call is 40,53 in landscape.
+
+    // let color16 = RawU16::from(Rgb565::BLUE).into_inner();
+    // let colors = (0..=(sq_size * sq_size)).map(|_| color16);
+    // display.set_pixels(0, 0, sq_size, sq_size, colors);
+    //
+    // let color16 = RawU16::from(Rgb565::GREEN).into_inner();
+    // let colors = (0..=(sq_size * sq_size)).map(|_| color16);
+    // display.set_pixels(sq_size, 0, sq_size * 2, sq_size, colors);
+    //
+    // let color16 = RawU16::from(Rgb565::RED).into_inner();
+    // let colors = (0..=(sq_size * sq_size)).map(|_| color16);
+    // display.set_pixels(0, sq_size, sq_size, sq_size * 2, colors);
 
     // Warm up NVS (non-volatile storage)
     let nvs_partition = EspDefaultNvsPartition::take().expect("EspDefaultNvsPartition to be available");
@@ -227,7 +250,7 @@ fn main() {
 
     let sys_loop = EspSystemEventLoop::take().expect("EspSystemEventLoop to be available");
     let mut wifi_connected = false;
-    let mut wifi = BlockingWifi::wrap(
+    let mut wifi: BlockingWifi<EspWifi> = BlockingWifi::wrap(
         EspWifi::new(peripherals.modem, sys_loop.clone(), Some(nvs_partition)).expect("EspWifi to work"),
         sys_loop,
     ).expect("Wifi to start");
@@ -255,19 +278,19 @@ fn main() {
         log::info!("No stored wifi credentials. Deferring wifi");
     }
 
-    if wifi_connected {
-        let url = format!("/announce");
-        let mut pos = EspHttpConnection::new(&mut Default::default()).expect("HTTP client should be available");
-        let mut client = HttpClient::wrap(&mut pos);
-
-        let mut request = client.post(&url, &[]).unwrap();
-        let payload = b"{\"key\": \"value\"}";
-        request.write_all(payload).expect("All to write");
-        request.flush().expect("Flush to succeed");
-
-        let response = request.submit().expect("Failed to send");
-        log::info!("Response status: {}", response.status());
-    }
+    // if wifi_connected {
+    //     let url = format!("/announce");
+    //     let mut pos = EspHttpConnection::new(&mut Default::default()).expect("HTTP client should be available");
+    //     let mut client = HttpClient::wrap(&mut pos);
+    //
+    //     let mut request = client.post(&url, &[]).unwrap();
+    //     let payload = b"{\"key\": \"value\"}";
+    //     request.write_all(payload).expect("All to write");
+    //     request.flush().expect("Flush to succeed");
+    //
+    //     let response = request.submit().expect("Failed to send");
+    //     log::info!("Response status: {}", response.status());
+    // }
 
     log::info!("Initializing code reader");
     const READER_ADDRESS: u8 = 0x0c;
@@ -284,26 +307,32 @@ fn main() {
     // 254 (size of rx_buf). The first byte in the message is the length
     // of the read message with an offset of 2. One for size, and one for
     // the null byte after size.
-    let mut rx_buf: [u8; 254] = [0; 254];
+
 
     log::info!("Ready :-)");
     let mut sm = LockStateMachine::new();
     // let mut public_key : Option<PublicKey> = None;
     let mut cipher : Option<Aes256Gcm> = None;
 
-    let mut lock_ctx = LockCtx::new(display, nvs);
+    let mut lock_ctx = LockCtx::new(display, nvs, wifi);
 
     loop {
-        lock_ctx.tick();
+        let mut rx_buf: [u8; 254] = [0; 254];
+        let mut d0_pressed = false;
+        let mut d1_pressed = false;
+        let mut d2_pressed = false;
 
         if d0_button.is_low() {
             log::info!("d0 is pressed");
+            d0_pressed = true;
         }
         if d1_button.is_high() {
             log::info!("d1 is pressed");
+            d1_pressed = true;
         }
         if d2_button.is_high() {
             log::info!("d2 is pressed");
+            d2_pressed = true;
         }
 
         let mut data : Option<Vec<u8>> = None;
@@ -319,97 +348,73 @@ fn main() {
             Err(_) => {}
         }
 
-        if let Some(incoming_data) = data.clone() {
-            if let Ok(maybe_string) = String::from_utf8(incoming_data) {
-                if maybe_string.starts_with("WIFI:") {
-                    let maybe_creds = parse_wifi_qr(maybe_string);
-                    if let Some((ssid, password)) = maybe_creds {
-                        log::info!("Trying to connect to wifi -> SSID[{}] Password[{}]", ssid, password);
+        let this_update = TickUpdate {
+            d0_pressed,
+            d1_pressed,
+            d2_pressed,
+            qr_data : data
+        };
 
-                        let password = "H0la Chic0s";
+        lock_ctx.tick(this_update);
 
-                        let mut tries = 3;
-                        let mut connected = false;
-                        while tries > 0 && !connected {
-                            if let Ok(_) = connect_wifi(&mut wifi, &ssid, &String::from(password)) {
-                                log::info!("Connected!");
-                                connected = true;
-
-                                // nvs.set_blob("ssid", ssid.as_bytes()).unwrap();
-                                // nvs.set_blob("password", password.as_bytes()).unwrap();
-                            } else {
-                                log::info!("Failed to connect");
-                                tries -=1;
-                            }
-                        }
-
-                        if !connected {
-                            log::info!("Failed to connect and ran out of tries :-(");
-                        }
-
-                    }
-                }
-            }
-        }
-
-        match sm.current_state() {
-            State::Start => {
-                if let Some(incoming_data) = data {
-                    let verifier = ContractVerifier {};
-                    if let Ok(verified_type) = verifier.verify(&incoming_data) {
-                        match verified_type {
-                            VerifiedType::Contract(_contract) => {
-                                log::info!("Contract verified!");
-                                // sm.transition(State::CertificateLoaded);
-                            }
-                            VerifiedType::PartialContract(partial_contract) => {
-                                log::info!("Partial Contract verified!", );
-                                if let Some(address) = partial_contract.complete_contract_address() {
-                                    log::info!("Address for full contract -> {address}");
-                                }
-                                // log::info!("Partial Contract verified! -> {partial_contract}", );
-                                // sm.transition(State::CertificateLoaded);
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-            }
-            State::CertificateLoaded => {
-                if let Some(incoming_data) = data {
-                    if let Ok(maybe_b64_string) = String::from_utf8(incoming_data) {
-                        if let Ok(decoded_bytes) = general_purpose::STANDARD.decode(maybe_b64_string) {
-                            log::info!("Decoded message: {:?}", decoded_bytes);
-
-                            let nonce : &[u8] = &decoded_bytes[0..12];
-                            let nonce_bytes : [u8; 12] = nonce.try_into().expect("wrong size");
-                            let nonce: Nonce<Aes256Gcm> = *GenericArray::from_slice(&nonce_bytes);
-
-                            let cipher_text = &decoded_bytes[12..decoded_bytes.len()];
-                            if let Some(ref mut actual_cipher) = cipher {
-                                match actual_cipher.decrypt(&nonce, Payload { msg: &cipher_text, aad: &[] }) {
-                                    Ok(plaintext) => {
-                                        let plaintext_str = String::from_utf8_lossy(&plaintext);
-                                        println!("Decrypted message: {:?}", plaintext_str);
-
-                                        if plaintext_str == "LOCK" {
-                                            sm.transition(State::CodeConfirmed);
-                                        }
-                                    }
-                                    Err(_) => {
-                                        println!("Decryption failed! Check key, nonce, or ciphertext.");
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            State::CodeConfirmed => {
-                log::info!("Locked!");
-            }
-            State::Reset => {}
-        }
+        // match sm.current_state() {
+        //     State::Start => {
+        //         if let Some(incoming_data) = data {
+        //             let verifier = ContractVerifier {};
+        //             if let Ok(verified_type) = verifier.verify(&incoming_data) {
+        //                 match verified_type {
+        //                     VerifiedType::Contract(_contract) => {
+        //                         log::info!("Contract verified!");
+        //                         // sm.transition(State::CertificateLoaded);
+        //                     }
+        //                     VerifiedType::PartialContract(partial_contract) => {
+        //                         log::info!("Partial Contract verified!", );
+        //                         if let Some(address) = partial_contract.complete_contract_address() {
+        //                             log::info!("Address for full contract -> {address}");
+        //                         }
+        //                         // log::info!("Partial Contract verified! -> {partial_contract}", );
+        //                         // sm.transition(State::CertificateLoaded);
+        //                     }
+        //                     _ => {}
+        //                 }
+        //             }
+        //         }
+        //     }
+        //     State::CertificateLoaded => {
+        //         if let Some(incoming_data) = data {
+        //             if let Ok(maybe_b64_string) = String::from_utf8(incoming_data) {
+        //                 if let Ok(decoded_bytes) = general_purpose::STANDARD.decode(maybe_b64_string) {
+        //                     log::info!("Decoded message: {:?}", decoded_bytes);
+        //
+        //                     let nonce : &[u8] = &decoded_bytes[0..12];
+        //                     let nonce_bytes : [u8; 12] = nonce.try_into().expect("wrong size");
+        //                     let nonce: Nonce<Aes256Gcm> = *GenericArray::from_slice(&nonce_bytes);
+        //
+        //                     let cipher_text = &decoded_bytes[12..decoded_bytes.len()];
+        //                     if let Some(ref mut actual_cipher) = cipher {
+        //                         match actual_cipher.decrypt(&nonce, Payload { msg: &cipher_text, aad: &[] }) {
+        //                             Ok(plaintext) => {
+        //                                 let plaintext_str = String::from_utf8_lossy(&plaintext);
+        //                                 println!("Decrypted message: {:?}", plaintext_str);
+        //
+        //                                 if plaintext_str == "LOCK" {
+        //                                     sm.transition(State::CodeConfirmed);
+        //                                 }
+        //                             }
+        //                             Err(_) => {
+        //                                 println!("Decryption failed! Check key, nonce, or ciphertext.");
+        //                             }
+        //                         }
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //     }
+        //     State::CodeConfirmed => {
+        //         log::info!("Locked!");
+        //     }
+        //     State::Reset => {}
+        // }
 
         sleep(Duration::from_millis(100));
 

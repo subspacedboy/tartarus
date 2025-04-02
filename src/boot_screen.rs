@@ -1,3 +1,5 @@
+use base64::Engine;
+use base64::engine::general_purpose;
 use crate::screen_ids::ScreenId;
 use crate::screen_state::ScreenState;
 use embedded_graphics::pixelcolor::{Rgb565, RgbColor};
@@ -8,6 +10,7 @@ use embedded_graphics_core::Drawable;
 use embedded_graphics_core::geometry::{Point, Size};
 use embedded_graphics_core::primitives::Rectangle;
 use embedded_hal::digital::OutputPin;
+use p256::pkcs8::{EncodePublicKey, LineEnding};
 use qrcode::{Color, QrCode};
 use st7789::ST7789;
 use crate::lock_ctx::LockCtx;
@@ -47,8 +50,14 @@ where
         todo!()
     }
 
-    fn draw_screen(&mut self, lock_ctx : &LockCtx, mut display: &mut ST7789<SPI, DC, RST>) {
-        let whole_message : &str = "Hello!";
+    fn draw_screen(&mut self, lock_ctx : &mut LockCtx) {
+        let whole_message = if let Some(key) = lock_ctx.public_key {
+            let encoded_pub_key = general_purpose::STANDARD.encode(key.to_public_key_pem(LineEnding::CR).unwrap());
+            const COORDINATOR: &str = "http://192.168.1.180:5002";
+            format!("{}/announce?public={}", COORDINATOR, encoded_pub_key)
+        } else {
+            "http://192.168.1.180:5002/announce".parse().unwrap()
+        };
 
         let qr = QrCode::new(whole_message).expect("Valid QR code");
 
@@ -59,8 +68,9 @@ where
 
         // Scale factor and positioning
         let scale = 2;
-        let offset_x = (240 - qr_width * scale) / 2;
-        let offset_y = (240 - qr_width * scale) / 2;
+        let offset_y = (135 - qr_width * scale) / 2;
+        // let offset_y = (240 - qr_width * scale) / 2;
+        let offset_x = 70;
 
         for y in 0..qr_width {
             for x in 0..qr_width {
@@ -70,11 +80,11 @@ where
                     Rgb565::WHITE
                 };
                 let rect = Rectangle::new(
-                    Point::new((offset_x + x * scale) as i32, (offset_y + y * scale) as i32),
+                    Point::new((offset_x + (x * scale)) as i32, (offset_y + (y * scale)) as i32),
                     Size::new(scale, scale),
                 )
                     .into_styled(PrimitiveStyleBuilder::new().fill_color(color).build());
-                rect.draw(display).expect("Expected to draw");
+                rect.draw(&mut lock_ctx.display).expect("Expected to draw");
             }
         }
 
