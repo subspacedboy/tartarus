@@ -1,6 +1,8 @@
 package club.subjugated.tartarus_coordinator.config
 
 import club.subjugated.tartarus_coordinator.filters.WebUserAuthenticationFilter
+import club.subjugated.tartarus_coordinator.models.AdminSession
+import club.subjugated.tartarus_coordinator.services.AdminSessionService
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
 import club.subjugated.tartarus_coordinator.services.LockUserSessionService
 import org.springframework.beans.factory.annotation.Autowired
@@ -20,10 +22,11 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 class SecurityConfiguration() {
     @Autowired lateinit var lockUserSessionService: LockUserSessionService
     @Autowired lateinit var authorSessionService: AuthorSessionService
+    @Autowired lateinit var adminSessionService: AdminSessionService
 
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
-        val webUserAuthenticationFilter = WebUserAuthenticationFilter(authorSessionService, lockUserSessionService)
+        val webUserAuthenticationFilter = WebUserAuthenticationFilter(authorSessionService, lockUserSessionService, adminSessionService)
 
         http
             .cors { it.configurationSource(corsConfigurationSource()) }

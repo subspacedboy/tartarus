@@ -81,10 +81,10 @@ class Error : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createError(builder: FlatBufferBuilder, publicKeyOffset: Int, sessionOffset: Int, serialNumber: UShort, counter: UShort, messageOffset: Int) : Int {
+        fun createError(builder: FlatBufferBuilder, publicKeyOffset: Int, session_offset: Int, serialNumber: UShort, counter: UShort, messageOffset: Int) : Int {
             builder.startTable(5)
             addMessage(builder, messageOffset)
-            addSession(builder, sessionOffset)
+            addSession(builder, session_offset)
             addPublicKey(builder, publicKeyOffset)
             addCounter(builder, counter)
             addSerialNumber(builder, serialNumber)

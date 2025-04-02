@@ -1,5 +1,8 @@
 package club.subjugated.tartarus_coordinator.util
 
+import org.bouncycastle.asn1.ASN1InputStream
+import org.bouncycastle.asn1.ASN1Integer
+import org.bouncycastle.asn1.ASN1Sequence
 import java.io.StringWriter
 import java.math.BigInteger
 import java.security.*
@@ -12,8 +15,10 @@ import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.jce.spec.ECNamedCurveSpec
 import org.bouncycastle.math.ec.ECCurve
+import org.bouncycastle.openssl.PEMParser
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter
 import java.io.File
+import java.io.StringReader
 
 fun getPemEncoding(ecPublicKey: ECPublicKey): String {
     val stringWriter = StringWriter()
@@ -44,6 +49,25 @@ fun loadECPublicKeyFromPkcs8(keyBytes: ByteArray): PublicKey {
     val keyFactory = KeyFactory.getInstance("EC", "BC")
 
     return keyFactory.generatePublic(keySpec)
+}
+
+fun loadECPublicKeyFromPem(pem: String): ECPublicKey {
+    Security.addProvider(BouncyCastleProvider())
+
+    val pemParser = PEMParser(StringReader(pem))
+    val obj = pemParser.readObject()
+    val keyInfo = when (obj) {
+        is org.bouncycastle.asn1.x509.SubjectPublicKeyInfo -> obj
+        is org.bouncycastle.cert.X509CertificateHolder -> obj.subjectPublicKeyInfo
+        else -> throw IllegalArgumentException("Unsupported PEM content")
+    }
+
+    val encoded = keyInfo.encoded
+    val keyFactory = KeyFactory.getInstance("EC", "BC")
+    val keySpec = X509EncodedKeySpec(encoded)
+    val pubKey: PublicKey = keyFactory.generatePublic(keySpec)
+
+    return pubKey as ECPublicKey
 }
 
 fun encodePublicKeySecp1(publicKey: ECPublicKey): ByteArray {
@@ -168,3 +192,18 @@ fun loadRawPrivateKey(filePath: String): PrivateKey {
     return keyFactory.generatePrivate(privateKeySpec)
 }
 
+fun derToRawSignature(derSig: ByteArray, outputLength: Int = 64): ByteArray {
+    val asn1 = ASN1InputStream(derSig).use { it.readObject() as ASN1Sequence }
+    val r = (asn1.getObjectAt(0) as ASN1Integer).positiveValue
+    val s = (asn1.getObjectAt(1) as ASN1Integer).positiveValue
+
+    fun bigIntToFixedBytes(b: BigInteger): ByteArray {
+        val full = ByteArray(outputLength / 2)
+        val raw = b.toByteArray()
+        val src = if (raw.size > full.size) raw.copyOfRange(raw.size - full.size, raw.size) else raw
+        System.arraycopy(src, 0, full, full.size - src.size, src.size)
+        return full
+    }
+
+    return bigIntToFixedBytes(r) + bigIntToFixedBytes(s)
+}

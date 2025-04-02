@@ -18,7 +18,6 @@ use embedded_graphics_core::Drawable;
 use embedded_hal::digital::OutputPin;
 use esp_idf_hal::gpio::{GpioError, Output, PinDriver};
 use qrcode::{Color, QrCode};
-use std::collections::HashMap;
 
 pub struct BootScreen<SPI, DC, RST, PinE> {
     _spi: core::marker::PhantomData<SPI>,

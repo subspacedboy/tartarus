@@ -54,7 +54,7 @@ class CommandQueueService {
         )
     }
 
-    fun getCommandBySessionAndSerial(lockSession: LockSession, serialNumber: Int): Command {
+    fun getCommandBySessionAndSerial(lockSession: LockSession, serialNumber: Int): List<Command> {
         val commandQueueId = lockSession.commandQueue.first().id
         return this.commandRepository.findByCommandQueueIdAndSerialNumber(
             commandQueueId,
@@ -66,7 +66,7 @@ class CommandQueueService {
         return this.commandRepository.findByAuthorSessionIdAndContractIdOrderByCounterDesc(authorSession.id, contract.id)
     }
 
-    fun getByLockSessionIdAndContract(contract : Contract) : List<Command> {
+    fun getByContract(contract : Contract) : List<Command> {
         return this.commandRepository.findByContractIdOrderByCounterDesc(contract.id)
     }
 }

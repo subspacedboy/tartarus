@@ -14,9 +14,11 @@ import jakarta.annotation.PreDestroy
 import org.springframework.beans.factory.annotation.Autowired
 import java.util.*
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
 
 @Component
+@Profile("!cli")
 class CustomMqttSecurity : IAuthenticator, IAuthorizatorPolicy {
     final val internalPassword: UUID = UUID.randomUUID()
     val passAsString = internalPassword.toString()
@@ -126,6 +128,7 @@ class CustomMqttSecurity : IAuthenticator, IAuthorizatorPolicy {
 }
 
 @Component
+@Profile("!cli")
 class MqttBroker(private val security: CustomMqttSecurity) {
     private val mqttServer: Server = Server()
 
@@ -136,7 +139,7 @@ class MqttBroker(private val security: CustomMqttSecurity) {
         val properties =
             Properties().apply {
                 setProperty("websocket_port", wsPortNumber.toString())
-                setProperty("netty.mqtt.message_size", "2097152");
+//                setProperty("netty.mqtt.message_size", "2097152");
             }
 
         val config: IConfig = MemoryConfig(properties)

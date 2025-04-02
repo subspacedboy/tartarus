@@ -27,18 +27,18 @@ class LockSession(
     var contracts: MutableList<Contract> = mutableListOf(),
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
-) {
+) : PublicKeyProvider {
     companion object {
         fun generateId(): String {
             return club.subjugated.tartarus_coordinator.util.generateId("ls-")
         }
     }
 
-    fun decodePublicKey(): ByteArray {
-        return Base64.getDecoder().decode(this.publicKey)
+    override fun decodePublicKey(): ByteArray {
+        return try {
+            Base64.getDecoder().decode(this.publicKey)
+        } catch (e : IllegalArgumentException) {
+            Base64.getUrlDecoder().decode(this.publicKey)
+        }
     }
-
-//    fun loadPublicKey(): ECPublicKey {
-//        return getECPublicKeyFromCompressedKeyByteArray(Base64.getDecoder().decode(this.publicKey))
-//    }
 }

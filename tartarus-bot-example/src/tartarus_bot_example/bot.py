@@ -123,6 +123,10 @@ class TimerBot():
         signer = Signer()
         serial_number = random.getrandbits(16)
 
+        # Make the record first because it's possible that the accept_contract event
+        # will arrive before the response.
+        self.db.save(serial_number, {})
+
         message = make_create_contract_request(shareableToken, serial_number, self.bot_name, signer)
         print("Making create contract request")
         self.tartarus.make_api_request(message, self.response_queue)
@@ -281,7 +285,7 @@ async def scan_contracts_and_release(timer: TimerBot):
                         print("Release time has passed")
                         updated_contract = await timer.get_contract(contract['lock_session'], int(c))
                         print(f"Updated contract {updated_contract}")
-                        if updated_contract['state'] != 'RELEASED':
+                        if updated_contract['state'] != 'RELEASED' and updated_contract['state'] != 'ABORTED':
                             await timer.add_message(contract['contract_name'], "You've done your time.")
                             await timer.release_contract(contract['contract_name'], contract['shareable_token'], int(c), 2000)
                         else:
@@ -293,7 +297,7 @@ async def scan_contracts_and_release(timer: TimerBot):
             except Exception as e:
                 print(f"Failed to read contract {c} -> {e}")
                 traceback.print_exception(e)
-        await asyncio.sleep(60)
+        await asyncio.sleep(20)
 
 async def main():
     args = parse_args()

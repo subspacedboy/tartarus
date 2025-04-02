@@ -20,6 +20,7 @@ sealed class ValidatedPayload {
     data class PeriodicUpdatePayload(val periodicUpdate: PeriodicUpdate) : ValidatedPayload()
 
     data class AcknowledgementPayload(val acknowledgement: Acknowledgement) : ValidatedPayload()
+    data class AbortPayload(val abortCommand: AbortCommand) : ValidatedPayload()
 
     data class ErrorPayload(val error: Error) : ValidatedPayload()
 
@@ -135,6 +136,15 @@ fun signedMessageBytesValidatorWithExternalKey(buf: ByteBuffer, key: ByteArray):
             signedMessage.payload(ack)
             if (verifySignedMessageSignature(ack, key, signatureBytes)) {
                 ValidatedPayload.AcknowledgementPayload(ack)
+            } else {
+                ValidatedPayload.UnknownPayload
+            }
+        }
+        MessagePayload.AbortCommand -> {
+            val abort = AbortCommand()
+            signedMessage.payload(abort)
+            if (verifySignedMessageSignature(abort, key, signatureBytes)) {
+                ValidatedPayload.AbortPayload(abort)
             } else {
                 ValidatedPayload.UnknownPayload
             }

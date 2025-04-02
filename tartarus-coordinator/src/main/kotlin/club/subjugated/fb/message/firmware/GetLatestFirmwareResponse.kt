@@ -76,11 +76,11 @@ class GetLatestFirmwareResponse : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createGetLatestFirmwareResponse(builder: FlatBufferBuilder, digestOffset: Int, firmwareNameOffset: Int, versionNameOffset: Int, size: Int) : Int {
+        fun createGetLatestFirmwareResponse(builder: FlatBufferBuilder, digestOffset: Int, firmware_name_offset: Int, versionNameOffset: Int, size: Int) : Int {
             builder.startTable(4)
             addSize(builder, size)
             addVersionName(builder, versionNameOffset)
-            addFirmwareName(builder, firmwareNameOffset)
+            addFirmwareName(builder, firmware_name_offset)
             addDigest(builder, digestOffset)
             return endGetLatestFirmwareResponse(builder)
         }

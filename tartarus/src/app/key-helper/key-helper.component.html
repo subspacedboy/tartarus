@@ -1,0 +1,28 @@
+<div class="row">
+  <div class="col-lg-4">
+    <div class="bs-component">
+      <h2>Key Helper</h2>
+      <h3>What is this for?</h3>
+      <p>This will make you a key. A key is really just an image containing a QR code.
+        I strongly recommend saving this to your phone camera roll or to some place it will be safe
+        and probably backed up automatically. If you lose it, it's gone forever.</p>
+
+      <input type="file" (change)="onFileSelected($event)" accept="image/*">
+      <canvas #scanCanvas style="display: none;"></canvas>
+      <p>Scanned QR Code Data: <strong>{{ scannedResult }}</strong></p>
+
+      <p>Key: {{compressedKeyInBase64}}</p>
+
+      <p>Public PEM: {{publicPem}}</p>
+
+<!--      @if(showDownloadButton) {-->
+<!--        <p>-->
+<!--          Tap to hold and save to camera roll.-->
+<!--        </p>-->
+<!--        <div class="d-grid gap-2">-->
+<!--          <button class="btn btn-large btn-primary" (click)="downloadQRCode()">Download QR Code</button>-->
+<!--        </div>-->
+<!--      }-->
+    </div>
+  </div>
+</div>

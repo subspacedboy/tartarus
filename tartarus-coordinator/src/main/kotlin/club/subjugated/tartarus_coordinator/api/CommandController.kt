@@ -56,7 +56,7 @@ class CommandController {
         val contract = this.contractService.getByNameForAuthor(contractName)
         assert(lockSessionUser.lockSession == contract.lockSession)
 
-        val commands = this.commandQueueService.getByLockSessionIdAndContract(contract)
+        val commands = this.commandQueueService.getByContract(contract)
 
         return ResponseEntity.ok(commands.map { CommandMessage.fromCommand(it) })
     }

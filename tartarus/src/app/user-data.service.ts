@@ -66,7 +66,7 @@ export class UserDataService {
     return { privatePem, publicPem} ;
   }
 
-  addPublicAndPrivateKeyToLocalSession(privatePEM : string, publicPem: string, token: string) {
+  addPublicAndPrivateKeyToAuthorSession(privatePEM : string, publicPem: string, token: string) {
     localStorage.setItem('private_pem', privatePEM);
     localStorage.setItem('public_pem', publicPem);
 
@@ -88,5 +88,30 @@ export class UserDataService {
 
   hasAuthorSession(): boolean {
     return localStorage.getItem('author_session_token') !== null;
+  }
+
+  // ADMIN sessions
+
+  hasAdminSession(): boolean {
+    return localStorage.getItem('admin_session_token') !== null;
+  }
+
+  addPublicAndPrivateKeyToAdminSession(privatePem: string, publicPem: string, token : string) {
+    localStorage.setItem('admin_private_pem', privatePem);
+    localStorage.setItem('admin_public_pem', publicPem);
+
+    localStorage.setItem('has_admin_session', 'true');
+    localStorage.setItem('admin_session_token', token);
+  }
+
+  getAdminKeypair() {
+    const privatePem = localStorage.getItem("admin_private_pem");
+    const publicPem = localStorage.getItem("admin_public_pem");
+
+    return { privatePem, publicPem} ;
+  }
+
+  getAdminSessionToken() : string {
+    return String(localStorage.getItem('admin_session_token'));
   }
 }

@@ -70,9 +70,9 @@ class Acknowledgement : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createAcknowledgement(builder: FlatBufferBuilder, publicKeyOffset: Int, sessionOffset: Int, serialNumber: UShort, counter: UShort) : Int {
+        fun createAcknowledgement(builder: FlatBufferBuilder, publicKeyOffset: Int, session_offset: Int, serialNumber: UShort, counter: UShort) : Int {
             builder.startTable(4)
-            addSession(builder, sessionOffset)
+            addSession(builder, session_offset)
             addPublicKey(builder, publicKeyOffset)
             addCounter(builder, counter)
             addSerialNumber(builder, serialNumber)

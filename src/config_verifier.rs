@@ -1,4 +1,3 @@
-use crate::configuration_generated::club::subjugated::fb::message::configuration::CoordinatorConfiguration;
 use crate::internal_config::{InternalConfig, InternalSafetyKey};
 use p256::ecdsa::VerifyingKey;
 

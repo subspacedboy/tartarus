@@ -31,7 +31,7 @@ data class LockSessionMessage(
             // a PEM encoded version of the public key.
             val ecKey =
                 getECPublicKeyFromCompressedKeyByteArray(
-                    Base64.getUrlDecoder().decode(lockSession.publicKey)
+                    lockSession.decodePublicKey()
                 )
             val pemKey = getPemEncoding(ecKey)
             return LockSessionMessage(

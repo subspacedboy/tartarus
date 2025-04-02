@@ -3,6 +3,7 @@ package club.subjugated.tartarus_coordinator.models
 import com.fasterxml.jackson.annotation.JsonFormat
 import jakarta.persistence.*
 import java.time.OffsetDateTime
+import java.util.*
 
 @Entity
 class AuthorSession(
@@ -19,10 +20,14 @@ class AuthorSession(
     var commands: MutableList<Command> = mutableListOf(),
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
-) {
+) : PublicKeyProvider {
     companion object {
         fun generateId(): String {
             return club.subjugated.tartarus_coordinator.util.generateId("as-")
         }
+    }
+
+    override fun decodePublicKey(): ByteArray {
+        return Base64.getDecoder().decode(this.publicKey)
     }
 }

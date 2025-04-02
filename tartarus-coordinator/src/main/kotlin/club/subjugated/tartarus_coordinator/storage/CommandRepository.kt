@@ -12,7 +12,7 @@ interface CommandRepository : JpaRepository<Command, Long> {
         state: CommandState,
     ): List<Command>
 
-    fun findByCommandQueueIdAndSerialNumber(commandQueueId: Long, serialNumber: Int): Command
+    fun findByCommandQueueIdAndSerialNumber(commandQueueId: Long, serialNumber: Int): List<Command>
 
     fun findByAuthorSessionIdAndContractIdOrderByCounterDesc(authorSessionId: Long, contractId: Long): List<Command>
     fun findByContractIdOrderByCounterDesc(contractId: Long): List<Command>

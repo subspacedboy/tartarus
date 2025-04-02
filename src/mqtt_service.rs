@@ -1,10 +1,7 @@
-use crate::contract_generated::club::subjugated::fb::message;
-use crate::firmware_generated::club::subjugated::fb::message::firmware::FirmwareMessage;
-use crate::firmware_updater;
 use crate::firmware_updater::FirmwareAssembler;
 use crate::internal_config::InternalConfig;
 use embedded_svc::mqtt::client::EventPayload::Received;
-use embedded_svc::mqtt::client::{Details, Event, EventPayload, QoS};
+use embedded_svc::mqtt::client::{Details, EventPayload, QoS};
 use esp_idf_svc::mqtt::client::{
     EspMqttClient, EspMqttConnection, LwtConfiguration, MqttClientConfiguration,
 };

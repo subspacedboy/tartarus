@@ -8,6 +8,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import java.time.OffsetDateTime
+import java.util.*
 
 @Entity
 class LockUserSession (
@@ -18,10 +19,14 @@ class LockUserSession (
     @ManyToOne @JoinColumn(name = "lock_session_id") var lockSession: LockSession,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
-) {
+) : PublicKeyProvider {
     companion object {
         fun generateId(): String {
             return club.subjugated.tartarus_coordinator.util.generateId("u-")
         }
+    }
+
+    override fun decodePublicKey(): ByteArray {
+        return Base64.getDecoder().decode(this.publicKey)
     }
 }

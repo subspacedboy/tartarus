@@ -1,33 +1,25 @@
 use crate::firmware_generated::club;
 use crate::firmware_generated::club::subjugated::fb::message::firmware::{
     FirmwareChallengeResponse, FirmwareChallengeResponseArgs, FirmwareMessageArgs,
-    GetFirmwareChunkRequest, GetFirmwareChunkRequestArgs, GetLatestFirmwareResponse,
-    MessagePayload,
+    GetFirmwareChunkRequest, GetFirmwareChunkRequestArgs, MessagePayload,
 };
 use crate::generated::generated::get_challenge_key;
 use crate::internal_firmware::{
     FirmwareMessageType, InternalChallenge, InternalFirmwareChunk, InternalFirmwareResponse,
 };
-use crate::mqtt_service::SignedMessageTransport;
-use crate::mqtt_service::TopicType::FirmwareMessage;
+
 use crate::Esp32Rng;
-use anyhow::{anyhow, Context};
-use embedded_svc::ota::{Ota, Slot, SlotState};
+use anyhow::anyhow;
+use embedded_svc::ota::SlotState;
 use esp_idf_hal::cpu::Core::Core1;
-use esp_idf_hal::sys::EspError;
 use esp_idf_hal::task::thread::ThreadSpawnConfiguration;
-use esp_idf_svc::ota::{EspOta, EspOtaUpdate};
+use esp_idf_svc::ota::EspOta;
 use flatbuffers::FlatBufferBuilder;
 use p256::ecdsa::signature::hazmat::PrehashSigner;
-use p256::ecdsa::{Signature, SigningKey};
-use p256::SecretKey;
+use p256::ecdsa::Signature;
 use rand_core::RngCore;
-use sha2::digest::Update;
 use sha2::{Digest, Sha256};
-use std::cell::RefCell;
 use std::collections::VecDeque;
-use std::marker::PhantomData;
-use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -156,7 +148,7 @@ impl FirmwareManager {
             None
         };
 
-        let sessionOffset = builder.create_string(&session_token);
+        let session_offset = builder.create_string(&session_token);
 
         let firmware_challenge_offset = FirmwareChallengeResponse::create(
             &mut builder,
@@ -172,7 +164,7 @@ impl FirmwareManager {
                 payload_type: MessagePayload::FirmwareChallengeResponse,
                 payload: Some(firmware_challenge_offset.as_union_value()),
                 request_id: challenge.request_id,
-                session_token: Some(sessionOffset),
+                session_token: Some(session_offset),
             },
         );
 
@@ -236,8 +228,8 @@ impl FirmwareManager {
     pub fn request_firmware_chunk(&self, session_token: &String) -> Vec<u8> {
         let mut builder = FlatBufferBuilder::with_capacity(1024);
 
-        let firmwareNameOffset = builder.create_string(self.next_firmware_name.as_ref().unwrap());
-        let sessionOffset = builder.create_string(&session_token);
+        let firmware_name_offset = builder.create_string(self.next_firmware_name.as_ref().unwrap());
+        let session_offset = builder.create_string(&session_token);
 
         let request_offset = if self.acked_size == 0 {
             0
@@ -248,7 +240,7 @@ impl FirmwareManager {
         let get_chunk_offset = GetFirmwareChunkRequest::create(
             &mut builder,
             &GetFirmwareChunkRequestArgs {
-                firmware_name: Some(firmwareNameOffset),
+                firmware_name: Some(firmware_name_offset),
                 offset: request_offset as i32,
                 size_: 16 * 1024,
             },
@@ -263,7 +255,7 @@ impl FirmwareManager {
                 payload_type: MessagePayload::GetFirmwareChunkRequest,
                 payload: Some(get_chunk_offset.as_union_value()),
                 request_id,
-                session_token: Some(sessionOffset),
+                session_token: Some(session_offset),
             },
         );
 
@@ -325,7 +317,7 @@ pub struct FirmwareUpdater {
 
 impl FirmwareUpdater {
     pub fn new() -> Self {
-        let mut updater = Self {
+        let updater = Self {
             incoming_bytes: Arc::new(Mutex::new(VecDeque::new())),
             complete: Arc::new(Mutex::new(false)),
         };

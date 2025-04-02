@@ -6,4 +6,5 @@ enum class CommandType {
     UNLOCK,
     LOCK,
     RELEASE,
+    ABORT
 }

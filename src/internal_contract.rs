@@ -1,5 +1,5 @@
 use crate::contract_generated::club::subjugated::fb::message::{
-    Bot, Contract, LockCommand, Permission, ReleaseCommand, UnlockCommand,
+    AbortCommand, Bot, Contract, LockCommand, Permission, ReleaseCommand, UnlockCommand,
 };
 use p256::ecdsa::VerifyingKey;
 use serde::{Deserialize, Serialize};
@@ -57,6 +57,13 @@ pub struct InternalReleaseCommand {
     pub counter: u16,
 }
 
+#[derive(Debug, Clone)]
+pub struct InternalAbortCommand {
+    pub contract_serial_number: u16,
+    pub serial_number: u16,
+    pub counter: u16,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EndCriteria {
     WhenISaySo,
@@ -86,7 +93,7 @@ impl From<Contract<'_>> for InternalContract {
             println!("No bots found in the contract.");
         }
 
-        let mut ic = Self {
+        let ic = Self {
             serial_number: contract.serial_number(),
             temporary_unlock_allowed: contract.is_temporary_unlock_allowed(),
             public_key: Some(verifying_key),
@@ -125,6 +132,16 @@ impl From<ReleaseCommand<'_>> for InternalReleaseCommand {
             contract_serial_number: release_command.contract_serial_number(),
             serial_number: release_command.serial_number(),
             counter: release_command.counter(),
+        }
+    }
+}
+
+impl From<AbortCommand<'_>> for InternalAbortCommand {
+    fn from(abort_command: AbortCommand) -> InternalAbortCommand {
+        Self {
+            contract_serial_number: abort_command.contract_serial_number(),
+            serial_number: abort_command.serial_number(),
+            counter: abort_command.counter(),
         }
     }
 }

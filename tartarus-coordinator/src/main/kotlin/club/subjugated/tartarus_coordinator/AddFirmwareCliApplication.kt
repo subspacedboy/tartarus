@@ -18,7 +18,8 @@ class AddFirmwareCliApplication : CommandLineRunner {
     lateinit var firmwareService: FirmwareService
 
     override fun run(vararg args: String?) {
-        println("Running without web server")
+        val mainClass = System.getProperty("sun.java.command") ?: return
+        if (!mainClass.contains("AddFirmwareCliApplication")) return
 
         val filePath = "/tmp/image"
         val byteArray: ByteArray = File(filePath).readBytes()

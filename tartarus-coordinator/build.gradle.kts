@@ -65,6 +65,8 @@ dependencies {
 
     // https://mvnrepository.com/artifact/com.facebook/ktfmt
     runtimeOnly("com.facebook:ktfmt:0.54")
+
+    implementation("info.picocli:picocli:4.7.6")
 }
 
 dependencyManagement {

@@ -56,11 +56,11 @@ class GetFirmwareChunkRequest : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createGetFirmwareChunkRequest(builder: FlatBufferBuilder, firmwareNameOffset: Int, offset: Int, size: Int) : Int {
+        fun createGetFirmwareChunkRequest(builder: FlatBufferBuilder, firmware_name_offset: Int, offset: Int, size: Int) : Int {
             builder.startTable(3)
             addSize(builder, size)
             addOffset(builder, offset)
-            addFirmwareName(builder, firmwareNameOffset)
+            addFirmwareName(builder, firmware_name_offset)
             return endGetFirmwareChunkRequest(builder)
         }
         fun startGetFirmwareChunkRequest(builder: FlatBufferBuilder) = builder.startTable(3)

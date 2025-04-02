@@ -66,9 +66,9 @@ class PeriodicUpdate : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createPeriodicUpdate(builder: FlatBufferBuilder, sessionOffset: Int, isLocked: Boolean, currentContractSerial: UShort, localUnlock: Boolean, localLock: Boolean) : Int {
+        fun createPeriodicUpdate(builder: FlatBufferBuilder, session_offset: Int, isLocked: Boolean, currentContractSerial: UShort, localUnlock: Boolean, localLock: Boolean) : Int {
             builder.startTable(5)
-            addSession(builder, sessionOffset)
+            addSession(builder, session_offset)
             addCurrentContractSerial(builder, currentContractSerial)
             addLocalLock(builder, localLock)
             addLocalUnlock(builder, localUnlock)

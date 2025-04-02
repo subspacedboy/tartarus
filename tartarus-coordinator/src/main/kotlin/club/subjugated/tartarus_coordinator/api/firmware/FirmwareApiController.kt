@@ -1,6 +1,5 @@
 package club.subjugated.tartarus_coordinator.api.firmware
 
-import club.subjugated.fb.bots.GetContractRequest
 import club.subjugated.fb.message.firmware.FirmwareChallengeResponse
 import club.subjugated.fb.message.firmware.FirmwareMessage
 import club.subjugated.fb.message.firmware.GetFirmwareChunkRequest
@@ -8,7 +7,6 @@ import club.subjugated.fb.message.firmware.GetFirmwareChunkResponse
 import club.subjugated.fb.message.firmware.GetLatestFirmwareRequest
 import club.subjugated.fb.message.firmware.GetLatestFirmwareResponse
 import club.subjugated.fb.message.firmware.MessagePayload
-import club.subjugated.fb.message.firmware.Version
 import club.subjugated.tartarus_coordinator.api.bots.ResponseBuilderContext
 import club.subjugated.tartarus_coordinator.services.FirmwareService
 import club.subjugated.tartarus_coordinator.services.LockSessionService
@@ -17,7 +15,6 @@ import com.google.flatbuffers.Table
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Controller
 import java.nio.ByteBuffer
-import java.security.MessageDigest
 import java.util.*
 
 @Controller
@@ -78,13 +75,13 @@ class FirmwareApiController {
 
         val size = firmware.image!!.size
 
-        val firmwareNameOffset = builder.createString(firmware.name)
+        val firmware_name_offset = builder.createString(firmware.name)
         val versionNameOffset = builder.createString(firmware.version)
         val hashOffset = builder.createByteVector(Base64.getDecoder().decode(firmware.digest))
 
         GetLatestFirmwareResponse.startGetLatestFirmwareResponse(builder)
         GetLatestFirmwareResponse.addSize(builder, size)
-        GetLatestFirmwareResponse.addFirmwareName(builder, firmwareNameOffset)
+        GetLatestFirmwareResponse.addFirmwareName(builder, firmware_name_offset)
         GetLatestFirmwareResponse.addVersionName(builder, versionNameOffset)
         GetLatestFirmwareResponse.addDigest(builder, hashOffset)
 

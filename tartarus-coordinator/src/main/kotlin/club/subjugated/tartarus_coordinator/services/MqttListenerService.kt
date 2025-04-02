@@ -21,6 +21,7 @@ import org.eclipse.paho.client.mqttv3.MqttClient
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.annotation.Profile
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import org.springframework.transaction.PlatformTransactionManager
@@ -30,6 +31,7 @@ import java.util.concurrent.ScheduledExecutorService
 
 @Service
 @Transactional
+@Profile("!cli")
 class MqttListenerService(private val transactionManager: PlatformTransactionManager) {
     private val brokerUrl: String = "tcp://localhost:1883"
     private val clientId: String = "InternalSubscriber"
@@ -244,12 +246,19 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
 
         val lockSession =
             this.lockSessionService.findBySessionToken(ack.session!!)
-        val command =
+        val commands =
             this.commandQueueService.getCommandBySessionAndSerial(
                 lockSession!!,
                 ack.serialNumber.toInt(),
             )
-        this.commandQueueService.acknowledgeCommand(command, ack)
+
+        if(commands.size > 1) {
+            println("☣️ More than one command matched.")
+        }
+
+        for(command in commands) {
+            this.commandQueueService.acknowledgeCommand(command, ack)
+        }
 
         println("🥕 Received ack: $ack")
     }
@@ -259,13 +268,20 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
         val lockSession =
             this.lockSessionService.findBySessionToken(err.session!!)
 
-        val command =
+        val commands =
             this.commandQueueService.getCommandBySessionAndSerial(
                 lockSession!!,
                 err.serialNumber.toInt(),
             )
-        this.commandQueueService.errorCommand(command, err.message)
-        println("😞 Error received $err [Command ${command.name}")
+
+        if(commands.size > 1) {
+            println("☣️ More than one command matched for error.")
+        }
+
+        for(command in commands) {
+            this.commandQueueService.errorCommand(command, err.message)
+            println("😞 Error received $err [Command ${command.name}")
+        }
     }
 
     fun tokenHasLiveSession(sessionToken: String): Boolean {

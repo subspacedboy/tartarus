@@ -22,9 +22,11 @@ fun verifyJwt(authorSessionService: AuthorSessionService, lockUserSessionService
         val publicKey = if (sessionTokenName.startsWith("as-")) {
             val authorSession = authorSessionService.findByName(sessionTokenName)
             Base64.getDecoder().decode(authorSession.publicKey)
-        } else {
+        } else if (sessionTokenName.startsWith("u-")) {
             val lockUserSession = lockUserSessionService.findByName(sessionTokenName)
             Base64.getDecoder().decode(lockUserSession.publicKey)
+        } else {
+            return JwtValidationResult.Invalid
         }
 
         val sessionPublicECKey =

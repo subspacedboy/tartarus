@@ -1,5 +1,8 @@
 package club.subjugated.tartarus_coordinator.services
 
+import club.subjugated.fb.message.AbortCommand
+import club.subjugated.fb.message.SignedMessage
+import club.subjugated.fb.message.firmware.MessagePayload
 import club.subjugated.tartarus_coordinator.api.messages.NewContractMessage
 import club.subjugated.tartarus_coordinator.events.AcknowledgedCommandEvent
 import club.subjugated.tartarus_coordinator.events.ContractChangeEvent
@@ -14,16 +17,28 @@ import club.subjugated.tartarus_coordinator.models.ContractState
 import club.subjugated.tartarus_coordinator.models.LockSession
 import club.subjugated.tartarus_coordinator.models.Message
 import club.subjugated.tartarus_coordinator.models.MessageType
+import club.subjugated.tartarus_coordinator.models.SafetyKey
 import club.subjugated.tartarus_coordinator.storage.ContractRepository
 import club.subjugated.tartarus_coordinator.util.TimeSource
 import club.subjugated.tartarus_coordinator.util.ValidatedPayload
+import club.subjugated.tartarus_coordinator.util.derToRawSignature
+import club.subjugated.tartarus_coordinator.util.encodePublicKeySecp1
+import club.subjugated.tartarus_coordinator.util.loadECPublicKeyFromPkcs8
 import club.subjugated.tartarus_coordinator.util.signedMessageBytesValidator
 import club.subjugated.tartarus_coordinator.util.signedMessageBytesValidatorWithExternalKey
+import com.google.flatbuffers.FlatBufferBuilder
+import org.jsoup.Connection.Base
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.nio.ByteBuffer
+import java.security.KeyFactory
+import java.security.MessageDigest
+import java.security.PublicKey
+import java.security.Signature
+import java.security.interfaces.ECPublicKey
+import java.security.spec.PKCS8EncodedKeySpec
 import java.util.*
 
 @Service
@@ -240,6 +255,89 @@ class ContractService {
         if(bot == null){
             throw IllegalArgumentException("Bot isn't listed in the contract")
         }
+
+        return contract
+    }
+
+    fun getByStateAdminOnly(states : List<ContractState>) : List<Contract> {
+        return contractRepository.findByStateIn(states)
+    }
+
+    fun getByNameAdminOnly(name : String) : Contract {
+        return contractRepository.findByName(name)
+    }
+
+    fun abortContractWithSafetyKey(contract: Contract, safetyKey : SafetyKey) : Contract {
+        val builder = FlatBufferBuilder(1024)
+
+        AbortCommand.startAbortCommand(builder)
+        AbortCommand.addContractSerialNumber(builder, contract.serialNumber.toUShort())
+        val counter = contract.nextCounter + 1
+        AbortCommand.addCounter(builder, counter.toUShort())
+        val serialNumber = 45
+        AbortCommand.addSerialNumber(builder, serialNumber.toUShort())
+        val abortOffset = AbortCommand.endAbortCommand(builder)
+
+        builder.finish(abortOffset)
+        val data = builder.sizedByteArray()
+
+        val offsetToTable = (data[0].toInt() and 0xFF) or ((data[1].toInt() and 0xFF) shl 8)
+        val offsetToVTable = (data[offsetToTable].toInt() and 0xFF) or ((data[offsetToTable + 1].toInt() and 0xFF) shl 8)
+        val vTableStart = offsetToTable - offsetToVTable
+        val vtableAndContract = data.copyOfRange(vTableStart, data.size)
+
+        val keySpec = PKCS8EncodedKeySpec(safetyKey.privateKey)
+        val keyFactory = KeyFactory.getInstance("EC", "BC")
+        val privateKey = keyFactory.generatePrivate(keySpec)
+
+        val digest = MessageDigest.getInstance("SHA-256")
+        digest.update(vtableAndContract)
+        val hash = digest.digest()
+
+        val signature = Signature.getInstance("SHA256withECDSA", "BC").apply {
+            initSign(privateKey)
+            update(hash)
+        }.sign()
+
+        val rawSig = derToRawSignature(signature)
+
+        val authorityOffset = builder.createString(safetyKey.name)
+        val sigOffset = builder.createByteVector(rawSig)
+
+        SignedMessage.startSignedMessage(builder)
+        SignedMessage.addPayloadType(builder, club.subjugated.fb.message.MessagePayload.AbortCommand)
+        SignedMessage.addPayload(builder, abortOffset)
+        SignedMessage.addSignature(builder, sigOffset)
+        SignedMessage.addAuthorityIdentifier(builder, authorityOffset)
+        val smOffset = SignedMessage.endSignedMessage(builder)
+
+        builder.finish(smOffset)
+        val signedMessage = builder.sizedByteArray()
+
+        val publicKey = loadECPublicKeyFromPkcs8(safetyKey.publicKey!!)
+        val ecPublicKey = publicKey as java.security.interfaces.ECPublicKey
+        val compressedPubKey = encodePublicKeySecp1(ecPublicKey)
+
+        val validated = signedMessageBytesValidatorWithExternalKey(ByteBuffer.wrap(signedMessage), compressedPubKey)
+
+        val command =
+            Command(
+                commandQueue = contract.lockSession.commandQueue.first(),
+                state = CommandState.PENDING,
+                type = CommandType.ABORT,
+                serialNumber = serialNumber,
+                counter = counter,
+                body = signedMessage,
+                authorSession = contract.authorSession,
+                createdAt = timeSource.nowInUtc(),
+                updatedAt = timeSource.nowInUtc(),
+                contract = contract,
+            )
+        this.commandQueueService.saveCommand(command)
+        publisher.publishEvent(NewCommandEvent(this, contract.lockSession.sessionToken!!))
+
+        contract.state = ContractState.ABORTED
+        contractRepository.save(contract)
 
         return contract
     }

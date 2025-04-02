@@ -43,12 +43,12 @@ export class CryptoService {
   }
 
   async generateCompressedPublicKey(publicKey : CryptoKey): Promise<Uint8Array> {
-    console.log("publicKey: " + publicKey);
+    // console.log("publicKey: " + publicKey);
     // Export and compress public key
     const rawPublicKey = await this.exportRawPublicKey(publicKey);
     const compressedKey = this.compressPublicKey(rawPublicKey);
 
-    console.log("Compressed Public Key:", compressedKey);
+    // console.log("Compressed Public Key:", compressedKey);
     return compressedKey;
   }
 
@@ -66,10 +66,10 @@ export class CryptoService {
   }
 
   async hashAndSignData(privateKey: CryptoKey, data: Uint8Array): Promise<ArrayBuffer> {
-    console.log("Hashing data: " + new Uint8Array(data));
+    // console.log("Hashing data: " + new Uint8Array(data));
     const hash = await this.sha256(data); // Compute hash first
 
-    console.log("Hash: " + new Uint8Array(hash));
+    // console.log("Hash: " + new Uint8Array(hash));
     return await crypto.subtle.sign(
       {name: "ECDSA", hash: {name: "SHA-256"}},
       privateKey,
@@ -115,7 +115,7 @@ export class CryptoService {
     return buffer.buffer;
   }
 
-  async importKeyPairForECDSA(pem: string): Promise<{ privateKey: CryptoKey; publicKey: CryptoKey }> {
+  async importKeyPairForECDSA(pem: string): Promise<{ privateKey: CryptoKey; publicKey: CryptoKey, privateKeyPem: string, publicKeyPem: string }> {
     // Extract private and public key parts
     const privateKeyMatch = pem.match(/-----BEGIN PRIVATE KEY-----(.*?)-----END PRIVATE KEY-----/s);
     const publicKeyMatch = pem.match(/-----BEGIN PUBLIC KEY-----(.*?)-----END PUBLIC KEY-----/s);
@@ -150,7 +150,7 @@ export class CryptoService {
       ["verify"]
     );
 
-    return { privateKey, publicKey };
+    return { privateKey, publicKey, privateKeyPem : privateKeyPEM, publicKeyPem : publicKeyPEM };
   }
 
   async importPrivateKeyForECDH(pem: string): Promise<CryptoKey> {

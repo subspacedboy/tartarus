@@ -1,8 +1,9 @@
 use crate::contract_generated::club::subjugated::fb::message::{
-    Contract, LockCommand, MessagePayload, ReleaseCommand, UnlockCommand,
+    AbortCommand, Contract, LockCommand, MessagePayload, ReleaseCommand, UnlockCommand,
 };
 use crate::internal_contract::{
-    InternalContract, InternalLockCommand, InternalReleaseCommand, InternalUnlockCommand,
+    InternalAbortCommand, InternalContract, InternalLockCommand, InternalReleaseCommand,
+    InternalUnlockCommand,
 };
 // use aes_gcm::aes::cipher::crypto_common::Output;
 use p256::ecdsa::signature::Verifier;
@@ -20,6 +21,7 @@ pub enum VerifiedType {
     UnlockCommand(InternalUnlockCommand),
     LockCommand(InternalLockCommand),
     ReleaseCommand(InternalReleaseCommand),
+    AbortCommand(InternalAbortCommand),
 }
 
 #[derive(Debug, Clone)]
@@ -45,7 +47,8 @@ impl_has_table!(
     Contract<'_>,
     UnlockCommand<'_>,
     LockCommand<'_>,
-    ReleaseCommand<'_>
+    ReleaseCommand<'_>,
+    AbortCommand<'_>
 );
 
 pub trait HashTableBytes<T> {
@@ -275,7 +278,7 @@ impl SignedMessageVerifier {
                             Err(_) => Err(VerificationError {
                                 serial_number: lock.serial_number(),
                                 counter: lock.counter(),
-                                message: "Invalid signature on unlock command".to_string(),
+                                message: "Invalid signature on lock command".to_string(),
                             }),
                         }
                     }
@@ -291,7 +294,7 @@ impl SignedMessageVerifier {
                                     return Err(VerificationError {
                                         serial_number: release.serial_number(),
                                         counter: release.counter(),
-                                        message: format!("Serial number of command doesn't match current contract [{} vs {}]", release.serial_number(), contract_serial_number)
+                                        message: format!("Contract serial number of command doesn't match current contract [{} vs {}]", release.contract_serial_number(), contract_serial_number)
                                     });
                                 }
 
@@ -312,7 +315,44 @@ impl SignedMessageVerifier {
                             Err(_) => Err(VerificationError {
                                 serial_number: release.serial_number(),
                                 counter: release.counter(),
-                                message: "Invalid signature on unlock command".to_string(),
+                                message: "Invalid signature on release command".to_string(),
+                            }),
+                        }
+                    }
+                    MessagePayload::AbortCommand => {
+                        log::info!("Processing abort command");
+                        let abort = signed_msg.payload_as_abort_command().unwrap();
+
+                        let hash = abort.calculate_hash(&incoming_data);
+                        match verifying_key.unwrap().verify(&hash, &signature) {
+                            Ok(_) => {
+                                log::debug!("Signature verified!");
+                                if abort.contract_serial_number() != contract_serial_number {
+                                    return Err(VerificationError {
+                                        serial_number: abort.serial_number(),
+                                        counter: abort.counter(),
+                                        message: format!("Contract serial number of command doesn't match current contract [{} vs {}]", abort.contract_serial_number(), contract_serial_number)
+                                    });
+                                }
+
+                                if abort.counter() > minimum_counter {
+                                    Ok(VerifiedType::AbortCommand(abort.into()))
+                                } else {
+                                    Err(VerificationError {
+                                        serial_number: abort.serial_number(),
+                                        counter: abort.counter(),
+                                        message: format!(
+                                            "Counter on message was too low [{} vs {}]",
+                                            abort.counter(),
+                                            minimum_counter
+                                        ),
+                                    })
+                                }
+                            }
+                            Err(_) => Err(VerificationError {
+                                serial_number: abort.serial_number(),
+                                counter: abort.counter(),
+                                message: "Invalid signature on abort command".to_string(),
                             }),
                         }
                     }

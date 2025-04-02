@@ -11,6 +11,7 @@ import {KnownToken} from './models/known-token';
 import {ToastService} from './toast.service';
 import {Command} from './models/command';
 import {Bot} from './models/bot';
+import {AdminSession} from './models/admin-session';
 
 @Injectable({
   providedIn: 'root'
@@ -320,6 +321,77 @@ export class TartarusCoordinatorService {
 
       return bots;
     }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  // Admin sessions
+
+  public confirmAdminSession(public_key: string, session_token: string, signature : string) : Observable<AdminSession> {
+    const save_key_uri = `${this.baseUrl}/admin/admin_sessions/`;
+    const body = JSON.stringify({
+      'publicKey' : public_key,
+      'sessionToken': session_token,
+      'signature': signature
+    });
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+    return this.http.post(save_key_uri, body, {headers} ).pipe(map((res:any) => {
+      return new AdminSession(res);
+    }),  catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  // Admin functions
+  public getLiveContractsForAdmin() : Observable<Contract[]> {
+    const get_contracts_uri = `${this.baseUrl}/admin/contracts/`;
+    return this.http.get(get_contracts_uri, {
+      headers: new HttpHeaders({ 'X-Require-Admin': 'requires authorization tokens' }),
+    }).pipe(map((res:any) => {
+      const contracts : Contract[] = res.map((datum: any) => {
+        return new Contract(datum);
+      });
+
+      return contracts;
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public getContractByNameForAdmin(name: string) : Observable<Contract> {
+    const get_contracts_uri = `${this.baseUrl}/admin/contracts/${name}`;
+    return this.http.get(get_contracts_uri, {
+      headers: new HttpHeaders({ 'X-Require-Admin': 'requires authorization tokens' }),
+    }).pipe(map((res:any) => {
+      return new Contract(res);
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public getCommandsForContractForAdmin(contractName: string) : Observable<Command[]> {
+    const get_contracts_uri = `${this.baseUrl}/admin/contracts/${contractName}/commands/`;
+    return this.http.get(get_contracts_uri, {
+      headers: new HttpHeaders({ 'X-Require-Admin': 'requires authorization tokens' }),
+    }).pipe(map((res:any) => {
+      const commands : Command[] = res.map((datum: any) => {
+        return new Command(datum);
+      });
+
+      return commands;
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public abortContract(contractName: string) : Observable<Contract> {
+    const reject_uri = `${this.baseUrl}/admin/contracts/${contractName}/abort`;
+    const body = JSON.stringify({
+    });
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json', 'X-Require-Admin': 'requires authorization tokens' });
+    return this.http.post(reject_uri, body, {headers} ).pipe(map((res:any) => {
+      return new Contract(res);
+    }),  catchError(error => {
       return this.handleError(error);
     }));
   }

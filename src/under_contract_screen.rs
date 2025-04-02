@@ -66,18 +66,6 @@ where
             }
         }
 
-        if let Some(update) = &lock_ctx.this_update {
-            if update.d2_pressed {
-                lock_ctx.end_contract();
-                let boot_screen = Box::new(BootScreen::<
-                    MySPI<'static>,
-                    PinDriver<'static, _, Output>,
-                    PinDriver<'static, _, Output>,
-                    GpioError,
-                >::new());
-                return Some(boot_screen);
-            }
-        }
         None
     }
 
@@ -101,6 +89,17 @@ where
                 Ok(None)
             }
             VerifiedType::ReleaseCommand(_) => {
+                lock_ctx.end_contract();
+
+                let boot_screen = Box::new(BootScreen::<
+                    MySPI<'static>,
+                    PinDriver<'static, _, Output>,
+                    PinDriver<'static, _, Output>,
+                    GpioError,
+                >::new());
+                Ok(Some(boot_screen))
+            }
+            VerifiedType::AbortCommand(_) => {
                 lock_ctx.end_contract();
 
                 let boot_screen = Box::new(BootScreen::<

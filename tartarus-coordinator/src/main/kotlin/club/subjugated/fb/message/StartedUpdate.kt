@@ -75,9 +75,9 @@ class StartedUpdate : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createStartedUpdate(builder: FlatBufferBuilder, publicKeyOffset: Int, sessionOffset: Int, startedWithLocalContract: Boolean, currentContractSerial: UShort, isLocked: Boolean) : Int {
+        fun createStartedUpdate(builder: FlatBufferBuilder, publicKeyOffset: Int, session_offset: Int, startedWithLocalContract: Boolean, currentContractSerial: UShort, isLocked: Boolean) : Int {
             builder.startTable(5)
-            addSession(builder, sessionOffset)
+            addSession(builder, session_offset)
             addPublicKey(builder, publicKeyOffset)
             addCurrentContractSerial(builder, currentContractSerial)
             addIsLocked(builder, isLocked)

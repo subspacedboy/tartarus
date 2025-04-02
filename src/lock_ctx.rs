@@ -12,11 +12,9 @@ use crate::fb_helper::calculate_signature;
 use crate::firmware_generated::club;
 use crate::firmware_generated::club::subjugated::fb::message::firmware::{
     FirmwareMessage, FirmwareMessageArgs, GetLatestFirmwareRequest, GetLatestFirmwareRequestArgs,
-    MessagePayloadUnionTableOffset, Version, VersionArgs,
+    Version, VersionArgs,
 };
-use crate::firmware_updater::{
-    read_as_firmware_message, FirmwareAssembler, FirmwareManager, FirmwareUpdater,
-};
+use crate::firmware_updater::{read_as_firmware_message, FirmwareManager};
 use crate::internal_config::InternalConfig;
 use crate::internal_contract::{InternalContract, SaveState};
 use crate::internal_firmware::FirmwareMessageType;
@@ -328,8 +326,16 @@ impl LockCtx {
         while commands.len() > 0 {
             let buffer = commands.pop_front().unwrap();
             let verifier = SignedMessageVerifier::new();
-            let min_counter = 0_u16;
-            let contract_serial_number = 0_16;
+
+            let (min_counter, contract_serial_number) =
+                if let Some(internal_contract) = &self.contract {
+                    (
+                        internal_contract.command_counter,
+                        internal_contract.serial_number,
+                    )
+                } else {
+                    (0, 0)
+                };
 
             match verifier.verify(
                 buffer,
@@ -418,9 +424,11 @@ impl LockCtx {
                             internal_response.firmware_name
                         );
 
+                        // For "safety" we only allow firmware updates when not under contract.
                         if self
                             .firmware_manager
                             .should_update_firmware(&internal_response.version_name)
+                            && self.contract.is_none()
                         {
                             self.firmware_manager.start_requesting_firmware(
                                 internal_response.size,
@@ -773,14 +781,14 @@ impl LockCtx {
         let mut rng = Esp32Rng;
         let request_id = rng.next_u64();
 
-        let firmwareMessage = FirmwareMessage::create(&mut builder, &FirmwareMessageArgs {
+        let firmware_message = FirmwareMessage::create(&mut builder, &FirmwareMessageArgs {
             payload_type: club::subjugated::fb::message::firmware::MessagePayload::GetLatestFirmwareRequest,
             payload: Some(get_latest_firmware_request_offset.as_union_value()),
             request_id: request_id as i64,
             session_token: Some(session),
         });
 
-        builder.finish(firmwareMessage, None);
+        builder.finish(firmware_message, None);
         let data = builder.finished_data().to_vec();
 
         let t = SignedMessageTransport::new(data, TopicType::FirmwareMessage);
@@ -997,7 +1005,7 @@ impl LockCtx {
 
         let signature_offset = builder.create_vector(signature.to_bytes().as_slice());
 
-        let signedEvent = SignedEvent::create(
+        let signed_event = SignedEvent::create(
             &mut builder,
             &SignedEventArgs {
                 signature: Some(signature_offset),
@@ -1005,7 +1013,7 @@ impl LockCtx {
             },
         );
 
-        builder.finish(signedEvent, None);
+        builder.finish(signed_event, None);
         let data = builder.finished_data().to_vec();
 
         if let Some(contract) = &self.contract {

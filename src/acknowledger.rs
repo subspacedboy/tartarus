@@ -5,7 +5,7 @@ use crate::contract_generated::club::subjugated::fb::message::{
 use crate::fb_helper::calculate_signature;
 use crate::verifier::{VerificationError, VerifiedType};
 use flatbuffers::FlatBufferBuilder;
-use p256::ecdsa::{Signature, SigningKey};
+use p256::ecdsa::SigningKey;
 use p256::PublicKey;
 
 pub(crate) struct Acknowledger {}
@@ -29,6 +29,7 @@ impl Acknowledger {
             VerifiedType::UnlockCommand(unlock) => (unlock.serial_number, unlock.counter),
             VerifiedType::LockCommand(lock) => (lock.serial_number, lock.counter),
             VerifiedType::ReleaseCommand(release) => (release.serial_number, release.counter),
+            VerifiedType::AbortCommand(abort) => (abort.serial_number, abort.counter),
         };
 
         let public_key_bytes: Vec<u8> = public_key.to_sec1_bytes().to_vec();
@@ -104,6 +105,7 @@ impl Acknowledger {
             VerifiedType::UnlockCommand(unlock) => (unlock.serial_number, unlock.counter),
             VerifiedType::LockCommand(lock) => (lock.serial_number, lock.counter),
             VerifiedType::ReleaseCommand(release) => (release.serial_number, release.counter),
+            VerifiedType::AbortCommand(abort) => (abort.serial_number, abort.counter),
         };
 
         let public_key_bytes: Vec<u8> = public_key.to_sec1_bytes().to_vec();

@@ -61,7 +61,7 @@ export class LoginComponent implements OnInit {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const qrCode = jsQR(imageData.data, imageData.width, imageData.height);
 
-    this.loadKeyPair(qrCode?.data!).then(r => {
+    this.cryptoService.importKeyPairForECDSA(qrCode?.data!).then(r => {
       console.log("Loaded correctly");
       this.scannedResult = qrCode ? 'Valid key' : 'No QR code found.';
 
@@ -74,7 +74,7 @@ export class LoginComponent implements OnInit {
             this.tartarusCoordinatorService.createAuthorSession(b64compressed, token, b64Signature).subscribe(session_result => {
               console.log("Session created");
 
-              this.userDataService.addPublicAndPrivateKeyToLocalSession(r.privateKeyPEM, r.publicKeyPEM, String(session_result.sessionToken));
+              this.userDataService.addPublicAndPrivateKeyToAuthorSession(r.privateKeyPem, r.publicKeyPem, String(session_result.sessionToken));
               this.loginComplete = true;
 
               this.router.navigate(['/']);
@@ -82,49 +82,5 @@ export class LoginComponent implements OnInit {
         })
       });
     });
-  }
-
-  async loadKeyPair(pemData: string): Promise<LoadedKeyPair> {
-    // Extract PEM blocks
-    const privateKeyPEM = pemData.match(/-----BEGIN PRIVATE KEY-----(.*?)-----END PRIVATE KEY-----/s)?.[0] || "";
-    const publicKeyPEM = pemData.match(/-----BEGIN PUBLIC KEY-----(.*?)-----END PUBLIC KEY-----/s)?.[0] || "";
-
-    if (!privateKeyPEM || !publicKeyPEM) {
-      throw new Error("Invalid PEM data: Missing private or public key");
-    }
-
-    // Convert PEM to DER
-    const privateKeyDER = this.pemToDer(privateKeyPEM);
-    const publicKeyDER = this.pemToDer(publicKeyPEM);
-
-    // Import the private key
-    const privateKey = await crypto.subtle.importKey(
-      "pkcs8",
-      privateKeyDER,
-      { name: "ECDSA", namedCurve: "P-256" },
-      true,
-      ["sign"]
-    );
-
-    // Import the public key
-    const publicKey = await crypto.subtle.importKey(
-      "spki",
-      publicKeyDER,
-      { name: "ECDSA", namedCurve: "P-256" },
-      true,
-      ["verify"]
-    );
-
-    return { privateKey, publicKey, privateKeyPEM, publicKeyPEM };
-  }
-
-  pemToDer(pem: string): ArrayBuffer {
-    const base64 = pem.replace(/-----BEGIN .*?-----|-----END .*?-----|\s/g, "");
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes.buffer;
   }
 }
