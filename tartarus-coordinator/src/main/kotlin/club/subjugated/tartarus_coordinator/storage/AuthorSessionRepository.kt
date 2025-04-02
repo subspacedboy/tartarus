@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface AuthorSessionRepository : JpaRepository<AuthorSession, Long> {
-    fun findByName(name : String) : AuthorSession
-    fun findByPublicKey(publicKey: String) : AuthorSession?
+    fun findByName(name: String): AuthorSession
+
+    fun findByPublicKey(publicKey: String): AuthorSession?
 }

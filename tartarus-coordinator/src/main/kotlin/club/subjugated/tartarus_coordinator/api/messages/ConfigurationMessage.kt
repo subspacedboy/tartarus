@@ -1,8 +1,8 @@
 package club.subjugated.tartarus_coordinator.api.messages
 
 data class ConfigurationMessage(
-    var apiUri : String?,
+    var apiUri: String?,
     var webUri: String?,
     var mqttUri: String?,
-    var safetyKeys : List<SafetyKeyMessage>? ,
+    var safetyKeys: List<SafetyKeyMessage>?,
 )

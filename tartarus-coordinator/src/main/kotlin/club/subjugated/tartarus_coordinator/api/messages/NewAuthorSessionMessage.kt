@@ -9,8 +9,8 @@ import java.util.*
 data class NewAuthorSessionMessage(
     val publicKey: String? = null,
     val sessionToken: String? = null,
-    val signature: String? = null
-){
+    val signature: String? = null,
+) {
     fun validateOrThrow() {
         val decodedKeyBytes = Base64.getDecoder().decode(publicKey)
 
@@ -22,12 +22,13 @@ data class NewAuthorSessionMessage(
         digest.update(sessionToken!!.encodeToByteArray())
         val hash = digest.digest()
 
-        val verifier = Signature.getInstance("SHA256withECDSA", "BC").apply {
-            initVerify(key)
-            update(hash)
-        }
+        val verifier =
+            Signature.getInstance("SHA256withECDSA", "BC").apply {
+                initVerify(key)
+                update(hash)
+            }
 
-        if(!verifier.verify(derSignature)) {
+        if (!verifier.verify(derSignature)) {
             throw IllegalArgumentException("Invalid signature on session token")
         }
     }

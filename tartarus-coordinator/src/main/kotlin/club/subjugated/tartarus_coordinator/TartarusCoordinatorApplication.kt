@@ -9,5 +9,5 @@ import org.springframework.context.annotation.ComponentScan
 class TartarusCoordinatorApplication
 
 fun main(args: Array<String>) {
-	runApplication<TartarusCoordinatorApplication>(*args)
+    runApplication<TartarusCoordinatorApplication>(*args)
 }

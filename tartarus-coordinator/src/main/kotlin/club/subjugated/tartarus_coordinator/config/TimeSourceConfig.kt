@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration
 @Configuration
 class TimeSourceConfig {
     @Bean
-    fun getTimeSource() : TimeSource {
+    fun getTimeSource(): TimeSource {
         return TimeSource()
     }
 }

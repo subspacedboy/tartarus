@@ -6,24 +6,23 @@ import jakarta.servlet.FilterChain
 import jakarta.servlet.ServletException
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import java.io.IOException
+import java.util.*
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.core.userdetails.User
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource
 import org.springframework.web.filter.OncePerRequestFilter
-import java.io.IOException
-import java.util.*
 
-class AuthorAuthenticationFilter(
-    private val authorSessionService: AuthorSessionService
-) : OncePerRequestFilter() {
+class AuthorAuthenticationFilter(private val authorSessionService: AuthorSessionService) :
+    OncePerRequestFilter() {
 
     @Throws(IOException::class, ServletException::class)
     override fun doFilterInternal(
         request: HttpServletRequest,
         response: HttpServletResponse,
-        filterChain: FilterChain
+        filterChain: FilterChain,
     ) {
         val authHeader = request.getHeader("Authorization")
 
@@ -37,20 +36,29 @@ class AuthorAuthenticationFilter(
             try {
                 val authorSession = this.authorSessionService.findByName(authorSessionTokenName)
 
-                val authorPublicECKey = getECPublicKeyFromCompressedKeyByteArray(Base64.getDecoder().decode(authorSession.publicKey))
+                val authorPublicECKey =
+                    getECPublicKeyFromCompressedKeyByteArray(
+                        Base64.getDecoder().decode(authorSession.publicKey)
+                    )
                 val verifier = ECDSAVerifier(authorPublicECKey)
-                if(signedJWT.verify(verifier)) {
-                    val userDetails: UserDetails = User.withUsername(claimsSet.subject)
-                        .password("")
-                        .authorities(emptyList())
-                        .build()
+                if (signedJWT.verify(verifier)) {
+                    val userDetails: UserDetails =
+                        User.withUsername(claimsSet.subject)
+                            .password("")
+                            .authorities(emptyList())
+                            .build()
 
-                    val authentication = UsernamePasswordAuthenticationToken(userDetails, null, userDetails.authorities)
+                    val authentication =
+                        UsernamePasswordAuthenticationToken(
+                            userDetails,
+                            null,
+                            userDetails.authorities,
+                        )
                     authentication.details = WebAuthenticationDetailsSource().buildDetails(request)
 
                     SecurityContextHolder.getContext().authentication = authentication
                 }
-            } catch (ex : Exception) {
+            } catch (ex: Exception) {
                 filterChain.doFilter(request, response)
             }
         }

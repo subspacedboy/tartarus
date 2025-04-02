@@ -2,33 +2,25 @@
 
 package club.subjugated.fb.message
 
-import com.google.flatbuffers.BaseVector
-import com.google.flatbuffers.BooleanVector
-import com.google.flatbuffers.ByteVector
 import com.google.flatbuffers.Constants
-import com.google.flatbuffers.DoubleVector
 import com.google.flatbuffers.FlatBufferBuilder
-import com.google.flatbuffers.FloatVector
-import com.google.flatbuffers.LongVector
-import com.google.flatbuffers.StringVector
-import com.google.flatbuffers.Struct
 import com.google.flatbuffers.Table
-import com.google.flatbuffers.UnionVector
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.math.sign
 
 @Suppress("unused")
 class WebHook : Table() {
 
-    fun __init(_i: Int, _bb: ByteBuffer)  {
+    fun __init(_i: Int, _bb: ByteBuffer) {
         __reset(_i, _bb)
     }
-    fun __assign(_i: Int, _bb: ByteBuffer) : WebHook {
+
+    fun __assign(_i: Int, _bb: ByteBuffer): WebHook {
         __init(_i, _bb)
         return this
     }
-    val address : String?
+
+    val address: String?
         get() {
             val o = __offset(4)
             return if (o != 0) {
@@ -37,23 +29,33 @@ class WebHook : Table() {
                 null
             }
         }
-    val addressAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun addressInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+
+    val addressAsByteBuffer: ByteBuffer
+        get() = __vector_as_bytebuffer(4, 1)
+
+    fun addressInByteBuffer(_bb: ByteBuffer): ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
+
         fun getRootAsWebHook(_bb: ByteBuffer): WebHook = getRootAsWebHook(_bb, WebHook())
+
         fun getRootAsWebHook(_bb: ByteBuffer, obj: WebHook): WebHook {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createWebHook(builder: FlatBufferBuilder, addressOffset: Int) : Int {
+
+        fun createWebHook(builder: FlatBufferBuilder, addressOffset: Int): Int {
             builder.startTable(1)
             addAddress(builder, addressOffset)
             return endWebHook(builder)
         }
+
         fun startWebHook(builder: FlatBufferBuilder) = builder.startTable(1)
+
         fun addAddress(builder: FlatBufferBuilder, address: Int) = builder.addOffset(0, address, 0)
-        fun endWebHook(builder: FlatBufferBuilder) : Int {
+
+        fun endWebHook(builder: FlatBufferBuilder): Int {
             val o = builder.endTable()
             return o
         }

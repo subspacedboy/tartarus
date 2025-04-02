@@ -13,16 +13,17 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/author_sessions")
 @Controller
 class AuthorSessionController {
-    @Autowired
-    lateinit var authorSessionService: AuthorSessionService
+    @Autowired lateinit var authorSessionService: AuthorSessionService
 
     @PostMapping("/", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
-    fun saveAuthorSession(@RequestBody newAuthorSessionMessage: NewAuthorSessionMessage) : ResponseEntity<AuthorSessionMessage> {
+    fun saveAuthorSession(
+        @RequestBody newAuthorSessionMessage: NewAuthorSessionMessage
+    ): ResponseEntity<AuthorSessionMessage> {
         try {
             // Validate the public key
             newAuthorSessionMessage.validateOrThrow()
-        } catch (e : Exception) {
+        } catch (e: Exception) {
             return ResponseEntity.badRequest().build()
         }
 

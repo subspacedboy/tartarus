@@ -2,33 +2,25 @@
 
 package club.subjugated.fb.message
 
-import com.google.flatbuffers.BaseVector
-import com.google.flatbuffers.BooleanVector
-import com.google.flatbuffers.ByteVector
 import com.google.flatbuffers.Constants
-import com.google.flatbuffers.DoubleVector
 import com.google.flatbuffers.FlatBufferBuilder
-import com.google.flatbuffers.FloatVector
-import com.google.flatbuffers.LongVector
-import com.google.flatbuffers.StringVector
-import com.google.flatbuffers.Struct
 import com.google.flatbuffers.Table
-import com.google.flatbuffers.UnionVector
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.math.sign
 
 @Suppress("unused")
 class Configuration : Table() {
 
-    fun __init(_i: Int, _bb: ByteBuffer)  {
+    fun __init(_i: Int, _bb: ByteBuffer) {
         __reset(_i, _bb)
     }
-    fun __assign(_i: Int, _bb: ByteBuffer) : Configuration {
+
+    fun __assign(_i: Int, _bb: ByteBuffer): Configuration {
         __init(_i, _bb)
         return this
     }
-    val coordinatorAddress : String?
+
+    val coordinatorAddress: String?
         get() {
             val o = __offset(4)
             return if (o != 0) {
@@ -37,9 +29,14 @@ class Configuration : Table() {
                 null
             }
         }
-    val coordinatorAddressAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun coordinatorAddressInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
-    fun safetyKey(j: Int) : UByte {
+
+    val coordinatorAddressAsByteBuffer: ByteBuffer
+        get() = __vector_as_bytebuffer(4, 1)
+
+    fun coordinatorAddressInByteBuffer(_bb: ByteBuffer): ByteBuffer =
+        __vector_in_bytebuffer(_bb, 4, 1)
+
+    fun safetyKey(j: Int): UByte {
         val o = __offset(6)
         return if (o != 0) {
             bb.get(__vector(o) + j * 1).toUByte()
@@ -47,38 +44,61 @@ class Configuration : Table() {
             0u
         }
     }
-    val safetyKeyLength : Int
+
+    val safetyKeyLength: Int
         get() {
-            val o = __offset(6); return if (o != 0) __vector_len(o) else 0
+            val o = __offset(6)
+            return if (o != 0) __vector_len(o) else 0
         }
-    val safetyKeyAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
-    fun safetyKeyInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
+
+    val safetyKeyAsByteBuffer: ByteBuffer
+        get() = __vector_as_bytebuffer(6, 1)
+
+    fun safetyKeyInByteBuffer(_bb: ByteBuffer): ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
+
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
-        fun getRootAsConfiguration(_bb: ByteBuffer): Configuration = getRootAsConfiguration(_bb, Configuration())
+
+        fun getRootAsConfiguration(_bb: ByteBuffer): Configuration =
+            getRootAsConfiguration(_bb, Configuration())
+
         fun getRootAsConfiguration(_bb: ByteBuffer, obj: Configuration): Configuration {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createConfiguration(builder: FlatBufferBuilder, coordinatorAddressOffset: Int, safetyKeyOffset: Int) : Int {
+
+        fun createConfiguration(
+            builder: FlatBufferBuilder,
+            coordinatorAddressOffset: Int,
+            safetyKeyOffset: Int,
+        ): Int {
             builder.startTable(2)
             addSafetyKey(builder, safetyKeyOffset)
             addCoordinatorAddress(builder, coordinatorAddressOffset)
             return endConfiguration(builder)
         }
+
         fun startConfiguration(builder: FlatBufferBuilder) = builder.startTable(2)
-        fun addCoordinatorAddress(builder: FlatBufferBuilder, coordinatorAddress: Int) = builder.addOffset(0, coordinatorAddress, 0)
-        fun addSafetyKey(builder: FlatBufferBuilder, safetyKey: Int) = builder.addOffset(1, safetyKey, 0)
+
+        fun addCoordinatorAddress(builder: FlatBufferBuilder, coordinatorAddress: Int) =
+            builder.addOffset(0, coordinatorAddress, 0)
+
+        fun addSafetyKey(builder: FlatBufferBuilder, safetyKey: Int) =
+            builder.addOffset(1, safetyKey, 0)
+
         @kotlin.ExperimentalUnsignedTypes
-        fun createSafetyKeyVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
+        fun createSafetyKeyVector(builder: FlatBufferBuilder, data: UByteArray): Int {
             builder.startVector(1, data.size, 1)
             for (i in data.size - 1 downTo 0) {
                 builder.addByte(data[i].toByte())
             }
             return builder.endVector()
         }
-        fun startSafetyKeyVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
-        fun endConfiguration(builder: FlatBufferBuilder) : Int {
+
+        fun startSafetyKeyVector(builder: FlatBufferBuilder, numElems: Int) =
+            builder.startVector(1, numElems, 1)
+
+        fun endConfiguration(builder: FlatBufferBuilder): Int {
             val o = builder.endTable()
             return o
         }

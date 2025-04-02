@@ -8,7 +8,7 @@ import java.time.OffsetDateTime
 import java.util.Base64
 
 data class LockSessionMessage(
-    var name : String = "",
+    var name: String = "",
     var publicKey: String = "",
     var publicPem: String = "",
     var shareToken: String = "",
@@ -17,10 +17,13 @@ data class LockSessionMessage(
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
 ) {
     companion object {
-        fun fromLockSession(lockSession : LockSession) : LockSessionMessage {
+        fun fromLockSession(lockSession: LockSession): LockSessionMessage {
             // Because javascript blows immeasurable ass, it's just easier to send
             // a PEM encoded version of the public key.
-            val ecKey = getECPublicKeyFromCompressedKeyByteArray(Base64.getUrlDecoder().decode(lockSession.publicKey))
+            val ecKey =
+                getECPublicKeyFromCompressedKeyByteArray(
+                    Base64.getUrlDecoder().decode(lockSession.publicKey)
+                )
             val pemKey = getPemEncoding(ecKey)
             return LockSessionMessage(
                 name = lockSession.name,
@@ -29,7 +32,7 @@ data class LockSessionMessage(
                 shareToken = lockSession.shareToken!!,
                 totalControlToken = lockSession.totalControlToken,
                 updatedAt = lockSession.updatedAt,
-                createdAt = lockSession.createdAt
+                createdAt = lockSession.createdAt,
             )
         }
     }

@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonFormat
 import java.time.OffsetDateTime
 
 data class KnownTokenMessage(
-    var name : String? = "",
+    var name: String? = "",
     var state: String? = "",
     var notes: String? = "",
     var shareableToken: String? = "",
@@ -17,7 +17,7 @@ data class KnownTokenMessage(
                 name = knownToken.name,
                 state = knownToken.state.toString(),
                 notes = knownToken.notes,
-                shareableToken = knownToken.shareableToken
+                shareableToken = knownToken.shareableToken,
             )
         }
     }

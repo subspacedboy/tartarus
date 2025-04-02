@@ -18,7 +18,7 @@ data class ContractMessage(
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
 ) {
     companion object {
-        fun fromContract(contract: Contract) : ContractMessage {
+        fun fromContract(contract: Contract): ContractMessage {
             return ContractMessage(
                 name = contract.name,
                 shareableToken = contract.shareableToken,
@@ -28,7 +28,7 @@ data class ContractMessage(
                 nextCounter = contract.nextCounter,
                 serialNumber = contract.serialNumber,
                 createdAt = contract.createdAt,
-                updatedAt = contract.updatedAt
+                updatedAt = contract.updatedAt,
             )
         }
     }

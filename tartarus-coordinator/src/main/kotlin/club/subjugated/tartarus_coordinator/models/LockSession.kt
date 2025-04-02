@@ -9,32 +9,28 @@ import java.util.*
 
 @Entity
 class LockSession(
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    var id: Long = 0,
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) var id: Long = 0,
     var name: String = generateId(),
-    var publicKey : String,
-    var sessionToken : String?,
-    var shareToken : String?,
-    var totalControlToken : String?,
-
+    var publicKey: String,
+    var sessionToken: String?,
+    var shareToken: String?,
+    var totalControlToken: String?,
     @OneToMany(mappedBy = "id", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
-    var commandQueue : MutableList<CommandQueue> = mutableListOf(),
-
+    var commandQueue: MutableList<CommandQueue> = mutableListOf(),
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
-){
+) {
     companion object {
-        fun generateId() : String {
+        fun generateId(): String {
             return club.subjugated.tartarus_coordinator.util.generateId("ls-")
         }
     }
 
-    fun decodePublicKey() : ByteArray {
+    fun decodePublicKey(): ByteArray {
         return Base64.getUrlDecoder().decode(this.publicKey)
     }
 
-    fun loadPublicKey() : ECPublicKey {
+    fun loadPublicKey(): ECPublicKey {
         return getECPublicKeyFromCompressedKeyByteArray(Base64.getDecoder().decode(this.publicKey))
     }
 }

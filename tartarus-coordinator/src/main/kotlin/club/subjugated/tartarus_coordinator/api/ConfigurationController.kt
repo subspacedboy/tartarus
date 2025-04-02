@@ -15,12 +15,11 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/configuration")
 @Controller
 class ConfigurationController {
-    @Autowired
-    lateinit var configurationService: ConfigurationService
+    @Autowired lateinit var configurationService: ConfigurationService
 
     @GetMapping("/", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
-    fun getConfigurationBlob() : ResponseEntity<ConfigurationMessage> {
+    fun getConfigurationBlob(): ResponseEntity<ConfigurationMessage> {
         val configuration = this.configurationService.getConfigurationAsMessage()
         return ResponseEntity.ok(configuration)
     }

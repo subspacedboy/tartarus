@@ -2,33 +2,25 @@
 
 package club.subjugated.fb.message.configuration
 
-import com.google.flatbuffers.BaseVector
-import com.google.flatbuffers.BooleanVector
-import com.google.flatbuffers.ByteVector
 import com.google.flatbuffers.Constants
-import com.google.flatbuffers.DoubleVector
 import com.google.flatbuffers.FlatBufferBuilder
-import com.google.flatbuffers.FloatVector
-import com.google.flatbuffers.LongVector
-import com.google.flatbuffers.StringVector
-import com.google.flatbuffers.Struct
 import com.google.flatbuffers.Table
-import com.google.flatbuffers.UnionVector
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.math.sign
 
 @Suppress("unused")
 class CoordinatorConfiguration : Table() {
 
-    fun __init(_i: Int, _bb: ByteBuffer)  {
+    fun __init(_i: Int, _bb: ByteBuffer) {
         __reset(_i, _bb)
     }
-    fun __assign(_i: Int, _bb: ByteBuffer) : CoordinatorConfiguration {
+
+    fun __assign(_i: Int, _bb: ByteBuffer): CoordinatorConfiguration {
         __init(_i, _bb)
         return this
     }
-    val webUri : String?
+
+    val webUri: String?
         get() {
             val o = __offset(4)
             return if (o != 0) {
@@ -37,9 +29,13 @@ class CoordinatorConfiguration : Table() {
                 null
             }
         }
-    val webUriAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun webUriInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
-    val mqttUri : String?
+
+    val webUriAsByteBuffer: ByteBuffer
+        get() = __vector_as_bytebuffer(4, 1)
+
+    fun webUriInByteBuffer(_bb: ByteBuffer): ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+
+    val mqttUri: String?
         get() {
             val o = __offset(6)
             return if (o != 0) {
@@ -48,9 +44,13 @@ class CoordinatorConfiguration : Table() {
                 null
             }
         }
-    val mqttUriAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
-    fun mqttUriInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
-    val apiUri : String?
+
+    val mqttUriAsByteBuffer: ByteBuffer
+        get() = __vector_as_bytebuffer(6, 1)
+
+    fun mqttUriInByteBuffer(_bb: ByteBuffer): ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
+
+    val apiUri: String?
         get() {
             val o = __offset(8)
             return if (o != 0) {
@@ -59,10 +59,19 @@ class CoordinatorConfiguration : Table() {
                 null
             }
         }
-    val apiUriAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(8, 1)
-    fun apiUriInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 8, 1)
-    fun safetyKeys(j: Int) : club.subjugated.fb.message.configuration.Key? = safetyKeys(club.subjugated.fb.message.configuration.Key(), j)
-    fun safetyKeys(obj: club.subjugated.fb.message.configuration.Key, j: Int) : club.subjugated.fb.message.configuration.Key? {
+
+    val apiUriAsByteBuffer: ByteBuffer
+        get() = __vector_as_bytebuffer(8, 1)
+
+    fun apiUriInByteBuffer(_bb: ByteBuffer): ByteBuffer = __vector_in_bytebuffer(_bb, 8, 1)
+
+    fun safetyKeys(j: Int): club.subjugated.fb.message.configuration.Key? =
+        safetyKeys(club.subjugated.fb.message.configuration.Key(), j)
+
+    fun safetyKeys(
+        obj: club.subjugated.fb.message.configuration.Key,
+        j: Int,
+    ): club.subjugated.fb.message.configuration.Key? {
         val o = __offset(10)
         return if (o != 0) {
             obj.__assign(__indirect(__vector(o) + j * 4), bb)
@@ -70,18 +79,34 @@ class CoordinatorConfiguration : Table() {
             null
         }
     }
-    val safetyKeysLength : Int
+
+    val safetyKeysLength: Int
         get() {
-            val o = __offset(10); return if (o != 0) __vector_len(o) else 0
+            val o = __offset(10)
+            return if (o != 0) __vector_len(o) else 0
         }
+
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
-        fun getRootAsCoordinatorConfiguration(_bb: ByteBuffer): CoordinatorConfiguration = getRootAsCoordinatorConfiguration(_bb, CoordinatorConfiguration())
-        fun getRootAsCoordinatorConfiguration(_bb: ByteBuffer, obj: CoordinatorConfiguration): CoordinatorConfiguration {
+
+        fun getRootAsCoordinatorConfiguration(_bb: ByteBuffer): CoordinatorConfiguration =
+            getRootAsCoordinatorConfiguration(_bb, CoordinatorConfiguration())
+
+        fun getRootAsCoordinatorConfiguration(
+            _bb: ByteBuffer,
+            obj: CoordinatorConfiguration,
+        ): CoordinatorConfiguration {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createCoordinatorConfiguration(builder: FlatBufferBuilder, webUriOffset: Int, mqttUriOffset: Int, apiUriOffset: Int, safetyKeysOffset: Int) : Int {
+
+        fun createCoordinatorConfiguration(
+            builder: FlatBufferBuilder,
+            webUriOffset: Int,
+            mqttUriOffset: Int,
+            apiUriOffset: Int,
+            safetyKeysOffset: Int,
+        ): Int {
             builder.startTable(4)
             addSafetyKeys(builder, safetyKeysOffset)
             addApiUri(builder, apiUriOffset)
@@ -89,24 +114,40 @@ class CoordinatorConfiguration : Table() {
             addWebUri(builder, webUriOffset)
             return endCoordinatorConfiguration(builder)
         }
+
         fun startCoordinatorConfiguration(builder: FlatBufferBuilder) = builder.startTable(4)
+
         fun addWebUri(builder: FlatBufferBuilder, webUri: Int) = builder.addOffset(0, webUri, 0)
+
         fun addMqttUri(builder: FlatBufferBuilder, mqttUri: Int) = builder.addOffset(1, mqttUri, 0)
+
         fun addApiUri(builder: FlatBufferBuilder, apiUri: Int) = builder.addOffset(2, apiUri, 0)
-        fun addSafetyKeys(builder: FlatBufferBuilder, safetyKeys: Int) = builder.addOffset(3, safetyKeys, 0)
-        fun createSafetyKeysVector(builder: FlatBufferBuilder, data: IntArray) : Int {
+
+        fun addSafetyKeys(builder: FlatBufferBuilder, safetyKeys: Int) =
+            builder.addOffset(3, safetyKeys, 0)
+
+        fun createSafetyKeysVector(builder: FlatBufferBuilder, data: IntArray): Int {
             builder.startVector(4, data.size, 4)
             for (i in data.size - 1 downTo 0) {
                 builder.addOffset(data[i])
             }
             return builder.endVector()
         }
-        fun startSafetyKeysVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(4, numElems, 4)
-        fun endCoordinatorConfiguration(builder: FlatBufferBuilder) : Int {
+
+        fun startSafetyKeysVector(builder: FlatBufferBuilder, numElems: Int) =
+            builder.startVector(4, numElems, 4)
+
+        fun endCoordinatorConfiguration(builder: FlatBufferBuilder): Int {
             val o = builder.endTable()
             return o
         }
-        fun finishCoordinatorConfigurationBuffer(builder: FlatBufferBuilder, offset: Int) = builder.finish(offset)
-        fun finishSizePrefixedCoordinatorConfigurationBuffer(builder: FlatBufferBuilder, offset: Int) = builder.finishSizePrefixed(offset)
+
+        fun finishCoordinatorConfigurationBuffer(builder: FlatBufferBuilder, offset: Int) =
+            builder.finish(offset)
+
+        fun finishSizePrefixedCoordinatorConfigurationBuffer(
+            builder: FlatBufferBuilder,
+            offset: Int,
+        ) = builder.finishSizePrefixed(offset)
     }
 }

@@ -2,66 +2,78 @@
 
 package club.subjugated.fb.message
 
-import com.google.flatbuffers.BaseVector
-import com.google.flatbuffers.BooleanVector
-import com.google.flatbuffers.ByteVector
 import com.google.flatbuffers.Constants
-import com.google.flatbuffers.DoubleVector
 import com.google.flatbuffers.FlatBufferBuilder
-import com.google.flatbuffers.FloatVector
-import com.google.flatbuffers.LongVector
-import com.google.flatbuffers.StringVector
-import com.google.flatbuffers.Struct
 import com.google.flatbuffers.Table
-import com.google.flatbuffers.UnionVector
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.math.sign
 
 @Suppress("unused")
 class ReleaseCommand : Table() {
 
-    fun __init(_i: Int, _bb: ByteBuffer)  {
+    fun __init(_i: Int, _bb: ByteBuffer) {
         __reset(_i, _bb)
     }
-    fun __assign(_i: Int, _bb: ByteBuffer) : ReleaseCommand {
+
+    fun __assign(_i: Int, _bb: ByteBuffer): ReleaseCommand {
         __init(_i, _bb)
         return this
     }
-    val contractSerialNumber : UShort
+
+    val contractSerialNumber: UShort
         get() {
             val o = __offset(4)
-            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+            return if (o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
         }
-    val serialNumber : UShort
+
+    val serialNumber: UShort
         get() {
             val o = __offset(6)
-            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+            return if (o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
         }
-    val counter : UShort
+
+    val counter: UShort
         get() {
             val o = __offset(8)
-            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+            return if (o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
         }
+
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
-        fun getRootAsReleaseCommand(_bb: ByteBuffer): ReleaseCommand = getRootAsReleaseCommand(_bb, ReleaseCommand())
+
+        fun getRootAsReleaseCommand(_bb: ByteBuffer): ReleaseCommand =
+            getRootAsReleaseCommand(_bb, ReleaseCommand())
+
         fun getRootAsReleaseCommand(_bb: ByteBuffer, obj: ReleaseCommand): ReleaseCommand {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createReleaseCommand(builder: FlatBufferBuilder, contractSerialNumber: UShort, serialNumber: UShort, counter: UShort) : Int {
+
+        fun createReleaseCommand(
+            builder: FlatBufferBuilder,
+            contractSerialNumber: UShort,
+            serialNumber: UShort,
+            counter: UShort,
+        ): Int {
             builder.startTable(3)
             addCounter(builder, counter)
             addSerialNumber(builder, serialNumber)
             addContractSerialNumber(builder, contractSerialNumber)
             return endReleaseCommand(builder)
         }
+
         fun startReleaseCommand(builder: FlatBufferBuilder) = builder.startTable(3)
-        fun addContractSerialNumber(builder: FlatBufferBuilder, contractSerialNumber: UShort) = builder.addShort(0, contractSerialNumber.toShort(), 0)
-        fun addSerialNumber(builder: FlatBufferBuilder, serialNumber: UShort) = builder.addShort(1, serialNumber.toShort(), 0)
-        fun addCounter(builder: FlatBufferBuilder, counter: UShort) = builder.addShort(2, counter.toShort(), 0)
-        fun endReleaseCommand(builder: FlatBufferBuilder) : Int {
+
+        fun addContractSerialNumber(builder: FlatBufferBuilder, contractSerialNumber: UShort) =
+            builder.addShort(0, contractSerialNumber.toShort(), 0)
+
+        fun addSerialNumber(builder: FlatBufferBuilder, serialNumber: UShort) =
+            builder.addShort(1, serialNumber.toShort(), 0)
+
+        fun addCounter(builder: FlatBufferBuilder, counter: UShort) =
+            builder.addShort(2, counter.toShort(), 0)
+
+        fun endReleaseCommand(builder: FlatBufferBuilder): Int {
             val o = builder.endTable()
             return o
         }

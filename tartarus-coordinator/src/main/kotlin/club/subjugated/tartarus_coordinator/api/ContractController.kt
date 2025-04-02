@@ -1,8 +1,8 @@
 package club.subjugated.tartarus_coordinator.api
 
 import club.subjugated.tartarus_coordinator.api.messages.ContractMessage
-import club.subjugated.tartarus_coordinator.api.messages.NewContractMessage
 import club.subjugated.tartarus_coordinator.api.messages.NewCommandMessage
+import club.subjugated.tartarus_coordinator.api.messages.NewContractMessage
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
 import club.subjugated.tartarus_coordinator.services.ContractService
 import club.subjugated.tartarus_coordinator.services.LockSessionService
@@ -16,16 +16,15 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/contracts")
 @Controller
 class ContractController {
-    @Autowired
-    lateinit var contractService: ContractService
-    @Autowired
-    lateinit var authorSessionService: AuthorSessionService
-    @Autowired
-    lateinit var lockSessionService: LockSessionService
+    @Autowired lateinit var contractService: ContractService
+    @Autowired lateinit var authorSessionService: AuthorSessionService
+    @Autowired lateinit var lockSessionService: LockSessionService
 
     @GetMapping("/byShareable/{someToken}", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
-    fun getContractsByShareableToken(@PathVariable someToken : String) : ResponseEntity<List<ContractMessage>>{
+    fun getContractsByShareableToken(
+        @PathVariable someToken: String
+    ): ResponseEntity<List<ContractMessage>> {
         val contracts = this.contractService.findContractsByShareableToken(someToken)
 
         return ResponseEntity.ok(contracts.map { ContractMessage.fromContract(it) })
@@ -33,30 +32,41 @@ class ContractController {
 
     @GetMapping("/{name}", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
-    fun getContractsByName(@PathVariable name : String) : ResponseEntity<ContractMessage> {
+    fun getContractsByName(@PathVariable name: String): ResponseEntity<ContractMessage> {
         val contract = this.contractService.getByName(name)
         return ResponseEntity.ok(ContractMessage.fromContract(contract))
     }
 
     @PostMapping("/", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
-    fun saveContract(@RequestBody newContractMessage: NewContractMessage) : ResponseEntity<ContractMessage> {
-        val lockSession = this.lockSessionService.findByShareableToken(newContractMessage.shareableToken!!)
+    fun saveContract(
+        @RequestBody newContractMessage: NewContractMessage
+    ): ResponseEntity<ContractMessage> {
+        val lockSession =
+            this.lockSessionService.findByShareableToken(newContractMessage.shareableToken!!)
         val authorSession = this.authorSessionService.findByName(newContractMessage.authorName!!)
 
-        val contract = this.contractService.saveContract(newContractMessage, lockSession!!, authorSession)
+        val contract =
+            this.contractService.saveContract(newContractMessage, lockSession!!, authorSession)
 
         return ResponseEntity.ok(ContractMessage.fromContract(contract))
     }
 
     @PostMapping("/command", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
-    fun command(@RequestBody newCommandMessage: NewCommandMessage) : ResponseEntity<Void> {
-        val authorSession = this.authorSessionService.findByName(newCommandMessage.authorSessionName!!)
-        val lockSession = this.lockSessionService.findByShareableToken(newCommandMessage.shareableToken!!)
+    fun command(@RequestBody newCommandMessage: NewCommandMessage): ResponseEntity<Void> {
+        val authorSession =
+            this.authorSessionService.findByName(newCommandMessage.authorSessionName!!)
+        val lockSession =
+            this.lockSessionService.findByShareableToken(newCommandMessage.shareableToken!!)
         val contract = this.contractService.getByName(newCommandMessage.contractName!!)
 
-        this.contractService.saveCommand(authorSession, lockSession!!, contract, newCommandMessage.signedMessage!!)
+        this.contractService.saveCommand(
+            authorSession,
+            lockSession!!,
+            contract,
+            newCommandMessage.signedMessage!!,
+        )
         return ResponseEntity.ok().build()
     }
 }

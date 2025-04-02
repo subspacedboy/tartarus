@@ -9,25 +9,23 @@ import org.springframework.stereotype.Service
 
 @Service
 class SafetyKeyService {
-    @Autowired
-    lateinit var safetyKeyRepository: SafetyKeyRepository
-    @Autowired
-    lateinit var timeSource: TimeSource
+    @Autowired lateinit var safetyKeyRepository: SafetyKeyRepository
+    @Autowired lateinit var timeSource: TimeSource
 
-    fun createNewSafetyKey() : SafetyKey {
+    fun createNewSafetyKey(): SafetyKey {
         val keyPair = generateECKeyPair()
-        val key = SafetyKey(
-            state = SafetyKeyState.ACTIVE,
-            privateKey = encodePrivateKey(keyPair.private),
-            publicKey = encodePublicKey(keyPair.public),
-            createdAt = timeSource.nowInUtc()
-        )
+        val key =
+            SafetyKey(
+                state = SafetyKeyState.ACTIVE,
+                privateKey = encodePrivateKey(keyPair.private),
+                publicKey = encodePublicKey(keyPair.public),
+                createdAt = timeSource.nowInUtc(),
+            )
         this.safetyKeyRepository.save(key)
         return key
     }
 
-
-    fun getAllActiveSafetyKeys() : List<SafetyKey> {
+    fun getAllActiveSafetyKeys(): List<SafetyKey> {
         return safetyKeyRepository.getAllByState(SafetyKeyState.ACTIVE)
     }
 }

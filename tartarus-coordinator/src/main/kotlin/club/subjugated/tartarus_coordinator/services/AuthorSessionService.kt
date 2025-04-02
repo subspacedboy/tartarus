@@ -12,48 +12,54 @@ import org.springframework.stereotype.Service
 
 @Service
 class AuthorSessionService {
-    @Autowired
-    lateinit var authorSessionRepository: AuthorSessionRepository
-    @Autowired
-    lateinit var timeSource: TimeSource
-    @Autowired
-    lateinit var knownTokenRepository: KnownTokenRepository
+    @Autowired lateinit var authorSessionRepository: AuthorSessionRepository
+    @Autowired lateinit var timeSource: TimeSource
+    @Autowired lateinit var knownTokenRepository: KnownTokenRepository
 
-    fun saveNewAuthorSession(newAuthorSessionMessage: NewAuthorSessionMessage) : AuthorSession {
-        val maybeSession = this.authorSessionRepository.findByPublicKey(newAuthorSessionMessage.publicKey!!)
+    fun saveNewAuthorSession(newAuthorSessionMessage: NewAuthorSessionMessage): AuthorSession {
+        val maybeSession =
+            this.authorSessionRepository.findByPublicKey(newAuthorSessionMessage.publicKey!!)
 
-        if(maybeSession != null) {
+        if (maybeSession != null) {
             // Ok, this author already had a session from some other time. Return that
             return maybeSession
         }
 
-        val authorSession = AuthorSession(
-            publicKey = newAuthorSessionMessage.publicKey,
-            createdAt = timeSource.nowInUtc(),
-            updatedAt = timeSource.nowInUtc()
-        )
+        val authorSession =
+            AuthorSession(
+                publicKey = newAuthorSessionMessage.publicKey,
+                createdAt = timeSource.nowInUtc(),
+                updatedAt = timeSource.nowInUtc(),
+            )
 
         this.authorSessionRepository.save(authorSession)
 
         return authorSession
     }
 
-    fun findByName(name : String) : AuthorSession {
+    fun findByName(name: String): AuthorSession {
         return this.authorSessionRepository.findByName(name)
     }
 
     fun authorKnowsToken(authorSession: AuthorSession, shareableToken: String) {
-        knownTokenRepository.findByAuthorSessionIdAndShareableToken(authorSession.id, shareableToken)
+        knownTokenRepository.findByAuthorSessionIdAndShareableToken(
+            authorSession.id,
+            shareableToken,
+        )
             ?: KnownToken(
-                state = KnownTokenState.CREATED,
-                authorSession = authorSession,
-                notes = "",
-                shareableToken = shareableToken,
-                createdAt = timeSource.nowInUtc()
-            ).let { knownTokenRepository.save(it) }
+                    state = KnownTokenState.CREATED,
+                    authorSession = authorSession,
+                    notes = "",
+                    shareableToken = shareableToken,
+                    createdAt = timeSource.nowInUtc(),
+                )
+                .let { knownTokenRepository.save(it) }
     }
 
-    fun getKnownTokens(authorSession: AuthorSession) : List<KnownToken> {
-        return knownTokenRepository.findByAuthorSessionIdAndState(authorSession.id, KnownTokenState.CREATED)
+    fun getKnownTokens(authorSession: AuthorSession): List<KnownToken> {
+        return knownTokenRepository.findByAuthorSessionIdAndState(
+            authorSession.id,
+            KnownTokenState.CREATED,
+        )
     }
 }

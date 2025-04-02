@@ -15,41 +15,42 @@ import org.springframework.stereotype.Service
 
 class NewCommandEvent(source: Any, val lockSessionToken: String) : ApplicationEvent(source)
 
-
 @Service
 class CommandQueueService {
-    @Autowired
-    lateinit var commandQueueRepository: CommandQueueRepository
-    @Autowired
-    lateinit var commandRepository: CommandRepository
-    @Autowired
-    lateinit var timeSource: TimeSource
-    @Autowired
-    lateinit var publisher: ApplicationEventPublisher
+    @Autowired lateinit var commandQueueRepository: CommandQueueRepository
+    @Autowired lateinit var commandRepository: CommandRepository
+    @Autowired lateinit var timeSource: TimeSource
+    @Autowired lateinit var publisher: ApplicationEventPublisher
 
     fun saveCommand(command: Command) {
         this.commandRepository.save(command)
     }
 
-    fun acknowledgeCommand(command: Command, ack : Acknowledgement) {
+    fun acknowledgeCommand(command: Command, ack: Acknowledgement) {
         command.state = CommandState.ACKNOWLEDGED
         publisher.publishEvent(AcknowledgedCommandEvent(this, command, ack))
         saveCommand(command)
     }
 
-    fun errorCommand(command: Command, message : String?) {
+    fun errorCommand(command: Command, message: String?) {
         command.state = CommandState.ERROR
         command.message = message
         saveCommand(command)
     }
 
-    fun getPendingCommandsForSession(lockSession: LockSession) : List<Command> {
+    fun getPendingCommandsForSession(lockSession: LockSession): List<Command> {
         val commandQueueId = lockSession.commandQueue.first().id
-        return this.commandRepository.findByCommandQueueIdAndStateOrderByCreatedAt(commandQueueId, CommandState.PENDING)
+        return this.commandRepository.findByCommandQueueIdAndStateOrderByCreatedAt(
+            commandQueueId,
+            CommandState.PENDING,
+        )
     }
 
-    fun getCommandBySessionAndSerial(lockSession: LockSession, serialNumber : Int) : Command {
+    fun getCommandBySessionAndSerial(lockSession: LockSession, serialNumber: Int): Command {
         val commandQueueId = lockSession.commandQueue.first().id
-        return this.commandRepository.findByCommandQueueIdAndSerialNumber(commandQueueId, serialNumber)
+        return this.commandRepository.findByCommandQueueIdAndSerialNumber(
+            commandQueueId,
+            serialNumber,
+        )
     }
 }

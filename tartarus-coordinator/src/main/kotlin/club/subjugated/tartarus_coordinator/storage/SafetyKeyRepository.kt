@@ -5,5 +5,5 @@ import club.subjugated.tartarus_coordinator.models.SafetyKeyState
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface SafetyKeyRepository : JpaRepository<SafetyKey, Long> {
-    fun getAllByState(state: SafetyKeyState) : List<SafetyKey>
+    fun getAllByState(state: SafetyKeyState): List<SafetyKey>
 }

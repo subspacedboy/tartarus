@@ -7,7 +7,10 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface CommandRepository : JpaRepository<Command, Long> {
-    fun findByCommandQueueIdAndStateOrderByCreatedAt(commandQueueId : Long, state : CommandState) : List<Command>
+    fun findByCommandQueueIdAndStateOrderByCreatedAt(
+        commandQueueId: Long,
+        state: CommandState,
+    ): List<Command>
 
-    fun findByCommandQueueIdAndSerialNumber(commandQueueId: Long, serialNumber : Int) : Command
+    fun findByCommandQueueIdAndSerialNumber(commandQueueId: Long, serialNumber: Int): Command
 }

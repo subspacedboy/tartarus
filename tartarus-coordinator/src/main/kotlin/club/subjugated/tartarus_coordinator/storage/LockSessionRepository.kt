@@ -6,7 +6,7 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface LockSessionRepository : JpaRepository<LockSession, Long> {
-    fun findBySessionToken(sessionToken: String) : LockSession?
+    fun findBySessionToken(sessionToken: String): LockSession?
 
-    fun findByShareTokenOrTotalControlToken(someToken: String, otherToken : String): LockSession?
+    fun findByShareTokenOrTotalControlToken(someToken: String, otherToken: String): LockSession?
 }

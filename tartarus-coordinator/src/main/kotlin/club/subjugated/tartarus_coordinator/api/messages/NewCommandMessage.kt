@@ -5,5 +5,4 @@ data class NewCommandMessage(
     var contractName: String? = null,
     var authorSessionName: String? = null,
     val signedMessage: String? = null,
-) {
-}
+) {}

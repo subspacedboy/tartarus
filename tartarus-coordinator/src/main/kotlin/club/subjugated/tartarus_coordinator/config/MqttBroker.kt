@@ -10,9 +10,9 @@ import io.moquette.broker.subscriptions.Topic
 import io.moquette.interception.InterceptHandler
 import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
+import java.util.*
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
-import java.util.*
 
 @Component
 class CustomMqttSecurity : IAuthenticator, IAuthorizatorPolicy {
@@ -26,31 +26,32 @@ class CustomMqttSecurity : IAuthenticator, IAuthorizatorPolicy {
 
     override fun checkValid(clientId: String?, username: String?, password: ByteArray?): Boolean {
         val regex = "^[a-zA-Z0-9]{6}$".toRegex()
-        if(username.isNullOrEmpty()) {
+        if (username.isNullOrEmpty()) {
             return false
         }
 
         val isValid = regex.matches(username)
 
-        return isValid || (username == "internal" && password.contentEquals(passAsString.encodeToByteArray()))
+        return isValid ||
+            (username == "internal" && password.contentEquals(passAsString.encodeToByteArray()))
     }
 
     override fun canRead(topic: Topic?, user: String?, client: String?): Boolean {
-        if(user == null) {
+        if (user == null) {
             return false
         }
 
-        if(user == "internal") {
+        if (user == "internal") {
             return true
         }
 
         // Locks can read their own response channel.
-        if(topic!!.toString() == "locks/${user}"){
+        if (topic!!.toString() == "locks/${user}") {
             return true
         }
 
         // Their own configuration channel.
-        if(topic.toString() == "configuration/${user}"){
+        if (topic.toString() == "configuration/${user}") {
             return true
         }
 
@@ -58,21 +59,21 @@ class CustomMqttSecurity : IAuthenticator, IAuthorizatorPolicy {
     }
 
     override fun canWrite(topic: Topic?, user: String?, client: String?): Boolean {
-        if(user == null) {
+        if (user == null) {
             return false
         }
 
-        if(user == "internal") {
+        if (user == "internal") {
             return true
         }
 
         // Locks can read their own response channel.
-        if(topic!!.toString() == "locks/updates"){
+        if (topic!!.toString() == "locks/updates") {
             return true
         }
 
         // Their own configuration channel.
-        if(topic.toString() == "devices/status"){
+        if (topic.toString() == "devices/status") {
             return true
         }
 
@@ -89,14 +90,12 @@ class CustomMqttSecurity : IAuthenticator, IAuthorizatorPolicy {
 class MqttBroker(private val security: CustomMqttSecurity) {
     private val mqttServer: Server = Server()
 
-    @Value("\${tartarus.mqtt_ws_port}")
-    val wsPortNumber: Long = 0
+    @Value("\${tartarus.mqtt_ws_port}") val wsPortNumber: Long = 0
 
     @PostConstruct
     fun start() {
-        val properties = Properties().apply {
-            setProperty("websocket_port", wsPortNumber.toString())
-        }
+        val properties =
+            Properties().apply { setProperty("websocket_port", wsPortNumber.toString()) }
 
         val config: IConfig = MemoryConfig(properties)
         val handlers: List<InterceptHandler> = emptyList()
