@@ -115,6 +115,11 @@ def create_app():
 
         return send_file(img_io, mimetype="image/png")
     
+    @app.route("/announce", methods=['POST'])
+    def announce():
+        
+        return "OK"
+    
     @app.route('/lock')
     def lock_code():
         lock_public_key = None

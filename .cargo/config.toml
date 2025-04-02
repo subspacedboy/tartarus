@@ -19,3 +19,5 @@ ESP_IDF_VERSION = "v5.1.3"
 # https://github.com/esp-rs/esp-idf-hal/pull/387 gets released and the template
 # updated.
 CRATE_CC_NO_DEFAULTS = "1"
+#ssb: Make it speedy
+ESPFLASH_BAUD = "921600"

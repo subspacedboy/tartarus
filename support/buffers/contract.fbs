@@ -70,4 +70,8 @@ table SignedMessage {
   payload: MessagePayload;
 }
 
+table Configuration {
+  coordinator_address: string;
+}
+
 root_type SignedMessage;

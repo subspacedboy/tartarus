@@ -1,49 +1,47 @@
-use std::convert::Infallible;
-use std::error::Error;
 use std::thread::sleep;
 use std::time::Duration;
 
-use aes_gcm::{aead, AeadCore, Aes256Gcm, Key, KeyInit};
+use aes_gcm::{Aes256Gcm, Key, KeyInit};
 use aes_gcm::aead::{Aead, Nonce, Payload};
 use aes_gcm::aead::generic_array::GenericArray;
-use base64::{decode, encode, Engine};
+use base64::Engine;
 use base64::engine::general_purpose;
 use display_interface_spi::SPIInterfaceNoCS;
 use embedded_graphics::Drawable;
 use embedded_graphics::geometry::Point;
 use embedded_graphics::pixelcolor::Rgb565;
 use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::{Circle, Primitive, PrimitiveStyle};
+use embedded_graphics::primitives::Primitive;
 use embedded_graphics::primitives::*;
 use embedded_hal::spi::MODE_3;
 use embedded_hal_compat::eh0_2::digital::v1_compat::OldOutputPin;
-use embedded_hal_compat::ReverseCompat;
 use esp_idf_hal::delay::BLOCK;
-use esp_idf_hal::gpio::{AnyIOPin, AnyOutputPin, OutputPin, PinDriver};
+use esp_idf_hal::gpio::{AnyIOPin, PinDriver};
 use esp_idf_hal::i2c::{I2cConfig, I2cDriver};
-use esp_idf_hal::io::{ErrorType, Read};
 use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_hal::prelude::FromValueType;
 use esp_idf_hal::spi;
-use esp_idf_hal::spi::{Spi, SpiConfig, SpiDeviceDriver, SpiDriver};
-use esp_idf_hal::spi::config::DriverConfig;
-use esp_idf_hal::sys::EspError;
+use esp_idf_hal::spi::{SpiConfig, SpiDeviceDriver, SpiDriver};
 use esp_idf_hal::units::KiloHertz;
+use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::hal::delay;
 use esp_idf_svc::hal::gpio;
 use esp_idf_svc::sys::esp_random;
-use esp_idf_svc::nvs::{EspNvs, EspNvsPartition, NvsDefault};
+use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs};
+use esp_idf_svc::wifi::{AuthMethod, BlockingWifi, ClientConfiguration, Configuration, EspWifi};
+use esp_idf_svc::http::client::EspHttpConnection;
+
+use embedded_svc::http::client::Client as HttpClient;
+use embedded_svc::io::Write;
+
 use hkdf::Hkdf;
-use p256::{ecdh, PublicKey, SecretKey, U32};
-use p256::ecdh::{diffie_hellman, SharedSecret};
-use p256::ecdsa::{Signature, SigningKey, VerifyingKey};
-use p256::ecdsa::signature::Signer;
+use p256::{PublicKey, SecretKey};
+use p256::ecdh::diffie_hellman;
 use p256::pkcs8::{DecodePublicKey, EncodePublicKey, LineEnding};
 use qrcode::{Color, QrCode};
 use rand_core::{CryptoRng, RngCore};
 use sha2::Sha256;
 use st7789::{Orientation, ST7789};
-use typenum::U12;
 
 
 struct Esp32Rng;
@@ -78,6 +76,7 @@ impl RngCore for Esp32Rng {
 
 impl CryptoRng for Esp32Rng {}
 
+//noinspection RsUnresolvedMethod
 fn main() {
     // It is necessary to call this function once. Otherwise some patches to the runtime
     // implemented by esp-idf-sys might not link properly. See https://github.com/esp-rs/esp-idf-template/issues/71
@@ -86,7 +85,7 @@ fn main() {
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
 
-    log::info!("Hello, world!");
+    log::info!("SmartLock V2.0");
 
     let peripherals = Peripherals::take().expect("Peripherals to be available");
 
@@ -94,7 +93,7 @@ fn main() {
     config.baudrate = 10_000_000.Hz();
     config.data_mode = MODE_3;
 
-    let mut config1 = DriverConfig::default();
+    // let mut config1 = DriverConfig::default();
 
     let mut tft_power = PinDriver::output(peripherals.pins.gpio21).expect("pin to be available");
     tft_power.set_high().expect("tft power to be high");
@@ -106,15 +105,13 @@ fn main() {
     // let rst = peripherals.pins.gpio40.downgrade_output();
     let mut rst = PinDriver::output(peripherals.pins.gpio40).expect("to work");
     rst.set_low().expect("Reset to be low");
-    let mut old_rst = OldOutputPin::new(rst);
-    // let old_rst = OldOutputPin::new(rst);
+    // let mut old_rst = OldOutputPin::new(rst);
+    let old_rst = OldOutputPin::new(rst);
     let mut bl = PinDriver::output(peripherals.pins.gpio45).expect("to work");
     bl.set_high().expect("BL to be high");
     let old_bl = OldOutputPin::new(bl);
     let dc = peripherals.pins.gpio39;
     let cs = peripherals.pins.gpio7;
-
-
 
     let spi: SpiDeviceDriver<SpiDriver> = spi::SpiDeviceDriver::new_single(
         peripherals.spi2,
@@ -139,13 +136,11 @@ fn main() {
 
     display.clear(Rgb565::WHITE).expect("Display to clear");
 
-    // let circle1 =
-    //     Circle::new(Point::new(128, 64), 64).into_styled(PrimitiveStyle::with_fill(Rgb565::RED));
-    //
-    // circle1.draw(&mut display).expect("Circle to be drawn");
+    let nvs_partition = EspDefaultNvsPartition::take().expect("EspDefaultNvsPartition to be available");
+    let mut nvs = EspNvs::new(nvs_partition.clone(), "storage", true).unwrap();
 
-    let partition = EspNvsPartition::<NvsDefault>::take().unwrap();
-    let mut nvs = EspNvs::new(partition, "storage", true).unwrap();
+    // let partition = EspNvsPartition::<NvsDefault>::take().unwrap();
+    // let mut nvs = EspNvs::new(partition, "storage", true).unwrap();
 
     let key_name = "ec_private";
     let mut buffer : [u8; 256] = [0; 256];
@@ -171,56 +166,10 @@ fn main() {
 
     let my_public = PublicKey::from_secret_scalar(&private_key.to_nonzero_scalar());
 
-    // Simulate receiver's key pair
-    // let receiver_secret = SecretKey::random(&mut rng);
-    // let receiver_public = PublicKey::from_secret_scalar(&receiver_secret.to_nonzero_scalar());
-
-    // const REMOTE_PUB_KEY: &str = "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFa3dVUDJmbjhMQVJkYi8rSDZrMFJzMEtaeE4zUApsTHVlTzQxdHFPRktGZlFWeC9CcHpVNGdYSmYzbEdKTjFDdXBGMlExbVcralV1cVJuMlpvSS82U3VBPT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==";
-    // let pub_key = String::from_utf8(general_purpose::STANDARD.decode(REMOTE_PUB_KEY).expect("Key didn't parse")).expect("String to be valid");
-    // let receiver_public = PublicKey::from_public_key_pem(pub_key.as_str()).expect("Valid key");
-
-    // let shared_secret = diffie_hellman(
-    //     private_key.to_nonzero_scalar(),
-    //     receiver_public.as_affine()
-    // );
-    //
-    // // let symmetric_key: &Key<Aes256Gcm> = Key::from_slice(shared_secret.raw_secret_bytes()).into();
-    //
-    // let hk = Hkdf::<Sha256>::new(None, &shared_secret.raw_secret_bytes());
-    // let mut aes_key = [0u8; 32]; // Buffer for AES-256 key
-    // const NONCE: &str = "8w/3FFyYUcwwKxnp";
-    // const CIPHER_TEXT: &str = "jiAH8/ExuAumT476Z/OC/Jc3dsM=";
-    // hk.expand("AES-GCM key derivation".as_bytes(), &mut aes_key).expect("HKDF expansion failed");
-    // log::info!("Derived key: {:x?}", aes_key);
-
-    // let symmetric_key: &Key<Aes256Gcm> = shared_secret.raw_secret_bytes().into();
-    // let symmetric_key: &Key<Aes256Gcm> = (&aes_key).into();
-    // let cipher = Aes256Gcm::new(symmetric_key);
-
-    // let nonce = general_purpose::STANDARD.decode(NONCE).expect("Nonce didn't parse");
-    // let nonce_bytes : [u8; 12] = nonce.try_into().expect("wrong size");
-    // let nonce: Nonce<Aes256Gcm> = *GenericArray::from_slice(&nonce_bytes);
-
-    // let cipher_text = general_purpose::STANDARD.decode(CIPHER_TEXT).expect("Nonce didn't parse");
-
-    // log::info!("ciphertext : {:x?}", cipher_text);
-
-
-    // cchandler: These are for encryption only.
-    // let nonce = Aes256Gcm::generate_nonce(&mut rng);
-    // let message = b"internal state";
-    // let cipher_text = cipher.encrypt(&nonce, message.as_ref()).expect("Encryption failure!");
-
-    // let signing_key = SigningKey::random(&mut rng);
-    // let verifying_key = VerifyingKey::from(&signing_key);
-    // let mut signature: Signature = signing_key.sign(message);
-
-    // let thingy = signature.as_ref();
-    // let whole_message = format!("http://192.168.1.168:5002?public={}", my_public.to_public_key_pem(LineEnding::CR).unwrap(), String::from_utf8_lossy(&cipher_text));
-
     let encoded_cert = general_purpose::STANDARD.encode(&my_public.to_public_key_pem(LineEnding::CR).unwrap());
-    let whole_message = format!("http://192.168.1.168:5002/?public={}", encoded_cert);
-    // let whole_message = format!("public=asdf");
+
+    const COORDINATOR: &str = "http://192.168.1.168:5002";
+    let whole_message = format!("{}/?public={}", COORDINATOR, encoded_cert);
 
     log::info!("Message: {}", whole_message);
 
@@ -249,6 +198,55 @@ fn main() {
                 .into_styled(PrimitiveStyleBuilder::new().fill_color(color).build());
             rect.draw(&mut display).expect("Expected to draw");
         }
+    }
+
+    log::info!("Putting wifi on standby");
+
+    let sys_loop = EspSystemEventLoop::take().expect("EspSystemEventLoop to be available");
+    // let timer_service = EspTaskTimerService::new().expect("Timer to be available");
+
+    let mut wifi_connected = false;
+
+    let mut wifi = BlockingWifi::wrap(
+        EspWifi::new(peripherals.modem, sys_loop.clone(), Some(nvs_partition)).expect("EspWifi to work"),
+        sys_loop,
+    ).expect("Wifi to start");
+    wifi.start().expect("Wifi should have started");
+
+    // See if we have pre-existing creds
+    let mut buffer : [u8; 256] = [0; 256];
+    if let Ok(blob) = nvs.get_blob("ssid", &mut buffer) {
+        if let Some(actual_ssid) = blob {
+            // Ok, we have an SSID. Let's assume we have a matching password.
+            let mut pass_buffer : [u8; 256] = [0; 256];
+            let pass = nvs.get_blob("password", &mut pass_buffer).expect("NVS to work");
+            if let Some(actual_pass) = pass {
+                let ssid = String::from_utf8(actual_ssid.to_vec()).ok().unwrap();
+                let password = String::from_utf8(actual_pass.to_vec()).ok().unwrap();
+                if let Ok(_) = connect_wifi(&mut wifi, &ssid, &password) {
+                    log::info!("Was able to join wifi from stored credentials :-)");
+                    wifi_connected = true;
+                } else {
+                    log::info!("Was NOT able to join wifi :-( ");
+                }
+            }
+        }
+    } else {
+        log::info!("No stored wifi credentials. Deferring wifi");
+    }
+
+    if wifi_connected {
+        let url = format!("{}/announce?public={}", COORDINATOR, encoded_cert);
+        let mut pos = EspHttpConnection::new(&mut Default::default()).expect("HTTP client should be available");
+        let mut client = HttpClient::wrap(&mut pos);
+
+        let mut request = client.post(&url, &[]).unwrap();
+        let payload = b"{\"key\": \"value\"}";
+        request.write_all(payload).expect("All to write");
+        request.flush().expect("Flush to succeed");
+
+        let response = request.submit().expect("Failed to send");
+        log::info!("Response status: {}", response.status());
     }
 
     log::info!("Initializing code reader");
@@ -291,7 +289,40 @@ fn main() {
             Err(_) => {}
         }
 
-        match sm.state {
+        if let Some(incoming_data) = data.clone() {
+            if let Ok(maybe_string) = String::from_utf8(incoming_data) {
+                if maybe_string.starts_with("WIFI:") {
+                    let maybe_creds = parse_wifi_qr(maybe_string);
+                    if let Some((ssid, password)) = maybe_creds {
+                        log::info!("Trying to connect to wifi -> SSID[{}] Password[{}]", ssid, password);
+
+                        let password = "H0la Chic0s";
+
+                        let mut tries = 3;
+                        let mut connected = false;
+                        while tries > 0 && !connected {
+                            if let Ok(_) = connect_wifi(&mut wifi, &ssid, &String::from(password)) {
+                                log::info!("Connected!");
+                                connected = true;
+
+                                nvs.set_blob("ssid", ssid.as_bytes()).unwrap();
+                                nvs.set_blob("password", password.as_bytes()).unwrap();
+                            } else {
+                                log::info!("Failed to connect");
+                                tries -=1;
+                            }
+                        }
+
+                        if !connected {
+                            log::info!("Failed to connect and ran out of tries :-(");
+                        }
+
+                    }
+                }
+            }
+        }
+
+        match sm.current_state() {
             State::Start => {
                 if let Some(incoming_data) = data {
                     if let Ok(maybe_b64_string) = String::from_utf8(incoming_data) {
@@ -393,4 +424,49 @@ impl StateMachine {
     fn current_state(&self) -> &State {
         &self.state
     }
+}
+
+fn connect_wifi(wifi: &mut BlockingWifi<EspWifi<'static>>, ssid: &String, password: &String) -> anyhow::Result<()> {
+    let wifi_configuration: Configuration = Configuration::Client(ClientConfiguration {
+        ssid: ssid.parse().expect(""),
+        bssid: None,
+        auth_method: AuthMethod::WPA2Personal,
+        password: password.parse().expect(""),
+        channel: None,
+        scan_method: Default::default(),
+        pmf_cfg: Default::default(),
+    });
+    log::info!("Actual config: {:?}", wifi_configuration);
+
+    wifi.set_configuration(&wifi_configuration)?;
+
+    wifi.connect()?;
+    log::info!("Wifi connected");
+
+    wifi.wait_netif_up()?;
+    log::info!("Wifi netif up");
+
+    Ok(())
+}
+
+fn parse_wifi_qr(qr_code: String) -> Option<(String, String)> {
+    if qr_code.starts_with("WIFI:") {
+        let mut ssid = String::new();
+        let mut password = String::new();
+
+        for part in qr_code.trim_start_matches("WIFI:").split(';') {
+            if let Some((key, value)) = part.split_once(':') {
+                match key {
+                    "S" => ssid = value.to_string(),
+                    "P" => password = value.to_string(),
+                    _ => {}
+                }
+            }
+        }
+
+        if !ssid.is_empty() {
+            return Some((ssid, password));
+        }
+    }
+    None
 }
