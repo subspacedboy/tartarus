@@ -142,7 +142,7 @@ fun  signedMessageBytesValidatorWithExternalKey(buf : ByteBuffer, key: ByteArray
 fun <T : Table> verifySignedMessageSignature(table : T, key : ByteArray, signature : ByteArray) : Boolean {
 //    println("key ${key.joinToString(" ")}")
 
-    val pubKey = getECPublicKeyFromByteArray(key)
+    val pubKey = getECPublicKeyFromCompressedKeyByteArray(key)
     val justContractBytes = getBytesOfTableWithVTable(table)
 
     val digest = MessageDigest.getInstance("SHA-256")

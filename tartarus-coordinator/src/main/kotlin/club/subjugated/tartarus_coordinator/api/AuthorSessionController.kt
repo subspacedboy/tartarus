@@ -1,20 +1,13 @@
 package club.subjugated.tartarus_coordinator.api
 
 import club.subjugated.tartarus_coordinator.api.messages.AuthorSessionMessage
-import club.subjugated.tartarus_coordinator.api.messages.LockSessionMessage
 import club.subjugated.tartarus_coordinator.api.messages.NewAuthorSessionMessage
-import club.subjugated.tartarus_coordinator.api.messages.NewLockSessionMessage
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
-import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromByteArray
-import club.subjugated.tartarus_coordinator.util.rawToDerSignature
 import jakarta.ws.rs.core.MediaType
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.*
-import java.security.MessageDigest
-import java.security.Signature
-import java.util.*
 
 @RestController
 @RequestMapping("/author_sessions")

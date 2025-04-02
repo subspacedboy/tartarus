@@ -31,7 +31,6 @@ export class LockSessionDetailComponent implements OnInit {
   ngOnInit() {
     this.tartarusCoordinatorService.getLockSession(this.sessionToken).subscribe(result => {
       this.lockSession = result;
-      this.userDataService.addlockSessionTokenView(this.sessionToken);
     });
 
     this.tartarusCoordinatorService.getContractsForShareable(this.sessionToken).subscribe(result => {

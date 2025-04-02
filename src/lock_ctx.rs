@@ -796,6 +796,7 @@ impl LockCtx {
                 session: Some(session),
                 started_with_local_contract: false,
                 is_locked: self.is_locked,
+                current_contract_serial: 0
             },
         );
 
@@ -837,6 +838,7 @@ impl LockCtx {
                 session: Some(session),
                 started_with_local_contract: false,
                 is_locked: self.is_locked,
+                current_contract_serial: 0
             },
         );
 

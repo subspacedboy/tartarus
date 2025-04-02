@@ -42,7 +42,7 @@ class AuthorSessionService {
         return this.authorSessionRepository.findByName(name)
     }
 
-    fun authorHasSeenToken(authorSession: AuthorSession, shareableToken: String) {
+    fun authorKnowsToken(authorSession: AuthorSession, shareableToken: String) {
         knownTokenRepository.findByAuthorSessionIdAndShareableToken(authorSession.id, shareableToken)
             ?: KnownToken(
                 state = KnownTokenState.CREATED,
@@ -51,5 +51,9 @@ class AuthorSessionService {
                 shareableToken = shareableToken,
                 createdAt = timeSource.nowInUtc()
             ).let { knownTokenRepository.save(it) }
+    }
+
+    fun getKnownTokens(authorSession: AuthorSession) : List<KnownToken> {
+        return knownTokenRepository.findByAuthorSessionIdAndState(authorSession.id, KnownTokenState.CREATED)
     }
 }

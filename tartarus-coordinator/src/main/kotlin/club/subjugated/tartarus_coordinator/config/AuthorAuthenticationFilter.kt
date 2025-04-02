@@ -1,19 +1,16 @@
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
-import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromByteArray
+import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromCompressedKeyByteArray
 import com.nimbusds.jose.crypto.ECDSAVerifier
 import com.nimbusds.jwt.SignedJWT
 import jakarta.servlet.FilterChain
 import jakarta.servlet.ServletException
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.core.userdetails.User
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource
-import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
 import java.io.IOException
 import java.util.*
@@ -37,28 +34,27 @@ class AuthorAuthenticationFilter(
             val claimsSet = signedJWT.jwtClaimsSet
 
             val authorSessionTokenName = claimsSet.subject
-            val authorSession = this.authorSessionService.findByName(authorSessionTokenName)
+            try {
+                val authorSession = this.authorSessionService.findByName(authorSessionTokenName)
 
-            val authorPublicECKey = getECPublicKeyFromByteArray(Base64.getDecoder().decode(authorSession.publicKey))
-            val verifier = ECDSAVerifier(authorPublicECKey)
-            if(signedJWT.verify(verifier)) {
-                val userDetails: UserDetails = User.withUsername(claimsSet.subject)
-                    .password("")
-                    .authorities(emptyList())
-                    .build()
+                val authorPublicECKey = getECPublicKeyFromCompressedKeyByteArray(Base64.getDecoder().decode(authorSession.publicKey))
+                val verifier = ECDSAVerifier(authorPublicECKey)
+                if(signedJWT.verify(verifier)) {
+                    val userDetails: UserDetails = User.withUsername(claimsSet.subject)
+                        .password("")
+                        .authorities(emptyList())
+                        .build()
 
-                val authentication = UsernamePasswordAuthenticationToken(userDetails, null, userDetails.authorities)
-                authentication.details = WebAuthenticationDetailsSource().buildDetails(request)
+                    val authentication = UsernamePasswordAuthenticationToken(userDetails, null, userDetails.authorities)
+                    authentication.details = WebAuthenticationDetailsSource().buildDetails(request)
 
-                SecurityContextHolder.getContext().authentication = authentication
+                    SecurityContextHolder.getContext().authentication = authentication
+                }
+            } catch (ex : Exception) {
+                filterChain.doFilter(request, response)
             }
         }
 
         filterChain.doFilter(request, response)
-    }
-
-    private fun validateTokenAndGetUsername(token: String): String? {
-        // Replace with actual token validation logic
-        return "user" // Example hardcoded username
     }
 }

@@ -1,6 +1,6 @@
 package club.subjugated.tartarus_coordinator.api.messages
 
-import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromByteArray
+import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromCompressedKeyByteArray
 import club.subjugated.tartarus_coordinator.util.rawToDerSignature
 import java.security.MessageDigest
 import java.security.Signature
@@ -14,7 +14,7 @@ data class NewAuthorSessionMessage(
     fun validateOrThrow() {
         val decodedKeyBytes = Base64.getDecoder().decode(publicKey)
 
-        val key = getECPublicKeyFromByteArray(decodedKeyBytes)
+        val key = getECPublicKeyFromCompressedKeyByteArray(decodedKeyBytes)
         val signatureBytes = Base64.getDecoder().decode(signature)
         val derSignature = rawToDerSignature(signatureBytes)
 

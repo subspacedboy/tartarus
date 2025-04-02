@@ -1,6 +1,6 @@
 package club.subjugated.tartarus_coordinator.models
 
-import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromByteArray
+import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromCompressedKeyByteArray
 import com.fasterxml.jackson.annotation.JsonFormat
 import jakarta.persistence.*
 import java.security.interfaces.ECPublicKey
@@ -35,6 +35,6 @@ class LockSession(
     }
 
     fun loadPublicKey() : ECPublicKey {
-        return getECPublicKeyFromByteArray(Base64.getDecoder().decode(this.publicKey))
+        return getECPublicKeyFromCompressedKeyByteArray(Base64.getDecoder().decode(this.publicKey))
     }
 }

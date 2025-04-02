@@ -2,9 +2,6 @@ package club.subjugated.tartarus_coordinator.util
 
 import org.bouncycastle.asn1.sec.SECNamedCurves
 import org.bouncycastle.asn1.x9.X9ECParameters
-import org.bouncycastle.crypto.generators.ECKeyPairGenerator
-import org.bouncycastle.crypto.params.ECDomainParameters
-import org.bouncycastle.crypto.params.ECKeyGenerationParameters
 import org.bouncycastle.crypto.signers.StandardDSAEncoding
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.jce.spec.ECNamedCurveSpec
@@ -13,7 +10,6 @@ import org.bouncycastle.openssl.jcajce.JcaPEMWriter
 import java.io.StringWriter
 import java.math.BigInteger
 import java.security.*
-import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 import java.security.spec.*
 
@@ -65,7 +61,7 @@ fun encodePublicKeySecp1(publicKey: ECPublicKey): ByteArray {
     return byteArrayOf(prefix) + fixedX
 }
 
-fun getECPublicKeyFromByteArray(compressedKeyBytes : ByteArray) : ECPublicKey {
+fun getECPublicKeyFromCompressedKeyByteArray(compressedKeyBytes : ByteArray) : ECPublicKey {
     Security.addProvider(BouncyCastleProvider())
 
     val params: X9ECParameters = SECNamedCurves.getByName("secp256r1")

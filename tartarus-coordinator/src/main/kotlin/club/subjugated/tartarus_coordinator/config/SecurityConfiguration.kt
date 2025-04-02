@@ -33,7 +33,7 @@ class SecurityConfiguration() {
             .csrf {
                 it.disable()
             }
-            .authorizeHttpRequests { auth -> auth.anyRequest().authenticated() }
+            .authorizeHttpRequests { auth -> auth.anyRequest().permitAll() }
             .httpBasic{
 
             }

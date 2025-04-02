@@ -7,6 +7,7 @@ import {AuthorSession} from './models/author-session';
 import {Contract} from './models/contract';
 import {ConfigService} from './config.service';
 import {AppConfig} from './models/app-config';
+import {KnownToken} from './models/known-token';
 
 @Injectable({
   providedIn: 'root'
@@ -109,6 +110,21 @@ export class TartarusCoordinatorService {
       });
 
       return contracts;
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public getKnownTokensForAuthor() : Observable<KnownToken[]> {
+    const get_tokens_uri = `${this.baseUrl}/lock_sessions/known`;
+    return this.http.get(get_tokens_uri, {
+      headers: new HttpHeaders({ 'X-Require-Auth': 'requires authorization tokens' }),
+    }).pipe(map((res:any) => {
+      const knownTokens : KnownToken[] = res.map((datum: any) => {
+        return new KnownToken(datum);
+      });
+
+      return knownTokens;
     }), catchError(error => {
       return this.handleError(error);
     }));

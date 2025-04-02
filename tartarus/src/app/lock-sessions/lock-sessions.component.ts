@@ -12,16 +12,19 @@ import {UserDataService} from '../user-data.service';
   styleUrl: './lock-sessions.component.scss'
 })
 export class LockSessionsComponent implements OnInit {
-  shareableTokens: string[];
+  shareableTokens?: (string | undefined)[];
 
   constructor(private activatedRoute: ActivatedRoute,
               private router: Router,
               private tartarusCoordinatorService: TartarusCoordinatorService,
               private userDataService: UserDataService,
               ) {
-    this.shareableTokens = userDataService.getLockSessionTokenViews();
+    // this.shareableTokens = userDataService.getLockSessionTokenViews();
   }
 
   ngOnInit() {
+    this.tartarusCoordinatorService.getKnownTokensForAuthor().subscribe(knownTokens => {
+      this.shareableTokens = knownTokens.map(t => t.shareableToken);
+    });
   }
 }
