@@ -11,6 +11,7 @@ mod overlays;
 mod under_contract_screen;
 mod display_contract_screen;
 mod internal_contract;
+mod acknowledger;
 
 use esp_idf_svc::wifi::BlockingWifi;
 use esp_idf_svc::wifi::EspWifi;
@@ -146,9 +147,9 @@ fn main() {
     display.init(&mut delay::Ets).expect("Display to initialize");
 
     display.set_orientation(Orientation::Landscape).expect("To set landscape");
-    display.clear(Rgb565::WHITE).expect("Display to clear");
+    display.clear(Rgb565::BLACK).expect("Display to clear");
 
-    let style = MonoTextStyle::new(&FONT_10X20, Rgb565::BLACK);
+    let style = MonoTextStyle::new(&FONT_10X20, Rgb565::GREEN);
     let draw_position = Point::new(120, 67);
     let text = Text::with_alignment("@SubspacedBoy\nTartarus Lock Booting", draw_position, style, Alignment::Center);
     text.draw(&mut display).expect("Should have drawn");

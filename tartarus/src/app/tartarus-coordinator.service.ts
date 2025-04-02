@@ -4,6 +4,7 @@ import {catchError, map, Observable, throwError} from 'rxjs';
 import * as base32 from 'hi-base32';
 import {LockSession} from './models/lock-session';
 import {AuthorSession} from './models/author-session';
+import {Contract} from './models/contract';
 
 @Injectable({
   providedIn: 'root'
@@ -30,6 +31,16 @@ export class TartarusCoordinatorService {
   public getLockSession(sessionToken: string) : Observable<LockSession> {
     const get_lock_session_uri = `http://localhost:5002/lock_sessions/${sessionToken}`;
     return this.http.get(get_lock_session_uri, {
+    }).pipe(map((res:any) => {
+      return new LockSession(res);
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public getMyLockSession(sessionToken: string) : Observable<LockSession> {
+    const get_my_lock_session_uri = `http://localhost:5002/lock_sessions/mine/${sessionToken}`;
+    return this.http.get(get_my_lock_session_uri, {
     }).pipe(map((res:any) => {
       return new LockSession(res);
     }), catchError(error => {
@@ -75,6 +86,50 @@ export class TartarusCoordinatorService {
     });
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
     return this.http.post(save_contract_uri, body, {headers} ).pipe(map((res:any) => {
+      // let t = new Ticket(res);
+      return true;
+    }),  catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public getContractsForShareable(shareableToken: string) : Observable<Contract[]> {
+    const get_contracts_uri = `http://localhost:5002/contracts/byShareable/${shareableToken}`;
+    return this.http.get(get_contracts_uri, {
+    }).pipe(map((res:any) => {
+      // const contracts : Contract[] = res['contracts'].map((datum: any) => {
+      //   return new Contract(datum);
+      // });
+      const contracts : Contract[] = res.map((datum: any) => {
+        return new Contract(datum);
+      });
+
+      return contracts;
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public getContractByName(name: string) : Observable<Contract> {
+    const get_contracts_uri = `http://localhost:5002/contracts/${name}`;
+    return this.http.get(get_contracts_uri, {
+    }).pipe(map((res:any) => {
+      return new Contract(res);
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public saveUnlock(contractName: string, authorName: string, shareableToken: string, signed_message: Uint8Array) : Observable<boolean> {
+    const save_command_uri = `http://localhost:5002/contracts/command`;
+    const body = JSON.stringify({
+      'shareableToken' : shareableToken,
+      'authorSessionName' : authorName,
+      'contractName': contractName,
+      'signedMessage' : btoa(String.fromCharCode(...signed_message))
+    });
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+    return this.http.post(save_command_uri, body, {headers} ).pipe(map((res:any) => {
       // let t = new Ticket(res);
       return true;
     }),  catchError(error => {

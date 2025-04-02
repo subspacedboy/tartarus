@@ -4,25 +4,22 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import { UpdateType } from '../../../../club/subjugated/fb/message/update-type.js';
-
-
-export class LockUpdateEvent {
+export class Acknowledgement {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
-  __init(i:number, bb:flatbuffers.ByteBuffer):LockUpdateEvent {
+  __init(i:number, bb:flatbuffers.ByteBuffer):Acknowledgement {
   this.bb_pos = i;
   this.bb = bb;
   return this;
 }
 
-static getRootAsLockUpdateEvent(bb:flatbuffers.ByteBuffer, obj?:LockUpdateEvent):LockUpdateEvent {
-  return (obj || new LockUpdateEvent()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+static getRootAsAcknowledgement(bb:flatbuffers.ByteBuffer, obj?:Acknowledgement):Acknowledgement {
+  return (obj || new Acknowledgement()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-static getSizePrefixedRootAsLockUpdateEvent(bb:flatbuffers.ByteBuffer, obj?:LockUpdateEvent):LockUpdateEvent {
+static getSizePrefixedRootAsAcknowledgement(bb:flatbuffers.ByteBuffer, obj?:Acknowledgement):Acknowledgement {
   bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
-  return (obj || new LockUpdateEvent()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+  return (obj || new Acknowledgement()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
 publicKey(index: number):number|null {
@@ -47,19 +44,17 @@ session(optionalEncoding?:any):string|Uint8Array|null {
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
-body():string|null
-body(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-body(optionalEncoding?:any):string|Uint8Array|null {
+serialNumber():number {
   const offset = this.bb!.__offset(this.bb_pos, 8);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+  return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
 }
 
-thisUpdateType():UpdateType {
+counter():number {
   const offset = this.bb!.__offset(this.bb_pos, 10);
-  return offset ? this.bb!.readInt8(this.bb_pos + offset) : UpdateType.Undefined;
+  return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
 }
 
-static startLockUpdateEvent(builder:flatbuffers.Builder) {
+static startAcknowledgement(builder:flatbuffers.Builder) {
   builder.startObject(4);
 }
 
@@ -83,25 +78,25 @@ static addSession(builder:flatbuffers.Builder, sessionOffset:flatbuffers.Offset)
   builder.addFieldOffset(1, sessionOffset, 0);
 }
 
-static addBody(builder:flatbuffers.Builder, bodyOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(2, bodyOffset, 0);
+static addSerialNumber(builder:flatbuffers.Builder, serialNumber:number) {
+  builder.addFieldInt16(2, serialNumber, 0);
 }
 
-static addThisUpdateType(builder:flatbuffers.Builder, thisUpdateType:UpdateType) {
-  builder.addFieldInt8(3, thisUpdateType, UpdateType.Undefined);
+static addCounter(builder:flatbuffers.Builder, counter:number) {
+  builder.addFieldInt16(3, counter, 0);
 }
 
-static endLockUpdateEvent(builder:flatbuffers.Builder):flatbuffers.Offset {
+static endAcknowledgement(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   return offset;
 }
 
-static createLockUpdateEvent(builder:flatbuffers.Builder, publicKeyOffset:flatbuffers.Offset, sessionOffset:flatbuffers.Offset, bodyOffset:flatbuffers.Offset, thisUpdateType:UpdateType):flatbuffers.Offset {
-  LockUpdateEvent.startLockUpdateEvent(builder);
-  LockUpdateEvent.addPublicKey(builder, publicKeyOffset);
-  LockUpdateEvent.addSession(builder, sessionOffset);
-  LockUpdateEvent.addBody(builder, bodyOffset);
-  LockUpdateEvent.addThisUpdateType(builder, thisUpdateType);
-  return LockUpdateEvent.endLockUpdateEvent(builder);
+static createAcknowledgement(builder:flatbuffers.Builder, publicKeyOffset:flatbuffers.Offset, sessionOffset:flatbuffers.Offset, serialNumber:number, counter:number):flatbuffers.Offset {
+  Acknowledgement.startAcknowledgement(builder);
+  Acknowledgement.addPublicKey(builder, publicKeyOffset);
+  Acknowledgement.addSession(builder, sessionOffset);
+  Acknowledgement.addSerialNumber(builder, serialNumber);
+  Acknowledgement.addCounter(builder, counter);
+  return Acknowledgement.endAcknowledgement(builder);
 }
 }

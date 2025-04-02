@@ -19,12 +19,12 @@ import java.nio.ByteOrder
 import kotlin.math.sign
 
 @Suppress("unused")
-class LockUpdateEvent : Table() {
+class Error : Table() {
 
     fun __init(_i: Int, _bb: ByteBuffer)  {
         __reset(_i, _bb)
     }
-    fun __assign(_i: Int, _bb: ByteBuffer) : LockUpdateEvent {
+    fun __assign(_i: Int, _bb: ByteBuffer) : Error {
         __init(_i, _bb)
         return this
     }
@@ -53,38 +53,44 @@ class LockUpdateEvent : Table() {
         }
     val sessionAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
     fun sessionInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
-    val body : String?
+    val serialNumber : UShort
         get() {
             val o = __offset(8)
+            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+        }
+    val counter : UShort
+        get() {
+            val o = __offset(10)
+            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+        }
+    val message : String?
+        get() {
+            val o = __offset(12)
             return if (o != 0) {
                 __string(o + bb_pos)
             } else {
                 null
             }
         }
-    val bodyAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(8, 1)
-    fun bodyInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 8, 1)
-    val thisUpdateType : Byte
-        get() {
-            val o = __offset(10)
-            return if(o != 0) bb.get(o + bb_pos) else 0
-        }
+    val messageAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(12, 1)
+    fun messageInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 12, 1)
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
-        fun getRootAsLockUpdateEvent(_bb: ByteBuffer): LockUpdateEvent = getRootAsLockUpdateEvent(_bb, LockUpdateEvent())
-        fun getRootAsLockUpdateEvent(_bb: ByteBuffer, obj: LockUpdateEvent): LockUpdateEvent {
+        fun getRootAsError(_bb: ByteBuffer): Error = getRootAsError(_bb, Error())
+        fun getRootAsError(_bb: ByteBuffer, obj: Error): Error {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createLockUpdateEvent(builder: FlatBufferBuilder, publicKeyOffset: Int, sessionOffset: Int, bodyOffset: Int, thisUpdateType: Byte) : Int {
-            builder.startTable(4)
-            addBody(builder, bodyOffset)
+        fun createError(builder: FlatBufferBuilder, publicKeyOffset: Int, sessionOffset: Int, serialNumber: UShort, counter: UShort, messageOffset: Int) : Int {
+            builder.startTable(5)
+            addMessage(builder, messageOffset)
             addSession(builder, sessionOffset)
             addPublicKey(builder, publicKeyOffset)
-            addThisUpdateType(builder, thisUpdateType)
-            return endLockUpdateEvent(builder)
+            addCounter(builder, counter)
+            addSerialNumber(builder, serialNumber)
+            return endError(builder)
         }
-        fun startLockUpdateEvent(builder: FlatBufferBuilder) = builder.startTable(4)
+        fun startError(builder: FlatBufferBuilder) = builder.startTable(5)
         fun addPublicKey(builder: FlatBufferBuilder, publicKey: Int) = builder.addOffset(0, publicKey, 0)
         @kotlin.ExperimentalUnsignedTypes
         fun createPublicKeyVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
@@ -96,9 +102,10 @@ class LockUpdateEvent : Table() {
         }
         fun startPublicKeyVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
         fun addSession(builder: FlatBufferBuilder, session: Int) = builder.addOffset(1, session, 0)
-        fun addBody(builder: FlatBufferBuilder, body: Int) = builder.addOffset(2, body, 0)
-        fun addThisUpdateType(builder: FlatBufferBuilder, thisUpdateType: Byte) = builder.addByte(3, thisUpdateType, 0)
-        fun endLockUpdateEvent(builder: FlatBufferBuilder) : Int {
+        fun addSerialNumber(builder: FlatBufferBuilder, serialNumber: UShort) = builder.addShort(2, serialNumber.toShort(), 0)
+        fun addCounter(builder: FlatBufferBuilder, counter: UShort) = builder.addShort(3, counter.toShort(), 0)
+        fun addMessage(builder: FlatBufferBuilder, message: Int) = builder.addOffset(4, message, 0)
+        fun endError(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o
         }

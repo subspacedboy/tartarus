@@ -3,7 +3,7 @@ use crate::lock_ctx::LockCtx;
 use crate::prelude::prelude::{DynScreen, MySPI};
 use crate::screen_ids::ScreenId;
 use crate::screen_state::ScreenState;
-use crate::verifier::{ContractVerifier, VerifiedType};
+use crate::verifier::{SignedMessageVerifier, VerifiedType};
 use embedded_graphics::pixelcolor::{Rgb565, RgbColor};
 use embedded_graphics::prelude::Primitive;
 use embedded_graphics::primitives::PrimitiveStyleBuilder;
@@ -49,9 +49,9 @@ where
     fn on_update(&mut self, lock_ctx: &mut LockCtx) -> Option<Box<DynScreen<'static>>> {
         if let Some(update) = &lock_ctx.this_update {
             if let Some(qr_data) = &update.qr_data {
-                let verifier = ContractVerifier::new();
+                let verifier = SignedMessageVerifier::new();
 
-                if let Ok(verified_type) = verifier.verify(qr_data.clone(), &lock_ctx.session_token) {
+                if let Ok(verified_type) = verifier.verify(qr_data.clone(), &lock_ctx.session_token, None) {
                     match verified_type {
                         VerifiedType::Contract(contract) => {
                             lock_ctx.accept_contract(&contract);
@@ -75,6 +75,27 @@ where
         None
     }
 
+    fn process_command(&mut self, lock_ctx: &mut LockCtx, command: VerifiedType)  -> Result<Option<Box<DynScreen<'static>>>, String>{
+        match command {
+            VerifiedType::Contract(contract) => {
+                lock_ctx.accept_contract(&contract);
+
+                lock_ctx.contract = Some(contract);
+                let under_contract = Box::new(
+                    UnderContractScreen::<
+                        MySPI<'static>,
+                        PinDriver<'static, _, Output>,
+                        PinDriver<'static, _, Output>,
+                        GpioError
+                    >::new());
+                Ok(Some(under_contract))
+            }
+            _ => {
+                Err("Command doesn't work on BootScreen".parse().unwrap())
+            }
+        }
+    }
+
 
     fn draw_screen(&mut self, lock_ctx : &mut LockCtx) {
         // let whole_message = if let Some(key) = lock_ctx.public_key {
@@ -95,9 +116,18 @@ where
         // Scale factor and positioning
         let scale = 2;
         // let offset_y = (240 - qr_width * scale) / 2;
-        let offset_y = 0;
+        let offset_y = 5_u32;
         // let offset_y = (240 - qr_width * scale) / 2;
-        let offset_x = 70;
+        let offset_x = 70_u32;
+
+        let border_width = 5;
+
+        let rect = Rectangle::new(
+            Point::new((offset_x - border_width) as i32, (offset_y - border_width) as i32),
+            Size::new(qr_width * scale + border_width * 2, qr_width * scale + border_width * 2),
+        )
+            .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::WHITE).build());
+        rect.draw(&mut lock_ctx.display).expect("Expected to draw");
 
         for y in 0..qr_width {
             for x in 0..qr_width {

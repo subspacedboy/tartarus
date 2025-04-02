@@ -28,6 +28,21 @@ class UnlockCommand : Table() {
         __init(_i, _bb)
         return this
     }
+    val contractSerialNumber : UShort
+        get() {
+            val o = __offset(4)
+            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+        }
+    val serialNumber : UShort
+        get() {
+            val o = __offset(6)
+            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+        }
+    val counter : UShort
+        get() {
+            val o = __offset(8)
+            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+        }
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsUnlockCommand(_bb: ByteBuffer): UnlockCommand = getRootAsUnlockCommand(_bb, UnlockCommand())
@@ -35,7 +50,17 @@ class UnlockCommand : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun startUnlockCommand(builder: FlatBufferBuilder) = builder.startTable(0)
+        fun createUnlockCommand(builder: FlatBufferBuilder, contractSerialNumber: UShort, serialNumber: UShort, counter: UShort) : Int {
+            builder.startTable(3)
+            addCounter(builder, counter)
+            addSerialNumber(builder, serialNumber)
+            addContractSerialNumber(builder, contractSerialNumber)
+            return endUnlockCommand(builder)
+        }
+        fun startUnlockCommand(builder: FlatBufferBuilder) = builder.startTable(3)
+        fun addContractSerialNumber(builder: FlatBufferBuilder, contractSerialNumber: UShort) = builder.addShort(0, contractSerialNumber.toShort(), 0)
+        fun addSerialNumber(builder: FlatBufferBuilder, serialNumber: UShort) = builder.addShort(1, serialNumber.toShort(), 0)
+        fun addCounter(builder: FlatBufferBuilder, counter: UShort) = builder.addShort(2, counter.toShort(), 0)
         fun endUnlockCommand(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o

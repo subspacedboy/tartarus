@@ -2,22 +2,24 @@
 
 @if(alreadyLoggedIn()) {
  <h1>You're already logged in.</h1>
-}
-
-<div class="row">
-  <h2>Load key from image</h2>
-  <input type="file" (change)="onFileSelected($event)" accept="image/*">
-  <canvas #scanCanvas style="display: none;"></canvas>
-  <p>Scanned QR Code Data: <strong>{{ scannedResult }}</strong></p>
-</div>
-
-@if(loginComplete) {
+} @else {
   <div class="row">
-    <div class="bs-component">
-      <div class="alert alert-success">
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        <strong>Sucess!</strong> You're logged in as a contract author.
+    <h2>Load key from image</h2>
+    <input type="file" (change)="onFileSelected($event)" accept="image/*">
+    <canvas #scanCanvas style="display: none;"></canvas>
+    <p>Scanned QR Code Data: <strong>{{ scannedResult }}</strong></p>
+  </div>
+
+  @if(loginComplete) {
+    <div class="row">
+      <div class="bs-component">
+        <div class="alert alert-success">
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          <strong>Sucess!</strong> You're logged in as a contract author.
+        </div>
       </div>
     </div>
-  </div>
+  }
 }
+
+

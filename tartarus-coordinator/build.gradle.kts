@@ -49,6 +49,7 @@ dependencies {
 	implementation("io.moquette:moquette-broker:0.17")
 	implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
 	implementation("org.bouncycastle:bcprov-jdk18on:1.80")
+	implementation("com.github.ben-manes.caffeine:caffeine:3.2.0")
 }
 
 dependencyManagement {

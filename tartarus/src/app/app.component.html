@@ -5,7 +5,10 @@
       <button type="button" class="btn btn-primary" id="dropdownBasic1" ngbDropdownToggle>Menu</button>
       <div ngbDropdownMenu aria-labelledby="dropdownBasic1">
         <button ngbDropdownItem><a routerLink="">Home</a></button>
-        <button ngbDropdownItem><a routerLink="public/subscriptions">Public Subscriptions</a></button>
+
+        @if(hasLockSessions) {
+          <button ngbDropdownItem><a routerLink="my-lock">My Lock</a></button>
+        }
 
 <!--        @if (currentUser) {-->
 <!--          <button ngbDropdownItem><a routerLink="my-info">My Info</a></button>-->

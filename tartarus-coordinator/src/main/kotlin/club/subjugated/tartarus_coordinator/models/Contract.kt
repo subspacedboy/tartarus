@@ -1,14 +1,9 @@
 package club.subjugated.tartarus_coordinator.models
 
-import club.subjugated.fb.message.Command
-import club.subjugated.fb.message.CommandType
-import club.subjugated.fb.message.SignedMessage
-import club.subjugated.tartarus_coordinator.models.LockSession.Companion.generateId
 import com.fasterxml.jackson.annotation.JsonFormat
-import com.google.flatbuffers.FlatBufferBuilder
 import jakarta.persistence.*
-import java.nio.ByteBuffer
 import java.time.OffsetDateTime
+import kotlin.jvm.Transient
 
 @Entity
 class Contract(
@@ -16,7 +11,6 @@ class Contract(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long = 0,
     var name: String = generateId(),
-    var publicKey : String,
     var shareableToken : String?,
     @Enumerated(EnumType.STRING)
     var state : ContractState = ContractState.UNSPECIFIED,
@@ -25,6 +19,10 @@ class Contract(
     var authorSession: AuthorSession,
     var body : ByteArray? = null,
 
+    @OneToMany(mappedBy = "id", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    var commands : MutableList<Command> = mutableListOf(),
+    var nextCounter: Int = 0,
+    var serialNumber: Int = 0,
 
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,

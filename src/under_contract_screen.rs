@@ -1,5 +1,5 @@
 use crate::lock_ctx::LockCtx;
-use crate::prelude::prelude::DynScreen;
+use crate::prelude::prelude::{DynScreen, MySPI};
 use crate::screen_ids::ScreenId;
 use crate::screen_state::ScreenState;
 use embedded_graphics::mono_font::ascii::FONT_10X20;
@@ -10,6 +10,8 @@ use embedded_graphics_core::pixelcolor::Rgb565;
 use embedded_graphics_core::prelude::{DrawTarget, RgbColor};
 use embedded_graphics_core::Drawable;
 use embedded_hal::digital::OutputPin;
+use esp_idf_hal::gpio::{GpioError, Output, PinDriver};
+use crate::verifier::VerifiedType;
 
 pub struct UnderContractScreen<SPI, DC, RST, PinE> {
     _spi: core::marker::PhantomData<SPI>,
@@ -73,11 +75,32 @@ where
         None
     }
 
+    fn process_command(&mut self, lock_ctx: &mut LockCtx, command: VerifiedType) -> Result<Option<Box<DynScreen<'static>>>, String> {
+        log::info!("process_command: {:?}", command);
+        match command {
+            VerifiedType::UnlockCommand(_) => {
+                lock_ctx.unlock();
+                self.text = "Unlocked".to_string();
+                self.needs_redraw = true;
+                Ok(None)
+            }
+            VerifiedType::LockCommand(_) => {
+                lock_ctx.lock();
+                self.text = "Locked :-)".to_string();
+                self.needs_redraw = true;
+                Ok(None)
+            }
+            _ => {
+                Err("Command doesn't work on UnderContractScreen".parse().unwrap())
+            }
+        }
+    }
+
 
     fn draw_screen(&mut self, lock_ctx : &mut LockCtx) {
-        lock_ctx.display.clear(Rgb565::WHITE).expect("Screen should have cleared");
+        lock_ctx.display.clear(Rgb565::BLACK).expect("Screen should have cleared");
 
-        let style = MonoTextStyle::new(&FONT_10X20, Rgb565::BLACK);
+        let style = MonoTextStyle::new(&FONT_10X20, Rgb565::GREEN);
         let draw_position = Point::new(120, 67);
         let text = Text::with_alignment(self.text.as_str(), draw_position, style, Alignment::Center);
         text.draw(&mut lock_ctx.display).expect("Should have drawn");

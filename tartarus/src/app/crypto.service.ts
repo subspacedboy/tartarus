@@ -21,6 +21,15 @@ export class CryptoService {
     return await crypto.subtle.digest("SHA-256", data);
   }
 
+  async hashAndSignFb(privateKey: CryptoKey, data: Uint8Array): Promise<ArrayBuffer> {
+    const offsetToTable = data[0] | (data[1] << 8);
+    const offsetToVTable = data[offsetToTable] | (data[offsetToTable + 1] << 8);
+    const vTableStart = offsetToTable - offsetToVTable;
+    const vtableAndContract = data.slice(vTableStart);
+
+    return await this.hashAndSignData(privateKey, vtableAndContract);
+  }
+
   async hashAndSignData(privateKey: CryptoKey, data: Uint8Array): Promise<ArrayBuffer> {
     console.log("Hashing data: " + new Uint8Array(data));
     const hash = await this.sha256(data); // Compute hash first

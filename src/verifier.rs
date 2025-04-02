@@ -1,24 +1,35 @@
 use std::io::Read;
+use hkdf::hmac::Mac;
 use p256::ecdsa::{Signature, VerifyingKey};
 use p256::ecdsa::signature::Verifier;
 use p256::PublicKey;
 use sha2::{Digest, Sha256};
 use crate::contract_generated::club::subjugated::fb::message::{Contract, MessagePayload};
-use crate::internal_contract::{InternalContract};
+use crate::internal_contract::{InternalContract, InternalLockCommand, InternalUnlockCommand, InternalUnverified};
 
-pub(crate) struct ContractVerifier;
+pub(crate) struct SignedMessageVerifier;
 
+#[derive(Debug, Clone)]
 pub enum VerifiedType {
     Contract(InternalContract),
+    UnlockCommand(InternalUnlockCommand),
+    LockCommand(InternalLockCommand),
     NoVerifiedType
 }
 
-impl ContractVerifier {
+#[derive(Debug, Clone)]
+pub struct VerificationError {
+    pub serial_number: u16,
+    pub counter: u16,
+    pub message: String,
+}
+
+impl SignedMessageVerifier {
     pub fn new() -> Self {
         Self {}
     }
 
-    pub fn verify(self, incoming_data: Vec<u8>, session_token: &String) -> Result<VerifiedType, String> {
+    pub fn verify(self, incoming_data: Vec<u8>, session_token: &String, contract_public_key: Option<&VerifyingKey>) -> Result<VerifiedType, VerificationError> {
         let mut result_contract : Option<Contract> = None;
         let owned_data = incoming_data.clone();
 
@@ -76,6 +87,94 @@ impl ContractVerifier {
                                 }
                             }
                         },
+                        MessagePayload::UnlockCommand => {
+                            log::info!("Processing unlock command");
+                            let unlock = signed_msg.payload_as_unlock_command().unwrap();
+                            if let Some(public_key) = contract_public_key {
+                                let message_table_start = unlock._tab.loc();
+                                let vtable_offset = u16::from_le_bytes(incoming_data[message_table_start..message_table_start +2].try_into().expect("wrong size")) as usize;
+                                let contract_end = incoming_data.len();
+                                let vtable_start = message_table_start - vtable_offset;
+                                let message_buffer = &incoming_data[vtable_start..contract_end];
+
+                                log::info!("Unlock buffer w/ vtable ({},{}): {:?}", vtable_start, contract_end, message_buffer.bytes());
+                                let hash = Sha256::digest(&message_buffer);
+                                log::info!("Hash: {:?}", hash);
+
+                                match Signature::from_bytes(signature.unwrap().bytes().into()) {
+                                    Ok(valid_signature) => {
+                                        if let Some(verifying_key) = contract_public_key {
+                                            match verifying_key.verify(&hash, &valid_signature) {
+                                                Ok(_) => {
+                                                    log::debug!("Signature verified!");
+                                                    return Ok(VerifiedType::UnlockCommand(unlock.into()));
+                                                }
+                                                Err(e) => {
+                                                    log::error!("Error verifying signature: {:?}", e);
+                                                }
+                                            }
+                                        } else {
+                                            log::error!("Somehow contract publish key wasn't supplied");
+                                        }
+                                    }
+                                    Err(e) => {
+                                        log::error!("Error parsing signature: {:?}", e);
+                                    }
+                                }
+
+                            } else {
+                                log::error!("We received a message that requires a contract without having a public key already loaded.");
+                                return Err(VerificationError {
+                                    serial_number: unlock.serial_number(),
+                                    counter: unlock.counter(),
+                                    message: "Required a contract key but none was loaded".to_string(),
+                                })
+                            }
+                        },
+                        MessagePayload::LockCommand => {
+                            log::info!("Processing lock command");
+                            let lock = signed_msg.payload_as_lock_command().unwrap();
+                            if let Some(public_key) = contract_public_key {
+                                let message_table_start = lock._tab.loc();
+                                let vtable_offset = u16::from_le_bytes(incoming_data[message_table_start..message_table_start +2].try_into().expect("wrong size")) as usize;
+                                let contract_end = incoming_data.len();
+                                let vtable_start = message_table_start - vtable_offset;
+                                let message_buffer = &incoming_data[vtable_start..contract_end];
+
+                                log::info!("Unlock buffer w/ vtable ({},{}): {:?}", vtable_start, contract_end, message_buffer.bytes());
+                                let hash = Sha256::digest(&message_buffer);
+                                log::info!("Hash: {:?}", hash);
+
+                                match Signature::from_bytes(signature.unwrap().bytes().into()) {
+                                    Ok(valid_signature) => {
+                                        if let Some(verifying_key) = contract_public_key {
+                                            match verifying_key.verify(&hash, &valid_signature) {
+                                                Ok(_) => {
+                                                    log::debug!("Signature verified!");
+                                                    return Ok(VerifiedType::LockCommand(lock.into()));
+                                                }
+                                                Err(e) => {
+                                                    log::error!("Error verifying signature: {:?}", e);
+                                                }
+                                            }
+                                        } else {
+                                            log::error!("Somehow contract publish key wasn't supplied");
+                                        }
+                                    }
+                                    Err(e) => {
+                                        log::error!("Error parsing signature: {:?}", e);
+                                    }
+                                }
+
+                            } else {
+                                log::error!("We received a message that requires a contract without having a public key already loaded.");
+                                return Err(VerificationError {
+                                    serial_number: lock.serial_number(),
+                                    counter: lock.counter(),
+                                    message: "Required a contract key but none was loaded".to_string(),
+                                })
+                            }
+                        }
                         _ => {
                             // return Ok(VerifiedType::NoVerifiedType);
                         },

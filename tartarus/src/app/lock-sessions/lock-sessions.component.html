@@ -1,9 +1,9 @@
-<h1>Lock Session {{sessionToken}}</h1>
+<h1>Lock Sessions</h1>
 
-<div>
-  <a [routerLink]="['simple-contract']">Simple Contract (Works offline) </a>
-</div>
-
-<div>
-  <a [routerLink]="['full-contract']">Full Contract (Online only)</a>
-</div>
+@for (s of shareableTokens; track s) {
+  <div class="row" style="margin-top: 1em;">
+    <div class="col-lg-5">
+      <a routerLink="{{s}}">{{s}}</a>
+    </div>
+  </div>
+}

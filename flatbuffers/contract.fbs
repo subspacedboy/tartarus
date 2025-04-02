@@ -24,18 +24,14 @@ table TemporaryUnlockRules {
 }
 
 table Contract {
+    serial_number: ushort;
+
   public_key: [ubyte];
 
   nonce: [ubyte];
   confirm_code: [ubyte];
-  notes: string;
-
-  // If this contract is able to be loaded, it cannot be removed
-  // without explicit permission.
-  is_unremovable: bool;
 
   end_condition: EndCondition;
-
   webhooks: [WebHook];
 
   // If true, subject can freely cycle the lock.
@@ -43,48 +39,52 @@ table Contract {
   unlock_rules : TemporaryUnlockRules;
 }
 
-table SimpleContract {
-  public_key: [ubyte];
+// enum UpdateType : byte { Undefined = 0, Started, Acknowledgement }
 
-  nonce: [ubyte];
-  confirm_code: [ubyte];
-
-  // If this contract is able to be loaded, it cannot be removed
-  // without explicit permission.
-  is_unremovable: bool;
-
-  end_condition: EndCondition;
-
-  // If true, subject can freely cycle the lock.
-  is_temporary_unlock_allowed: bool;
-  unlock_rules : TemporaryUnlockRules;
-}
-
-
-enum UpdateType : byte { Undefined = 0, Started, Locked, Unlocked, Error }
-
-table LockUpdateEvent {
+table StartedUpdate {
     public_key: [ubyte];
     session: string;
-    body: string;
-    this_update_type: UpdateType;
+
+    started_with_local_contract: bool;
+    is_locked: bool;
 }
 
-//enum CommandType : byte { Undefined = 0, AcceptContract, Lock, Unlock, Release, Ping }
+table Acknowledgement {
+    public_key: [ubyte];
+    session: string;
 
-// Commands tell the lock what to do. They're always signed, so it's really just a
-// wrapper for cleaner code.
-//table Command {
-//    signed_message: [ubyte];
-//    command_type: CommandType;
-//}
+    serial_number: ushort;
+    counter: ushort;
+}
 
-table LockCommand {}
-table UnlockCommand {}
-table ReleaseCommand {}
+table Error {
+    public_key: [ubyte];
+    session: string;
+
+    serial_number: ushort;
+    counter: ushort;
+
+    message: string;
+}
+
+table LockCommand {
+    contract_serial_number: ushort;
+    serial_number: ushort;
+    counter: ushort;
+}
+table UnlockCommand {
+    contract_serial_number: ushort;
+    serial_number: ushort;
+    counter: ushort;
+}
+table ReleaseCommand {
+    contract_serial_number: ushort;
+    serial_number: ushort;
+    counter: ushort;
+}
 
 union MessagePayload {
-  Contract, LockUpdateEvent, LockCommand, UnlockCommand, ReleaseCommand
+  Contract, LockCommand, UnlockCommand, ReleaseCommand, StartedUpdate, Acknowledgement, Error
 }
 
 table SignedMessage {

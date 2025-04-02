@@ -1,8 +1,9 @@
 use p256::ecdsa::VerifyingKey;
-use crate::contract_generated::club::subjugated::fb::message::{Contract, EndCondition};
+use crate::contract_generated::club::subjugated::fb::message::{Contract, EndCondition, LockCommand, UnlockCommand};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InternalContract {
+    pub serial_number: u16,
     pub temporary_unlock_allowed : bool,
     pub unremovable: bool,
     pub end_criteria: EndCriteria,
@@ -10,14 +11,33 @@ pub struct InternalContract {
     pub public_key: VerifyingKey
 }
 
+#[derive(Debug, Clone)]
+pub struct InternalUnlockCommand {
+    pub contract_serial_number: u16,
+    pub serial_number: u16,
+    pub counter: u16
+}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+pub struct InternalLockCommand {
+    pub contract_serial_number: u16,
+    pub serial_number: u16,
+    pub counter: u16
+}
+
+#[derive(Debug, Clone)]
+pub struct InternalUnverified {
+    pub serial_number: u16,
+    pub counter: u16
+}
+
+#[derive(Debug, Clone)]
 pub enum EndCriteria {
     WhenISaySo,
     Time
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TempUnlockRules {
     Remaining(u16),
     TimeLimit(u16)
@@ -32,8 +52,9 @@ impl From<Contract<'_>> for InternalContract {
         };
 
         let mut ic = Self {
+            serial_number: contract.serial_number(),
             temp_unlock_rules: Vec::new(),
-            unremovable: contract.is_unremovable(),
+            unremovable: false,
             temporary_unlock_allowed: contract.is_temporary_unlock_allowed(),
             end_criteria: end_condition,
             public_key: VerifyingKey::from_sec1_bytes(contract.public_key().unwrap().bytes()).expect("Valid public key")
@@ -49,5 +70,25 @@ impl From<Contract<'_>> for InternalContract {
         }
 
         ic
+    }
+}
+
+impl From<UnlockCommand<'_>> for InternalUnlockCommand {
+    fn from(unlock_command: UnlockCommand) -> InternalUnlockCommand {
+        Self {
+            contract_serial_number: unlock_command.contract_serial_number(),
+            serial_number: unlock_command.serial_number(),
+            counter: unlock_command.counter(),
+        }
+    }
+}
+
+impl From<LockCommand<'_>> for InternalLockCommand {
+    fn from(lock_command: LockCommand) -> InternalLockCommand {
+        Self {
+            contract_serial_number: lock_command.contract_serial_number(),
+            serial_number: lock_command.serial_number(),
+            counter: lock_command.counter(),
+        }
     }
 }

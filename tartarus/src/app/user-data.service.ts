@@ -21,6 +21,30 @@ export class UserDataService {
     localStorage.setItem(token_to_pubkey_key, JSON.stringify(publicKey));
   }
 
+  getLockSessions(): string[] {
+    const key = 'lock_sessions';
+    return JSON.parse(localStorage.getItem(key) || '[]');
+  }
+
+  hasLockSessions(): boolean {
+    return this.getLockSessions().length > 0;
+  }
+
+  addlockSessionTokenView(lockSesssionShareToken: string) {
+    const key = 'available_shareable_tokens';
+    const existingTokens = new Set(JSON.parse(localStorage.getItem(key) || '[]'));
+
+    if (!existingTokens.has(lockSesssionShareToken)) {
+      existingTokens.add(lockSesssionShareToken);
+      localStorage.setItem(key, JSON.stringify(Array.from(existingTokens)));
+    }
+  }
+
+  getLockSessionTokenViews(): string[] {
+    const key = 'available_shareable_tokens';
+    return JSON.parse(localStorage.getItem(key) || '[]');
+  }
+
   getAuthorKeypair() {
     const privatePem = localStorage.getItem("private_pem");
     const publicPem = localStorage.getItem("public_pem");

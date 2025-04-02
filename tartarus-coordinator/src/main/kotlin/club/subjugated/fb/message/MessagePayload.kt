@@ -7,9 +7,11 @@ class MessagePayload private constructor() {
     companion object {
         const val NONE: UByte = 0u
         const val Contract: UByte = 1u
-        const val LockUpdateEvent: UByte = 2u
-        const val LockCommand: UByte = 3u
-        const val UnlockCommand: UByte = 4u
-        const val ReleaseCommand: UByte = 5u
+        const val LockCommand: UByte = 2u
+        const val UnlockCommand: UByte = 3u
+        const val ReleaseCommand: UByte = 4u
+        const val StartedUpdate: UByte = 5u
+        const val Acknowledgement: UByte = 6u
+        const val Error: UByte = 7u
     }
 }

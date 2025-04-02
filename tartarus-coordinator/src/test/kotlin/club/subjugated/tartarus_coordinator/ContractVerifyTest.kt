@@ -1,17 +1,12 @@
 package club.subjugated.tartarus_coordinator
 
-import club.subjugated.fb.message.Contract
-import club.subjugated.fb.message.MessagePayload
-import club.subjugated.fb.message.SignedMessage
-import club.subjugated.tartarus_coordinator.util.*
 import club.subjugated.tartarus_coordinator.util.ValidatedPayload.ContractPayload
+import club.subjugated.tartarus_coordinator.util.signedMessageBytesValidator
 import org.assertj.core.api.Assertions.assertThat
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.jupiter.api.Test
 import java.nio.ByteBuffer
-import java.security.MessageDigest
 import java.security.Security
-import java.security.Signature
 import java.util.*
 
 

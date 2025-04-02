@@ -76,12 +76,13 @@ export class NewFullContractComponent {
     const nonceOffset = builder.createByteVector(cipher.iv);
     const confirmCodeOffset = builder.createByteVector(new Uint8Array(cipherText));
 
+    const serialNumber = Math.floor(Math.random() * 65536);
     Contract.startContract(builder);
+    Contract.addSerialNumber(builder, serialNumber);
     Contract.addPublicKey(builder, publicKeyOffset);
     Contract.addIsTemporaryUnlockAllowed(builder, false);
     Contract.addEndCondition(builder, whenISaySoOffset);
     Contract.addEndConditionType(builder, EndCondition.WhenISaySo);
-    Contract.addIsUnremovable(builder, true);
     //Contractact.addSession(builder, sessionOffset);
     Contract.addConfirmCode(builder, confirmCodeOffset);
     Contract.addNonce(builder, nonceOffset);
@@ -94,7 +95,6 @@ export class NewFullContractComponent {
     const offsetToTable = contractBytes[0] | (contractBytes[1] << 8);
     const offsetToVTable = contractBytes[offsetToTable] | (contractBytes[offsetToTable + 1] << 8);
     const vTableStart = offsetToTable - offsetToVTable;
-
     const vtableAndContract = contractBytes.slice(vTableStart);
 
     const signature = await this.cryptoService.hashAndSignData(ecdsKeys.privateKey, vtableAndContract);

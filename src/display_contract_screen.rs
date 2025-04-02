@@ -13,6 +13,7 @@ use embedded_graphics_core::prelude::{Dimensions, RgbColor};
 use embedded_graphics_core::Drawable;
 use embedded_hal::digital::OutputPin;
 use esp_idf_hal::gpio::{GpioError, Output, PinDriver};
+use crate::verifier::VerifiedType;
 
 pub struct DisplayContractScreen<SPI, DC, RST, PinE> {
     _spi: core::marker::PhantomData<SPI>,
@@ -62,6 +63,11 @@ where
         }
         None
     }
+
+    fn process_command(&mut self, lock_ctx: &mut LockCtx, command: VerifiedType) -> Result<Option<Box<DynScreen<'static>>>, String> {
+        todo!()
+    }
+
 
     fn draw_screen(&mut self, lock_ctx : &mut LockCtx) {
         let style = MonoTextStyle::new(&FONT_8X13, Rgb565::BLACK);

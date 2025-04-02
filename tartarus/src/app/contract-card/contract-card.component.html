@@ -1,0 +1,9 @@
+@if (contract) {
+  <div class="card mb-3" style="max-width: 20rem;">
+    <div class="card-header">{{ contract.name }}</div>
+    <div class="card-body">
+      <h4 class="card-title">{{contract.state}}</h4>
+      <p class="card-text"><a routerLink="contract/{{contract.name}}">Details</a></p>
+    </div>
+  </div>
+}

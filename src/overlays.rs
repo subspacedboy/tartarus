@@ -44,7 +44,7 @@ where
     type RST = RST;
 
     fn draw_screen(&mut self, lock_ctx : &mut LockCtx) {
-        let style = MonoTextStyle::new(&FONT_10X20, Rgb565::BLACK);
+        let style = MonoTextStyle::new(&FONT_10X20, Rgb565::GREEN);
         let draw_position = Point::new(5, 125);
         let text = if lock_ctx.wifi_connected {
            Text::new("Wifi", draw_position, style)
@@ -114,7 +114,7 @@ where
 
             if !update.d0_pressed && !update.d1_pressed && !update.d2_pressed {
                 let white_square = Rectangle::new(draw_position, size)
-                    .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::WHITE).build());
+                    .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::BLACK).build());
                 white_square.draw(&mut lock_ctx.display).expect("Failed to draw screen");
             }
         }

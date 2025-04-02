@@ -14,6 +14,10 @@ export class LockSession {
     Object.assign(this, init);
   }
 
+  isTotalControlToken(): boolean {
+    return this.totalControlToken !== undefined && this.totalControlToken !== null;
+  }
+
   getShareLink(): string {
     return `http://localhost:4200/lock-sessions/${this.shareToken}`;
   }

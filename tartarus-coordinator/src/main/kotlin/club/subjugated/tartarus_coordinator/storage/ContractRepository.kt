@@ -7,5 +7,8 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface ContractRepository : JpaRepository<Contract, Long> {
-    fun findByShareableTokenAndStateOrderByCreatedAt(shareableToken : String, contractState: ContractState) : List<Contract>
+//    fun findByShareableTokenAndStateOrderByCreatedAt(shareableToken : String, contractState: ContractState) : List<Contract>
+
+    fun findByShareableTokenOrderByCreatedAt(shareableToken: String) : List<Contract>
+    fun findByName(name : String) : Contract
 }

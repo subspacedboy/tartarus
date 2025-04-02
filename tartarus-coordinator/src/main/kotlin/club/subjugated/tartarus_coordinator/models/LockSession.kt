@@ -1,11 +1,11 @@
 package club.subjugated.tartarus_coordinator.models
 
+import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromByteArray
 import com.fasterxml.jackson.annotation.JsonFormat
-import jakarta.persistence.Entity
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
+import jakarta.persistence.*
+import java.security.interfaces.ECPublicKey
 import java.time.OffsetDateTime
+import java.util.*
 
 @Entity
 class LockSession(
@@ -17,6 +17,10 @@ class LockSession(
     var sessionToken : String?,
     var shareToken : String?,
     var totalControlToken : String?,
+
+    @OneToMany(mappedBy = "id", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    var commandQueue : MutableList<CommandQueue> = mutableListOf(),
+
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
 ){
@@ -24,5 +28,13 @@ class LockSession(
         fun generateId() : String {
             return club.subjugated.tartarus_coordinator.util.generateId("ls-")
         }
+    }
+
+    fun decodePublicKey() : ByteArray {
+        return Base64.getUrlDecoder().decode(this.publicKey)
+    }
+
+    fun loadPublicKey() : ECPublicKey {
+        return getECPublicKeyFromByteArray(Base64.getDecoder().decode(this.publicKey))
     }
 }

@@ -1,7 +1,9 @@
 package club.subjugated.tartarus_coordinator.services
 
 import club.subjugated.tartarus_coordinator.api.messages.NewLockSessionMessage
+import club.subjugated.tartarus_coordinator.models.CommandQueue
 import club.subjugated.tartarus_coordinator.models.LockSession
+import club.subjugated.tartarus_coordinator.storage.CommandQueueRepository
 import club.subjugated.tartarus_coordinator.storage.LockSessionRepository
 import club.subjugated.tartarus_coordinator.util.TimeSource
 import club.subjugated.tartarus_coordinator.util.generateId
@@ -14,6 +16,8 @@ class LockSessionService {
     lateinit var timeSource: TimeSource
     @Autowired
     lateinit var lockSessionRepository: LockSessionRepository
+    @Autowired
+    lateinit var commandQueueRepository: CommandQueueRepository
 
     fun createLockSession(newLockSessionMessage: NewLockSessionMessage) : LockSession {
         return lockSessionRepository.findBySessionToken(newLockSessionMessage.sessionToken)
@@ -27,8 +31,21 @@ class LockSessionService {
                     updatedAt = timeSource.nowInUtc()
                 )
                 saveLockSession(session)
+
+                // Also make the command queue, maybe move it to its own service if it gets complicated
+                val queue = CommandQueue(
+                    lockSession = session,
+                    createdAt = timeSource.nowInUtc(),
+                    updatedAt = timeSource.nowInUtc()
+                )
+                this.commandQueueRepository.save(queue)
+
                 session
             }
+    }
+
+    fun findBySessionToken(token : String) : LockSession {
+        return this.lockSessionRepository.findBySessionToken(token)!!
     }
 
     fun findByShareableToken(someToken : String) : LockSession? {

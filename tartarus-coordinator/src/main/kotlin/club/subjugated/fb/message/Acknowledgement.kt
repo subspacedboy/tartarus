@@ -19,12 +19,12 @@ import java.nio.ByteOrder
 import kotlin.math.sign
 
 @Suppress("unused")
-class PartialContract : Table() {
+class Acknowledgement : Table() {
 
     fun __init(_i: Int, _bb: ByteBuffer)  {
         __reset(_i, _bb)
     }
-    fun __assign(_i: Int, _bb: ByteBuffer) : PartialContract {
+    fun __assign(_i: Int, _bb: ByteBuffer) : Acknowledgement {
         __init(_i, _bb)
         return this
     }
@@ -42,7 +42,7 @@ class PartialContract : Table() {
         }
     val publicKeyAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
     fun publicKeyInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
-    val completeContractAddress : String?
+    val session : String?
         get() {
             val o = __offset(6)
             return if (o != 0) {
@@ -51,22 +51,34 @@ class PartialContract : Table() {
                 null
             }
         }
-    val completeContractAddressAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
-    fun completeContractAddressInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
+    val sessionAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
+    fun sessionInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
+    val serialNumber : UShort
+        get() {
+            val o = __offset(8)
+            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+        }
+    val counter : UShort
+        get() {
+            val o = __offset(10)
+            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+        }
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
-        fun getRootAsPartialContract(_bb: ByteBuffer): PartialContract = getRootAsPartialContract(_bb, PartialContract())
-        fun getRootAsPartialContract(_bb: ByteBuffer, obj: PartialContract): PartialContract {
+        fun getRootAsAcknowledgement(_bb: ByteBuffer): Acknowledgement = getRootAsAcknowledgement(_bb, Acknowledgement())
+        fun getRootAsAcknowledgement(_bb: ByteBuffer, obj: Acknowledgement): Acknowledgement {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createPartialContract(builder: FlatBufferBuilder, publicKeyOffset: Int, completeContractAddressOffset: Int) : Int {
-            builder.startTable(2)
-            addCompleteContractAddress(builder, completeContractAddressOffset)
+        fun createAcknowledgement(builder: FlatBufferBuilder, publicKeyOffset: Int, sessionOffset: Int, serialNumber: UShort, counter: UShort) : Int {
+            builder.startTable(4)
+            addSession(builder, sessionOffset)
             addPublicKey(builder, publicKeyOffset)
-            return endPartialContract(builder)
+            addCounter(builder, counter)
+            addSerialNumber(builder, serialNumber)
+            return endAcknowledgement(builder)
         }
-        fun startPartialContract(builder: FlatBufferBuilder) = builder.startTable(2)
+        fun startAcknowledgement(builder: FlatBufferBuilder) = builder.startTable(4)
         fun addPublicKey(builder: FlatBufferBuilder, publicKey: Int) = builder.addOffset(0, publicKey, 0)
         @kotlin.ExperimentalUnsignedTypes
         fun createPublicKeyVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
@@ -77,8 +89,10 @@ class PartialContract : Table() {
             return builder.endVector()
         }
         fun startPublicKeyVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
-        fun addCompleteContractAddress(builder: FlatBufferBuilder, completeContractAddress: Int) = builder.addOffset(1, completeContractAddress, 0)
-        fun endPartialContract(builder: FlatBufferBuilder) : Int {
+        fun addSession(builder: FlatBufferBuilder, session: Int) = builder.addOffset(1, session, 0)
+        fun addSerialNumber(builder: FlatBufferBuilder, serialNumber: UShort) = builder.addShort(2, serialNumber.toShort(), 0)
+        fun addCounter(builder: FlatBufferBuilder, counter: UShort) = builder.addShort(3, counter.toShort(), 0)
+        fun endAcknowledgement(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o
         }

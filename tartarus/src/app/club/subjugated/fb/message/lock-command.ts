@@ -22,8 +22,35 @@ static getSizePrefixedRootAsLockCommand(bb:flatbuffers.ByteBuffer, obj?:LockComm
   return (obj || new LockCommand()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
+contractSerialNumber():number {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
+}
+
+serialNumber():number {
+  const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
+}
+
+counter():number {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
+}
+
 static startLockCommand(builder:flatbuffers.Builder) {
-  builder.startObject(0);
+  builder.startObject(3);
+}
+
+static addContractSerialNumber(builder:flatbuffers.Builder, contractSerialNumber:number) {
+  builder.addFieldInt16(0, contractSerialNumber, 0);
+}
+
+static addSerialNumber(builder:flatbuffers.Builder, serialNumber:number) {
+  builder.addFieldInt16(1, serialNumber, 0);
+}
+
+static addCounter(builder:flatbuffers.Builder, counter:number) {
+  builder.addFieldInt16(2, counter, 0);
 }
 
 static endLockCommand(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -31,8 +58,11 @@ static endLockCommand(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createLockCommand(builder:flatbuffers.Builder):flatbuffers.Offset {
+static createLockCommand(builder:flatbuffers.Builder, contractSerialNumber:number, serialNumber:number, counter:number):flatbuffers.Offset {
   LockCommand.startLockCommand(builder);
+  LockCommand.addContractSerialNumber(builder, contractSerialNumber);
+  LockCommand.addSerialNumber(builder, serialNumber);
+  LockCommand.addCounter(builder, counter);
   return LockCommand.endLockCommand(builder);
 }
 }

@@ -22,8 +22,35 @@ static getSizePrefixedRootAsUnlockCommand(bb:flatbuffers.ByteBuffer, obj?:Unlock
   return (obj || new UnlockCommand()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
+contractSerialNumber():number {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
+}
+
+serialNumber():number {
+  const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
+}
+
+counter():number {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
+}
+
 static startUnlockCommand(builder:flatbuffers.Builder) {
-  builder.startObject(0);
+  builder.startObject(3);
+}
+
+static addContractSerialNumber(builder:flatbuffers.Builder, contractSerialNumber:number) {
+  builder.addFieldInt16(0, contractSerialNumber, 0);
+}
+
+static addSerialNumber(builder:flatbuffers.Builder, serialNumber:number) {
+  builder.addFieldInt16(1, serialNumber, 0);
+}
+
+static addCounter(builder:flatbuffers.Builder, counter:number) {
+  builder.addFieldInt16(2, counter, 0);
 }
 
 static endUnlockCommand(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -31,8 +58,11 @@ static endUnlockCommand(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createUnlockCommand(builder:flatbuffers.Builder):flatbuffers.Offset {
+static createUnlockCommand(builder:flatbuffers.Builder, contractSerialNumber:number, serialNumber:number, counter:number):flatbuffers.Offset {
   UnlockCommand.startUnlockCommand(builder);
+  UnlockCommand.addContractSerialNumber(builder, contractSerialNumber);
+  UnlockCommand.addSerialNumber(builder, serialNumber);
+  UnlockCommand.addCounter(builder, counter);
   return UnlockCommand.endUnlockCommand(builder);
 }
 }

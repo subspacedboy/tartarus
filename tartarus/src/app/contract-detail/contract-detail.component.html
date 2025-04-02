@@ -1,0 +1,11 @@
+@if(contract) {
+  <h1>Contract {{contract.name}}</h1>
+
+  <div class="row">
+    State: {{contract.state}}
+  </div>
+
+  <button (click)="unlock()">Unlock</button>
+  <button (click)="lock()">Lock</button>
+
+}

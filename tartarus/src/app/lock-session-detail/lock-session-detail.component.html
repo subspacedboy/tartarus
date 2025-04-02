@@ -1,0 +1,18 @@
+<h1>Lock Session {{sessionToken}}</h1>
+
+@if(lockSession?.isTotalControlToken()) {
+  <h2>Total control token</h2>
+}
+<div>
+  <a [routerLink]="['simple-contract']">Simple Contract (Works offline) </a>
+</div>
+
+<div>
+  <a [routerLink]="['full-contract']">Full Contract (Online only)</a>
+</div>
+
+<div>
+  @for (c of contracts; track c.name){
+    <app-contract-card [contract]="c"></app-contract-card>
+  }
+</div>

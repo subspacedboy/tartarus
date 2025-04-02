@@ -1,5 +1,7 @@
-import { Component } from '@angular/core';
+import {Component, Inject} from '@angular/core';
 import {RouterLink} from '@angular/router';
+import {UserDataService} from '../user-data.service';
+import {AppComponent} from '../app.component';
 
 @Component({
   selector: 'app-landing-page',
@@ -11,4 +13,7 @@ import {RouterLink} from '@angular/router';
 })
 export class LandingPageComponent {
 
+  constructor(@Inject(AppComponent) public parent: AppComponent) {
+
+  }
 }

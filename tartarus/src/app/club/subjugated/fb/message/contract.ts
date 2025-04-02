@@ -27,99 +27,96 @@ static getSizePrefixedRootAsContract(bb:flatbuffers.ByteBuffer, obj?:Contract):C
   return (obj || new Contract()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-publicKey(index: number):number|null {
+serialNumber():number {
   const offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
+}
+
+publicKey(index: number):number|null {
+  const offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
 }
 
 publicKeyLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 4);
+  const offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 publicKeyArray():Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 4);
+  const offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
 nonce(index: number):number|null {
-  const offset = this.bb!.__offset(this.bb_pos, 6);
+  const offset = this.bb!.__offset(this.bb_pos, 8);
   return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
 }
 
 nonceLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 6);
+  const offset = this.bb!.__offset(this.bb_pos, 8);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 nonceArray():Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 6);
+  const offset = this.bb!.__offset(this.bb_pos, 8);
   return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
 confirmCode(index: number):number|null {
-  const offset = this.bb!.__offset(this.bb_pos, 8);
+  const offset = this.bb!.__offset(this.bb_pos, 10);
   return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
 }
 
 confirmCodeLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 8);
+  const offset = this.bb!.__offset(this.bb_pos, 10);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 confirmCodeArray():Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 8);
+  const offset = this.bb!.__offset(this.bb_pos, 10);
   return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
-notes():string|null
-notes(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-notes(optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 10);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
-}
-
-isUnremovable():boolean {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
-  return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
-}
-
 endConditionType():EndCondition {
-  const offset = this.bb!.__offset(this.bb_pos, 14);
+  const offset = this.bb!.__offset(this.bb_pos, 12);
   return offset ? this.bb!.readUint8(this.bb_pos + offset) : EndCondition.NONE;
 }
 
 endCondition<T extends flatbuffers.Table>(obj:any):any|null {
-  const offset = this.bb!.__offset(this.bb_pos, 16);
+  const offset = this.bb!.__offset(this.bb_pos, 14);
   return offset ? this.bb!.__union(obj, this.bb_pos + offset) : null;
 }
 
 webhooks(index: number, obj?:WebHook):WebHook|null {
-  const offset = this.bb!.__offset(this.bb_pos, 18);
+  const offset = this.bb!.__offset(this.bb_pos, 16);
   return offset ? (obj || new WebHook()).__init(this.bb!.__indirect(this.bb!.__vector(this.bb_pos + offset) + index * 4), this.bb!) : null;
 }
 
 webhooksLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 18);
+  const offset = this.bb!.__offset(this.bb_pos, 16);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 isTemporaryUnlockAllowed():boolean {
-  const offset = this.bb!.__offset(this.bb_pos, 20);
+  const offset = this.bb!.__offset(this.bb_pos, 18);
   return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
 }
 
 unlockRules(obj?:TemporaryUnlockRules):TemporaryUnlockRules|null {
-  const offset = this.bb!.__offset(this.bb_pos, 22);
+  const offset = this.bb!.__offset(this.bb_pos, 20);
   return offset ? (obj || new TemporaryUnlockRules()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
 }
 
 static startContract(builder:flatbuffers.Builder) {
-  builder.startObject(10);
+  builder.startObject(9);
+}
+
+static addSerialNumber(builder:flatbuffers.Builder, serialNumber:number) {
+  builder.addFieldInt16(0, serialNumber, 0);
 }
 
 static addPublicKey(builder:flatbuffers.Builder, publicKeyOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, publicKeyOffset, 0);
+  builder.addFieldOffset(1, publicKeyOffset, 0);
 }
 
 static createPublicKeyVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
@@ -135,7 +132,7 @@ static startPublicKeyVector(builder:flatbuffers.Builder, numElems:number) {
 }
 
 static addNonce(builder:flatbuffers.Builder, nonceOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(1, nonceOffset, 0);
+  builder.addFieldOffset(2, nonceOffset, 0);
 }
 
 static createNonceVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
@@ -151,7 +148,7 @@ static startNonceVector(builder:flatbuffers.Builder, numElems:number) {
 }
 
 static addConfirmCode(builder:flatbuffers.Builder, confirmCodeOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(2, confirmCodeOffset, 0);
+  builder.addFieldOffset(3, confirmCodeOffset, 0);
 }
 
 static createConfirmCodeVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
@@ -166,24 +163,16 @@ static startConfirmCodeVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(1, numElems, 1);
 }
 
-static addNotes(builder:flatbuffers.Builder, notesOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(3, notesOffset, 0);
-}
-
-static addIsUnremovable(builder:flatbuffers.Builder, isUnremovable:boolean) {
-  builder.addFieldInt8(4, +isUnremovable, +false);
-}
-
 static addEndConditionType(builder:flatbuffers.Builder, endConditionType:EndCondition) {
-  builder.addFieldInt8(5, endConditionType, EndCondition.NONE);
+  builder.addFieldInt8(4, endConditionType, EndCondition.NONE);
 }
 
 static addEndCondition(builder:flatbuffers.Builder, endConditionOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(6, endConditionOffset, 0);
+  builder.addFieldOffset(5, endConditionOffset, 0);
 }
 
 static addWebhooks(builder:flatbuffers.Builder, webhooksOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(7, webhooksOffset, 0);
+  builder.addFieldOffset(6, webhooksOffset, 0);
 }
 
 static createWebhooksVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
@@ -199,11 +188,11 @@ static startWebhooksVector(builder:flatbuffers.Builder, numElems:number) {
 }
 
 static addIsTemporaryUnlockAllowed(builder:flatbuffers.Builder, isTemporaryUnlockAllowed:boolean) {
-  builder.addFieldInt8(8, +isTemporaryUnlockAllowed, +false);
+  builder.addFieldInt8(7, +isTemporaryUnlockAllowed, +false);
 }
 
 static addUnlockRules(builder:flatbuffers.Builder, unlockRulesOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(9, unlockRulesOffset, 0);
+  builder.addFieldOffset(8, unlockRulesOffset, 0);
 }
 
 static endContract(builder:flatbuffers.Builder):flatbuffers.Offset {

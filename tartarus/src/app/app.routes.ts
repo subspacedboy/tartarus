@@ -6,6 +6,10 @@ import {NewFullContractComponent} from './new-full-contract/new-full-contract.co
 import {LockStartComponent} from './lock-start/lock-start.component';
 import {LoginComponent} from './login/login.component';
 import {LockSessionsComponent} from './lock-sessions/lock-sessions.component';
+import {MyLockComponent} from './my-lock/my-lock.component';
+import {authGuard} from './auth.guard';
+import {LockSessionDetailComponent} from './lock-session-detail/lock-session-detail.component';
+import {ContractDetailComponent} from './contract-detail/contract-detail.component';
 
 export const routes: Routes = [
   {
@@ -18,10 +22,12 @@ export const routes: Routes = [
   },
   {
     path: 'lock-sessions/:sessionToken/simple-contract',
+    canActivate: [authGuard],
     component: NewSimpleContractComponent
   },
   {
     path: 'lock-sessions/:sessionToken/full-contract',
+    canActivate: [authGuard],
     component: NewFullContractComponent
   },
   {
@@ -33,7 +39,21 @@ export const routes: Routes = [
     component: LoginComponent
   },
   {
-    path: 'lock-sessions/:sessionToken',
+    path: 'lock-sessions',
     component: LockSessionsComponent
+  },
+  {
+    path: 'lock-sessions/:sessionToken',
+    canActivate: [authGuard],
+    component: LockSessionDetailComponent
+  },
+  {
+    path: 'lock-sessions/:sessionToken/contract/:contractName',
+    canActivate: [authGuard],
+    component: ContractDetailComponent
+  },
+  {
+    path: 'my-lock',
+    component: MyLockComponent
   }
 ];

@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use crate::boot_screen::BootScreen;
-use crate::contract_generated::club::subjugated::fb::message::{root_as_signed_message, Contract, LockUpdateEvent, LockUpdateEventArgs, MessagePayload, SignedMessage, SignedMessageArgs, UpdateType};
+use crate::contract_generated::club::subjugated::fb::message::{root_as_signed_message, Contract, MessagePayload, SignedMessage, SignedMessageArgs, StartedUpdate, StartedUpdateArgs};
 use crate::internal_contract::InternalContract;
 use crate::overlays::{ButtonPressOverlay, WifiOverlay};
 use crate::prelude::prelude::{DynOverlay, DynScreen, MyDisplay, MySPI};
@@ -26,8 +26,10 @@ use embedded_svc::mqtt::client::EventPayload::Received;
 use esp_idf_svc::mqtt::client::{EspMqttClient, EspMqttConnection, EspMqttEvent, LwtConfiguration, MqttClientConfiguration, QoS};
 use flatbuffers::FlatBufferBuilder;
 use p256::ecdsa::signature::Signer;
-use p256::ecdsa::{Signature, SigningKey};
+use p256::ecdsa::{Signature, SigningKey, VerifyingKey};
 use sha2::{Digest, Sha256};
+use crate::acknowledger::Acknowledger;
+use crate::verifier::{SignedMessageVerifier, VerifiedType};
 
 #[derive(Debug, Clone)]
 pub struct TickUpdate {
@@ -126,7 +128,7 @@ impl LockCtx {
         );
         lck.current_screen = Some(boot_screen);
 
-        lck.display.clear(Rgb565::WHITE).unwrap();
+        lck.display.clear(Rgb565::BLACK).unwrap();
 
         lck
     }
@@ -178,65 +180,67 @@ impl LockCtx {
     }
 
     pub fn tick(&mut self, update : TickUpdate) -> () {
-        self.this_update = Some(update.clone());
-
-        let mut command_data : VecDeque<Vec<u8>> = VecDeque::new();
-
         // Process message queue
+        let mut commands : VecDeque<Vec<u8>> = VecDeque::new();
+
         if let Ok(mut message_queue) = self.incoming_messages.lock() {
             while(message_queue.len() > 0) {
                 let current = message_queue.pop_front();
                 if let Some(message) = current {
                     log::info!("Received: {:?}", message);
-                    command_data.push_back(message.buffer);
+                    commands.push_back(message.buffer);
                 }
             }
         }
-
-        while(command_data.len() > 0) {
-            let command = command_data.pop_front().unwrap();
-            log::info!("Processing MQTT command: {:?}", command);
-            if let Some(mut update) = self.this_update.take() {
-                update.qr_data = Some(command);
-                self.this_update = Some(update);
-            }
-
-            if let Some(mut current_screen) = self.current_screen.take() {
-                let result_from_update = current_screen.on_update(self);
-
-                if let Some(mut new_screen) = result_from_update {
-                    log::info!("New screen -> {:?}", new_screen.get_id());
-                    // We state transitioned. So mandatory clear + draw.
-                    self.display.clear(Rgb565::WHITE).unwrap();
-                    new_screen.draw_screen(self);
-                    self.current_screen = Some(new_screen);
-                } else {
-                    if current_screen.needs_redraw() {
-                        current_screen.draw_screen(self);
-                    }
-                    // Put the current screen back
-                    self.current_screen = Some(current_screen);
-                }
-            }
-        }
-
-        if let Some(mut current_screen) = self.current_screen.take() {
-            let result_from_update = current_screen.on_update(self);
-
-            if let Some(mut new_screen) = result_from_update {
-                log::info!("New screen -> {:?}", new_screen.get_id());
-                // We state transitioned. So mandatory clear + draw.
-                self.display.clear(Rgb565::WHITE).unwrap();
-                new_screen.draw_screen(self);
-                self.current_screen = Some(new_screen);
+        while(commands.len() > 0) {
+            let buffer = commands.pop_front().unwrap();
+            let verifier = SignedMessageVerifier::new();
+            let contract_public_key : Option<&VerifyingKey> = if let Some(k) = &self.contract {
+                Some(&k.public_key)
             } else {
-                if current_screen.needs_redraw() {
-                    current_screen.draw_screen(self);
+                None
+            };
+
+            match verifier.verify(buffer, &self.session_token, contract_public_key) {
+                Ok(verified_message) => {
+                    let for_acknowledgement = verified_message.clone();
+
+                    match self.process_command(verified_message) {
+                        Ok(_) => {
+                            let acknowledger = Acknowledger::new();
+                            let signing_key = self.get_signing_key();
+                            let ack_buffer = acknowledger.build_acknowledgement(for_acknowledgement, &self.session_token, &self.public_key.unwrap(), &signing_key);
+                            let ack_message = SignedMessageTransport {
+                                buffer: ack_buffer
+                            };
+                            self.enqueue_message(ack_message)
+                        }
+                        Err(e) => {
+                            let acknowledger = Acknowledger::new();
+                            let signing_key = self.get_signing_key();
+                            let ack_buffer = acknowledger.build_error_for_command(for_acknowledgement, &self.session_token, &self.public_key.unwrap(), &signing_key, &e);
+                            let ack_message = SignedMessageTransport {
+                                buffer: ack_buffer
+                            };
+                            self.enqueue_message(ack_message)
+                        }
+                    }
                 }
-                // Put the current screen back
-                self.current_screen = Some(current_screen);
+                Err(verification_error) => {
+                    log::info!("Verification error {:?}", verification_error);
+                    let acknowledger = Acknowledger::new();
+                    let signing_key = self.get_signing_key();
+                    let ack_buffer = acknowledger.build_error(verification_error, &self.session_token, &self.public_key.unwrap(), &signing_key);
+                    let ack_message = SignedMessageTransport {
+                        buffer: ack_buffer
+                    };
+                    self.enqueue_message(ack_message)
+                }
             }
         }
+
+        self.this_update = Some(update.clone());
+        self.process_updates();
 
         let mut overlays = core::mem::take(&mut self.overlays);
         for overlay in overlays.iter_mut() {
@@ -280,10 +284,57 @@ impl LockCtx {
 
     }
 
-    // pub fn cycle_lock(&mut self) -> () {
-    //     log::info!("Cycling lock");
-    //     self.is_locked ^= self.is_locked;
-    // }
+    // NB: Because of poor choices, this expects LockCtx 'this_update' to have the data
+    // to actually process the change.
+    pub fn process_updates(&mut self) {
+        if let Some(mut current_screen) = self.current_screen.take() {
+            let result_from_update = current_screen.on_update(self);
+
+            if let Some(mut new_screen) = result_from_update {
+                log::info!("New screen -> {:?}", new_screen.get_id());
+                // We state transitioned. So mandatory clear + draw.
+                self.display.clear(Rgb565::BLACK).unwrap();
+                new_screen.draw_screen(self);
+                self.current_screen = Some(new_screen);
+            } else {
+                if current_screen.needs_redraw() {
+                    current_screen.draw_screen(self);
+                }
+                // Put the current screen back
+                self.current_screen = Some(current_screen);
+            }
+        }
+    }
+
+    pub fn process_command(&mut self, command : VerifiedType) -> Result<bool, String> {
+        if let Some(mut current_screen) = self.current_screen.take() {
+            let result_from_update = current_screen.process_command(self, command);
+
+            match result_from_update {
+                Ok(result) => {
+                    if let Some(mut new_screen) = result {
+                        log::info!("New screen -> {:?}", new_screen.get_id());
+                        // We state transitioned. So mandatory clear + draw.
+                        self.display.clear(Rgb565::BLACK).unwrap();
+                        new_screen.draw_screen(self);
+                        self.current_screen = Some(new_screen);
+                    } else {
+                        if current_screen.needs_redraw() {
+                            current_screen.draw_screen(self);
+                        }
+                        // Put the current screen back
+                        self.current_screen = Some(current_screen);
+                    }
+                }
+                Err(error) => {
+                    log::error!("Failed to process command: {:?}", error);
+                    return Err(error.to_string())
+                }
+            }
+        }
+
+        Ok(true)
+    }
 
     pub fn lock(&mut self) -> () {
         log::info!("Locking");
@@ -412,25 +463,32 @@ impl LockCtx {
             .unwrap();
     }
 
+    fn get_signing_key(&self) -> SigningKey {
+        let secret = self.secret_key.as_ref().unwrap();
+
+        let cloned_secret = secret.clone();
+        let bytes = cloned_secret.to_bytes();
+        let key_bytes = bytes.as_slice();
+        SigningKey::from_slice(key_bytes).unwrap()
+    }
+
     fn enqueue_announce_message(&self) {
         let mut builder = FlatBufferBuilder::with_capacity(1024);
         let public_key: Vec<u8> = self.public_key.unwrap().to_sec1_bytes().as_ref().to_vec();
         let session = builder.create_string(&self.session_token);
-        let this_update_type = UpdateType::Started;
-        let body = builder.create_string("lock update body");
 
         let pub_key_holder = builder.create_vector(&public_key);
-        let lock_update_event = LockUpdateEvent::create(
+        let lock_update_event = StartedUpdate::create(
             &mut builder,
-            &LockUpdateEventArgs {
+            &StartedUpdateArgs {
                 public_key: Some(pub_key_holder),
                 session: Some(session),
-                body: Some(body),
-                this_update_type,
+                started_with_local_contract: false,
+                is_locked: self.is_locked
             },
         );
 
-        let _payload_type = MessagePayload::LockUpdateEvent; // Union type
+        let _payload_type = MessagePayload::StartedUpdate; // Union type
         let _payload_value = lock_update_event.as_union_value();
 
         builder.finish(lock_update_event, None);
@@ -449,35 +507,29 @@ impl LockCtx {
         let mut builder = FlatBufferBuilder::with_capacity(1024);
         let public_key: Vec<u8> = self.public_key.unwrap().to_sec1_bytes().as_ref().to_vec();
         let session = builder.create_string(&self.session_token);
-        let this_update_type = UpdateType::Started;
-        let body = builder.create_string("lock update body");
 
         let pub_key_holder = builder.create_vector(&public_key);
-        let lock_update_event = LockUpdateEvent::create(
+        let lock_update_event = StartedUpdate::create(
             &mut builder,
-            &LockUpdateEventArgs {
+            &StartedUpdateArgs {
                 public_key: Some(pub_key_holder),
                 session: Some(session),
-                body: Some(body),
-                this_update_type,
+                started_with_local_contract: false,
+                is_locked: self.is_locked
             },
         );
 
-        let payload_type = MessagePayload::LockUpdateEvent; // Union type
+        let payload_type = MessagePayload::StartedUpdate; // Union type
         let payload_value = lock_update_event.as_union_value();
 
         let secret = self.secret_key.as_ref().unwrap();
-        // let pem = secret.to_sec1_pem(Default::default()).unwrap();
 
         let cloned_secret = secret.clone();
         let bytes = cloned_secret.to_bytes();
         let key_bytes = bytes.as_slice();
         let signing_key = SigningKey::from_slice(key_bytes).unwrap();
         let signature: Signature = signing_key.sign(&hash.as_slice());
-        // let signing_key = SigningKey::from_bytes(*secret.as_scalar_primitive());
-        // let signing_key = /
 
-        // let signature: Vec<u8> = vec![9, 8, 7, 6, 5];
         let sig_bytes = signature.to_bytes();
 
         let signature_offset = builder.create_vector(sig_bytes.as_slice());
@@ -505,104 +557,4 @@ impl LockCtx {
             message_queue.push_back(message);
         }
     }
-
-    // fn start_announce_to_coordinator(&self) {
-    //     const URL: &str = "http://192.168.1.180:5002/event";
-    //     let mut pos = EspHttpConnection::new(&mut Default::default()).expect("HTTP client should be available");
-    //     let mut client = HttpClient::wrap(&mut pos);
-    //
-    //     let mut builder = FlatBufferBuilder::with_capacity(1024);
-    //     let public_key: Vec<u8> = self.public_key.unwrap().to_sec1_bytes().as_ref().to_vec();
-    //     let session = builder.create_string(&self.session_token);
-    //     let this_update_type = UpdateType::Started;
-    //     let body = builder.create_string("lock update body");
-    //
-    //     let pub_key_holder = builder.create_vector(&public_key);
-    //     let lock_update_event = LockUpdateEvent::create(
-    //         &mut builder,
-    //         &LockUpdateEventArgs {
-    //             public_key: Some(pub_key_holder),
-    //             session: Some(session),
-    //             body: Some(body),
-    //             this_update_type,
-    //         },
-    //     );
-    //
-    //     let _payload_type = MessagePayload::LockUpdateEvent; // Union type
-    //     let _payload_value = lock_update_event.as_union_value();
-    //
-    //     builder.finish(lock_update_event, None);
-    //     let buffer = builder.finished_data();
-    //
-    //     let table_offset = buffer[0] as usize;
-    //     let vtable_offset = buffer[table_offset] as usize;
-    //     let actual_start = table_offset - vtable_offset;
-    //
-    //     log::info!("Update buffer w/ vtable ({},{}): {:?}", vtable_offset, table_offset, buffer);
-    //     let hash = Sha256::digest(&buffer[actual_start..]);
-    //     log::info!("Hash {:?}", hash);
-    //
-    //     // UGH. We have to build the whole message over again because of the way
-    //     // Rust implements flatbuffers.
-    //     let mut builder = FlatBufferBuilder::with_capacity(1024);
-    //     let public_key: Vec<u8> = self.public_key.unwrap().to_sec1_bytes().as_ref().to_vec();
-    //     let session = builder.create_string(&self.session_token);
-    //     let this_update_type = UpdateType::Started;
-    //     let body = builder.create_string("lock update body");
-    //
-    //     let pub_key_holder = builder.create_vector(&public_key);
-    //     let lock_update_event = LockUpdateEvent::create(
-    //         &mut builder,
-    //         &LockUpdateEventArgs {
-    //             public_key: Some(pub_key_holder),
-    //             session: Some(session),
-    //             body: Some(body),
-    //             this_update_type,
-    //         },
-    //     );
-    //
-    //     let payload_type = MessagePayload::LockUpdateEvent; // Union type
-    //     let payload_value = lock_update_event.as_union_value();
-    //
-    //     let secret = self.secret_key.as_ref().unwrap();
-    //     // let pem = secret.to_sec1_pem(Default::default()).unwrap();
-    //
-    //     let cloned_secret = secret.clone();
-    //     let bytes = cloned_secret.to_bytes();
-    //     let key_bytes = bytes.as_slice();
-    //     let signing_key = SigningKey::from_slice(key_bytes).unwrap();
-    //     let signature: Signature = signing_key.sign(&hash.as_slice());
-    //     // let signing_key = SigningKey::from_bytes(*secret.as_scalar_primitive());
-    //     // let signing_key = /
-    //
-    //     // let signature: Vec<u8> = vec![9, 8, 7, 6, 5];
-    //     let sig_bytes = signature.to_bytes();
-    //
-    //     let signature_offset = builder.create_vector(sig_bytes.as_slice());
-    //     let signed_message = SignedMessage::create(
-    //         &mut builder,
-    //         &SignedMessageArgs {
-    //             signature: Some(signature_offset),
-    //             payload: Some(payload_value),
-    //             payload_type,
-    //         },
-    //     );
-    //
-    //     builder.finish(signed_message, None);
-    //     let data = builder.finished_data().to_vec();
-    //
-    //     if let Ok(mut request) = client.post(&URL, &[("Content-Type","application/octet-stream")]) {
-    //         if let Ok(_result) =request.write_all(data.as_slice()) {
-    //             if let Ok(_) = request.flush() {}
-    //         }
-    //
-    //         if let Ok(response) = request.submit() {
-    //             log::info!("Response status: {}", response.status());
-    //         } else {
-    //             log::error!("Failed to send request");
-    //         }
-    //     } else {
-    //         log::error!("Failed to POST request");
-    //     }
-    // }
 }

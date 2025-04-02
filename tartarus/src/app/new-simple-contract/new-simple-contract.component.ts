@@ -1,6 +1,5 @@
 import {Component, ElementRef, OnInit, ViewChild} from '@angular/core';
 import * as flatbuffers from 'flatbuffers';
-import {SimpleContract} from '../club/subjugated/fb/message/simple-contract';
 import {Contract} from '../club/subjugated/fb/message/contract';
 import {SignedMessage} from '../club/subjugated/fb/message/signed-message';
 import {MessagePayload, unionToMessagePayload} from '../club/subjugated/fb/message/message-payload';
@@ -13,10 +12,13 @@ import {UserDataService} from '../user-data.service';
 import {LockSession} from '../models/lock-session';
 import {WhenISaySo} from '../club/subjugated/fb/message/when-isay-so';
 import {EndCondition} from '../club/subjugated/fb/message/end-condition';
+import {FormArray, FormBuilder, FormGroup, ReactiveFormsModule, FormControl} from '@angular/forms';
 
 @Component({
   selector: 'app-new-simple-contract',
-  imports: [],
+  imports: [
+    ReactiveFormsModule
+  ],
   templateUrl: './new-simple-contract.component.html',
   styleUrl: './new-simple-contract.component.scss'
 })
@@ -29,13 +31,30 @@ export class NewSimpleContractComponent implements OnInit {
   lockSessionToken: string = '';
   lockSession?: LockSession;
 
+  contractForm: FormGroup;
+
   constructor(private tartarusCoordinatorService : TartarusCoordinatorService,
               private idHelperService: IdHelperService,
               private cryptoService: CryptoService,
               private activatedRoute: ActivatedRoute,
-              private userDataService: UserDataService,) {
-
+              private userDataService: UserDataService,
+              private fb: FormBuilder) {
     this.lockSessionToken = String(this.activatedRoute.snapshot.paramMap.get('sessionToken'));
+
+    this.contractForm = this.fb.group({
+      end_condition: this.fb.group({
+        type: new FormControl(''),
+        value: this.fb.group({
+          seconds: new FormControl('')
+        })
+      }),
+      webhooks: this.fb.array([]),
+      is_temporary_unlock_allowed: new FormControl(false),
+      unlock_rules: this.fb.group({
+        max_unlocks: new FormControl(''),
+        time_limit: new FormControl('')
+      })
+    });
   }
 
   ngOnInit() {
@@ -76,7 +95,6 @@ export class NewSimpleContractComponent implements OnInit {
     Contract.addIsTemporaryUnlockAllowed(builder, false);
     Contract.addEndCondition(builder, whenISaySoOffset);
     Contract.addEndConditionType(builder, EndCondition.WhenISaySo);
-    Contract.addIsUnremovable(builder, true);
     //Contractact.addSession(builder, sessionOffset);
     Contract.addConfirmCode(builder, confirmCodeOffset);
     Contract.addNonce(builder, nonceOffset);
@@ -154,5 +172,21 @@ export class NewSimpleContractComponent implements OnInit {
     } catch (err) {
       console.error('Error generating QR Code:', err);
     }
+  }
+
+  get webhooks(): FormArray {
+    return this.contractForm.get('webhooks') as FormArray;
+  }
+
+  addWebhook(): void {
+    this.webhooks.push(this.fb.group({ address: [''] }));
+  }
+
+  removeWebhook(index: number): void {
+    this.webhooks.removeAt(index);
+  }
+
+  submit(): void {
+    console.log(this.contractForm.value);
   }
 }
