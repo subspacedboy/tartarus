@@ -14,7 +14,11 @@ export class TartarusCoordinatorService {
   private readonly baseUrl;
 
   constructor(private http: HttpClient, private configService: ConfigService) {
-    this.baseUrl = String(this.configService.getConfig().apiUrl);
+    let config = this.configService.getConfig();
+    if(config === undefined || config === null) {
+      debugger;
+    }
+    this.baseUrl = String(config.apiUrl);
   }
 
   public saveKeyRecord(public_key: string) : Observable<boolean> {

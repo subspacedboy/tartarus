@@ -11,15 +11,10 @@ export class ConfigService {
   config?: AppConfig;
 
   constructor(private http: HttpClient) {
-    firstValueFrom(this.http.get<AppConfig>(`/${environment.config}`)).then(c => {
-      this.config = c;
-    });
   }
 
   async loadConfig(): Promise<void> {
-    firstValueFrom(this.http.get<AppConfig>(`/${environment.config}`)).then(c => {
-      this.config = c;
-    });
+    this.config = await firstValueFrom(this.http.get<AppConfig>(`/${environment.config}`));
   }
 
   getConfig(): AppConfig {

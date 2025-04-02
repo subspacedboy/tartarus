@@ -29,6 +29,7 @@ use p256::ecdsa::signature::Signer;
 use p256::ecdsa::{Signature, SigningKey, VerifyingKey};
 use sha2::{Digest, Sha256};
 use crate::acknowledger::Acknowledger;
+use crate::servo::Servo;
 use crate::verifier::{SignedMessageVerifier, VerifiedType};
 
 #[derive(Debug, Clone)]
@@ -60,10 +61,11 @@ pub struct LockCtx {
     pub(crate) session_token: String,
     incoming_messages: Arc<Mutex<VecDeque<SignedMessageTransport>>>,
     outgoing_message: Arc<Mutex<VecDeque<SignedMessageTransport>>>,
+    servo: Servo<'static>,
 }
 
 impl LockCtx {
-    pub fn new(display: MyDisplay<'static>, nvs: EspNvs<NvsDefault>, wifi: BlockingWifi<EspWifi<'static>>) -> Self {
+    pub fn new(display: MyDisplay<'static>, nvs: EspNvs<NvsDefault>, wifi: BlockingWifi<EspWifi<'static>>, servo: Servo<'static>) -> Self {
         let mut lck = LockCtx {
             display,
             nvs,
@@ -78,7 +80,8 @@ impl LockCtx {
             is_locked: false,
             session_token: String::new(),
             incoming_messages : Arc::new(Mutex::new(VecDeque::new())),
-            outgoing_message : Arc::new(Mutex::new(VecDeque::new()))
+            outgoing_message : Arc::new(Mutex::new(VecDeque::new())),
+            servo,
         };
 
         lck.session_token = lck.load_or_create_session_id();
@@ -97,6 +100,9 @@ impl LockCtx {
             lck.enqueue_announce_message();
             // lck.start_announce_to_coordinator();
         }
+
+        //TODO Load state.
+        lck.unlock();
 
         let wifi_overlay: Box<DynOverlay<'static>> = Box::new(
             WifiOverlay::<
@@ -345,11 +351,13 @@ impl LockCtx {
     pub fn lock(&mut self) -> () {
         log::info!("Locking");
         self.is_locked = true;
+        self.servo.close_position();
     }
 
     pub fn unlock(&mut self) -> () {
         log::info!("Unlocking");
         self.is_locked = false;
+        self.servo.open_position();
     }
 
     pub fn is_locked(&self) -> bool {
@@ -369,6 +377,8 @@ impl LockCtx {
     }
 
     pub fn accept_contract(&mut self, _contract : &InternalContract) -> () {
+        //TODO (Save the contract)
+        self.lock();
     }
 
     fn start_mqtt(&self) {

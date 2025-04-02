@@ -12,7 +12,13 @@ mod under_contract_screen;
 mod display_contract_screen;
 mod internal_contract;
 mod acknowledger;
+mod servo;
 
+use crate::servo::Servo;
+use esp_idf_hal::ledc::LedcDriver;
+use esp_idf_svc::hal::ledc::config::TimerConfig;
+use esp_idf_svc::hal::ledc::Resolution;
+use esp_idf_svc::hal::ledc::LedcTimerDriver;
 use esp_idf_svc::wifi::BlockingWifi;
 use esp_idf_svc::wifi::EspWifi;
 use std::thread::sleep;
@@ -113,6 +119,8 @@ fn main() {
     let sdo = peripherals.pins.gpio35;// Mosi
     let sdi = peripherals.pins.gpio37; // miso
 
+    let servo_pwm_pin = peripherals.pins.gpio18;
+
     let qr_reader_sda: AnyIOPin = peripherals.pins.gpio3.into();
     let qr_reader_scl: AnyIOPin = peripherals.pins.gpio4.into();
 
@@ -205,6 +213,22 @@ fn main() {
         log::info!("No stored wifi credentials. Deferring wifi");
     }
 
+    log::info!("Initializing servo");
+    let timer_driver = LedcTimerDriver::new(
+        peripherals.ledc.timer0,
+        &TimerConfig::default()
+            .frequency(50_u32.Hz())
+            .resolution(Resolution::Bits14),
+    ).unwrap();
+
+    let mut driver: LedcDriver = LedcDriver::new(
+        peripherals.ledc.channel0,
+        timer_driver,
+        servo_pwm_pin,
+    ).unwrap();
+
+    let servo = Servo::new(driver);
+
     log::info!("Initializing code reader");
     const READER_ADDRESS: u8 = 0x0c;
 
@@ -221,12 +245,10 @@ fn main() {
     // of the read message with an offset of 2. One for size, and one for
     // the null byte after size.
 
-
     log::info!("Ready :-)");
-    // let cipher : Option<Aes256Gcm> = None;
     const SLEEP_DURATION : Duration = Duration::from_millis(150);
 
-    let mut lock_ctx = LockCtx::new(display, nvs, wifi);
+    let mut lock_ctx = LockCtx::new(display, nvs, wifi, servo);
 
     loop {
         let mut rx_buf: [u8; 254] = [0; 254];
@@ -265,39 +287,9 @@ fn main() {
         };
 
         lock_ctx.tick(this_update);
-        //     State::CertificateLoaded => {
-        //         if let Some(incoming_data) = data {
-        //             if let Ok(maybe_b64_string) = String::from_utf8(incoming_data) {
-        //                 if let Ok(decoded_bytes) = general_purpose::STANDARD.decode(maybe_b64_string) {
-        //                     log::info!("Decoded message: {:?}", decoded_bytes);
-        //
-        //                     let nonce : &[u8] = &decoded_bytes[0..12];
-        //                     let nonce_bytes : [u8; 12] = nonce.try_into().expect("wrong size");
-        //                     let nonce: Nonce<Aes256Gcm> = *GenericArray::from_slice(&nonce_bytes);
-        //
-        //                     let cipher_text = &decoded_bytes[12..decoded_bytes.len()];
-        //                     if let Some(ref mut actual_cipher) = cipher {
-        //                         match actual_cipher.decrypt(&nonce, Payload { msg: &cipher_text, aad: &[] }) {
-        //                             Ok(plaintext) => {
-        //                                 let plaintext_str = String::from_utf8_lossy(&plaintext);
-        //                                 println!("Decrypted message: {:?}", plaintext_str);
-        //
-        //                                 if plaintext_str == "LOCK" {
-        //                                     sm.transition(State::CodeConfirmed);
-        //                                 }
-        //                             }
-        //                             Err(_) => {
-        //                                 println!("Decryption failed! Check key, nonce, or ciphertext.");
-        //                             }
-        //                         }
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //     }
-
         sleep(SLEEP_DURATION);
 
         // continue; // keep optimizer from removing in --release
     }
 }
+

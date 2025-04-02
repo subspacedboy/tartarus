@@ -80,7 +80,7 @@ export class NewFullContractComponent {
     Contract.startContract(builder);
     Contract.addSerialNumber(builder, serialNumber);
     Contract.addPublicKey(builder, publicKeyOffset);
-    Contract.addIsTemporaryUnlockAllowed(builder, false);
+    Contract.addIsTemporaryUnlockAllowed(builder, true);
     Contract.addEndCondition(builder, whenISaySoOffset);
     Contract.addEndConditionType(builder, EndCondition.WhenISaySo);
     //Contractact.addSession(builder, sessionOffset);
@@ -116,7 +116,8 @@ export class NewFullContractComponent {
     console.log(builder.asUint8Array());
 
     if(builder.asUint8Array().length > 254) {
-      throw new Error("Contract is too large");
+      // throw new Error("Contract is too large");
+      console.log("!!! Contract is too large for QR code!!!");
     }
 
     await this.generateQRCode(builder.asUint8Array());

@@ -92,9 +92,8 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
 
                                 //todo - get pending commands, send them
                                 val commands = this.commandQueueService.getPendingCommandsForSession(lockSession)
-                                if(commands.isNotEmpty()) {
-                                    val command = commands.first()
-
+                                for(command in commands) {
+                                    println("📤 Transmitting command ${command} -> ${sessionToken}")
                                     client.publish("locks/$sessionToken", MqttMessage(command.body))
                                 }
                             }
@@ -135,9 +134,8 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
         println("MQTT service received: ${event}")
         val lockSession = this.lockSessionService.findBySessionToken(event.lockSessionToken)
         val commands = this.commandQueueService.getPendingCommandsForSession(lockSession)
-        if(commands.isNotEmpty()) {
-            val command = commands.first()
-
+        for (command in commands) {
+            println("📤 Transmitting command ${command} -> ${event.lockSessionToken}")
             client.publish("locks/${event.lockSessionToken}", MqttMessage(command.body))
         }
     }

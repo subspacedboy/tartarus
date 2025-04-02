@@ -12,10 +12,10 @@ import {provideAnimations} from '@angular/platform-browser/animations';
 import {provideHttpClient} from '@angular/common/http';
 import {ConfigService} from './config.service';
 
-function loadConfig(configService: ConfigService)
+function loadConfig(configService: ConfigService) : Promise<void>
 {
-  console.log('Loading config...');
-  configService.loadConfig().then(thingy => {});
+  //NB: This must return a promise or Angular won't wait.
+  return configService.loadConfig();
 }
 
 export const appConfig: ApplicationConfig = {
