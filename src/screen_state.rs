@@ -1,8 +1,8 @@
-use embedded_hal::digital::OutputPin;
 use crate::lock_ctx::LockCtx;
 use crate::prelude::prelude::DynScreen;
 use crate::screen_ids::ScreenId;
 use crate::verifier::VerifiedType;
+use embedded_hal::digital::OutputPin;
 
 pub trait ScreenState {
     type SPI: display_interface::WriteOnlyDataCommand;
@@ -10,11 +10,15 @@ pub trait ScreenState {
     type DC: OutputPin<Error = Self::PinE>;
     type RST: OutputPin<Error = Self::PinE>;
 
-    fn on_update(&mut self, lock_ctx : &mut LockCtx) -> Option<Box<DynScreen<'static>>>;
+    fn on_update(&mut self, lock_ctx: &mut LockCtx) -> Option<Box<DynScreen<'static>>>;
 
-    fn process_command(&mut self, lock_ctx: &mut LockCtx, command : VerifiedType) -> Result<Option<Box<DynScreen<'static>>>, String>;
+    fn process_command(
+        &mut self,
+        lock_ctx: &mut LockCtx,
+        command: VerifiedType,
+    ) -> Result<Option<Box<DynScreen<'static>>>, String>;
 
-    fn draw_screen(&mut self, lock_ctx : &mut LockCtx);
+    fn draw_screen(&mut self, lock_ctx: &mut LockCtx);
 
     // Clippy warns that I should probably just be using '&dyn ScreenState' as the type
     // here but then I can't seem to pass it around and use the indirection that makes

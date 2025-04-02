@@ -1,26 +1,26 @@
-mod verifier;
-mod wifi_util;
-mod screen_state;
-mod screen_ids;
-mod boot_screen;
-mod lock_ctx;
-mod prelude;
-mod overlay;
-mod overlays;
-mod under_contract_screen;
-mod internal_contract;
 mod acknowledger;
-mod servo;
+mod boot_screen;
+mod config_verifier;
 mod configuration_generated;
 mod contract_generated;
-mod config_verifier;
 mod internal_config;
+mod internal_contract;
+mod lock_ctx;
+mod overlay;
+mod overlays;
+mod prelude;
+mod screen_ids;
+mod screen_state;
+mod servo;
+mod under_contract_screen;
+mod verifier;
+mod wifi_util;
 
 use crate::servo::Servo;
 use esp_idf_hal::ledc::LedcDriver;
 use esp_idf_svc::hal::ledc::config::TimerConfig;
-use esp_idf_svc::hal::ledc::Resolution;
 use esp_idf_svc::hal::ledc::LedcTimerDriver;
+use esp_idf_svc::hal::ledc::Resolution;
 use esp_idf_svc::wifi::BlockingWifi;
 use esp_idf_svc::wifi::EspWifi;
 use std::thread::sleep;
@@ -28,7 +28,7 @@ use std::time::Duration;
 
 use display_interface_spi::SPIInterface;
 use embedded_hal::spi::MODE_3;
-use esp_idf_hal::delay::{NON_BLOCK};
+use esp_idf_hal::delay::NON_BLOCK;
 use esp_idf_hal::gpio::{AnyIOPin, PinDriver, Pull};
 use esp_idf_hal::i2c::{I2cConfig, I2cDriver};
 use esp_idf_hal::peripherals::Peripherals;
@@ -45,29 +45,27 @@ use esp_idf_svc::sys::esp_random;
 
 use crate::lock_ctx::{LockCtx, TickUpdate};
 
-use crate::wifi_util::{connect_wifi};
+use crate::wifi_util::connect_wifi;
 // use embedded_svc::http::client::Client as HttpClient;
 // use embedded_svc::io::Write;
 // use esp_idf_hal::sys::EspError;
-use rand_core::{CryptoRng, RngCore};
-use st7789::{Orientation, ST7789};
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::mono_font::ascii::FONT_10X20;
 use embedded_graphics::mono_font::MonoTextStyle;
-use embedded_graphics::prelude::RgbColor;
 use embedded_graphics::pixelcolor::Rgb565;
+use embedded_graphics::prelude::RgbColor;
 use embedded_graphics::text::{Alignment, Text};
 use embedded_graphics_core::geometry::Point;
 use embedded_graphics_core::Drawable;
+use rand_core::{CryptoRng, RngCore};
+use st7789::{Orientation, ST7789};
 
 struct Esp32Rng;
 
 impl RngCore for Esp32Rng {
     fn next_u32(&mut self) -> u32 {
-        unsafe {
-            return esp_random() as u32
-        }
+        unsafe { return esp_random() as u32 }
     }
 
     fn next_u64(&mut self) -> u64 {
@@ -93,7 +91,6 @@ impl RngCore for Esp32Rng {
 
 impl CryptoRng for Esp32Rng {}
 
-
 //noinspection RsUnresolvedMethod
 fn main() {
     // It is necessary to call this function once. Otherwise some patches to the runtime
@@ -118,7 +115,7 @@ fn main() {
     let tft_dc = peripherals.pins.gpio40;
     let tft_cs = peripherals.pins.gpio42;
     let sclk = peripherals.pins.gpio36;
-    let sdo = peripherals.pins.gpio35;// Mosi
+    let sdo = peripherals.pins.gpio35; // Mosi
     let sdi = peripherals.pins.gpio37; // miso
 
     let servo_pwm_pin = peripherals.pins.gpio18;
@@ -148,20 +145,33 @@ fn main() {
         Some(tft_cs),
         &spi::SpiDriverConfig::new().dma(spi::Dma::Disabled),
         &spi::SpiConfig::new().baudrate(10.MHz().into()),
-    ).expect("SpiDeviceDriver to work");
+    )
+    .expect("SpiDeviceDriver to work");
 
-    let spi_interface = SPIInterface::new(spi, gpio::PinDriver::output(tft_dc).expect("Pin driver for DC to work"));
+    let spi_interface = SPIInterface::new(
+        spi,
+        gpio::PinDriver::output(tft_dc).expect("Pin driver for DC to work"),
+    );
 
     let mut display = ST7789::new(spi_interface, Some(tft_rst), Some(tft_bl), 135, 240, 40, 53);
     log::info!("Display size: {:?}", display.size());
-    display.init(&mut delay::Ets).expect("Display to initialize");
+    display
+        .init(&mut delay::Ets)
+        .expect("Display to initialize");
 
-    display.set_orientation(Orientation::Landscape).expect("To set landscape");
+    display
+        .set_orientation(Orientation::Landscape)
+        .expect("To set landscape");
     display.clear(Rgb565::BLACK).expect("Display to clear");
 
     let style = MonoTextStyle::new(&FONT_10X20, Rgb565::GREEN);
     let draw_position = Point::new(120, 67);
-    let text = Text::with_alignment("@SubspacedBoy\nTartarus Lock Booting", draw_position, style, Alignment::Center);
+    let text = Text::with_alignment(
+        "@SubspacedBoy\nTartarus Lock Booting",
+        draw_position,
+        style,
+        Alignment::Center,
+    );
     text.draw(&mut display).expect("Should have drawn");
 
     // let sq_size = 50_u16;
@@ -181,7 +191,8 @@ fn main() {
     // display.set_pixels(0, sq_size, sq_size, sq_size * 2, colors);
 
     // Warm up NVS (non-volatile storage)
-    let nvs_partition = EspDefaultNvsPartition::take().expect("EspDefaultNvsPartition to be available");
+    let nvs_partition =
+        EspDefaultNvsPartition::take().expect("EspDefaultNvsPartition to be available");
     let nvs: EspNvs<NvsDefault> = EspNvs::new(nvs_partition.clone(), "storage", true).unwrap();
 
     // Warming up wifi
@@ -189,18 +200,22 @@ fn main() {
 
     let sys_loop = EspSystemEventLoop::take().expect("EspSystemEventLoop to be available");
     let mut wifi: BlockingWifi<EspWifi> = BlockingWifi::wrap(
-        EspWifi::new(peripherals.modem, sys_loop.clone(), Some(nvs_partition)).expect("EspWifi to work"),
+        EspWifi::new(peripherals.modem, sys_loop.clone(), Some(nvs_partition))
+            .expect("EspWifi to work"),
         sys_loop,
-    ).expect("Wifi to start");
+    )
+    .expect("Wifi to start");
     wifi.start().expect("Wifi should have started");
 
     // See if we have pre-existing creds
-    let mut buffer : [u8; 256] = [0; 256];
+    let mut buffer: [u8; 256] = [0; 256];
     if let Ok(blob) = nvs.get_blob("ssid", &mut buffer) {
         if let Some(actual_ssid) = blob {
             // Ok, we have an SSID. Let's assume we have a matching password.
-            let mut pass_buffer : [u8; 256] = [0; 256];
-            let pass = nvs.get_blob("password", &mut pass_buffer).expect("NVS to work");
+            let mut pass_buffer: [u8; 256] = [0; 256];
+            let pass = nvs
+                .get_blob("password", &mut pass_buffer)
+                .expect("NVS to work");
             if let Some(actual_pass) = pass {
                 let ssid = String::from_utf8(actual_ssid.to_vec()).ok().unwrap();
                 let password = String::from_utf8(actual_pass.to_vec()).ok().unwrap();
@@ -221,13 +236,11 @@ fn main() {
         &TimerConfig::default()
             .frequency(50_u32.Hz())
             .resolution(Resolution::Bits14),
-    ).unwrap();
+    )
+    .unwrap();
 
-    let driver: LedcDriver = LedcDriver::new(
-        peripherals.ledc.channel0,
-        timer_driver,
-        servo_pwm_pin,
-    ).unwrap();
+    let driver: LedcDriver =
+        LedcDriver::new(peripherals.ledc.channel0, timer_driver, servo_pwm_pin).unwrap();
 
     let servo = Servo::new(driver);
 
@@ -235,12 +248,8 @@ fn main() {
     const READER_ADDRESS: u8 = 0x0c;
 
     let config = I2cConfig::new().baudrate(KiloHertz(400).into());
-    let mut i2c_driver = I2cDriver::new(
-        peripherals.i2c0,
-        qr_reader_sda,
-        qr_reader_scl,
-        &config,
-    ).expect("I2C to initialize");
+    let mut i2c_driver = I2cDriver::new(peripherals.i2c0, qr_reader_sda, qr_reader_scl, &config)
+        .expect("I2C to initialize");
 
     // The maximum dataframe size from the tiny code reader is
     // 254 (size of rx_buf). The first byte in the message is the length
@@ -248,7 +257,7 @@ fn main() {
     // the null byte after size.
 
     log::info!("Ready :-)");
-    const SLEEP_DURATION : Duration = Duration::from_millis(150);
+    const SLEEP_DURATION: Duration = Duration::from_millis(150);
 
     let mut lock_ctx = LockCtx::new(display, nvs, wifi, servo);
 
@@ -268,7 +277,7 @@ fn main() {
             d2_pressed = true;
         }
 
-        let mut data : Option<Vec<u8>> = None;
+        let mut data: Option<Vec<u8>> = None;
         match i2c_driver.read(READER_ADDRESS, &mut rx_buf, NON_BLOCK) {
             Ok(_) => {
                 let size: usize = rx_buf[0] as usize;
@@ -284,8 +293,8 @@ fn main() {
             d0_pressed,
             d1_pressed,
             d2_pressed,
-            qr_data : data,
-            since_last: SLEEP_DURATION
+            qr_data: data,
+            since_last: SLEEP_DURATION,
         };
 
         lock_ctx.tick(this_update);
@@ -294,4 +303,3 @@ fn main() {
         // continue; // keep optimizer from removing in --release
     }
 }
-

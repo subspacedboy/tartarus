@@ -1,23 +1,23 @@
-use embedded_graphics::mono_font::ascii::FONT_10X20;
-use embedded_graphics::mono_font::MonoTextStyle;
+use crate::config_verifier::ConfigVerifier;
 use crate::lock_ctx::LockCtx;
 use crate::prelude::prelude::{DynScreen, MySPI};
 use crate::screen_ids::ScreenId;
 use crate::screen_state::ScreenState;
+use crate::under_contract_screen::UnderContractScreen;
 use crate::verifier::{SignedMessageVerifier, VerifiedType};
+use embedded_graphics::mono_font::ascii::FONT_10X20;
+use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::{Rgb565, RgbColor};
 use embedded_graphics::prelude::Primitive;
 use embedded_graphics::primitives::PrimitiveStyleBuilder;
 use embedded_graphics::text::Text;
 use embedded_graphics_core::geometry::{Point, Size};
+use embedded_graphics_core::prelude::DrawTarget;
 use embedded_graphics_core::primitives::Rectangle;
 use embedded_graphics_core::Drawable;
-use embedded_graphics_core::prelude::DrawTarget;
 use embedded_hal::digital::OutputPin;
 use esp_idf_hal::gpio::{GpioError, Output, PinDriver};
 use qrcode::{Color, QrCode};
-use crate::config_verifier::ConfigVerifier;
-use crate::under_contract_screen::UnderContractScreen;
 
 pub struct BootScreen<SPI, DC, RST, PinE> {
     _spi: core::marker::PhantomData<SPI>,
@@ -25,7 +25,7 @@ pub struct BootScreen<SPI, DC, RST, PinE> {
     _rst: core::marker::PhantomData<RST>,
     _pin: core::marker::PhantomData<PinE>,
     needs_redraw: bool,
-    configuration_changed: bool
+    configuration_changed: bool,
 }
 
 impl<SPI, DC, RST, PinE> BootScreen<SPI, DC, RST, PinE> {
@@ -36,7 +36,7 @@ impl<SPI, DC, RST, PinE> BootScreen<SPI, DC, RST, PinE> {
             _rst: core::marker::PhantomData,
             _pin: core::marker::PhantomData,
             needs_redraw: true,
-            configuration_changed: false
+            configuration_changed: false,
         }
     }
 }
@@ -46,7 +46,8 @@ where
     SPI: display_interface::WriteOnlyDataCommand,
     DC: OutputPin<Error = PinE>,
     RST: OutputPin<Error = PinE>,
-    PinE: std::fmt::Debug ,{
+    PinE: std::fmt::Debug,
+{
     type SPI = SPI;
     type PinE = PinE;
     type DC = DC;
@@ -68,50 +69,48 @@ where
                                 lock_ctx.accept_contract(&contract);
 
                                 lock_ctx.contract = Some(contract);
-                                let under_contract = Box::new(
-                                    UnderContractScreen::<
-                                        MySPI<'static>,
-                                        PinDriver<'static, _, Output>,
-                                        PinDriver<'static, _, Output>,
-                                        GpioError
-                                    >::new());
+                                let under_contract = Box::new(UnderContractScreen::<
+                                    MySPI<'static>,
+                                    PinDriver<'static, _, Output>,
+                                    PinDriver<'static, _, Output>,
+                                    GpioError,
+                                >::new(
+                                ));
                                 return Some(under_contract);
                             }
                             _ => {}
                         }
                     }
                 }
-
-
             }
         }
 
         None
     }
 
-    fn process_command(&mut self, lock_ctx: &mut LockCtx, command: VerifiedType)  -> Result<Option<Box<DynScreen<'static>>>, String>{
+    fn process_command(
+        &mut self,
+        lock_ctx: &mut LockCtx,
+        command: VerifiedType,
+    ) -> Result<Option<Box<DynScreen<'static>>>, String> {
         match command {
             VerifiedType::Contract(contract) => {
                 lock_ctx.accept_contract(&contract);
 
                 lock_ctx.contract = Some(contract);
-                let under_contract = Box::new(
-                    UnderContractScreen::<
-                        MySPI<'static>,
-                        PinDriver<'static, _, Output>,
-                        PinDriver<'static, _, Output>,
-                        GpioError
-                    >::new());
+                let under_contract = Box::new(UnderContractScreen::<
+                    MySPI<'static>,
+                    PinDriver<'static, _, Output>,
+                    PinDriver<'static, _, Output>,
+                    GpioError,
+                >::new());
                 Ok(Some(under_contract))
             }
-            _ => {
-                Err("Command doesn't work on BootScreen".parse().unwrap())
-            }
+            _ => Err("Command doesn't work on BootScreen".parse().unwrap()),
         }
     }
 
-
-    fn draw_screen(&mut self, lock_ctx : &mut LockCtx) {
+    fn draw_screen(&mut self, lock_ctx: &mut LockCtx) {
         let whole_message = lock_ctx.get_lock_url().unwrap();
         let qr = QrCode::new(whole_message).expect("Valid QR code");
 
@@ -130,10 +129,20 @@ where
         let border_width = 5;
 
         let rect = Rectangle::new(
-            Point::new((offset_x - border_width) as i32, (offset_y - border_width) as i32),
-            Size::new(qr_width * scale + border_width * 2, qr_width * scale + border_width * 2),
+            Point::new(
+                (offset_x - border_width) as i32,
+                (offset_y - border_width) as i32,
+            ),
+            Size::new(
+                qr_width * scale + border_width * 2,
+                qr_width * scale + border_width * 2,
+            ),
         )
-            .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::WHITE).build());
+        .into_styled(
+            PrimitiveStyleBuilder::new()
+                .fill_color(Rgb565::WHITE)
+                .build(),
+        );
         rect.draw(&mut lock_ctx.display).expect("Expected to draw");
 
         for y in 0..qr_width {
@@ -144,10 +153,13 @@ where
                     Rgb565::WHITE
                 };
                 let rect = Rectangle::new(
-                    Point::new((offset_x + (x * scale)) as i32, (offset_y + (y * scale)) as i32),
+                    Point::new(
+                        (offset_x + (x * scale)) as i32,
+                        (offset_y + (y * scale)) as i32,
+                    ),
                     Size::new(scale, scale),
                 )
-                    .into_styled(PrimitiveStyleBuilder::new().fill_color(color).build());
+                .into_styled(PrimitiveStyleBuilder::new().fill_color(color).build());
                 rect.draw(&mut lock_ctx.display).expect("Expected to draw");
             }
         }

@@ -3,11 +3,11 @@ use esp_idf_hal::ledc::LedcDriver;
 pub struct Servo<'a> {
     driver: LedcDriver<'a>,
     min_limit: u32,
-    max_limit: u32
+    max_limit: u32,
 }
 
-const OPEN_ANGLE : u32 = 1;
-const CLOSED_ANGLE : u32 = 90;
+const OPEN_ANGLE: u32 = 1;
+const CLOSED_ANGLE: u32 = 90;
 
 impl<'a> Servo<'a> {
     pub fn new(driver: LedcDriver<'a>) -> Servo<'a> {
@@ -18,7 +18,7 @@ impl<'a> Servo<'a> {
         let max_limit = max_duty * 125 / 1000;
         log::info!("Max Limit {}", max_limit);
 
-        Self{
+        Self {
             driver,
             min_limit,
             max_limit,

@@ -1,7 +1,11 @@
 use embedded_svc::wifi::{AuthMethod, ClientConfiguration, Configuration};
 use esp_idf_svc::wifi::{BlockingWifi, EspWifi};
 
-pub fn connect_wifi(wifi: &mut BlockingWifi<EspWifi<'static>>, ssid: &String, password: &String) -> anyhow::Result<()> {
+pub fn connect_wifi(
+    wifi: &mut BlockingWifi<EspWifi<'static>>,
+    ssid: &String,
+    password: &String,
+) -> anyhow::Result<()> {
     let wifi_configuration: Configuration = Configuration::Client(ClientConfiguration {
         ssid: ssid.parse().expect(""),
         bssid: None,

@@ -1,6 +1,8 @@
+use crate::contract_generated::club::subjugated::fb::message::{
+    Contract, EndCondition, LockCommand, ReleaseCommand, UnlockCommand,
+};
 use p256::ecdsa::VerifyingKey;
 use serde::{Deserialize, Serialize};
-use crate::contract_generated::club::subjugated::fb::message::{Contract, EndCondition, LockCommand, ReleaseCommand, UnlockCommand};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SaveState {
@@ -12,7 +14,7 @@ pub struct SaveState {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InternalContract {
     pub serial_number: u16,
-    pub temporary_unlock_allowed : bool,
+    pub temporary_unlock_allowed: bool,
     pub unremovable: bool,
     pub end_criteria: EndCriteria,
     pub temp_unlock_rules: Vec<TempUnlockRules>,
@@ -26,33 +28,33 @@ pub struct InternalContract {
 pub struct InternalUnlockCommand {
     pub contract_serial_number: u16,
     pub serial_number: u16,
-    pub counter: u16
+    pub counter: u16,
 }
 
 #[derive(Debug, Clone)]
 pub struct InternalLockCommand {
     pub contract_serial_number: u16,
     pub serial_number: u16,
-    pub counter: u16
+    pub counter: u16,
 }
 
 #[derive(Debug, Clone)]
 pub struct InternalReleaseCommand {
     pub contract_serial_number: u16,
     pub serial_number: u16,
-    pub counter: u16
+    pub counter: u16,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EndCriteria {
     WhenISaySo,
-    Time
+    Time,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TempUnlockRules {
     Remaining(u16),
-    TimeLimit(u16)
+    TimeLimit(u16),
 }
 
 // impl InternalContract {
@@ -71,7 +73,8 @@ impl From<Contract<'_>> for InternalContract {
         };
 
         let original_bytes = contract._tab.buf().to_vec();
-        let verifying_key = VerifyingKey::from_sec1_bytes(contract.public_key().unwrap().bytes()).expect("Valid public key");
+        let verifying_key = VerifyingKey::from_sec1_bytes(contract.public_key().unwrap().bytes())
+            .expect("Valid public key");
 
         let mut ic = Self {
             serial_number: contract.serial_number(),
@@ -87,10 +90,12 @@ impl From<Contract<'_>> for InternalContract {
 
         if let Some(rules) = contract.unlock_rules() {
             if rules.max_unlocks() > 0 {
-                ic.temp_unlock_rules.push(TempUnlockRules::Remaining(rules.max_unlocks()))
+                ic.temp_unlock_rules
+                    .push(TempUnlockRules::Remaining(rules.max_unlocks()))
             }
             if rules.time_limit() > 0 {
-                ic.temp_unlock_rules.push(TempUnlockRules::TimeLimit(rules.time_limit()));
+                ic.temp_unlock_rules
+                    .push(TempUnlockRules::TimeLimit(rules.time_limit()));
             }
         }
 
@@ -131,8 +136,8 @@ impl From<ReleaseCommand<'_>> for InternalReleaseCommand {
 pub mod verifying_key_serde {
     use p256::ecdsa::VerifyingKey;
     use p256::EncodedPoint;
-    use serde::{Serializer, Deserializer, Serialize, Deserialize};
     use serde::de::Error;
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
     pub fn serialize<S>(key: &Option<VerifyingKey>, serializer: S) -> Result<S::Ok, S::Error>
     where

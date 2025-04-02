@@ -17,7 +17,7 @@ pub struct WifiOverlay<SPI, DC, RST, PinE> {
     _dc: core::marker::PhantomData<DC>,
     _rst: core::marker::PhantomData<RST>,
     _pin: core::marker::PhantomData<PinE>,
-    needs_redraw: bool
+    needs_redraw: bool,
 }
 
 impl<SPI, DC, RST, PinE> WifiOverlay<SPI, DC, RST, PinE> {
@@ -27,7 +27,7 @@ impl<SPI, DC, RST, PinE> WifiOverlay<SPI, DC, RST, PinE> {
             _dc: core::marker::PhantomData,
             _rst: core::marker::PhantomData,
             _pin: core::marker::PhantomData,
-            needs_redraw: true
+            needs_redraw: true,
         }
     }
 }
@@ -37,17 +37,18 @@ where
     SPI: display_interface::WriteOnlyDataCommand,
     DC: OutputPin<Error = PinE>,
     RST: OutputPin<Error = PinE>,
-    PinE: std::fmt::Debug ,{
+    PinE: std::fmt::Debug,
+{
     type SPI = SPI;
     type PinE = PinE;
     type DC = DC;
     type RST = RST;
 
-    fn draw_screen(&mut self, lock_ctx : &mut LockCtx) {
+    fn draw_screen(&mut self, lock_ctx: &mut LockCtx) {
         let style = MonoTextStyle::new(&FONT_10X20, Rgb565::GREEN);
         let draw_position = Point::new(5, 125);
         let text = if lock_ctx.wifi_connected {
-           Text::new("Wifi", draw_position, style)
+            Text::new("Wifi", draw_position, style)
         } else {
             Text::new("NC", draw_position, style)
         };
@@ -63,7 +64,7 @@ pub struct ButtonPressOverlay<SPI, DC, RST, PinE> {
     _dc: core::marker::PhantomData<DC>,
     _rst: core::marker::PhantomData<RST>,
     _pin: core::marker::PhantomData<PinE>,
-    needs_redraw: bool
+    needs_redraw: bool,
 }
 
 impl<SPI, DC, RST, PinE> ButtonPressOverlay<SPI, DC, RST, PinE> {
@@ -73,7 +74,7 @@ impl<SPI, DC, RST, PinE> ButtonPressOverlay<SPI, DC, RST, PinE> {
             _dc: core::marker::PhantomData,
             _rst: core::marker::PhantomData,
             _pin: core::marker::PhantomData,
-            needs_redraw: true
+            needs_redraw: true,
         }
     }
 }
@@ -83,39 +84,57 @@ where
     SPI: display_interface::WriteOnlyDataCommand,
     DC: OutputPin<Error = PinE>,
     RST: OutputPin<Error = PinE>,
-    PinE: std::fmt::Debug ,{
+    PinE: std::fmt::Debug,
+{
     type SPI = SPI;
     type PinE = PinE;
     type DC = DC;
     type RST = RST;
 
-    fn draw_screen(&mut self, lock_ctx : &mut LockCtx) {
+    fn draw_screen(&mut self, lock_ctx: &mut LockCtx) {
         let draw_position = Point::new(0, 0);
         let size = Size::new(25, 25);
 
         if let Some(update) = &lock_ctx.this_update {
             if update.d0_pressed {
-                let blue_square = Rectangle::new(draw_position, size)
-                    .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::BLUE).build());
-                blue_square.draw(&mut lock_ctx.display).expect("Failed to draw screen");
+                let blue_square = Rectangle::new(draw_position, size).into_styled(
+                    PrimitiveStyleBuilder::new()
+                        .fill_color(Rgb565::BLUE)
+                        .build(),
+                );
+                blue_square
+                    .draw(&mut lock_ctx.display)
+                    .expect("Failed to draw screen");
             }
 
             if update.d1_pressed {
-                let green_square = Rectangle::new(draw_position, size)
-                    .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::GREEN).build());
-                green_square.draw(&mut lock_ctx.display).expect("Failed to draw screen");
+                let green_square = Rectangle::new(draw_position, size).into_styled(
+                    PrimitiveStyleBuilder::new()
+                        .fill_color(Rgb565::GREEN)
+                        .build(),
+                );
+                green_square
+                    .draw(&mut lock_ctx.display)
+                    .expect("Failed to draw screen");
             }
 
             if update.d2_pressed {
                 let red_square = Rectangle::new(draw_position, size)
                     .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::RED).build());
-                red_square.draw(&mut lock_ctx.display).expect("Failed to draw screen");
+                red_square
+                    .draw(&mut lock_ctx.display)
+                    .expect("Failed to draw screen");
             }
 
             if !update.d0_pressed && !update.d1_pressed && !update.d2_pressed {
-                let white_square = Rectangle::new(draw_position, size)
-                    .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::BLACK).build());
-                white_square.draw(&mut lock_ctx.display).expect("Failed to draw screen");
+                let white_square = Rectangle::new(draw_position, size).into_styled(
+                    PrimitiveStyleBuilder::new()
+                        .fill_color(Rgb565::BLACK)
+                        .build(),
+                );
+                white_square
+                    .draw(&mut lock_ctx.display)
+                    .expect("Failed to draw screen");
             }
         }
 

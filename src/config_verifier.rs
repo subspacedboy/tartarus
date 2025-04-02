@@ -1,7 +1,7 @@
-use flatbuffers::InvalidFlatbuffer;
-use p256::ecdsa::VerifyingKey;
 use crate::configuration_generated::club::subjugated::fb::message::configuration::CoordinatorConfiguration;
 use crate::internal_config::{InternalConfig, InternalSafetyKey};
+use flatbuffers::InvalidFlatbuffer;
+use p256::ecdsa::VerifyingKey;
 
 pub struct ConfigVerifier {}
 

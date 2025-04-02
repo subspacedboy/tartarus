@@ -1,7 +1,9 @@
+use crate::boot_screen::BootScreen;
 use crate::lock_ctx::LockCtx;
 use crate::prelude::prelude::{DynScreen, MySPI};
 use crate::screen_ids::ScreenId;
 use crate::screen_state::ScreenState;
+use crate::verifier::VerifiedType;
 use embedded_graphics::mono_font::ascii::FONT_10X20;
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::text::{Alignment, Text};
@@ -11,8 +13,6 @@ use embedded_graphics_core::prelude::{DrawTarget, RgbColor};
 use embedded_graphics_core::Drawable;
 use embedded_hal::digital::OutputPin;
 use esp_idf_hal::gpio::{GpioError, Output, PinDriver};
-use crate::boot_screen::BootScreen;
-use crate::verifier::VerifiedType;
 
 pub struct UnderContractScreen<SPI, DC, RST, PinE> {
     _spi: core::marker::PhantomData<SPI>,
@@ -20,7 +20,7 @@ pub struct UnderContractScreen<SPI, DC, RST, PinE> {
     _rst: core::marker::PhantomData<RST>,
     _pin: core::marker::PhantomData<PinE>,
     needs_redraw: bool,
-    text: String
+    text: String,
 }
 
 impl<SPI, DC, RST, PinE> UnderContractScreen<SPI, DC, RST, PinE> {
@@ -31,7 +31,7 @@ impl<SPI, DC, RST, PinE> UnderContractScreen<SPI, DC, RST, PinE> {
             _rst: core::marker::PhantomData,
             _pin: core::marker::PhantomData,
             needs_redraw: true,
-            text: "Locked :-)".to_string()
+            text: "Locked :-)".to_string(),
         }
     }
 }
@@ -41,7 +41,8 @@ where
     SPI: display_interface::WriteOnlyDataCommand,
     DC: OutputPin<Error = PinE>,
     RST: OutputPin<Error = PinE>,
-    PinE: std::fmt::Debug ,{
+    PinE: std::fmt::Debug,
+{
     type SPI = SPI;
     type PinE = PinE;
     type DC = DC;
@@ -63,26 +64,28 @@ where
                     self.needs_redraw = true;
                 }
             }
-
         }
 
         if let Some(update) = &lock_ctx.this_update {
-            if update.d2_pressed  {
+            if update.d2_pressed {
                 lock_ctx.end_contract();
-                let boot_screen = Box::new(
-                    BootScreen::<
-                        MySPI<'static>,
-                        PinDriver<'static, _, Output>,
-                        PinDriver<'static, _, Output>,
-                        GpioError
-                    >::new());
-                return Some(boot_screen)
+                let boot_screen = Box::new(BootScreen::<
+                    MySPI<'static>,
+                    PinDriver<'static, _, Output>,
+                    PinDriver<'static, _, Output>,
+                    GpioError,
+                >::new());
+                return Some(boot_screen);
             }
         }
         None
     }
 
-    fn process_command(&mut self, lock_ctx: &mut LockCtx, command: VerifiedType) -> Result<Option<Box<DynScreen<'static>>>, String> {
+    fn process_command(
+        &mut self,
+        lock_ctx: &mut LockCtx,
+        command: VerifiedType,
+    ) -> Result<Option<Box<DynScreen<'static>>>, String> {
         log::info!("process_command: {:?}", command);
         match command {
             VerifiedType::UnlockCommand(_) => {
@@ -96,32 +99,34 @@ where
                 self.text = "Locked :-)".to_string();
                 self.needs_redraw = true;
                 Ok(None)
-            },
+            }
             VerifiedType::ReleaseCommand(_) => {
                 lock_ctx.end_contract();
 
-                let boot_screen = Box::new(
-                    BootScreen::<
-                        MySPI<'static>,
-                        PinDriver<'static, _, Output>,
-                        PinDriver<'static, _, Output>,
-                        GpioError
-                    >::new());
+                let boot_screen = Box::new(BootScreen::<
+                    MySPI<'static>,
+                    PinDriver<'static, _, Output>,
+                    PinDriver<'static, _, Output>,
+                    GpioError,
+                >::new());
                 Ok(Some(boot_screen))
             }
-            _ => {
-                Err("Command doesn't work on UnderContractScreen".parse().unwrap())
-            }
+            _ => Err("Command doesn't work on UnderContractScreen"
+                .parse()
+                .unwrap()),
         }
     }
 
-
-    fn draw_screen(&mut self, lock_ctx : &mut LockCtx) {
-        lock_ctx.display.clear(Rgb565::BLACK).expect("Screen should have cleared");
+    fn draw_screen(&mut self, lock_ctx: &mut LockCtx) {
+        lock_ctx
+            .display
+            .clear(Rgb565::BLACK)
+            .expect("Screen should have cleared");
 
         let style = MonoTextStyle::new(&FONT_10X20, Rgb565::GREEN);
         let draw_position = Point::new(120, 67);
-        let text = Text::with_alignment(self.text.as_str(), draw_position, style, Alignment::Center);
+        let text =
+            Text::with_alignment(self.text.as_str(), draw_position, style, Alignment::Center);
         text.draw(&mut lock_ctx.display).expect("Should have drawn");
 
         self.needs_redraw = false;
