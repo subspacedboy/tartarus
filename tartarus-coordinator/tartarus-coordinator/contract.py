@@ -68,6 +68,7 @@ class Contract(Base):
             logger.info(f"Signature -> {' '.join(map(str, signature))}")
             
             if signed_message.PayloadType() == MessagePayload.Contract:
+                logger.info("Verifying as contract")
                 contract = ContractMessage()
                 contract.Init(signed_message.Payload().Bytes, signed_message.Payload().Pos)
 
@@ -87,6 +88,7 @@ class Contract(Base):
                 der_signature = raw_to_der_signature(bytes(signature))
                 try:
                     working_key.verify(der_signature, hash, ec.ECDSA(hashes.SHA256()))
+                    logger.info("Signature is verified!")
                     return True
                 except InvalidSignature:
                     logger.warning(f"Signature is wrong.")
@@ -98,5 +100,6 @@ class Contract(Base):
 
             return signed_message is not None  # Modify this based on additional validation needs
         except Exception as e:
+
             logger.warning(f"Failed to validate contract -> {e}")
             return False

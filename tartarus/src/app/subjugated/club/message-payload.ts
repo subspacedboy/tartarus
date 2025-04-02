@@ -3,32 +3,36 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
 import { Contract } from '../../subjugated/club/contract.js';
+import { PartialContract } from '../../subjugated/club/partial-contract.js';
 
 
 export enum MessagePayload {
   NONE = 0,
-  Contract = 1
+  Contract = 1,
+  PartialContract = 2
 }
 
 export function unionToMessagePayload(
   type: MessagePayload,
-  accessor: (obj:Contract) => Contract|null
-): Contract|null {
+  accessor: (obj:Contract|PartialContract) => Contract|PartialContract|null
+): Contract|PartialContract|null {
   switch(MessagePayload[type]) {
     case 'NONE': return null; 
     case 'Contract': return accessor(new Contract())! as Contract;
+    case 'PartialContract': return accessor(new PartialContract())! as PartialContract;
     default: return null;
   }
 }
 
 export function unionListToMessagePayload(
   type: MessagePayload, 
-  accessor: (index: number, obj:Contract) => Contract|null, 
+  accessor: (index: number, obj:Contract|PartialContract) => Contract|PartialContract|null, 
   index: number
-): Contract|null {
+): Contract|PartialContract|null {
   switch(MessagePayload[type]) {
     case 'NONE': return null; 
     case 'Contract': return accessor(index, new Contract())! as Contract;
+    case 'PartialContract': return accessor(index, new PartialContract())! as PartialContract;
     default: return null;
   }
 }

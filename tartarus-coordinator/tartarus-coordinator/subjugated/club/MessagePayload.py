@@ -5,3 +5,4 @@
 class MessagePayload(object):
     NONE = 0
     Contract = 1
+    PartialContract = 2

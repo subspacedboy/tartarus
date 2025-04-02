@@ -58,80 +58,68 @@ capabilitiesArray():Int8Array|null {
   return offset ? new Int8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
-isPartial():boolean {
+isUnremovable():boolean {
   const offset = this.bb!.__offset(this.bb_pos, 8);
   return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
 }
 
-completeContractAddress():string|null
-completeContractAddress(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-completeContractAddress(optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 10);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
-}
-
-isUnremovable():boolean {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
-  return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
-}
-
 isBlind():boolean {
-  const offset = this.bb!.__offset(this.bb_pos, 14);
+  const offset = this.bb!.__offset(this.bb_pos, 10);
   return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
 }
 
 encryptedContract(index: number):number|null {
-  const offset = this.bb!.__offset(this.bb_pos, 16);
+  const offset = this.bb!.__offset(this.bb_pos, 12);
   return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
 }
 
 encryptedContractLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 16);
+  const offset = this.bb!.__offset(this.bb_pos, 12);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 encryptedContractArray():Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 16);
+  const offset = this.bb!.__offset(this.bb_pos, 12);
   return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
 endConditionType():EndCondition {
-  const offset = this.bb!.__offset(this.bb_pos, 18);
+  const offset = this.bb!.__offset(this.bb_pos, 14);
   return offset ? this.bb!.readUint8(this.bb_pos + offset) : EndCondition.NONE;
 }
 
 endCondition<T extends flatbuffers.Table>(obj:any):any|null {
-  const offset = this.bb!.__offset(this.bb_pos, 20);
+  const offset = this.bb!.__offset(this.bb_pos, 16);
   return offset ? this.bb!.__union(obj, this.bb_pos + offset) : null;
 }
 
 participants(index: number, obj?:WebHook):WebHook|null {
-  const offset = this.bb!.__offset(this.bb_pos, 22);
+  const offset = this.bb!.__offset(this.bb_pos, 18);
   return offset ? (obj || new WebHook()).__init(this.bb!.__indirect(this.bb!.__vector(this.bb_pos + offset) + index * 4), this.bb!) : null;
 }
 
 participantsLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 22);
+  const offset = this.bb!.__offset(this.bb_pos, 18);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 isLockOnAccept():boolean {
-  const offset = this.bb!.__offset(this.bb_pos, 24);
+  const offset = this.bb!.__offset(this.bb_pos, 20);
   return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
 }
 
 isTemporaryUnlockAllowed():boolean {
-  const offset = this.bb!.__offset(this.bb_pos, 26);
+  const offset = this.bb!.__offset(this.bb_pos, 22);
   return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
 }
 
 unlockRules(obj?:TemporaryUnlockRules):TemporaryUnlockRules|null {
-  const offset = this.bb!.__offset(this.bb_pos, 28);
+  const offset = this.bb!.__offset(this.bb_pos, 24);
   return offset ? (obj || new TemporaryUnlockRules()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
 }
 
 static startContract(builder:flatbuffers.Builder) {
-  builder.startObject(13);
+  builder.startObject(11);
 }
 
 static addPublicKey(builder:flatbuffers.Builder, publicKeyOffset:flatbuffers.Offset) {
@@ -166,24 +154,16 @@ static startCapabilitiesVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(1, numElems, 1);
 }
 
-static addIsPartial(builder:flatbuffers.Builder, isPartial:boolean) {
-  builder.addFieldInt8(2, +isPartial, +false);
-}
-
-static addCompleteContractAddress(builder:flatbuffers.Builder, completeContractAddressOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(3, completeContractAddressOffset, 0);
-}
-
 static addIsUnremovable(builder:flatbuffers.Builder, isUnremovable:boolean) {
-  builder.addFieldInt8(4, +isUnremovable, +false);
+  builder.addFieldInt8(2, +isUnremovable, +false);
 }
 
 static addIsBlind(builder:flatbuffers.Builder, isBlind:boolean) {
-  builder.addFieldInt8(5, +isBlind, +false);
+  builder.addFieldInt8(3, +isBlind, +false);
 }
 
 static addEncryptedContract(builder:flatbuffers.Builder, encryptedContractOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(6, encryptedContractOffset, 0);
+  builder.addFieldOffset(4, encryptedContractOffset, 0);
 }
 
 static createEncryptedContractVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
@@ -199,15 +179,15 @@ static startEncryptedContractVector(builder:flatbuffers.Builder, numElems:number
 }
 
 static addEndConditionType(builder:flatbuffers.Builder, endConditionType:EndCondition) {
-  builder.addFieldInt8(7, endConditionType, EndCondition.NONE);
+  builder.addFieldInt8(5, endConditionType, EndCondition.NONE);
 }
 
 static addEndCondition(builder:flatbuffers.Builder, endConditionOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(8, endConditionOffset, 0);
+  builder.addFieldOffset(6, endConditionOffset, 0);
 }
 
 static addParticipants(builder:flatbuffers.Builder, participantsOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(9, participantsOffset, 0);
+  builder.addFieldOffset(7, participantsOffset, 0);
 }
 
 static createParticipantsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
@@ -223,15 +203,15 @@ static startParticipantsVector(builder:flatbuffers.Builder, numElems:number) {
 }
 
 static addIsLockOnAccept(builder:flatbuffers.Builder, isLockOnAccept:boolean) {
-  builder.addFieldInt8(10, +isLockOnAccept, +false);
+  builder.addFieldInt8(8, +isLockOnAccept, +false);
 }
 
 static addIsTemporaryUnlockAllowed(builder:flatbuffers.Builder, isTemporaryUnlockAllowed:boolean) {
-  builder.addFieldInt8(11, +isTemporaryUnlockAllowed, +false);
+  builder.addFieldInt8(9, +isTemporaryUnlockAllowed, +false);
 }
 
 static addUnlockRules(builder:flatbuffers.Builder, unlockRulesOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(12, unlockRulesOffset, 0);
+  builder.addFieldOffset(10, unlockRulesOffset, 0);
 }
 
 static endContract(builder:flatbuffers.Builder):flatbuffers.Offset {

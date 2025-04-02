@@ -205,12 +205,13 @@ pub struct EndConditionUnionTableOffset {}
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
 pub const ENUM_MIN_MESSAGE_PAYLOAD: u8 = 0;
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
-pub const ENUM_MAX_MESSAGE_PAYLOAD: u8 = 1;
+pub const ENUM_MAX_MESSAGE_PAYLOAD: u8 = 2;
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
 #[allow(non_camel_case_types)]
-pub const ENUM_VALUES_MESSAGE_PAYLOAD: [MessagePayload; 2] = [
+pub const ENUM_VALUES_MESSAGE_PAYLOAD: [MessagePayload; 3] = [
   MessagePayload::NONE,
   MessagePayload::Contract,
+  MessagePayload::PartialContract,
 ];
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
@@ -220,18 +221,21 @@ pub struct MessagePayload(pub u8);
 impl MessagePayload {
   pub const NONE: Self = Self(0);
   pub const Contract: Self = Self(1);
+  pub const PartialContract: Self = Self(2);
 
   pub const ENUM_MIN: u8 = 0;
-  pub const ENUM_MAX: u8 = 1;
+  pub const ENUM_MAX: u8 = 2;
   pub const ENUM_VALUES: &'static [Self] = &[
     Self::NONE,
     Self::Contract,
+    Self::PartialContract,
   ];
   /// Returns the variant's name or "" if unknown.
   pub fn variant_name(self) -> Option<&'static str> {
     match self {
       Self::NONE => Some("NONE"),
       Self::Contract => Some("Contract"),
+      Self::PartialContract => Some("PartialContract"),
       _ => None,
     }
   }
@@ -694,17 +698,15 @@ impl<'a> flatbuffers::Follow<'a> for Contract<'a> {
 impl<'a> Contract<'a> {
   pub const VT_PUBLIC_KEY: flatbuffers::VOffsetT = 4;
   pub const VT_CAPABILITIES: flatbuffers::VOffsetT = 6;
-  pub const VT_IS_PARTIAL: flatbuffers::VOffsetT = 8;
-  pub const VT_COMPLETE_CONTRACT_ADDRESS: flatbuffers::VOffsetT = 10;
-  pub const VT_IS_UNREMOVABLE: flatbuffers::VOffsetT = 12;
-  pub const VT_IS_BLIND: flatbuffers::VOffsetT = 14;
-  pub const VT_ENCRYPTED_CONTRACT: flatbuffers::VOffsetT = 16;
-  pub const VT_END_CONDITION_TYPE: flatbuffers::VOffsetT = 18;
-  pub const VT_END_CONDITION: flatbuffers::VOffsetT = 20;
-  pub const VT_PARTICIPANTS: flatbuffers::VOffsetT = 22;
-  pub const VT_IS_LOCK_ON_ACCEPT: flatbuffers::VOffsetT = 24;
-  pub const VT_IS_TEMPORARY_UNLOCK_ALLOWED: flatbuffers::VOffsetT = 26;
-  pub const VT_UNLOCK_RULES: flatbuffers::VOffsetT = 28;
+  pub const VT_IS_UNREMOVABLE: flatbuffers::VOffsetT = 8;
+  pub const VT_IS_BLIND: flatbuffers::VOffsetT = 10;
+  pub const VT_ENCRYPTED_CONTRACT: flatbuffers::VOffsetT = 12;
+  pub const VT_END_CONDITION_TYPE: flatbuffers::VOffsetT = 14;
+  pub const VT_END_CONDITION: flatbuffers::VOffsetT = 16;
+  pub const VT_PARTICIPANTS: flatbuffers::VOffsetT = 18;
+  pub const VT_IS_LOCK_ON_ACCEPT: flatbuffers::VOffsetT = 20;
+  pub const VT_IS_TEMPORARY_UNLOCK_ALLOWED: flatbuffers::VOffsetT = 22;
+  pub const VT_UNLOCK_RULES: flatbuffers::VOffsetT = 24;
 
   #[inline]
   pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -720,7 +722,6 @@ impl<'a> Contract<'a> {
     if let Some(x) = args.participants { builder.add_participants(x); }
     if let Some(x) = args.end_condition { builder.add_end_condition(x); }
     if let Some(x) = args.encrypted_contract { builder.add_encrypted_contract(x); }
-    if let Some(x) = args.complete_contract_address { builder.add_complete_contract_address(x); }
     if let Some(x) = args.capabilities { builder.add_capabilities(x); }
     if let Some(x) = args.public_key { builder.add_public_key(x); }
     builder.add_is_temporary_unlock_allowed(args.is_temporary_unlock_allowed);
@@ -728,7 +729,6 @@ impl<'a> Contract<'a> {
     builder.add_end_condition_type(args.end_condition_type);
     builder.add_is_blind(args.is_blind);
     builder.add_is_unremovable(args.is_unremovable);
-    builder.add_is_partial(args.is_partial);
     builder.finish()
   }
 
@@ -746,20 +746,6 @@ impl<'a> Contract<'a> {
     // Created from valid Table for this object
     // which contains a valid value in this slot
     unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, Capabilities>>>(Contract::VT_CAPABILITIES, None)}
-  }
-  #[inline]
-  pub fn is_partial(&self) -> bool {
-    // Safety:
-    // Created from valid Table for this object
-    // which contains a valid value in this slot
-    unsafe { self._tab.get::<bool>(Contract::VT_IS_PARTIAL, Some(false)).unwrap()}
-  }
-  #[inline]
-  pub fn complete_contract_address(&self) -> Option<&'a str> {
-    // Safety:
-    // Created from valid Table for this object
-    // which contains a valid value in this slot
-    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(Contract::VT_COMPLETE_CONTRACT_ADDRESS, None)}
   }
   #[inline]
   pub fn is_unremovable(&self) -> bool {
@@ -865,8 +851,6 @@ impl flatbuffers::Verifiable for Contract<'_> {
     v.visit_table(pos)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, u8>>>("public_key", Self::VT_PUBLIC_KEY, false)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, Capabilities>>>("capabilities", Self::VT_CAPABILITIES, false)?
-     .visit_field::<bool>("is_partial", Self::VT_IS_PARTIAL, false)?
-     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("complete_contract_address", Self::VT_COMPLETE_CONTRACT_ADDRESS, false)?
      .visit_field::<bool>("is_unremovable", Self::VT_IS_UNREMOVABLE, false)?
      .visit_field::<bool>("is_blind", Self::VT_IS_BLIND, false)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, u8>>>("encrypted_contract", Self::VT_ENCRYPTED_CONTRACT, false)?
@@ -888,8 +872,6 @@ impl flatbuffers::Verifiable for Contract<'_> {
 pub struct ContractArgs<'a> {
     pub public_key: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
     pub capabilities: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, Capabilities>>>,
-    pub is_partial: bool,
-    pub complete_contract_address: Option<flatbuffers::WIPOffset<&'a str>>,
     pub is_unremovable: bool,
     pub is_blind: bool,
     pub encrypted_contract: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
@@ -906,8 +888,6 @@ impl<'a> Default for ContractArgs<'a> {
     ContractArgs {
       public_key: None,
       capabilities: None,
-      is_partial: false,
-      complete_contract_address: None,
       is_unremovable: false,
       is_blind: false,
       encrypted_contract: None,
@@ -933,14 +913,6 @@ impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> ContractBuilder<'a, 'b, A> {
   #[inline]
   pub fn add_capabilities(&mut self, capabilities: flatbuffers::WIPOffset<flatbuffers::Vector<'b , Capabilities>>) {
     self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Contract::VT_CAPABILITIES, capabilities);
-  }
-  #[inline]
-  pub fn add_is_partial(&mut self, is_partial: bool) {
-    self.fbb_.push_slot::<bool>(Contract::VT_IS_PARTIAL, is_partial, false);
-  }
-  #[inline]
-  pub fn add_complete_contract_address(&mut self, complete_contract_address: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Contract::VT_COMPLETE_CONTRACT_ADDRESS, complete_contract_address);
   }
   #[inline]
   pub fn add_is_unremovable(&mut self, is_unremovable: bool) {
@@ -998,8 +970,6 @@ impl core::fmt::Debug for Contract<'_> {
     let mut ds = f.debug_struct("Contract");
       ds.field("public_key", &self.public_key());
       ds.field("capabilities", &self.capabilities());
-      ds.field("is_partial", &self.is_partial());
-      ds.field("complete_contract_address", &self.complete_contract_address());
       ds.field("is_unremovable", &self.is_unremovable());
       ds.field("is_blind", &self.is_blind());
       ds.field("encrypted_contract", &self.encrypted_contract());
@@ -1028,6 +998,120 @@ impl core::fmt::Debug for Contract<'_> {
       ds.field("is_lock_on_accept", &self.is_lock_on_accept());
       ds.field("is_temporary_unlock_allowed", &self.is_temporary_unlock_allowed());
       ds.field("unlock_rules", &self.unlock_rules());
+      ds.finish()
+  }
+}
+pub enum PartialContractOffset {}
+#[derive(Copy, Clone, PartialEq)]
+
+pub struct PartialContract<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for PartialContract<'a> {
+  type Inner = PartialContract<'a>;
+  #[inline]
+  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    Self { _tab: flatbuffers::Table::new(buf, loc) }
+  }
+}
+
+impl<'a> PartialContract<'a> {
+  pub const VT_PUBLIC_KEY: flatbuffers::VOffsetT = 4;
+  pub const VT_COMPLETE_CONTRACT_ADDRESS: flatbuffers::VOffsetT = 6;
+
+  #[inline]
+  pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+    PartialContract { _tab: table }
+  }
+  #[allow(unused_mut)]
+  pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: flatbuffers::Allocator + 'bldr>(
+    _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
+    args: &'args PartialContractArgs<'args>
+  ) -> flatbuffers::WIPOffset<PartialContract<'bldr>> {
+    let mut builder = PartialContractBuilder::new(_fbb);
+    if let Some(x) = args.complete_contract_address { builder.add_complete_contract_address(x); }
+    if let Some(x) = args.public_key { builder.add_public_key(x); }
+    builder.finish()
+  }
+
+
+  #[inline]
+  pub fn public_key(&self) -> Option<flatbuffers::Vector<'a, u8>> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(PartialContract::VT_PUBLIC_KEY, None)}
+  }
+  #[inline]
+  pub fn complete_contract_address(&self) -> Option<&'a str> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(PartialContract::VT_COMPLETE_CONTRACT_ADDRESS, None)}
+  }
+}
+
+impl flatbuffers::Verifiable for PartialContract<'_> {
+  #[inline]
+  fn run_verifier(
+    v: &mut flatbuffers::Verifier, pos: usize
+  ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
+    use self::flatbuffers::Verifiable;
+    v.visit_table(pos)?
+     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, u8>>>("public_key", Self::VT_PUBLIC_KEY, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("complete_contract_address", Self::VT_COMPLETE_CONTRACT_ADDRESS, false)?
+     .finish();
+    Ok(())
+  }
+}
+pub struct PartialContractArgs<'a> {
+    pub public_key: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
+    pub complete_contract_address: Option<flatbuffers::WIPOffset<&'a str>>,
+}
+impl<'a> Default for PartialContractArgs<'a> {
+  #[inline]
+  fn default() -> Self {
+    PartialContractArgs {
+      public_key: None,
+      complete_contract_address: None,
+    }
+  }
+}
+
+pub struct PartialContractBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> PartialContractBuilder<'a, 'b, A> {
+  #[inline]
+  pub fn add_public_key(&mut self, public_key: flatbuffers::WIPOffset<flatbuffers::Vector<'b , u8>>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(PartialContract::VT_PUBLIC_KEY, public_key);
+  }
+  #[inline]
+  pub fn add_complete_contract_address(&mut self, complete_contract_address: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(PartialContract::VT_COMPLETE_CONTRACT_ADDRESS, complete_contract_address);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>) -> PartialContractBuilder<'a, 'b, A> {
+    let start = _fbb.start_table();
+    PartialContractBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<PartialContract<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+impl core::fmt::Debug for PartialContract<'_> {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    let mut ds = f.debug_struct("PartialContract");
+      ds.field("public_key", &self.public_key());
+      ds.field("complete_contract_address", &self.complete_contract_address());
       ds.finish()
   }
 }
@@ -1104,6 +1188,21 @@ impl<'a> SignedMessage<'a> {
     }
   }
 
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn payload_as_partial_contract(&self) -> Option<PartialContract<'a>> {
+    if self.payload_type() == MessagePayload::PartialContract {
+      self.payload().map(|t| {
+       // Safety:
+       // Created from a valid Table for this object
+       // Which contains a valid union in this slot
+       unsafe { PartialContract::init_from_table(t) }
+     })
+    } else {
+      None
+    }
+  }
+
 }
 
 impl flatbuffers::Verifiable for SignedMessage<'_> {
@@ -1117,6 +1216,7 @@ impl flatbuffers::Verifiable for SignedMessage<'_> {
      .visit_union::<MessagePayload, _>("payload_type", Self::VT_PAYLOAD_TYPE, "payload", Self::VT_PAYLOAD, false, |key, v, pos| {
         match key {
           MessagePayload::Contract => v.verify_union_variant::<flatbuffers::ForwardsUOffset<Contract>>("MessagePayload::Contract", pos),
+          MessagePayload::PartialContract => v.verify_union_variant::<flatbuffers::ForwardsUOffset<PartialContract>>("MessagePayload::PartialContract", pos),
           _ => Ok(()),
         }
      })?
@@ -1180,6 +1280,13 @@ impl core::fmt::Debug for SignedMessage<'_> {
       match self.payload_type() {
         MessagePayload::Contract => {
           if let Some(x) = self.payload_as_contract() {
+            ds.field("payload", &x)
+          } else {
+            ds.field("payload", &"InvalidFlatbuffer: Union discriminant does not match value.")
+          }
+        },
+        MessagePayload::PartialContract => {
+          if let Some(x) = self.payload_as_partial_contract() {
             ds.field("payload", &x)
           } else {
             ds.field("payload", &"InvalidFlatbuffer: Union discriminant does not match value.")

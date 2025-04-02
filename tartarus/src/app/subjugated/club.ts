@@ -7,6 +7,7 @@ export { Configuration } from './club/configuration.js';
 export { Contract } from './club/contract.js';
 export { EndCondition } from './club/end-condition.js';
 export { MessagePayload } from './club/message-payload.js';
+export { PartialContract } from './club/partial-contract.js';
 export { SignedMessage } from './club/signed-message.js';
 export { TemporaryUnlockRules } from './club/temporary-unlock-rules.js';
 export { TimeEndCondition } from './club/time-end-condition.js';
