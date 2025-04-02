@@ -19,7 +19,7 @@ use crate::firmware_updater::{
 };
 use crate::internal_config::InternalConfig;
 use crate::internal_contract::{InternalContract, SaveState};
-use crate::internal_firmware::{FirmwareMessageType, InternalFirmware};
+use crate::internal_firmware::FirmwareMessageType;
 use crate::lock_ctx::TopicType::{Acknowledgments, ConfigurationData, SignedMessages};
 use crate::mqtt_service::TopicType::FirmwareMessage as TopicFirmwareMessage;
 use crate::mqtt_service::{MqttService, SignedMessageTransport, TopicType};
@@ -73,8 +73,8 @@ pub struct LockCtx {
 
     time_in_ticks: u64,
     configuration: InternalConfig,
-    firmware: InternalFirmware,
-    firmware_updater: Option<FirmwareUpdater>,
+    // firmware: InternalFirmware,
+    firmware_manager: FirmwareManager,
 
     schedule_next_update: Option<u64>,
     mqtt_service: Option<MqttService>,
@@ -104,9 +104,7 @@ impl LockCtx {
             dirty: false,
             time_in_ticks: 0,
             configuration: InternalConfig::default(),
-            firmware: InternalFirmware::default(),
-            // firmware_updater: Some(FirmwareUpdater::new()),
-            firmware_updater: None,
+            firmware_manager: FirmwareManager::new(),
             schedule_next_update: None,
             mqtt_service: None,
         };
@@ -122,11 +120,6 @@ impl LockCtx {
         lck.configuration = config;
 
         log::info!("Loaded configuration {:?}", lck.configuration);
-
-        let firmware = lck.get_firmware_version_or_default();
-        lck.firmware = firmware;
-
-        log::info!("Loaded firmware version data {:?}", lck.firmware);
 
         // This must come after key loading because we're announcing to the coordinator with our
         // public key.
@@ -194,6 +187,14 @@ impl LockCtx {
         lck.overlays.push(button_overlay);
         lck.display.clear(Rgb565::BLACK).unwrap();
 
+        // Do some sanity checks?
+        if let Ok(version) = lck.firmware_manager.get_running_version() {
+            log::info!("Firmware version: {}", version);
+        }
+        lck.firmware_manager
+            .sanity_check_or_abort()
+            .expect("Sanity check failed");
+
         // Manually clear the dirty flag because we literally just loaded it.
         lck.dirty = false;
         lck
@@ -227,25 +228,6 @@ impl LockCtx {
             }
         } else {
             InternalConfig::default()
-        }
-    }
-
-    pub fn get_firmware_version_or_default(&mut self) -> InternalFirmware {
-        let mut buffer: [u8; 1024] = [0; 1024];
-        if let Ok(maybe_byte_buffer) = self.nvs.get_blob("firmware", &mut buffer) {
-            if let Some(_byte_buffer) = maybe_byte_buffer {
-                if let Ok(deserialized_config) = from_bytes::<InternalFirmware>(&buffer) {
-                    deserialized_config
-                } else {
-                    log::error!("Failed to deserialize config data");
-                    InternalFirmware::default()
-                }
-            } else {
-                log::info!("No configuration data was found, using default");
-                InternalFirmware::default()
-            }
-        } else {
-            InternalFirmware::default()
         }
     }
 
@@ -422,16 +404,71 @@ impl LockCtx {
                 match msg {
                     FirmwareMessageType::Challenge(challenge) => {
                         log::info!("We got firmware challenge");
-                        let fm = FirmwareManager::new();
-                        let response_bytes =
-                            fm.respond_to_challenge(&challenge, &self.session_token);
+                        let response_bytes = self
+                            .firmware_manager
+                            .respond_to_challenge(&challenge, &self.session_token);
                         self.enqueue_message(SignedMessageTransport::new(
                             response_bytes,
                             TopicFirmwareMessage,
                         ));
                     }
-                    FirmwareMessageType::FirmwareResponse => {
-                        log::info!("We got a fully constituted chunk!!");
+                    FirmwareMessageType::FirmwareResponse(internal_response) => {
+                        log::info!(
+                            "Got latest firmware info -> Name {}",
+                            internal_response.firmware_name
+                        );
+
+                        if self
+                            .firmware_manager
+                            .should_update_firmware(&internal_response.version_name)
+                        {
+                            self.firmware_manager.start_requesting_firmware(
+                                internal_response.size,
+                                internal_response.firmware_name.clone(),
+                            );
+
+                            let request_bytes = self
+                                .firmware_manager
+                                .request_firmware_chunk(&self.session_token);
+                            self.enqueue_message(SignedMessageTransport::new(
+                                request_bytes,
+                                TopicFirmwareMessage,
+                            ));
+                        } else {
+                            log::info!("Not updating firmware");
+                        }
+                    }
+                    FirmwareMessageType::FirmwareChunk(chunk) => {
+                        log::info!(
+                            "We asked for a chunk and we got a chunk [Size={}, Offset={}]",
+                            chunk.size(),
+                            chunk.offset()
+                        );
+                        self.firmware_manager.ack_chunk(chunk.size(), chunk.data());
+
+                        if self.firmware_manager.needs_more() {
+                            let request_bytes = self
+                                .firmware_manager
+                                .request_firmware_chunk(&self.session_token);
+                            self.enqueue_message(SignedMessageTransport::new(
+                                request_bytes,
+                                TopicFirmwareMessage,
+                            ));
+                        } else {
+                            log::info!(
+                                "Got the firmware image: bytes {} of {}",
+                                self.firmware_manager.acked_size,
+                                self.firmware_manager.total_size
+                            );
+                            match self.firmware_manager.finalize() {
+                                Ok(digest) => {
+                                    log::info!("Firmware digest: bytes {} ", digest);
+                                }
+                                Err(..) => {
+                                    log::info!("Couldn't get firmware digest...");
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -720,9 +757,6 @@ impl LockCtx {
             &mut builder,
             &VersionArgs {
                 name: None,
-                major: self.firmware.major,
-                minor: self.firmware.minor,
-                build: self.firmware.build,
                 signature: None,
             },
         );

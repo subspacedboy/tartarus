@@ -4,9 +4,6 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import { Version } from '../../../../../club/subjugated/fb/message/firmware/version.js';
-
-
 export class GetLatestFirmwareResponse {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
@@ -25,62 +22,49 @@ static getSizePrefixedRootAsGetLatestFirmwareResponse(bb:flatbuffers.ByteBuffer,
   return (obj || new GetLatestFirmwareResponse()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-firmware(index: number):number|null {
+digest(index: number):number|null {
   const offset = this.bb!.__offset(this.bb_pos, 4);
   return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
 }
 
-firmwareLength():number {
+digestLength():number {
   const offset = this.bb!.__offset(this.bb_pos, 4);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
-firmwareArray():Uint8Array|null {
+digestArray():Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 4);
   return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
-signature(index: number):number|null {
+firmwareName():string|null
+firmwareName(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+firmwareName(optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 6);
-  return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
-signatureLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 6);
-  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
-}
-
-signatureArray():Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 6);
-  return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
-}
-
-version(obj?:Version):Version|null {
+versionName():string|null
+versionName(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+versionName(optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 8);
-  return offset ? (obj || new Version()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
-}
-
-name():string|null
-name(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-name(optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 10);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
 size():number {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
-  return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? this.bb!.readInt32(this.bb_pos + offset) : 0;
 }
 
 static startGetLatestFirmwareResponse(builder:flatbuffers.Builder) {
-  builder.startObject(5);
+  builder.startObject(4);
 }
 
-static addFirmware(builder:flatbuffers.Builder, firmwareOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, firmwareOffset, 0);
+static addDigest(builder:flatbuffers.Builder, digestOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, digestOffset, 0);
 }
 
-static createFirmwareVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
+static createDigestVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
   builder.startVector(1, data.length, 1);
   for (let i = data.length - 1; i >= 0; i--) {
     builder.addInt8(data[i]!);
@@ -88,36 +72,20 @@ static createFirmwareVector(builder:flatbuffers.Builder, data:number[]|Uint8Arra
   return builder.endVector();
 }
 
-static startFirmwareVector(builder:flatbuffers.Builder, numElems:number) {
+static startDigestVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(1, numElems, 1);
 }
 
-static addSignature(builder:flatbuffers.Builder, signatureOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(1, signatureOffset, 0);
+static addFirmwareName(builder:flatbuffers.Builder, firmwareNameOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, firmwareNameOffset, 0);
 }
 
-static createSignatureVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
-  builder.startVector(1, data.length, 1);
-  for (let i = data.length - 1; i >= 0; i--) {
-    builder.addInt8(data[i]!);
-  }
-  return builder.endVector();
-}
-
-static startSignatureVector(builder:flatbuffers.Builder, numElems:number) {
-  builder.startVector(1, numElems, 1);
-}
-
-static addVersion(builder:flatbuffers.Builder, versionOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(2, versionOffset, 0);
-}
-
-static addName(builder:flatbuffers.Builder, nameOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(3, nameOffset, 0);
+static addVersionName(builder:flatbuffers.Builder, versionNameOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(2, versionNameOffset, 0);
 }
 
 static addSize(builder:flatbuffers.Builder, size:number) {
-  builder.addFieldInt16(4, size, 0);
+  builder.addFieldInt32(3, size, 0);
 }
 
 static endGetLatestFirmwareResponse(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -125,4 +93,12 @@ static endGetLatestFirmwareResponse(builder:flatbuffers.Builder):flatbuffers.Off
   return offset;
 }
 
+static createGetLatestFirmwareResponse(builder:flatbuffers.Builder, digestOffset:flatbuffers.Offset, firmwareNameOffset:flatbuffers.Offset, versionNameOffset:flatbuffers.Offset, size:number):flatbuffers.Offset {
+  GetLatestFirmwareResponse.startGetLatestFirmwareResponse(builder);
+  GetLatestFirmwareResponse.addDigest(builder, digestOffset);
+  GetLatestFirmwareResponse.addFirmwareName(builder, firmwareNameOffset);
+  GetLatestFirmwareResponse.addVersionName(builder, versionNameOffset);
+  GetLatestFirmwareResponse.addSize(builder, size);
+  return GetLatestFirmwareResponse.endGetLatestFirmwareResponse(builder);
+}
 }

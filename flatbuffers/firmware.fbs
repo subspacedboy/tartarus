@@ -2,9 +2,6 @@ namespace club.subjugated.fb.message.firmware;
 
 table Version {
   name: string;
-  major: ushort;
-  minor: ushort;
-  build: ushort;
   signature: [ubyte];
 }
 
@@ -23,22 +20,21 @@ table GetLatestFirmwareRequest {
 }
 
 table GetLatestFirmwareResponse {
-    firmware: [ubyte];
-    signature: [ubyte];
-    version : Version;
-    name : string;
-    size: ushort;
+    digest: [ubyte];
+    firmware_name : string;
+    version_name : string;
+    size: int;
 }
 
 table GetFirmwareChunkRequest {
-    name: string;
-    offset: ushort;
-    size: ushort;
+    firmware_name: string;
+    offset: int;
+    size: int;
 }
 
 table GetFirmwareChunkResponse {
-    size: ushort;
-    offset: ushort;
+    size: int;
+    offset: int;
     chunk: [ubyte];
 }
 

@@ -1,12 +1,16 @@
 use crate::firmware_generated::club;
 use crate::firmware_generated::club::subjugated::fb::message::firmware::{
     FirmwareChallengeResponse, FirmwareChallengeResponseArgs, FirmwareMessageArgs,
-    GetLatestFirmwareResponse, MessagePayload,
+    GetFirmwareChunkRequest, GetFirmwareChunkRequestArgs, GetLatestFirmwareResponse,
+    MessagePayload,
 };
 use crate::generated::generated::get_challenge_key;
-use crate::internal_firmware::{FirmwareMessageType, InternalChallenge};
+use crate::internal_firmware::{
+    FirmwareMessageType, InternalChallenge, InternalFirmwareChunk, InternalFirmwareResponse,
+};
 use crate::mqtt_service::SignedMessageTransport;
 use crate::mqtt_service::TopicType::FirmwareMessage;
+use crate::Esp32Rng;
 use anyhow::{anyhow, Context};
 use embedded_svc::ota::{Ota, Slot, SlotState};
 use esp_idf_hal::cpu::Core::Core1;
@@ -17,6 +21,9 @@ use flatbuffers::FlatBufferBuilder;
 use p256::ecdsa::signature::hazmat::PrehashSigner;
 use p256::ecdsa::{Signature, SigningKey};
 use p256::SecretKey;
+use rand_core::RngCore;
+use sha2::digest::Update;
+use sha2::{Digest, Sha256};
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::marker::PhantomData;
@@ -71,7 +78,36 @@ pub fn read_as_firmware_message(data: &[u8]) -> Result<FirmwareMessageType, Stri
                     Err("Couldn't parse".to_string())
                 }
             }
-            MessagePayload::GetLatestFirmwareResponse => Ok(FirmwareMessageType::FirmwareResponse),
+            MessagePayload::GetLatestFirmwareResponse => {
+                if let Some(response) = firmware_message.payload_as_get_latest_firmware_response() {
+                    Ok(FirmwareMessageType::FirmwareResponse(
+                        InternalFirmwareResponse::new(
+                            response.firmware_name().unwrap().to_string(),
+                            response.version_name().unwrap().to_string(),
+                            response.size_() as usize,
+                        ),
+                    ))
+                } else {
+                    Err("Couldn't parse".to_string())
+                }
+            }
+            MessagePayload::GetFirmwareChunkResponse => {
+                if let Some(chunk) = firmware_message.payload_as_get_firmware_chunk_response() {
+                    let copy = chunk.chunk().unwrap();
+                    let mut b: Vec<u8> = Vec::new();
+                    copy.iter().for_each(|x| b.push(x));
+
+                    Ok(FirmwareMessageType::FirmwareChunk(
+                        InternalFirmwareChunk::new(
+                            b,
+                            chunk.size_() as usize,
+                            chunk.offset() as usize,
+                        ),
+                    ))
+                } else {
+                    Err("Couldn't parse".to_string())
+                }
+            }
             _ => Err("Unhandled".to_string()),
         },
         Err(e) => {
@@ -81,11 +117,23 @@ pub fn read_as_firmware_message(data: &[u8]) -> Result<FirmwareMessageType, Stri
     }
 }
 
-pub struct FirmwareManager {}
+pub struct FirmwareManager {
+    pub total_size: usize,
+    pub acked_size: usize,
+    pub next_firmware_name: Option<String>,
+    current_digest: Option<Sha256>,
+    firmware_updater: Option<FirmwareUpdater>,
+}
 
 impl FirmwareManager {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            total_size: 0,
+            acked_size: 0,
+            next_firmware_name: None,
+            current_digest: None,
+            firmware_updater: None,
+        }
     }
 
     pub fn respond_to_challenge(
@@ -130,6 +178,143 @@ impl FirmwareManager {
 
         builder.finish(firmware_offset, None);
         builder.finished_data().to_vec()
+    }
+
+    pub fn start_requesting_firmware(&mut self, total_size: usize, name: String) {
+        self.total_size = total_size;
+        self.next_firmware_name = Some(name);
+        self.current_digest = Some(Sha256::new());
+        self.firmware_updater = Some(FirmwareUpdater::new());
+    }
+
+    pub fn ack_chunk(&mut self, size: usize, data: &[u8]) {
+        self.acked_size += size;
+        if let Some(digest) = &mut self.current_digest {
+            let start = &data[..5.min(data.len())];
+            let end = &data[data.len().saturating_sub(5)..];
+            log::info!("Chunk [First 5={:02x?}, Last 5={:02x?}]", start, end);
+            Digest::update(digest, data);
+        }
+
+        if let Some(updater) = &mut self.firmware_updater {
+            if let Ok(queue) = &mut updater.incoming_bytes.lock() {
+                queue.push_back(data.to_vec());
+            }
+        }
+    }
+
+    pub fn needs_more(&self) -> bool {
+        if self.acked_size > self.total_size {
+            log::warn!("Acked size is greater than total size");
+        }
+        log::info!(
+            "Acked size is {}, total size {}",
+            self.acked_size,
+            self.total_size
+        );
+        self.acked_size != self.total_size
+    }
+
+    /// Finish pushing data to the firmware updater thread. Must be called _after_ the final
+    /// ack_chunk.
+    pub fn finalize(&mut self) -> Result<String, String> {
+        if let Some(updater) = &mut self.firmware_updater {
+            if let Ok(mut complete_flag) = updater.complete.lock() {
+                *complete_flag = true;
+            }
+        }
+
+        let o = self.current_digest.take();
+        if let Some(digest) = o {
+            let value = digest.finalize();
+            Ok(data_encoding::HEXLOWER.encode(&value))
+        } else {
+            Err("No digest".to_string())
+        }
+    }
+
+    pub fn request_firmware_chunk(&self, session_token: &String) -> Vec<u8> {
+        let mut builder = FlatBufferBuilder::with_capacity(1024);
+
+        let firmwareNameOffset = builder.create_string(self.next_firmware_name.as_ref().unwrap());
+        let sessionOffset = builder.create_string(&session_token);
+
+        let request_offset = if self.acked_size == 0 {
+            0
+        } else {
+            self.acked_size
+        };
+
+        let get_chunk_offset = GetFirmwareChunkRequest::create(
+            &mut builder,
+            &GetFirmwareChunkRequestArgs {
+                firmware_name: Some(firmwareNameOffset),
+                offset: request_offset as i32,
+                size_: 16 * 1024,
+            },
+        );
+
+        let mut rng = Esp32Rng;
+        let request_id = rng.next_u64() as i64;
+
+        let firmware_offset = club::subjugated::fb::message::firmware::FirmwareMessage::create(
+            &mut builder,
+            &FirmwareMessageArgs {
+                payload_type: MessagePayload::GetFirmwareChunkRequest,
+                payload: Some(get_chunk_offset.as_union_value()),
+                request_id,
+                session_token: Some(sessionOffset),
+            },
+        );
+
+        builder.finish(firmware_offset, None);
+        builder.finished_data().to_vec()
+    }
+
+    pub fn should_update_firmware(&mut self, version: &String) -> bool {
+        let current_version = self.get_running_version().unwrap();
+        current_version.as_str() != version
+    }
+
+    pub fn sanity_check_or_abort(&self) -> anyhow::Result<()> {
+        let mut ota = EspOta::new()?;
+        let running_slot = ota.get_running_slot()?;
+
+        if running_slot.state == SlotState::Factory {
+            log::info!("Factory slot can't be marked");
+            return Ok(());
+        }
+
+        if running_slot.state != SlotState::Valid {
+            log::info!("Sanity checking firmware after OTA update.");
+            let is_app_valid = true;
+
+            // Do the necessary checks to validate that your app is working as expected.
+            // For example, you can contact your API to verify you still have access to it.
+
+            if is_app_valid {
+                log::info!("Marking valid.");
+                ota.mark_running_slot_valid()?;
+            } else {
+                ota.mark_running_slot_invalid_and_reboot();
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn get_running_version(&self) -> anyhow::Result<heapless::String<24>> {
+        let ota = EspOta::new().expect("Ota new");
+
+        if let Ok(slot) = ota.get_running_slot() {
+            if let Some(firmware) = slot.firmware {
+                Ok(firmware.version)
+            } else {
+                Err(anyhow!("Failed to get firmware version"))
+            }
+        } else {
+            Err(anyhow!("Failed to get firmware version"))
+        }
     }
 }
 
@@ -183,33 +368,49 @@ impl FirmwareUpdater {
                 }
             }
 
+            let mut local_digest = Sha256::new();
+
             match ota.initiate_update() {
                 Ok(mut update) => {
                     log::info!("Have a working update :-)");
 
                     loop {
-                        if let Ok(complete_flag) = complete_ref.lock() {
-                            if *complete_flag {
-                                log::info!("OTA update complete");
-                                break;
-                            }
-                        }
-
                         let mut bytes_to_write: VecDeque<Vec<u8>> =
                             queue_ref.lock().unwrap().drain(..).collect();
                         while !bytes_to_write.is_empty() {
                             let data = bytes_to_write.pop_front().unwrap();
-                            // log::info!("FIRMWARE Writing {} bytes", data.len());
                             match update.write(data.as_slice()) {
                                 Ok(_) => {
-                                    log::error!("FIRMWARE Write Success");
+                                    Digest::update(&mut local_digest, data.as_slice());
+                                    log::info!("FIRMWARE Write Success");
                                 }
                                 Err(e) => {
                                     log::error!("FIRMWARE Write Error: {:?}", e);
                                 }
                             }
                         }
-                        std::thread::sleep(Duration::from_millis(800));
+
+                        if let Ok(complete_flag) = complete_ref.lock() {
+                            if *complete_flag {
+                                log::info!("OTA update complete");
+                                break;
+                            }
+                        }
+                        std::thread::sleep(Duration::from_millis(400));
+                    } // Loop
+
+                    log::info!("Preparing to complete");
+                    let value = local_digest.finalize();
+                    log::info!("Data we wrote: {}", data_encoding::HEXLOWER.encode(&value));
+
+                    match update.complete() {
+                        Ok(_) => {
+                            log::info!("Firmware update complete");
+                            esp_idf_svc::hal::reset::restart();
+                        }
+                        Err(e) => {
+                            log::error!("Unable to complete firmware?! {:?}", e);
+                        }
                     }
                 }
                 Err(e) => {
@@ -231,44 +432,5 @@ impl FirmwareUpdater {
         if let Ok(mut incoming_bytes) = self.incoming_bytes.lock() {
             incoming_bytes.push_back(bytes);
         }
-    }
-
-    fn get_running_version() -> anyhow::Result<heapless::String<24>> {
-        let ota = EspOta::new().expect("Ota new");
-
-        if let Ok(slot) = ota.get_running_slot() {
-            if let Some(firmware) = slot.firmware {
-                Ok(firmware.version)
-            } else {
-                Err(anyhow!("Failed to get firmware version"))
-            }
-        } else {
-            Err(anyhow!("Failed to get firmware version"))
-        }
-    }
-
-    pub fn do_something() -> anyhow::Result<()> {
-        let mut ota = EspOta::new()?;
-        let running_slot = ota.get_running_slot()?;
-
-        if running_slot.state == SlotState::Factory {
-            log::info!("Factory slot can't be marked");
-            return Ok(());
-        }
-
-        if running_slot.state != SlotState::Valid {
-            let is_app_valid = true;
-
-            // Do the necessary checks to validate that your app is working as expected.
-            // For example, you can contact your API to verify you still have access to it.
-
-            if is_app_valid {
-                ota.mark_running_slot_valid()?;
-            } else {
-                ota.mark_running_slot_invalid_and_reboot();
-            }
-        }
-
-        Ok(())
     }
 }

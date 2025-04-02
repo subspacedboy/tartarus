@@ -7,7 +7,7 @@ pub mod generated {
 
     pub fn get_challenge_key() -> Option<SigningKey> {
         if let Some(key_bytes) = CHALLENGE_KEY {
-            log::info!("We have key bytes");
+            log::info!("We have an authenticity key");
 
             let secret_key = SecretKey::from_slice(key_bytes).unwrap();
 
@@ -16,8 +16,6 @@ pub mod generated {
             let key_bytes = bytes.as_slice();
             let signing_key = SigningKey::from_slice(key_bytes).unwrap();
 
-            log::info!("We have a functioning key");
-            log::info!("Key bytes {:?}", key_bytes);
             Some(signing_key)
         } else {
             log::info!("We DO NOT have an authenticity key");

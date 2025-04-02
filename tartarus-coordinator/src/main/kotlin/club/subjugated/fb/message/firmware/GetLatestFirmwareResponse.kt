@@ -28,7 +28,7 @@ class GetLatestFirmwareResponse : Table() {
         __init(_i, _bb)
         return this
     }
-    fun firmware(j: Int) : UByte {
+    fun digest(j: Int) : UByte {
         val o = __offset(4)
         return if (o != 0) {
             bb.get(__vector(o) + j * 1).toUByte()
@@ -36,50 +36,38 @@ class GetLatestFirmwareResponse : Table() {
             0u
         }
     }
-    val firmwareLength : Int
+    val digestLength : Int
         get() {
             val o = __offset(4); return if (o != 0) __vector_len(o) else 0
         }
-    val firmwareAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun firmwareInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
-    fun signature(j: Int) : UByte {
-        val o = __offset(6)
-        return if (o != 0) {
-            bb.get(__vector(o) + j * 1).toUByte()
-        } else {
-            0u
-        }
-    }
-    val signatureLength : Int
+    val digestAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
+    fun digestInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val firmwareName : String?
         get() {
-            val o = __offset(6); return if (o != 0) __vector_len(o) else 0
-        }
-    val signatureAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
-    fun signatureInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
-    val version : club.subjugated.fb.message.firmware.Version? get() = version(club.subjugated.fb.message.firmware.Version())
-    fun version(obj: club.subjugated.fb.message.firmware.Version) : club.subjugated.fb.message.firmware.Version? {
-        val o = __offset(8)
-        return if (o != 0) {
-            obj.__assign(__indirect(o + bb_pos), bb)
-        } else {
-            null
-        }
-    }
-    val name : String?
-        get() {
-            val o = __offset(10)
+            val o = __offset(6)
             return if (o != 0) {
                 __string(o + bb_pos)
             } else {
                 null
             }
         }
-    val nameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(10, 1)
-    fun nameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 10, 1)
-    val size : UShort
+    val firmwareNameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
+    fun firmwareNameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
+    val versionName : String?
         get() {
-            val o = __offset(12)
-            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+            val o = __offset(8)
+            return if (o != 0) {
+                __string(o + bb_pos)
+            } else {
+                null
+            }
+        }
+    val versionNameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(8, 1)
+    fun versionNameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 8, 1)
+    val size : Int
+        get() {
+            val o = __offset(10)
+            return if(o != 0) bb.getInt(o + bb_pos) else 0
         }
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
@@ -88,39 +76,28 @@ class GetLatestFirmwareResponse : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createGetLatestFirmwareResponse(builder: FlatBufferBuilder, firmwareOffset: Int, signatureOffset: Int, versionOffset: Int, nameOffset: Int, size: UShort) : Int {
-            builder.startTable(5)
-            addName(builder, nameOffset)
-            addVersion(builder, versionOffset)
-            addSignature(builder, signatureOffset)
-            addFirmware(builder, firmwareOffset)
+        fun createGetLatestFirmwareResponse(builder: FlatBufferBuilder, digestOffset: Int, firmwareNameOffset: Int, versionNameOffset: Int, size: Int) : Int {
+            builder.startTable(4)
             addSize(builder, size)
+            addVersionName(builder, versionNameOffset)
+            addFirmwareName(builder, firmwareNameOffset)
+            addDigest(builder, digestOffset)
             return endGetLatestFirmwareResponse(builder)
         }
-        fun startGetLatestFirmwareResponse(builder: FlatBufferBuilder) = builder.startTable(5)
-        fun addFirmware(builder: FlatBufferBuilder, firmware: Int) = builder.addOffset(0, firmware, 0)
+        fun startGetLatestFirmwareResponse(builder: FlatBufferBuilder) = builder.startTable(4)
+        fun addDigest(builder: FlatBufferBuilder, digest: Int) = builder.addOffset(0, digest, 0)
         @kotlin.ExperimentalUnsignedTypes
-        fun createFirmwareVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
+        fun createDigestVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
             builder.startVector(1, data.size, 1)
             for (i in data.size - 1 downTo 0) {
                 builder.addByte(data[i].toByte())
             }
             return builder.endVector()
         }
-        fun startFirmwareVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
-        fun addSignature(builder: FlatBufferBuilder, signature: Int) = builder.addOffset(1, signature, 0)
-        @kotlin.ExperimentalUnsignedTypes
-        fun createSignatureVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
-            builder.startVector(1, data.size, 1)
-            for (i in data.size - 1 downTo 0) {
-                builder.addByte(data[i].toByte())
-            }
-            return builder.endVector()
-        }
-        fun startSignatureVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
-        fun addVersion(builder: FlatBufferBuilder, version: Int) = builder.addOffset(2, version, 0)
-        fun addName(builder: FlatBufferBuilder, name: Int) = builder.addOffset(3, name, 0)
-        fun addSize(builder: FlatBufferBuilder, size: UShort) = builder.addShort(4, size.toShort(), 0)
+        fun startDigestVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
+        fun addFirmwareName(builder: FlatBufferBuilder, firmwareName: Int) = builder.addOffset(1, firmwareName, 0)
+        fun addVersionName(builder: FlatBufferBuilder, versionName: Int) = builder.addOffset(2, versionName, 0)
+        fun addSize(builder: FlatBufferBuilder, size: Int) = builder.addInt(3, size, 0)
         fun endGetLatestFirmwareResponse(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o

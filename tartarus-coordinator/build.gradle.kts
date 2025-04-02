@@ -20,7 +20,10 @@ version = "0.0.1-SNAPSHOT"
 
 java { toolchain { languageVersion = JavaLanguageVersion.of(21) } }
 
-repositories { mavenCentral() }
+repositories {
+    mavenCentral()
+    maven { url = uri("https://jitpack.io") }
+}
 
 extra["springAiVersion"] = "1.0.0-M6"
 
@@ -47,9 +50,13 @@ dependencies {
     implementation("com.google.flatbuffers:flatbuffers-java:24.3.25")
 
     // https://mvnrepository.com/artifact/io.moquette/moquette-broker
-    implementation("io.moquette:moquette-broker:0.17") {
+//    implementation("io.moquette:moquette-broker:0.17") {
+//        exclude(group = "org.slf4j", module = "slf4j-reload4j")
+//    }
+    implementation("com.github.moquette-io.moquette:distribution:v0.18.0") {
         exclude(group = "org.slf4j", module = "slf4j-reload4j")
     }
+
     implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
     implementation("org.bouncycastle:bcprov-jdk18on:1.80")
     implementation("com.github.ben-manes.caffeine:caffeine:3.2.0")

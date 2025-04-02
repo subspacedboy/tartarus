@@ -24,12 +24,12 @@ static getSizePrefixedRootAsGetFirmwareChunkResponse(bb:flatbuffers.ByteBuffer, 
 
 size():number {
   const offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
+  return offset ? this.bb!.readInt32(this.bb_pos + offset) : 0;
 }
 
 offset():number {
   const offset = this.bb!.__offset(this.bb_pos, 6);
-  return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
+  return offset ? this.bb!.readInt32(this.bb_pos + offset) : 0;
 }
 
 chunk(index: number):number|null {
@@ -52,11 +52,11 @@ static startGetFirmwareChunkResponse(builder:flatbuffers.Builder) {
 }
 
 static addSize(builder:flatbuffers.Builder, size:number) {
-  builder.addFieldInt16(0, size, 0);
+  builder.addFieldInt32(0, size, 0);
 }
 
 static addOffset(builder:flatbuffers.Builder, offset:number) {
-  builder.addFieldInt16(1, offset, 0);
+  builder.addFieldInt32(1, offset, 0);
 }
 
 static addChunk(builder:flatbuffers.Builder, chunkOffset:flatbuffers.Offset) {

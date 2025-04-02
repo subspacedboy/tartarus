@@ -32,29 +32,8 @@ class Version(object):
         return None
 
     # Version
-    def Major(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
-        if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Uint16Flags, o + self._tab.Pos)
-        return 0
-
-    # Version
-    def Minor(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
-        if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Uint16Flags, o + self._tab.Pos)
-        return 0
-
-    # Version
-    def Build(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
-        if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Uint16Flags, o + self._tab.Pos)
-        return 0
-
-    # Version
     def Signature(self, j):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
             a = self._tab.Vector(o)
             return self._tab.Get(flatbuffers.number_types.Uint8Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 1))
@@ -62,25 +41,25 @@ class Version(object):
 
     # Version
     def SignatureAsNumpy(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
             return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Uint8Flags, o)
         return 0
 
     # Version
     def SignatureLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
             return self._tab.VectorLen(o)
         return 0
 
     # Version
     def SignatureIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         return o == 0
 
 def VersionStart(builder):
-    builder.StartObject(5)
+    builder.StartObject(2)
 
 def Start(builder):
     VersionStart(builder)
@@ -91,26 +70,8 @@ def VersionAddName(builder, name):
 def AddName(builder, name):
     VersionAddName(builder, name)
 
-def VersionAddMajor(builder, major):
-    builder.PrependUint16Slot(1, major, 0)
-
-def AddMajor(builder, major):
-    VersionAddMajor(builder, major)
-
-def VersionAddMinor(builder, minor):
-    builder.PrependUint16Slot(2, minor, 0)
-
-def AddMinor(builder, minor):
-    VersionAddMinor(builder, minor)
-
-def VersionAddBuild(builder, build):
-    builder.PrependUint16Slot(3, build, 0)
-
-def AddBuild(builder, build):
-    VersionAddBuild(builder, build)
-
 def VersionAddSignature(builder, signature):
-    builder.PrependUOffsetTRelativeSlot(4, flatbuffers.number_types.UOffsetTFlags.py_type(signature), 0)
+    builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(signature), 0)
 
 def AddSignature(builder, signature):
     VersionAddSignature(builder, signature)

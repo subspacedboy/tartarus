@@ -28,7 +28,7 @@ class GetFirmwareChunkRequest : Table() {
         __init(_i, _bb)
         return this
     }
-    val name : String?
+    val firmwareName : String?
         get() {
             val o = __offset(4)
             return if (o != 0) {
@@ -37,17 +37,17 @@ class GetFirmwareChunkRequest : Table() {
                 null
             }
         }
-    val nameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun nameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
-    val offset : UShort
+    val firmwareNameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
+    fun firmwareNameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val offset : Int
         get() {
             val o = __offset(6)
-            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+            return if(o != 0) bb.getInt(o + bb_pos) else 0
         }
-    val size : UShort
+    val size : Int
         get() {
             val o = __offset(8)
-            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+            return if(o != 0) bb.getInt(o + bb_pos) else 0
         }
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
@@ -56,17 +56,17 @@ class GetFirmwareChunkRequest : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createGetFirmwareChunkRequest(builder: FlatBufferBuilder, nameOffset: Int, offset: UShort, size: UShort) : Int {
+        fun createGetFirmwareChunkRequest(builder: FlatBufferBuilder, firmwareNameOffset: Int, offset: Int, size: Int) : Int {
             builder.startTable(3)
-            addName(builder, nameOffset)
             addSize(builder, size)
             addOffset(builder, offset)
+            addFirmwareName(builder, firmwareNameOffset)
             return endGetFirmwareChunkRequest(builder)
         }
         fun startGetFirmwareChunkRequest(builder: FlatBufferBuilder) = builder.startTable(3)
-        fun addName(builder: FlatBufferBuilder, name: Int) = builder.addOffset(0, name, 0)
-        fun addOffset(builder: FlatBufferBuilder, offset: UShort) = builder.addShort(1, offset.toShort(), 0)
-        fun addSize(builder: FlatBufferBuilder, size: UShort) = builder.addShort(2, size.toShort(), 0)
+        fun addFirmwareName(builder: FlatBufferBuilder, firmwareName: Int) = builder.addOffset(0, firmwareName, 0)
+        fun addOffset(builder: FlatBufferBuilder, offset: Int) = builder.addInt(1, offset, 0)
+        fun addSize(builder: FlatBufferBuilder, size: Int) = builder.addInt(2, size, 0)
         fun endGetFirmwareChunkRequest(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o

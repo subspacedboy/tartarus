@@ -17,6 +17,8 @@ class LockSession(
     var totalControlToken: String?,
     var isLocked: Boolean = false,
     var availableForContract: Boolean = true,
+    var validatedFirmware: Boolean = false,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) var lastValidated: OffsetDateTime? = null,
     @OneToMany(mappedBy = "id", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     var commandQueue: MutableList<CommandQueue> = mutableListOf(),
     @OneToMany(mappedBy = "lockSession", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)

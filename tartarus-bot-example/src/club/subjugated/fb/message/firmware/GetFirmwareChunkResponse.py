@@ -28,14 +28,14 @@ class GetFirmwareChunkResponse(object):
     def Size(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Uint16Flags, o + self._tab.Pos)
+            return self._tab.Get(flatbuffers.number_types.Int32Flags, o + self._tab.Pos)
         return 0
 
     # GetFirmwareChunkResponse
     def Offset(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Uint16Flags, o + self._tab.Pos)
+            return self._tab.Get(flatbuffers.number_types.Int32Flags, o + self._tab.Pos)
         return 0
 
     # GetFirmwareChunkResponse
@@ -72,13 +72,13 @@ def Start(builder):
     GetFirmwareChunkResponseStart(builder)
 
 def GetFirmwareChunkResponseAddSize(builder, size):
-    builder.PrependUint16Slot(0, size, 0)
+    builder.PrependInt32Slot(0, size, 0)
 
 def AddSize(builder, size):
     GetFirmwareChunkResponseAddSize(builder, size)
 
 def GetFirmwareChunkResponseAddOffset(builder, offset):
-    builder.PrependUint16Slot(1, offset, 0)
+    builder.PrependInt32Slot(1, offset, 0)
 
 def AddOffset(builder, offset):
     GetFirmwareChunkResponseAddOffset(builder, offset)

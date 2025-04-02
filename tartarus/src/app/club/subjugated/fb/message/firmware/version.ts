@@ -29,58 +29,31 @@ name(optionalEncoding?:any):string|Uint8Array|null {
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
-major():number {
-  const offset = this.bb!.__offset(this.bb_pos, 6);
-  return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
-}
-
-minor():number {
-  const offset = this.bb!.__offset(this.bb_pos, 8);
-  return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
-}
-
-build():number {
-  const offset = this.bb!.__offset(this.bb_pos, 10);
-  return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
-}
-
 signature(index: number):number|null {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
+  const offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
 }
 
 signatureLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
+  const offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 signatureArray():Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
+  const offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
 static startVersion(builder:flatbuffers.Builder) {
-  builder.startObject(5);
+  builder.startObject(2);
 }
 
 static addName(builder:flatbuffers.Builder, nameOffset:flatbuffers.Offset) {
   builder.addFieldOffset(0, nameOffset, 0);
 }
 
-static addMajor(builder:flatbuffers.Builder, major:number) {
-  builder.addFieldInt16(1, major, 0);
-}
-
-static addMinor(builder:flatbuffers.Builder, minor:number) {
-  builder.addFieldInt16(2, minor, 0);
-}
-
-static addBuild(builder:flatbuffers.Builder, build:number) {
-  builder.addFieldInt16(3, build, 0);
-}
-
 static addSignature(builder:flatbuffers.Builder, signatureOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(4, signatureOffset, 0);
+  builder.addFieldOffset(1, signatureOffset, 0);
 }
 
 static createSignatureVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
@@ -100,12 +73,9 @@ static endVersion(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createVersion(builder:flatbuffers.Builder, nameOffset:flatbuffers.Offset, major:number, minor:number, build:number, signatureOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createVersion(builder:flatbuffers.Builder, nameOffset:flatbuffers.Offset, signatureOffset:flatbuffers.Offset):flatbuffers.Offset {
   Version.startVersion(builder);
   Version.addName(builder, nameOffset);
-  Version.addMajor(builder, major);
-  Version.addMinor(builder, minor);
-  Version.addBuild(builder, build);
   Version.addSignature(builder, signatureOffset);
   return Version.endVersion(builder);
 }

@@ -25,7 +25,7 @@ class GetFirmwareChunkRequest(object):
         self._tab = flatbuffers.table.Table(buf, pos)
 
     # GetFirmwareChunkRequest
-    def Name(self):
+    def FirmwareName(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
             return self._tab.String(o + self._tab.Pos)
@@ -35,14 +35,14 @@ class GetFirmwareChunkRequest(object):
     def Offset(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Uint16Flags, o + self._tab.Pos)
+            return self._tab.Get(flatbuffers.number_types.Int32Flags, o + self._tab.Pos)
         return 0
 
     # GetFirmwareChunkRequest
     def Size(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Uint16Flags, o + self._tab.Pos)
+            return self._tab.Get(flatbuffers.number_types.Int32Flags, o + self._tab.Pos)
         return 0
 
 def GetFirmwareChunkRequestStart(builder):
@@ -51,20 +51,20 @@ def GetFirmwareChunkRequestStart(builder):
 def Start(builder):
     GetFirmwareChunkRequestStart(builder)
 
-def GetFirmwareChunkRequestAddName(builder, name):
-    builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(name), 0)
+def GetFirmwareChunkRequestAddFirmwareName(builder, firmwareName):
+    builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(firmwareName), 0)
 
-def AddName(builder, name):
-    GetFirmwareChunkRequestAddName(builder, name)
+def AddFirmwareName(builder, firmwareName):
+    GetFirmwareChunkRequestAddFirmwareName(builder, firmwareName)
 
 def GetFirmwareChunkRequestAddOffset(builder, offset):
-    builder.PrependUint16Slot(1, offset, 0)
+    builder.PrependInt32Slot(1, offset, 0)
 
 def AddOffset(builder, offset):
     GetFirmwareChunkRequestAddOffset(builder, offset)
 
 def GetFirmwareChunkRequestAddSize(builder, size):
-    builder.PrependUint16Slot(2, size, 0)
+    builder.PrependInt32Slot(2, size, 0)
 
 def AddSize(builder, size):
     GetFirmwareChunkRequestAddSize(builder, size)

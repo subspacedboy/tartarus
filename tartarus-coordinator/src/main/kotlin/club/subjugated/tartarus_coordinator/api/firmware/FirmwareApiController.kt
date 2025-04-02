@@ -3,6 +3,8 @@ package club.subjugated.tartarus_coordinator.api.firmware
 import club.subjugated.fb.bots.GetContractRequest
 import club.subjugated.fb.message.firmware.FirmwareChallengeResponse
 import club.subjugated.fb.message.firmware.FirmwareMessage
+import club.subjugated.fb.message.firmware.GetFirmwareChunkRequest
+import club.subjugated.fb.message.firmware.GetFirmwareChunkResponse
 import club.subjugated.fb.message.firmware.GetLatestFirmwareRequest
 import club.subjugated.fb.message.firmware.GetLatestFirmwareResponse
 import club.subjugated.fb.message.firmware.MessagePayload
@@ -16,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Controller
 import java.nio.ByteBuffer
 import java.security.MessageDigest
+import java.util.*
 
 @Controller
 class FirmwareApiController {
@@ -31,6 +34,12 @@ class FirmwareApiController {
                 message.payload(latestRequest)
                 val response = handleGetLatestFirmwareRequest(latestRequest)
                 return buildResponse(MessagePayload.GetLatestFirmwareResponse, message.requestId, message.sessionToken!!, response)
+            }
+            MessagePayload.GetFirmwareChunkRequest -> {
+                val getFirmwareChunk = GetFirmwareChunkRequest()
+                message.payload(getFirmwareChunk)
+                val response = handleGetFirmwareChunkRequest(message.requestId, getFirmwareChunk)
+                return buildResponse(MessagePayload.GetFirmwareChunkResponse, message.requestId, message.sessionToken!!, response)
             }
             MessagePayload.FirmwareChallengeResponse -> {
                 val challengeResponse = FirmwareChallengeResponse()
@@ -67,31 +76,40 @@ class FirmwareApiController {
 
         val builder = FlatBufferBuilder(1024)
 
-        Version.startVersion(builder)
-        Version.addMajor(builder, 0.toUShort())
-        Version.addMinor(builder, 0.toUShort())
-        Version.addBuild(builder, 0.toUShort())
-        val versionOffset = Version.endVersion(builder)
-
         val size = firmware.image!!.size
-        val digest = MessageDigest.getInstance("SHA-256")
-        val digestValue = digest.digest(firmware.image!!)
 
-        val subset = firmware.image!!.take(16_000).toByteArray()
-        val imageOffset = builder.createByteVector(ByteBuffer.wrap(subset))
-        val nameOffset = builder.createString(firmware.name)
-        val hashOffset = builder.createByteVector(digestValue)
+        val firmwareNameOffset = builder.createString(firmware.name)
+        val versionNameOffset = builder.createString(firmware.version)
+        val hashOffset = builder.createByteVector(Base64.getDecoder().decode(firmware.digest))
 
         GetLatestFirmwareResponse.startGetLatestFirmwareResponse(builder)
-        GetLatestFirmwareResponse.addVersion(builder, versionOffset)
-        GetLatestFirmwareResponse.addSize(builder, size.toUShort())
-        GetLatestFirmwareResponse.addName(builder, nameOffset)
-        GetLatestFirmwareResponse.addSignature(builder, hashOffset)
+        GetLatestFirmwareResponse.addSize(builder, size)
+        GetLatestFirmwareResponse.addFirmwareName(builder, firmwareNameOffset)
+        GetLatestFirmwareResponse.addVersionName(builder, versionNameOffset)
+        GetLatestFirmwareResponse.addDigest(builder, hashOffset)
 
-        GetLatestFirmwareResponse.addFirmware(builder, imageOffset)
         val getLatestFirmwareVersionResponseOffset = GetLatestFirmwareResponse.endGetLatestFirmwareResponse(builder)
 
         return ResponseBuilderContext(builder, getLatestFirmwareVersionResponseOffset)
+    }
+
+    fun handleGetFirmwareChunkRequest(requestId: Long, message: GetFirmwareChunkRequest) : ResponseBuilderContext<GetFirmwareChunkResponse> {
+        val builder = FlatBufferBuilder(1024)
+
+        val firmwareName = message.firmwareName!!
+        val bytesToGet = message.size
+        val fromOffset = message.offset
+
+        val bytes = firmwareService.getFirmwareBytes(firmwareName, bytesToGet, fromOffset)
+
+        val bytesOffset = builder.createByteVector(bytes)
+        GetFirmwareChunkResponse.startGetFirmwareChunkResponse(builder)
+        GetFirmwareChunkResponse.addSize(builder, bytes.size)
+        GetFirmwareChunkResponse.addOffset(builder, message.offset)
+        GetFirmwareChunkResponse.addChunk(builder, bytesOffset)
+        val getFirmwareChunkOffset = GetFirmwareChunkResponse.endGetFirmwareChunkResponse(builder)
+
+        return ResponseBuilderContext(builder, getFirmwareChunkOffset)
     }
 
     fun handleChallengeResponse(requestId: Long, sessionToken: String, message : FirmwareChallengeResponse) {

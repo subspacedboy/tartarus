@@ -1,29 +1,3 @@
-use crate::internal_contract::{
-    InternalContract, InternalLockCommand, InternalReleaseCommand, InternalUnlockCommand,
-};
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct InternalFirmware {
-    pub major: u16,
-    pub minor: u16,
-    pub build: u16,
-    signature: Vec<u8>,
-}
-
-impl InternalFirmware {}
-
-impl Default for InternalFirmware {
-    fn default() -> Self {
-        Self {
-            major: 0,
-            minor: 0,
-            build: 0,
-            signature: Vec::new(),
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct InternalChallenge {
     pub nonce: Vec<u8>,
@@ -37,7 +11,50 @@ impl InternalChallenge {
 }
 
 #[derive(Debug, Clone)]
+pub struct InternalFirmwareResponse {
+    pub firmware_name: String,
+    pub version_name: String,
+    pub size: usize,
+}
+
+impl InternalFirmwareResponse {
+    pub fn new(name: String, version_name: String, size: usize) -> Self {
+        Self {
+            firmware_name: name,
+            version_name,
+            size,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct InternalFirmwareChunk {
+    data: Vec<u8>,
+    size: usize,
+    offset: usize,
+}
+
+impl InternalFirmwareChunk {
+    pub fn new(data: Vec<u8>, size: usize, offset: usize) -> Self {
+        Self { data, size, offset }
+    }
+
+    pub fn data(&self) -> &[u8] {
+        &self.data
+    }
+
+    pub fn size(&self) -> usize {
+        self.size
+    }
+
+    pub fn offset(&self) -> usize {
+        self.offset
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum FirmwareMessageType {
     Challenge(InternalChallenge),
-    FirmwareResponse,
+    FirmwareResponse(InternalFirmwareResponse),
+    FirmwareChunk(InternalFirmwareChunk),
 }

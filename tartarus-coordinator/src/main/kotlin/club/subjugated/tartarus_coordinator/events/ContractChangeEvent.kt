@@ -1,6 +1,5 @@
 package club.subjugated.tartarus_coordinator.events
 
-import club.subjugated.tartarus_coordinator.models.Command
 import club.subjugated.tartarus_coordinator.models.Contract
 import org.springframework.context.ApplicationEvent
 

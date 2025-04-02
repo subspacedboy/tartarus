@@ -22,37 +22,37 @@ static getSizePrefixedRootAsGetFirmwareChunkRequest(bb:flatbuffers.ByteBuffer, o
   return (obj || new GetFirmwareChunkRequest()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-name():string|null
-name(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-name(optionalEncoding?:any):string|Uint8Array|null {
+firmwareName():string|null
+firmwareName(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+firmwareName(optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 4);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
 offset():number {
   const offset = this.bb!.__offset(this.bb_pos, 6);
-  return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
+  return offset ? this.bb!.readInt32(this.bb_pos + offset) : 0;
 }
 
 size():number {
   const offset = this.bb!.__offset(this.bb_pos, 8);
-  return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
+  return offset ? this.bb!.readInt32(this.bb_pos + offset) : 0;
 }
 
 static startGetFirmwareChunkRequest(builder:flatbuffers.Builder) {
   builder.startObject(3);
 }
 
-static addName(builder:flatbuffers.Builder, nameOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, nameOffset, 0);
+static addFirmwareName(builder:flatbuffers.Builder, firmwareNameOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, firmwareNameOffset, 0);
 }
 
 static addOffset(builder:flatbuffers.Builder, offset:number) {
-  builder.addFieldInt16(1, offset, 0);
+  builder.addFieldInt32(1, offset, 0);
 }
 
 static addSize(builder:flatbuffers.Builder, size:number) {
-  builder.addFieldInt16(2, size, 0);
+  builder.addFieldInt32(2, size, 0);
 }
 
 static endGetFirmwareChunkRequest(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -60,9 +60,9 @@ static endGetFirmwareChunkRequest(builder:flatbuffers.Builder):flatbuffers.Offse
   return offset;
 }
 
-static createGetFirmwareChunkRequest(builder:flatbuffers.Builder, nameOffset:flatbuffers.Offset, offset:number, size:number):flatbuffers.Offset {
+static createGetFirmwareChunkRequest(builder:flatbuffers.Builder, firmwareNameOffset:flatbuffers.Offset, offset:number, size:number):flatbuffers.Offset {
   GetFirmwareChunkRequest.startGetFirmwareChunkRequest(builder);
-  GetFirmwareChunkRequest.addName(builder, nameOffset);
+  GetFirmwareChunkRequest.addFirmwareName(builder, firmwareNameOffset);
   GetFirmwareChunkRequest.addOffset(builder, offset);
   GetFirmwareChunkRequest.addSize(builder, size);
   return GetFirmwareChunkRequest.endGetFirmwareChunkRequest(builder);

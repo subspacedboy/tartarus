@@ -2,6 +2,7 @@ package club.subjugated.tartarus_coordinator.services
 
 import club.subjugated.fb.message.PeriodicUpdate
 import club.subjugated.tartarus_coordinator.api.messages.NewLockSessionMessage
+import club.subjugated.tartarus_coordinator.events.FirmwareValidationEvent
 import club.subjugated.tartarus_coordinator.events.PeriodicUpdateEvent
 import club.subjugated.tartarus_coordinator.models.*
 import club.subjugated.tartarus_coordinator.storage.CommandQueueRepository
@@ -10,6 +11,7 @@ import club.subjugated.tartarus_coordinator.util.TimeSource
 import club.subjugated.tartarus_coordinator.util.generateId
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 
 @Service
@@ -80,5 +82,13 @@ class LockSessionService {
     fun saveLockSession(lockSession: LockSession) {
         lockSession.updatedAt = timeSource.nowInUtc()
         this.lockSessionRepository.save(lockSession)
+    }
+
+    @EventListener
+    fun handleFirmwareValidation(firmwareValidationEvent: FirmwareValidationEvent) {
+        val lockSession = findBySessionToken(firmwareValidationEvent.sessionToken)!!
+        lockSession.validatedFirmware = firmwareValidationEvent.validated
+        lockSession.lastValidated = timeSource.nowInUtc()
+        lockSessionRepository.save(lockSession)
     }
 }

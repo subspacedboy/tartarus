@@ -189,10 +189,7 @@ pub mod club {
 
                     impl<'a> Version<'a> {
                         pub const VT_NAME: flatbuffers::VOffsetT = 4;
-                        pub const VT_MAJOR: flatbuffers::VOffsetT = 6;
-                        pub const VT_MINOR: flatbuffers::VOffsetT = 8;
-                        pub const VT_BUILD: flatbuffers::VOffsetT = 10;
-                        pub const VT_SIGNATURE: flatbuffers::VOffsetT = 12;
+                        pub const VT_SIGNATURE: flatbuffers::VOffsetT = 6;
 
                         #[inline]
                         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -215,9 +212,6 @@ pub mod club {
                             if let Some(x) = args.name {
                                 builder.add_name(x);
                             }
-                            builder.add_build(args.build);
-                            builder.add_minor(args.minor);
-                            builder.add_major(args.major);
                             builder.finish()
                         }
 
@@ -232,27 +226,6 @@ pub mod club {
                                     None,
                                 )
                             }
-                        }
-                        #[inline]
-                        pub fn major(&self) -> u16 {
-                            // Safety:
-                            // Created from valid Table for this object
-                            // which contains a valid value in this slot
-                            unsafe { self._tab.get::<u16>(Version::VT_MAJOR, Some(0)).unwrap() }
-                        }
-                        #[inline]
-                        pub fn minor(&self) -> u16 {
-                            // Safety:
-                            // Created from valid Table for this object
-                            // which contains a valid value in this slot
-                            unsafe { self._tab.get::<u16>(Version::VT_MINOR, Some(0)).unwrap() }
-                        }
-                        #[inline]
-                        pub fn build(&self) -> u16 {
-                            // Safety:
-                            // Created from valid Table for this object
-                            // which contains a valid value in this slot
-                            unsafe { self._tab.get::<u16>(Version::VT_BUILD, Some(0)).unwrap() }
                         }
                         #[inline]
                         pub fn signature(&self) -> Option<flatbuffers::Vector<'a, u8>> {
@@ -274,9 +247,6 @@ pub mod club {
                             use self::flatbuffers::Verifiable;
                             v.visit_table(pos)?
      .visit_field::<flatbuffers::ForwardsUOffset<&str>>("name", Self::VT_NAME, false)?
-     .visit_field::<u16>("major", Self::VT_MAJOR, false)?
-     .visit_field::<u16>("minor", Self::VT_MINOR, false)?
-     .visit_field::<u16>("build", Self::VT_BUILD, false)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, u8>>>("signature", Self::VT_SIGNATURE, false)?
      .finish();
                             Ok(())
@@ -284,9 +254,6 @@ pub mod club {
                     }
                     pub struct VersionArgs<'a> {
                         pub name: Option<flatbuffers::WIPOffset<&'a str>>,
-                        pub major: u16,
-                        pub minor: u16,
-                        pub build: u16,
                         pub signature: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
                     }
                     impl<'a> Default for VersionArgs<'a> {
@@ -294,9 +261,6 @@ pub mod club {
                         fn default() -> Self {
                             VersionArgs {
                                 name: None,
-                                major: 0,
-                                minor: 0,
-                                build: 0,
                                 signature: None,
                             }
                         }
@@ -313,18 +277,6 @@ pub mod club {
                                 Version::VT_NAME,
                                 name,
                             );
-                        }
-                        #[inline]
-                        pub fn add_major(&mut self, major: u16) {
-                            self.fbb_.push_slot::<u16>(Version::VT_MAJOR, major, 0);
-                        }
-                        #[inline]
-                        pub fn add_minor(&mut self, minor: u16) {
-                            self.fbb_.push_slot::<u16>(Version::VT_MINOR, minor, 0);
-                        }
-                        #[inline]
-                        pub fn add_build(&mut self, build: u16) {
-                            self.fbb_.push_slot::<u16>(Version::VT_BUILD, build, 0);
                         }
                         #[inline]
                         pub fn add_signature(
@@ -357,9 +309,6 @@ pub mod club {
                         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                             let mut ds = f.debug_struct("Version");
                             ds.field("name", &self.name());
-                            ds.field("major", &self.major());
-                            ds.field("minor", &self.minor());
-                            ds.field("build", &self.build());
                             ds.field("signature", &self.signature());
                             ds.finish()
                         }
@@ -819,11 +768,10 @@ pub mod club {
                     }
 
                     impl<'a> GetLatestFirmwareResponse<'a> {
-                        pub const VT_FIRMWARE: flatbuffers::VOffsetT = 4;
-                        pub const VT_SIGNATURE: flatbuffers::VOffsetT = 6;
-                        pub const VT_VERSION: flatbuffers::VOffsetT = 8;
-                        pub const VT_NAME: flatbuffers::VOffsetT = 10;
-                        pub const VT_SIZE_: flatbuffers::VOffsetT = 12;
+                        pub const VT_DIGEST: flatbuffers::VOffsetT = 4;
+                        pub const VT_FIRMWARE_NAME: flatbuffers::VOffsetT = 6;
+                        pub const VT_VERSION_NAME: flatbuffers::VOffsetT = 8;
+                        pub const VT_SIZE_: flatbuffers::VOffsetT = 10;
 
                         #[inline]
                         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -841,72 +789,60 @@ pub mod club {
                         ) -> flatbuffers::WIPOffset<GetLatestFirmwareResponse<'bldr>>
                         {
                             let mut builder = GetLatestFirmwareResponseBuilder::new(_fbb);
-                            if let Some(x) = args.name {
-                                builder.add_name(x);
-                            }
-                            if let Some(x) = args.version {
-                                builder.add_version(x);
-                            }
-                            if let Some(x) = args.signature {
-                                builder.add_signature(x);
-                            }
-                            if let Some(x) = args.firmware {
-                                builder.add_firmware(x);
-                            }
                             builder.add_size_(args.size_);
+                            if let Some(x) = args.version_name {
+                                builder.add_version_name(x);
+                            }
+                            if let Some(x) = args.firmware_name {
+                                builder.add_firmware_name(x);
+                            }
+                            if let Some(x) = args.digest {
+                                builder.add_digest(x);
+                            }
                             builder.finish()
                         }
 
                         #[inline]
-                        pub fn firmware(&self) -> Option<flatbuffers::Vector<'a, u8>> {
+                        pub fn digest(&self) -> Option<flatbuffers::Vector<'a, u8>> {
                             // Safety:
                             // Created from valid Table for this object
                             // which contains a valid value in this slot
                             unsafe {
-                                self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(GetLatestFirmwareResponse::VT_FIRMWARE, None)
+                                self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(GetLatestFirmwareResponse::VT_DIGEST, None)
                             }
                         }
                         #[inline]
-                        pub fn signature(&self) -> Option<flatbuffers::Vector<'a, u8>> {
-                            // Safety:
-                            // Created from valid Table for this object
-                            // which contains a valid value in this slot
-                            unsafe {
-                                self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(GetLatestFirmwareResponse::VT_SIGNATURE, None)
-                            }
-                        }
-                        #[inline]
-                        pub fn version(&self) -> Option<Version<'a>> {
-                            // Safety:
-                            // Created from valid Table for this object
-                            // which contains a valid value in this slot
-                            unsafe {
-                                self._tab.get::<flatbuffers::ForwardsUOffset<Version>>(
-                                    GetLatestFirmwareResponse::VT_VERSION,
-                                    None,
-                                )
-                            }
-                        }
-                        #[inline]
-                        pub fn name(&self) -> Option<&'a str> {
+                        pub fn firmware_name(&self) -> Option<&'a str> {
                             // Safety:
                             // Created from valid Table for this object
                             // which contains a valid value in this slot
                             unsafe {
                                 self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(
-                                    GetLatestFirmwareResponse::VT_NAME,
+                                    GetLatestFirmwareResponse::VT_FIRMWARE_NAME,
                                     None,
                                 )
                             }
                         }
                         #[inline]
-                        pub fn size_(&self) -> u16 {
+                        pub fn version_name(&self) -> Option<&'a str> {
+                            // Safety:
+                            // Created from valid Table for this object
+                            // which contains a valid value in this slot
+                            unsafe {
+                                self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(
+                                    GetLatestFirmwareResponse::VT_VERSION_NAME,
+                                    None,
+                                )
+                            }
+                        }
+                        #[inline]
+                        pub fn size_(&self) -> i32 {
                             // Safety:
                             // Created from valid Table for this object
                             // which contains a valid value in this slot
                             unsafe {
                                 self._tab
-                                    .get::<u16>(GetLatestFirmwareResponse::VT_SIZE_, Some(0))
+                                    .get::<i32>(GetLatestFirmwareResponse::VT_SIZE_, Some(0))
                                     .unwrap()
                             }
                         }
@@ -920,30 +856,27 @@ pub mod club {
                         ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
                             use self::flatbuffers::Verifiable;
                             v.visit_table(pos)?
-     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, u8>>>("firmware", Self::VT_FIRMWARE, false)?
-     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, u8>>>("signature", Self::VT_SIGNATURE, false)?
-     .visit_field::<flatbuffers::ForwardsUOffset<Version>>("version", Self::VT_VERSION, false)?
-     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("name", Self::VT_NAME, false)?
-     .visit_field::<u16>("size_", Self::VT_SIZE_, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, u8>>>("digest", Self::VT_DIGEST, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("firmware_name", Self::VT_FIRMWARE_NAME, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("version_name", Self::VT_VERSION_NAME, false)?
+     .visit_field::<i32>("size_", Self::VT_SIZE_, false)?
      .finish();
                             Ok(())
                         }
                     }
                     pub struct GetLatestFirmwareResponseArgs<'a> {
-                        pub firmware: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
-                        pub signature: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
-                        pub version: Option<flatbuffers::WIPOffset<Version<'a>>>,
-                        pub name: Option<flatbuffers::WIPOffset<&'a str>>,
-                        pub size_: u16,
+                        pub digest: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
+                        pub firmware_name: Option<flatbuffers::WIPOffset<&'a str>>,
+                        pub version_name: Option<flatbuffers::WIPOffset<&'a str>>,
+                        pub size_: i32,
                     }
                     impl<'a> Default for GetLatestFirmwareResponseArgs<'a> {
                         #[inline]
                         fn default() -> Self {
                             GetLatestFirmwareResponseArgs {
-                                firmware: None,
-                                signature: None,
-                                version: None,
-                                name: None,
+                                digest: None,
+                                firmware_name: None,
+                                version_name: None,
                                 size_: 0,
                             }
                         }
@@ -959,46 +892,38 @@ pub mod club {
                     }
                     impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> GetLatestFirmwareResponseBuilder<'a, 'b, A> {
                         #[inline]
-                        pub fn add_firmware(
+                        pub fn add_digest(
                             &mut self,
-                            firmware: flatbuffers::WIPOffset<flatbuffers::Vector<'b, u8>>,
+                            digest: flatbuffers::WIPOffset<flatbuffers::Vector<'b, u8>>,
                         ) {
                             self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
-                                GetLatestFirmwareResponse::VT_FIRMWARE,
-                                firmware,
+                                GetLatestFirmwareResponse::VT_DIGEST,
+                                digest,
                             );
                         }
                         #[inline]
-                        pub fn add_signature(
+                        pub fn add_firmware_name(
                             &mut self,
-                            signature: flatbuffers::WIPOffset<flatbuffers::Vector<'b, u8>>,
+                            firmware_name: flatbuffers::WIPOffset<&'b str>,
                         ) {
                             self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
-                                GetLatestFirmwareResponse::VT_SIGNATURE,
-                                signature,
+                                GetLatestFirmwareResponse::VT_FIRMWARE_NAME,
+                                firmware_name,
                             );
                         }
                         #[inline]
-                        pub fn add_version(
+                        pub fn add_version_name(
                             &mut self,
-                            version: flatbuffers::WIPOffset<Version<'b>>,
+                            version_name: flatbuffers::WIPOffset<&'b str>,
                         ) {
-                            self.fbb_
-                                .push_slot_always::<flatbuffers::WIPOffset<Version>>(
-                                    GetLatestFirmwareResponse::VT_VERSION,
-                                    version,
-                                );
-                        }
-                        #[inline]
-                        pub fn add_name(&mut self, name: flatbuffers::WIPOffset<&'b str>) {
                             self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
-                                GetLatestFirmwareResponse::VT_NAME,
-                                name,
+                                GetLatestFirmwareResponse::VT_VERSION_NAME,
+                                version_name,
                             );
                         }
                         #[inline]
-                        pub fn add_size_(&mut self, size_: u16) {
-                            self.fbb_.push_slot::<u16>(
+                        pub fn add_size_(&mut self, size_: i32) {
+                            self.fbb_.push_slot::<i32>(
                                 GetLatestFirmwareResponse::VT_SIZE_,
                                 size_,
                                 0,
@@ -1027,10 +952,9 @@ pub mod club {
                     impl core::fmt::Debug for GetLatestFirmwareResponse<'_> {
                         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                             let mut ds = f.debug_struct("GetLatestFirmwareResponse");
-                            ds.field("firmware", &self.firmware());
-                            ds.field("signature", &self.signature());
-                            ds.field("version", &self.version());
-                            ds.field("name", &self.name());
+                            ds.field("digest", &self.digest());
+                            ds.field("firmware_name", &self.firmware_name());
+                            ds.field("version_name", &self.version_name());
                             ds.field("size_", &self.size_());
                             ds.finish()
                         }
@@ -1053,7 +977,7 @@ pub mod club {
                     }
 
                     impl<'a> GetFirmwareChunkRequest<'a> {
-                        pub const VT_NAME: flatbuffers::VOffsetT = 4;
+                        pub const VT_FIRMWARE_NAME: flatbuffers::VOffsetT = 4;
                         pub const VT_OFFSET: flatbuffers::VOffsetT = 6;
                         pub const VT_SIZE_: flatbuffers::VOffsetT = 8;
 
@@ -1073,45 +997,45 @@ pub mod club {
                         ) -> flatbuffers::WIPOffset<GetFirmwareChunkRequest<'bldr>>
                         {
                             let mut builder = GetFirmwareChunkRequestBuilder::new(_fbb);
-                            if let Some(x) = args.name {
-                                builder.add_name(x);
-                            }
                             builder.add_size_(args.size_);
                             builder.add_offset(args.offset);
+                            if let Some(x) = args.firmware_name {
+                                builder.add_firmware_name(x);
+                            }
                             builder.finish()
                         }
 
                         #[inline]
-                        pub fn name(&self) -> Option<&'a str> {
+                        pub fn firmware_name(&self) -> Option<&'a str> {
                             // Safety:
                             // Created from valid Table for this object
                             // which contains a valid value in this slot
                             unsafe {
                                 self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(
-                                    GetFirmwareChunkRequest::VT_NAME,
+                                    GetFirmwareChunkRequest::VT_FIRMWARE_NAME,
                                     None,
                                 )
                             }
                         }
                         #[inline]
-                        pub fn offset(&self) -> u16 {
+                        pub fn offset(&self) -> i32 {
                             // Safety:
                             // Created from valid Table for this object
                             // which contains a valid value in this slot
                             unsafe {
                                 self._tab
-                                    .get::<u16>(GetFirmwareChunkRequest::VT_OFFSET, Some(0))
+                                    .get::<i32>(GetFirmwareChunkRequest::VT_OFFSET, Some(0))
                                     .unwrap()
                             }
                         }
                         #[inline]
-                        pub fn size_(&self) -> u16 {
+                        pub fn size_(&self) -> i32 {
                             // Safety:
                             // Created from valid Table for this object
                             // which contains a valid value in this slot
                             unsafe {
                                 self._tab
-                                    .get::<u16>(GetFirmwareChunkRequest::VT_SIZE_, Some(0))
+                                    .get::<i32>(GetFirmwareChunkRequest::VT_SIZE_, Some(0))
                                     .unwrap()
                             }
                         }
@@ -1126,26 +1050,26 @@ pub mod club {
                             use self::flatbuffers::Verifiable;
                             v.visit_table(pos)?
                                 .visit_field::<flatbuffers::ForwardsUOffset<&str>>(
-                                    "name",
-                                    Self::VT_NAME,
+                                    "firmware_name",
+                                    Self::VT_FIRMWARE_NAME,
                                     false,
                                 )?
-                                .visit_field::<u16>("offset", Self::VT_OFFSET, false)?
-                                .visit_field::<u16>("size_", Self::VT_SIZE_, false)?
+                                .visit_field::<i32>("offset", Self::VT_OFFSET, false)?
+                                .visit_field::<i32>("size_", Self::VT_SIZE_, false)?
                                 .finish();
                             Ok(())
                         }
                     }
                     pub struct GetFirmwareChunkRequestArgs<'a> {
-                        pub name: Option<flatbuffers::WIPOffset<&'a str>>,
-                        pub offset: u16,
-                        pub size_: u16,
+                        pub firmware_name: Option<flatbuffers::WIPOffset<&'a str>>,
+                        pub offset: i32,
+                        pub size_: i32,
                     }
                     impl<'a> Default for GetFirmwareChunkRequestArgs<'a> {
                         #[inline]
                         fn default() -> Self {
                             GetFirmwareChunkRequestArgs {
-                                name: None,
+                                firmware_name: None,
                                 offset: 0,
                                 size_: 0,
                             }
@@ -1162,24 +1086,27 @@ pub mod club {
                     }
                     impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> GetFirmwareChunkRequestBuilder<'a, 'b, A> {
                         #[inline]
-                        pub fn add_name(&mut self, name: flatbuffers::WIPOffset<&'b str>) {
+                        pub fn add_firmware_name(
+                            &mut self,
+                            firmware_name: flatbuffers::WIPOffset<&'b str>,
+                        ) {
                             self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
-                                GetFirmwareChunkRequest::VT_NAME,
-                                name,
+                                GetFirmwareChunkRequest::VT_FIRMWARE_NAME,
+                                firmware_name,
                             );
                         }
                         #[inline]
-                        pub fn add_offset(&mut self, offset: u16) {
-                            self.fbb_.push_slot::<u16>(
+                        pub fn add_offset(&mut self, offset: i32) {
+                            self.fbb_.push_slot::<i32>(
                                 GetFirmwareChunkRequest::VT_OFFSET,
                                 offset,
                                 0,
                             );
                         }
                         #[inline]
-                        pub fn add_size_(&mut self, size_: u16) {
+                        pub fn add_size_(&mut self, size_: i32) {
                             self.fbb_
-                                .push_slot::<u16>(GetFirmwareChunkRequest::VT_SIZE_, size_, 0);
+                                .push_slot::<i32>(GetFirmwareChunkRequest::VT_SIZE_, size_, 0);
                         }
                         #[inline]
                         pub fn new(
@@ -1201,7 +1128,7 @@ pub mod club {
                     impl core::fmt::Debug for GetFirmwareChunkRequest<'_> {
                         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                             let mut ds = f.debug_struct("GetFirmwareChunkRequest");
-                            ds.field("name", &self.name());
+                            ds.field("firmware_name", &self.firmware_name());
                             ds.field("offset", &self.offset());
                             ds.field("size_", &self.size_());
                             ds.finish()
@@ -1254,24 +1181,24 @@ pub mod club {
                         }
 
                         #[inline]
-                        pub fn size_(&self) -> u16 {
+                        pub fn size_(&self) -> i32 {
                             // Safety:
                             // Created from valid Table for this object
                             // which contains a valid value in this slot
                             unsafe {
                                 self._tab
-                                    .get::<u16>(GetFirmwareChunkResponse::VT_SIZE_, Some(0))
+                                    .get::<i32>(GetFirmwareChunkResponse::VT_SIZE_, Some(0))
                                     .unwrap()
                             }
                         }
                         #[inline]
-                        pub fn offset(&self) -> u16 {
+                        pub fn offset(&self) -> i32 {
                             // Safety:
                             // Created from valid Table for this object
                             // which contains a valid value in this slot
                             unsafe {
                                 self._tab
-                                    .get::<u16>(GetFirmwareChunkResponse::VT_OFFSET, Some(0))
+                                    .get::<i32>(GetFirmwareChunkResponse::VT_OFFSET, Some(0))
                                     .unwrap()
                             }
                         }
@@ -1294,16 +1221,16 @@ pub mod club {
                         ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
                             use self::flatbuffers::Verifiable;
                             v.visit_table(pos)?
-     .visit_field::<u16>("size_", Self::VT_SIZE_, false)?
-     .visit_field::<u16>("offset", Self::VT_OFFSET, false)?
+     .visit_field::<i32>("size_", Self::VT_SIZE_, false)?
+     .visit_field::<i32>("offset", Self::VT_OFFSET, false)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, u8>>>("chunk", Self::VT_CHUNK, false)?
      .finish();
                             Ok(())
                         }
                     }
                     pub struct GetFirmwareChunkResponseArgs<'a> {
-                        pub size_: u16,
-                        pub offset: u16,
+                        pub size_: i32,
+                        pub offset: i32,
                         pub chunk: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
                     }
                     impl<'a> Default for GetFirmwareChunkResponseArgs<'a> {
@@ -1327,16 +1254,16 @@ pub mod club {
                     }
                     impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> GetFirmwareChunkResponseBuilder<'a, 'b, A> {
                         #[inline]
-                        pub fn add_size_(&mut self, size_: u16) {
-                            self.fbb_.push_slot::<u16>(
+                        pub fn add_size_(&mut self, size_: i32) {
+                            self.fbb_.push_slot::<i32>(
                                 GetFirmwareChunkResponse::VT_SIZE_,
                                 size_,
                                 0,
                             );
                         }
                         #[inline]
-                        pub fn add_offset(&mut self, offset: u16) {
-                            self.fbb_.push_slot::<u16>(
+                        pub fn add_offset(&mut self, offset: i32) {
+                            self.fbb_.push_slot::<i32>(
                                 GetFirmwareChunkResponse::VT_OFFSET,
                                 offset,
                                 0,

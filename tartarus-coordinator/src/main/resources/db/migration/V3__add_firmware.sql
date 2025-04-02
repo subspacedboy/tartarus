@@ -6,11 +6,10 @@ create table firmware (
     public_key BLOB NOT NULL,
     signature varchar(255) NOT NULL,
     digest varchar(255) NOT NULL,
-    major int NOT NULL,
-    minor int NOT NULL,
-    build int NOT NULL,
+    version varchar(50) NOT NULL,
     created_at DATETIME,
     PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 alter table lock_session add column validated_firmware tinyint NOT NULL default 0 after available_for_contract;
+alter table lock_session add column last_validated DATETIME default null after validated_firmware;

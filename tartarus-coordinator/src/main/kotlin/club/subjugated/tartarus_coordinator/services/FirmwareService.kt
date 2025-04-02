@@ -3,6 +3,7 @@ package club.subjugated.tartarus_coordinator.services
 import club.subjugated.fb.message.firmware.FirmwareChallengeRequest
 import club.subjugated.fb.message.firmware.FirmwareMessage
 import club.subjugated.fb.message.firmware.MessagePayload
+import club.subjugated.tartarus_coordinator.events.FirmwareValidationEvent
 import club.subjugated.tartarus_coordinator.models.Firmware
 import club.subjugated.tartarus_coordinator.models.FirmwareState
 import club.subjugated.tartarus_coordinator.storage.FirmwareRepository
@@ -14,12 +15,14 @@ import com.github.benmanes.caffeine.cache.Caffeine
 import com.google.flatbuffers.FlatBufferBuilder
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.security.Signature
 import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.math.min
 
 @Service
 class FirmwareService {
@@ -28,13 +31,18 @@ class FirmwareService {
     @Autowired
     lateinit var timeSource: TimeSource
 
+    @Autowired lateinit var publisher: ApplicationEventPublisher
+
     @Value("\${tartarus.firmware.challenge_key}")
     var challengeKey : String = ""
 
     private val nonceChallenges: Cache<Long, ByteArray> =
         Caffeine.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(10).build()
 
-    fun createNewFirmware(image : ByteArray, major: Long, minor: Long, build: Long) : Firmware {
+    private val firmwareImages: Cache<String, ByteArray> =
+        Caffeine.newBuilder().maximumSize(2).build()
+
+    fun createNewFirmware(image : ByteArray, version : String) : Firmware {
         val digest = MessageDigest.getInstance("SHA-256")
         digest.update(image)
         val hash = Base64.getEncoder().encodeToString(digest.digest())
@@ -45,9 +53,7 @@ class FirmwareService {
                 image = image,
                 signature = "",
                 digest = hash,
-                major = major,
-                minor = minor,
-                build = build,
+                version = version,
                 createdAt = timeSource.nowInUtc()
             )
             firmwareRepository.save(f)
@@ -57,6 +63,24 @@ class FirmwareService {
 
     fun getLatest() : Firmware {
         return firmwareRepository.findFirstByOrderByCreatedAtDesc()
+    }
+
+    fun getFirmwareBytes(name : String, size: Int, offset : Int) : ByteArray {
+        val image = firmwareImages.get(name) {
+            val firmware = firmwareRepository.findByName(name)
+            firmware.image!!
+        }
+
+        if(offset > image.size) {
+            throw IllegalArgumentException("Requested beyond the bounds of the image")
+        }
+        var end = offset+size
+        if(end > image.lastIndex){
+            end = image.lastIndex
+        }
+
+        // +1 because copyOfRange is end-exclusive
+        return image.copyOfRange(offset, end+1)
     }
 
     fun generateFirmwareChallenge(sessionToken: String) : ByteArray {
@@ -96,6 +120,15 @@ class FirmwareService {
         }
         val signature = rawToDerSignature(data)
 
-        return verifier.verify(signature)
+        val validated = verifier.verify(signature)
+
+        val event = FirmwareValidationEvent(
+            this,
+            sessionToken = sessionToken,
+            validated = validated
+        )
+        publisher.publishEvent(event)
+
+        return validated
     }
 }

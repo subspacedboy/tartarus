@@ -25,7 +25,7 @@ class GetLatestFirmwareResponse(object):
         self._tab = flatbuffers.table.Table(buf, pos)
 
     # GetLatestFirmwareResponse
-    def Firmware(self, j):
+    def Digest(self, j):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
             a = self._tab.Vector(o)
@@ -33,120 +33,77 @@ class GetLatestFirmwareResponse(object):
         return 0
 
     # GetLatestFirmwareResponse
-    def FirmwareAsNumpy(self):
+    def DigestAsNumpy(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
             return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Uint8Flags, o)
         return 0
 
     # GetLatestFirmwareResponse
-    def FirmwareLength(self):
+    def DigestLength(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
             return self._tab.VectorLen(o)
         return 0
 
     # GetLatestFirmwareResponse
-    def FirmwareIsNone(self):
+    def DigestIsNone(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         return o == 0
 
     # GetLatestFirmwareResponse
-    def Signature(self, j):
+    def FirmwareName(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
-            a = self._tab.Vector(o)
-            return self._tab.Get(flatbuffers.number_types.Uint8Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 1))
-        return 0
-
-    # GetLatestFirmwareResponse
-    def SignatureAsNumpy(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
-        if o != 0:
-            return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Uint8Flags, o)
-        return 0
-
-    # GetLatestFirmwareResponse
-    def SignatureLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
-        if o != 0:
-            return self._tab.VectorLen(o)
-        return 0
-
-    # GetLatestFirmwareResponse
-    def SignatureIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
-        return o == 0
-
-    # GetLatestFirmwareResponse
-    def Version(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
-        if o != 0:
-            x = self._tab.Indirect(o + self._tab.Pos)
-            from club.subjugated.fb.message.firmware.Version import Version
-            obj = Version()
-            obj.Init(self._tab.Bytes, x)
-            return obj
+            return self._tab.String(o + self._tab.Pos)
         return None
 
     # GetLatestFirmwareResponse
-    def Name(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+    def VersionName(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
             return self._tab.String(o + self._tab.Pos)
         return None
 
     # GetLatestFirmwareResponse
     def Size(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
         if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Uint16Flags, o + self._tab.Pos)
+            return self._tab.Get(flatbuffers.number_types.Int32Flags, o + self._tab.Pos)
         return 0
 
 def GetLatestFirmwareResponseStart(builder):
-    builder.StartObject(5)
+    builder.StartObject(4)
 
 def Start(builder):
     GetLatestFirmwareResponseStart(builder)
 
-def GetLatestFirmwareResponseAddFirmware(builder, firmware):
-    builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(firmware), 0)
+def GetLatestFirmwareResponseAddDigest(builder, digest):
+    builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(digest), 0)
 
-def AddFirmware(builder, firmware):
-    GetLatestFirmwareResponseAddFirmware(builder, firmware)
+def AddDigest(builder, digest):
+    GetLatestFirmwareResponseAddDigest(builder, digest)
 
-def GetLatestFirmwareResponseStartFirmwareVector(builder, numElems):
+def GetLatestFirmwareResponseStartDigestVector(builder, numElems):
     return builder.StartVector(1, numElems, 1)
 
-def StartFirmwareVector(builder, numElems):
-    return GetLatestFirmwareResponseStartFirmwareVector(builder, numElems)
+def StartDigestVector(builder, numElems):
+    return GetLatestFirmwareResponseStartDigestVector(builder, numElems)
 
-def GetLatestFirmwareResponseAddSignature(builder, signature):
-    builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(signature), 0)
+def GetLatestFirmwareResponseAddFirmwareName(builder, firmwareName):
+    builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(firmwareName), 0)
 
-def AddSignature(builder, signature):
-    GetLatestFirmwareResponseAddSignature(builder, signature)
+def AddFirmwareName(builder, firmwareName):
+    GetLatestFirmwareResponseAddFirmwareName(builder, firmwareName)
 
-def GetLatestFirmwareResponseStartSignatureVector(builder, numElems):
-    return builder.StartVector(1, numElems, 1)
+def GetLatestFirmwareResponseAddVersionName(builder, versionName):
+    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(versionName), 0)
 
-def StartSignatureVector(builder, numElems):
-    return GetLatestFirmwareResponseStartSignatureVector(builder, numElems)
-
-def GetLatestFirmwareResponseAddVersion(builder, version):
-    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(version), 0)
-
-def AddVersion(builder, version):
-    GetLatestFirmwareResponseAddVersion(builder, version)
-
-def GetLatestFirmwareResponseAddName(builder, name):
-    builder.PrependUOffsetTRelativeSlot(3, flatbuffers.number_types.UOffsetTFlags.py_type(name), 0)
-
-def AddName(builder, name):
-    GetLatestFirmwareResponseAddName(builder, name)
+def AddVersionName(builder, versionName):
+    GetLatestFirmwareResponseAddVersionName(builder, versionName)
 
 def GetLatestFirmwareResponseAddSize(builder, size):
-    builder.PrependUint16Slot(4, size, 0)
+    builder.PrependInt32Slot(3, size, 0)
 
 def AddSize(builder, size):
     GetLatestFirmwareResponseAddSize(builder, size)

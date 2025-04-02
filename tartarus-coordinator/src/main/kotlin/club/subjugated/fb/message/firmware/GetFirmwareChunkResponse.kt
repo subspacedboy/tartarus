@@ -28,15 +28,15 @@ class GetFirmwareChunkResponse : Table() {
         __init(_i, _bb)
         return this
     }
-    val size : UShort
+    val size : Int
         get() {
             val o = __offset(4)
-            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+            return if(o != 0) bb.getInt(o + bb_pos) else 0
         }
-    val offset : UShort
+    val offset : Int
         get() {
             val o = __offset(6)
-            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+            return if(o != 0) bb.getInt(o + bb_pos) else 0
         }
     fun chunk(j: Int) : UByte {
         val o = __offset(8)
@@ -59,7 +59,7 @@ class GetFirmwareChunkResponse : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createGetFirmwareChunkResponse(builder: FlatBufferBuilder, size: UShort, offset: UShort, chunkOffset: Int) : Int {
+        fun createGetFirmwareChunkResponse(builder: FlatBufferBuilder, size: Int, offset: Int, chunkOffset: Int) : Int {
             builder.startTable(3)
             addChunk(builder, chunkOffset)
             addOffset(builder, offset)
@@ -67,8 +67,8 @@ class GetFirmwareChunkResponse : Table() {
             return endGetFirmwareChunkResponse(builder)
         }
         fun startGetFirmwareChunkResponse(builder: FlatBufferBuilder) = builder.startTable(3)
-        fun addSize(builder: FlatBufferBuilder, size: UShort) = builder.addShort(0, size.toShort(), 0)
-        fun addOffset(builder: FlatBufferBuilder, offset: UShort) = builder.addShort(1, offset.toShort(), 0)
+        fun addSize(builder: FlatBufferBuilder, size: Int) = builder.addInt(0, size, 0)
+        fun addOffset(builder: FlatBufferBuilder, offset: Int) = builder.addInt(1, offset, 0)
         fun addChunk(builder: FlatBufferBuilder, chunk: Int) = builder.addOffset(2, chunk, 0)
         @kotlin.ExperimentalUnsignedTypes
         fun createChunkVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
