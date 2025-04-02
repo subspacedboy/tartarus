@@ -11,4 +11,6 @@ interface KnownTokenRepository : JpaRepository<KnownToken, Long> {
         authorSessionId: Long,
         state: KnownTokenState,
     ): List<KnownToken>
+
+    fun findByAuthorSessionIdAndName(authorSessionId: Long, name : String) : KnownToken
 }

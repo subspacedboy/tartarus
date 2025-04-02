@@ -83,70 +83,13 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
 
                         when (signedMessage) {
                             is ValidatedPayload.StartedUpdatePayload -> {
-                                val theUpdate = signedMessage.startedUpdate
-
-                                val key =
-                                    ByteArray(theUpdate.publicKeyLength) {
-                                        theUpdate.publicKey(it).toByte()
-                                    }
-                                val sessionToken = theUpdate.session!!
-
-                                this.liveClients.put(sessionToken, "locks/$sessionToken")
-
-                                val nlsm =
-                                    NewLockSessionMessage(
-                                        publicKey = Base64.getEncoder().encodeToString(key),
-                                        sessionToken = theUpdate.session!!,
-                                        userSessionPublicKey = ""
-                                    )
-
-                                val lockSession = lockSessionService.createLockSession(nlsm)
-                                lockSessionService.saveLockSession(lockSession)
-
-                                // todo - get pending commands, send them
-                                val commands =
-                                    this.commandQueueService.getPendingCommandsForSession(
-                                        lockSession
-                                    )
-                                for (command in commands) {
-                                    println("📤 Transmitting command ${command} -> ${sessionToken}")
-                                    client.publish("locks/$sessionToken", MqttMessage(command.body))
-                                }
-
-                                // Send back Configuration data for safety keys.
-                                val configData = this.configurationService.getConfigurationAsFB()
-                                println("🧩 Transmitting configuration data -> ${sessionToken}")
-                                client.publish(
-                                    "configuration/$sessionToken",
-                                    MqttMessage(configData),
-                                )
+                                handleStartUpdateEvent(signedMessage)
                             }
                             is ValidatedPayload.AcknowledgementPayload -> {
-                                val ack = signedMessage.acknowledgement
-
-                                val lockSession =
-                                    this.lockSessionService.findBySessionToken(ack.session!!)
-                                val command =
-                                    this.commandQueueService.getCommandBySessionAndSerial(
-                                        lockSession,
-                                        ack.serialNumber.toInt(),
-                                    )
-                                this.commandQueueService.acknowledgeCommand(command, ack)
-
-                                println("🥕 Received ack: $ack")
+                                handleAcknowledgePayload(signedMessage)
                             }
                             is ValidatedPayload.ErrorPayload -> {
-                                val err = signedMessage.error
-                                val lockSession =
-                                    this.lockSessionService.findBySessionToken(err.session!!)
-
-                                val command =
-                                    this.commandQueueService.getCommandBySessionAndSerial(
-                                        lockSession,
-                                        err.serialNumber.toInt(),
-                                    )
-                                this.commandQueueService.errorCommand(command, err.message)
-                                println("😞 Error received $err")
+                                handleErrorPayload(signedMessage)
                             }
                             else -> TODO()
                         }
@@ -158,6 +101,75 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                 }
             }
         }
+    }
+
+    private fun handleStartUpdateEvent(signedMessage: ValidatedPayload.StartedUpdatePayload) {
+        val theUpdate = signedMessage.startedUpdate
+
+        val key =
+            ByteArray(theUpdate.publicKeyLength) {
+                theUpdate.publicKey(it).toByte()
+            }
+        val sessionToken = theUpdate.session!!
+
+        this.liveClients.put(sessionToken, "locks/$sessionToken")
+
+        val nlsm =
+            NewLockSessionMessage(
+                publicKey = Base64.getEncoder().encodeToString(key),
+                sessionToken = theUpdate.session!!,
+                userSessionPublicKey = ""
+            )
+
+        val lockSession = lockSessionService.createLockSession(nlsm)
+        lockSessionService.saveLockSession(lockSession)
+
+        // todo - get pending commands, send them
+        val commands =
+            this.commandQueueService.getPendingCommandsForSession(
+                lockSession
+            )
+        for (command in commands) {
+            println("📤 Transmitting command ${command} -> ${sessionToken}")
+            client.publish("locks/$sessionToken", MqttMessage(command.body))
+        }
+
+        // Send back Configuration data for safety keys.
+        val configData = this.configurationService.getConfigurationAsFB()
+        println("🧩 Transmitting configuration data -> ${sessionToken}")
+        client.publish(
+            "configuration/$sessionToken",
+            MqttMessage(configData),
+        )
+    }
+
+    private fun handleAcknowledgePayload(signedMessage: ValidatedPayload.AcknowledgementPayload) {
+        val ack = signedMessage.acknowledgement
+
+        val lockSession =
+            this.lockSessionService.findBySessionToken(ack.session!!)
+        val command =
+            this.commandQueueService.getCommandBySessionAndSerial(
+                lockSession,
+                ack.serialNumber.toInt(),
+            )
+        this.commandQueueService.acknowledgeCommand(command, ack)
+
+        println("🥕 Received ack: $ack")
+    }
+
+    private fun handleErrorPayload(signedMessage: ValidatedPayload.ErrorPayload) {
+        val err = signedMessage.error
+        val lockSession =
+            this.lockSessionService.findBySessionToken(err.session!!)
+
+        val command =
+            this.commandQueueService.getCommandBySessionAndSerial(
+                lockSession,
+                err.serialNumber.toInt(),
+            )
+        this.commandQueueService.errorCommand(command, err.message)
+        println("😞 Error received $err")
     }
 
     fun isSessionLive(sessionToken: String): Boolean {

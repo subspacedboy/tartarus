@@ -1,18 +1,58 @@
-<h1>Lock Session {{sessionToken}}</h1>
+@if(lockSession) {
+  <div class="row">
+    <h1>Lock Session {{sessionToken}}</h1>
+  </div>
 
-@if(lockSession?.isTotalControlToken()) {
-  <h2>Total control token</h2>
-}
-<div>
-  <a [routerLink]="['simple-contract']">Simple Contract (Works offline) </a>
-</div>
-
-<div>
-  <a [routerLink]="['full-contract']">Full Contract (Online only)</a>
-</div>
-
-<div>
-  @for (c of contracts; track c.name){
-    <app-contract-card [contract]="c"></app-contract-card>
+  @if(lockSession?.isTotalControlToken()) {
+    <div>
+      <h2 class="text-warning">Total control token</h2>
+    </div>
   }
-</div>
+
+  <div class="row">
+    <div class="col-lg-4">
+      <div class="bs-component">
+        <h2>Lock Session Data</h2>
+        <h3>What is this for?</h3>
+        <p>This is where you see contracts you've written for this lock + holder.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="row" style="margin-top: 1em;">
+    <form [formGroup]="knownTokenForm" (submit)="saveNotes()">
+      <fieldset>
+        <div class="col-sm-10">
+          <label for="notes">Notes: </label>
+          <input id="notes" class="form-control" type="text" formControlName="notes" placeholder="Name this session so it's easy to remember">
+        </div>
+
+        <button class="btn btn-small btn-primary" type="submit">
+          Save
+        </button>
+      </fieldset>
+    </form>
+  </div>
+
+
+  <div>
+    <a [routerLink]="['simple-contract']">Simple Contract (Works offline) </a>
+  </div>
+
+  <div>
+    <a [routerLink]="['full-contract']">Full Contract (Online only)</a>
+  </div>
+
+  <div>
+    @for (c of contracts; track c.name){
+      <app-contract-card [contract]="c"></app-contract-card>
+    }
+  </div>
+}
+
+
+
+
+
+
+

@@ -1,9 +1,14 @@
 <h1>Lock Sessions</h1>
 
-@for (s of shareableTokens; track s) {
+@for (k of knownTokens; track k.name) {
   <div class="row" style="margin-top: 1em;">
     <div class="col-lg-5">
-      <a routerLink="{{s}}">{{s}}</a>
+      @if(k.notes != null && k.notes != "") {
+        <a routerLink="{{k.shareableToken}}">{{k.notes}} - {{k.shareableToken}}</a>
+      } @else {
+        <a routerLink="{{k.shareableToken}}">{{k.shareableToken}}</a>
+      }
+
     </div>
   </div>
 }

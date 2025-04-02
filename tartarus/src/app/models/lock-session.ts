@@ -1,4 +1,5 @@
 import {LockUserSession} from './lock-user-session';
+import {KnownToken} from './known-token';
 
 export class LockSession {
   // public_key is secp1 compressed, web crypto can't use it.
@@ -7,6 +8,7 @@ export class LockSession {
   shareToken?: string;
   totalControlToken?: string;
   lockUserSession?: LockUserSession;
+  knownToken?: KnownToken;
 
   constructor(init?:Partial<LockSession>) {
     // if (init!.associatedTask) {

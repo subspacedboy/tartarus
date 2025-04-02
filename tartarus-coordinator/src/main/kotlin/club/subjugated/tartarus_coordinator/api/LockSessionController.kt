@@ -3,6 +3,7 @@ package club.subjugated.tartarus_coordinator.api
 import club.subjugated.tartarus_coordinator.api.messages.KnownTokenMessage
 import club.subjugated.tartarus_coordinator.api.messages.LockSessionMessage
 import club.subjugated.tartarus_coordinator.api.messages.NewLockSessionMessage
+import club.subjugated.tartarus_coordinator.api.messages.UpdateKnownTokenMessage
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
 import club.subjugated.tartarus_coordinator.services.LockSessionService
 import club.subjugated.tartarus_coordinator.services.LockUserSessionService
@@ -29,7 +30,7 @@ class LockSessionController {
     @ResponseBody
     fun findMyLockSession(@AuthenticationPrincipal user: UserDetails, @PathVariable someToken: String): ResponseEntity<LockSessionMessage> {
         val maybeSession = this.lockSessionService.findBySessionToken(someToken)
-        return ResponseEntity.ok(LockSessionMessage.fromLockSession(maybeSession, null, false))
+        return ResponseEntity.ok(LockSessionMessage.fromLockSession(maybeSession, null, null,  false))
     }
 
     @GetMapping("/{someToken}", produces = [MediaType.APPLICATION_JSON])
@@ -43,21 +44,31 @@ class LockSessionController {
                 ?: return ResponseEntity.notFound().build()
 
         val authorSession = this.authorSessionService.findByName(user.username)
-        this.authorSessionService.authorKnowsToken(authorSession, someToken)
+        val knownToken = this.authorSessionService.authorKnowsToken(authorSession, someToken)
 
         val suppressTotalControl = someToken != maybeSession.totalControlToken
-        return ResponseEntity.ok(LockSessionMessage.fromLockSession(maybeSession, null, suppressTotalControl))
+        return ResponseEntity.ok(LockSessionMessage.fromLockSession(maybeSession, null, knownToken, suppressTotalControl))
     }
 
     @GetMapping("/known", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
     fun findKnownTokens(
-        @AuthenticationPrincipal user: UserDetails
+        @AuthenticationPrincipal authorUser: UserDetails
     ): ResponseEntity<List<KnownTokenMessage>> {
-        val authorSession = this.authorSessionService.findByName(user.username)
+        val authorSession = this.authorSessionService.findByName(authorUser.username)
         val knownTokens = this.authorSessionService.getKnownTokens(authorSession)
 
         return ResponseEntity.ok(knownTokens.map { KnownTokenMessage.fromKnownToken(it) })
+    }
+
+    @PutMapping("/known/{tokenName}", produces = [MediaType.APPLICATION_JSON])
+    @ResponseBody
+    fun saveKnownTokenUpdate(
+        @AuthenticationPrincipal authorUser: UserDetails,
+        @RequestBody updateKnownTokenMessage: UpdateKnownTokenMessage
+    ): ResponseEntity<Void> {
+        val knownToken = this.authorSessionService.updateKnownToken(authorUser.username, updateKnownTokenMessage)
+        return ResponseEntity.ok(null)
     }
 
     @PostMapping("/", produces = [MediaType.APPLICATION_JSON])
@@ -77,6 +88,6 @@ class LockSessionController {
         val session = lockSessionService.createLockSession(newLockSessionMessage)
         val userSession = lockUserSessionService.saveNewLockUserSession(session, newLockSessionMessage.userSessionPublicKey)
 
-        return ResponseEntity.ok(LockSessionMessage.fromLockSession(session, userSession, false))
+        return ResponseEntity.ok(LockSessionMessage.fromLockSession(session, userSession, null, false))
     }
 }

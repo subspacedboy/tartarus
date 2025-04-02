@@ -74,6 +74,21 @@ export class TartarusCoordinatorService {
     }));
   }
 
+  public saveNotesForKnownToken(knownToken : string, notes: string) : Observable<boolean> {
+    const save_notes_uri = `${this.baseUrl}/lock_sessions/known/${knownToken}`;
+    const body = JSON.stringify({
+      'name' : knownToken,
+      'notes' : notes,
+    });
+    return this.http.put(save_notes_uri, body, {
+      headers: new HttpHeaders({ 'Content-Type': 'application/json', 'X-Require-Author': 'requires authorization tokens' }),
+    }).pipe(map((res:any) => {
+      return true;
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
   public saveLockPubKeyAndSession(public_key: string, session: string, userSessionPublicPem: string) : Observable<LockSession> {
     const save_key_uri = `${this.baseUrl}/lock_sessions/`;
     const body = JSON.stringify({

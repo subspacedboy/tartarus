@@ -1,6 +1,7 @@
 package club.subjugated.tartarus_coordinator.services
 
 import club.subjugated.tartarus_coordinator.api.messages.NewAuthorSessionMessage
+import club.subjugated.tartarus_coordinator.api.messages.UpdateKnownTokenMessage
 import club.subjugated.tartarus_coordinator.models.AuthorSession
 import club.subjugated.tartarus_coordinator.models.KnownToken
 import club.subjugated.tartarus_coordinator.models.KnownTokenState
@@ -41,8 +42,8 @@ class AuthorSessionService {
         return this.authorSessionRepository.findByName(name)
     }
 
-    fun authorKnowsToken(authorSession: AuthorSession, shareableToken: String) {
-        knownTokenRepository.findByAuthorSessionIdAndShareableToken(
+    fun authorKnowsToken(authorSession: AuthorSession, shareableToken: String) : KnownToken {
+        return knownTokenRepository.findByAuthorSessionIdAndShareableToken(
             authorSession.id,
             shareableToken,
         )
@@ -61,5 +62,15 @@ class AuthorSessionService {
             authorSession.id,
             KnownTokenState.CREATED,
         )
+    }
+
+    fun updateKnownToken(authorSessionName: String, updateKnownTokenMessage: UpdateKnownTokenMessage) : KnownToken {
+        val authorSession = findByName(authorSessionName)
+        val knownToken = knownTokenRepository.findByAuthorSessionIdAndName(authorSession.id, updateKnownTokenMessage.name)
+        assert(authorSession == knownToken.authorSession)
+
+        knownToken.notes = updateKnownTokenMessage.notes
+        knownTokenRepository.save(knownToken)
+        return knownToken
     }
 }

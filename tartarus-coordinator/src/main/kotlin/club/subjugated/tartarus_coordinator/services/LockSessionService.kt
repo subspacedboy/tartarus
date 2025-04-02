@@ -50,13 +50,6 @@ class LockSessionService {
     fun findByShareableToken(someToken: String): LockSession? {
         val maybeSession =
             this.lockSessionRepository.findByShareTokenOrTotalControlToken(someToken, someToken)
-//        if (maybeSession != null) {
-//            // If the token we searched on was NOT the total control token, then for
-//            // safety just remove it.
-//            if (someToken == maybeSession.shareToken) {
-//                maybeSession.totalControlToken = null
-//            }
-//        }
         return maybeSession
     }
 

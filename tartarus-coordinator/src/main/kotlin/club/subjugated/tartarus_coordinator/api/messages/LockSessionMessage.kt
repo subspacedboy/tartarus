@@ -1,5 +1,6 @@
 package club.subjugated.tartarus_coordinator.api.messages
 
+import club.subjugated.tartarus_coordinator.models.KnownToken
 import club.subjugated.tartarus_coordinator.models.LockSession
 import club.subjugated.tartarus_coordinator.models.LockUserSession
 import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromCompressedKeyByteArray
@@ -15,11 +16,15 @@ data class LockSessionMessage(
     var shareToken: String = "",
     var totalControlToken: String? = "",
     var lockUserSession : LockUserSessionMessage? = null,
+    var knownToken: KnownTokenMessage? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
 ) {
     companion object {
-        fun fromLockSession(lockSession: LockSession, lockUserSession: LockUserSession?, suppressTotalControlToken: Boolean): LockSessionMessage {
+        fun fromLockSession(lockSession: LockSession,
+                            lockUserSession: LockUserSession?,
+                            knownToken: KnownToken?,
+                            suppressTotalControlToken: Boolean): LockSessionMessage {
             // Because javascript blows immeasurable ass, it's just easier to send
             // a PEM encoded version of the public key.
             val ecKey =
@@ -34,6 +39,7 @@ data class LockSessionMessage(
                 shareToken = lockSession.shareToken!!,
                 totalControlToken = if(suppressTotalControlToken) "" else lockSession.totalControlToken,
                 lockUserSession = if(lockUserSession == null) null else LockUserSessionMessage.fromLockUserSession(lockUserSession),
+                knownToken = if(knownToken== null) null else KnownTokenMessage.fromKnownToken(knownToken),
                 updatedAt = lockSession.updatedAt,
                 createdAt = lockSession.createdAt,
             )
