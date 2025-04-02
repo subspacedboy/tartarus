@@ -4,6 +4,9 @@ import * as flatbuffers from 'flatbuffers';
 import {Key} from '../club/subjugated/fb/message/configuration/key';
 import {CoordinatorConfiguration} from '../club/subjugated/fb/message/configuration/coordinator-configuration';
 import * as QRCode from 'qrcode';
+import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
+import {firstValueFrom} from 'rxjs';
+import {SafetyKey} from '../models/safety-key';
 
 @Component({
   selector: 'app-coordinator-configuration',
@@ -15,43 +18,56 @@ export class CoordinatorConfigurationComponent implements AfterViewInit {
   @ViewChild('canvas', { static: false }) canvas!: ElementRef;
   @ViewChild('hiddenDiv', { static: false }) hiddenDiv!: ElementRef;
 
-  constructor(private configService: ConfigService) {
+  constructor(private configService: ConfigService,
+              private tartarusCoordinatorService: TartarusCoordinatorService) {
   }
 
   ngAfterViewInit() {
-    this.buildConfiguration();
+    this.buildConfiguration().then(r => {
+
+    });
   }
 
-  buildConfiguration() {
+  async buildConfiguration() {
     const config = this.configService.getConfig();
 
+    const configFromApi = await firstValueFrom(this.tartarusCoordinatorService.getConfigurationFromCoordinator());
+
+    console.log(configFromApi);
     const builder = new flatbuffers.Builder(1024);
 
-    // Create keys
-    const nameOffset = builder.createString("example_key");
-    const publicKeyData = [1, 2, 3, 4, 5]; // Example public key data
-    const publicKeyOffset = Key.createPublicKeyVector(builder, publicKeyData);
+    // const keyOffsets = [];
+    // for(let k of configFromApi.safetyKeys!) {
+    //   const nameOffset = builder.createString(k.name!);
+    //   const publicKeyData = Uint8Array.from(atob(k.publicKey!), c => c.charCodeAt(0))
+    //   const publicKeyOffset = Key.createPublicKeyVector(builder, publicKeyData);
+    //
+    //   Key.startKey(builder);
+    //   Key.addName(builder, nameOffset);
+    //   Key.addPublicKey(builder, publicKeyOffset);
+    //   const keyOffset = Key.endKey(builder);
+    //   keyOffsets.push(keyOffset);
+    // }
 
-    Key.startKey(builder);
-    Key.addName(builder, nameOffset);
-    Key.addPublicKey(builder, publicKeyOffset);
-    const keyOffset = Key.endKey(builder);
 
     // Create repeated keys vector
-    const keysVector = CoordinatorConfiguration.createSafetyKeysVector(builder, [keyOffset]);
+    // const keysVector = CoordinatorConfiguration.createSafetyKeysVector(builder, keyOffsets);
 
     // Create main configuration
-    const webUriOffset = builder.createString("http://192.168.1.180:4200");
-    const mqttUriOffset = builder.createString("ws://192.168.1.180:8080/mqtt");
+    const webUriOffset = builder.createString(configFromApi.webUri);
+    const mqttUriOffset = builder.createString(configFromApi.mqttUri);
+    const apiUriOffset = builder.createString(configFromApi.apiUri);
 
     CoordinatorConfiguration.startCoordinatorConfiguration(builder);
     CoordinatorConfiguration.addWebUri(builder, webUriOffset);
     CoordinatorConfiguration.addMqttUri(builder, mqttUriOffset);
-    CoordinatorConfiguration.addSafetyKeys(builder, keysVector);
+    CoordinatorConfiguration.addApiUri(builder, apiUriOffset);
+    // CoordinatorConfiguration.addSafetyKeys(builder, keysVector);
     const configOffset = CoordinatorConfiguration.endCoordinatorConfiguration(builder);
 
     builder.finish(configOffset);
     const data = builder.asUint8Array();
+    console.log("Data size: " + data.length);
     this.generateQRCode(data).then(r => {
       console.log("Generated");
       this.hiddenDiv.nativeElement.hidden = false;

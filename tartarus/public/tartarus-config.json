@@ -1,5 +1,5 @@
 {
-  "url": "https://tartarus.subjugated.club",
-  "apiUrl": "https://tartarus-api.subjugated.club:4446",
-  "mqttUri" : "wss://tartarus-mqtt.subjugated.club:8080/mqtt"
+  "webUri": "https://tartarus.subjugated.club",
+  "apiUri": "https://tartarus-api.subjugated.club:4446",
+  "mqttUri" : "wss://tartarus-mqtt.subjugated.club:4447/mqtt"
 }

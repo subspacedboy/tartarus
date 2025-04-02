@@ -1,5 +1,5 @@
 {
-  "url": "http://localhost:4200",
-  "apiUrl": "http://localhost:5002",
+  "webUri": "http://localhost:4200",
+  "apiUri": "http://localhost:5002",
   "mqttUri" : "ws://localhost:8080/mqtt"
 }

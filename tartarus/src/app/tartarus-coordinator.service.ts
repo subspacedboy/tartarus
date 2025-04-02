@@ -6,6 +6,7 @@ import {LockSession} from './models/lock-session';
 import {AuthorSession} from './models/author-session';
 import {Contract} from './models/contract';
 import {ConfigService} from './config.service';
+import {AppConfig} from './models/app-config';
 
 @Injectable({
   providedIn: 'root'
@@ -18,7 +19,7 @@ export class TartarusCoordinatorService {
     if(config === undefined || config === null) {
       debugger;
     }
-    this.baseUrl = String(config.apiUrl);
+    this.baseUrl = String(config.apiUri);
   }
 
   public saveKeyRecord(public_key: string) : Observable<boolean> {
@@ -118,6 +119,16 @@ export class TartarusCoordinatorService {
     return this.http.get(get_contracts_uri, {
     }).pipe(map((res:any) => {
       return new Contract(res);
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public getConfigurationFromCoordinator() : Observable<AppConfig> {
+    const get_configuration_uri = `${this.baseUrl}/configuration/`;
+    return this.http.get(get_configuration_uri, {
+    }).pipe(map((res:any) => {
+      return new AppConfig(res);
     }), catchError(error => {
       return this.handleError(error);
     }));

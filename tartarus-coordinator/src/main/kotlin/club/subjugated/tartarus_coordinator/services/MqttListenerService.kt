@@ -1,6 +1,7 @@
 package club.subjugated.tartarus_coordinator.services
 
 import club.subjugated.tartarus_coordinator.api.messages.NewLockSessionMessage
+import club.subjugated.tartarus_coordinator.config.CustomMqttSecurity
 import club.subjugated.tartarus_coordinator.models.CommandState
 import club.subjugated.tartarus_coordinator.util.*
 import com.github.benmanes.caffeine.cache.Cache
@@ -41,6 +42,11 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
     lateinit var lockSessionService: LockSessionService
     @Autowired
     lateinit var commandQueueService: CommandQueueService
+    @Autowired
+    lateinit var configurationService: ConfigurationService
+
+    @Autowired
+    lateinit var security : CustomMqttSecurity
 
     private val executorService = Executors.newSingleThreadExecutor()
 
@@ -50,7 +56,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                 val options = MqttConnectOptions().apply {
                 isCleanSession = true
                 userName = "internal"
-                password = "password".toCharArray()
+                password = security.passAsString.toCharArray()
             }
 
             client.connect(options)
@@ -96,6 +102,11 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                                     println("📤 Transmitting command ${command} -> ${sessionToken}")
                                     client.publish("locks/$sessionToken", MqttMessage(command.body))
                                 }
+
+                                // Send back Configuration data for safety keys.
+                                val configData = this.configurationService.getConfigurationAsFB()
+                                println("🧩 Transmitting configuration data -> ${sessionToken}")
+                                client.publish("configuration/$sessionToken", MqttMessage(configData))
                             }
                             is ValidatedPayload.AcknowledgementPayload -> {
                                 val ack = signedMessage.acknowledgement
@@ -117,6 +128,8 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                             else -> TODO()
                         }
                     } catch (ex : Exception) {
+                        println("Encountered exception in processing MQTT")
+                        println(ex)
                         status.setRollbackOnly()
                     }
 

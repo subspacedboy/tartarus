@@ -40,12 +40,12 @@ export class LockStartComponent implements OnInit {
   }
 
   getShareLink(): string {
-    const baseUrl = this.configService.getConfig().url;
+    const baseUrl = this.configService.getConfig().webUri;
     return `${baseUrl}/lock-sessions/${this.lockSession!.shareToken}`;
   }
 
   getTotalControlLink(): string {
-    const baseUrl = this.configService.getConfig().url;
+    const baseUrl = this.configService.getConfig().webUri;
     return `${baseUrl}/lock-sessions/${this.lockSession!.totalControlToken}`;
   }
 }

@@ -39,18 +39,25 @@ mqttUri(optionalEncoding?:any):string|Uint8Array|null {
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
-safetyKeys(index: number, obj?:Key):Key|null {
+apiUri():string|null
+apiUri(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+apiUri(optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
+safetyKeys(index: number, obj?:Key):Key|null {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
   return offset ? (obj || new Key()).__init(this.bb!.__indirect(this.bb!.__vector(this.bb_pos + offset) + index * 4), this.bb!) : null;
 }
 
 safetyKeysLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 8);
+  const offset = this.bb!.__offset(this.bb_pos, 10);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 static startCoordinatorConfiguration(builder:flatbuffers.Builder) {
-  builder.startObject(3);
+  builder.startObject(4);
 }
 
 static addWebUri(builder:flatbuffers.Builder, webUriOffset:flatbuffers.Offset) {
@@ -61,8 +68,12 @@ static addMqttUri(builder:flatbuffers.Builder, mqttUriOffset:flatbuffers.Offset)
   builder.addFieldOffset(1, mqttUriOffset, 0);
 }
 
+static addApiUri(builder:flatbuffers.Builder, apiUriOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(2, apiUriOffset, 0);
+}
+
 static addSafetyKeys(builder:flatbuffers.Builder, safetyKeysOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(2, safetyKeysOffset, 0);
+  builder.addFieldOffset(3, safetyKeysOffset, 0);
 }
 
 static createSafetyKeysVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
@@ -90,10 +101,11 @@ static finishSizePrefixedCoordinatorConfigurationBuffer(builder:flatbuffers.Buil
   builder.finish(offset, undefined, true);
 }
 
-static createCoordinatorConfiguration(builder:flatbuffers.Builder, webUriOffset:flatbuffers.Offset, mqttUriOffset:flatbuffers.Offset, safetyKeysOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createCoordinatorConfiguration(builder:flatbuffers.Builder, webUriOffset:flatbuffers.Offset, mqttUriOffset:flatbuffers.Offset, apiUriOffset:flatbuffers.Offset, safetyKeysOffset:flatbuffers.Offset):flatbuffers.Offset {
   CoordinatorConfiguration.startCoordinatorConfiguration(builder);
   CoordinatorConfiguration.addWebUri(builder, webUriOffset);
   CoordinatorConfiguration.addMqttUri(builder, mqttUriOffset);
+  CoordinatorConfiguration.addApiUri(builder, apiUriOffset);
   CoordinatorConfiguration.addSafetyKeys(builder, safetyKeysOffset);
   return CoordinatorConfiguration.endCoordinatorConfiguration(builder);
 }

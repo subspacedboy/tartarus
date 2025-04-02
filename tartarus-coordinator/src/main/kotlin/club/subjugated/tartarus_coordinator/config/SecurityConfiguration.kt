@@ -37,7 +37,7 @@ class SecurityConfiguration {
     @Bean
     fun corsConfigurationSource() = UrlBasedCorsConfigurationSource().apply {
         registerCorsConfiguration("/**", CorsConfiguration().apply {
-            allowedOrigins = listOf("https://192.168.1.180:4200", "http://localhost:4200")
+            allowedOrigins = listOf("https://192.168.1.180:4200", "http://localhost:4200", "https://tartarus.subjugated.club")
             allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
             allowedHeaders = listOf("authorization", "content-type", "x-auth-token")
             exposedHeaders = listOf("x-auth-token")

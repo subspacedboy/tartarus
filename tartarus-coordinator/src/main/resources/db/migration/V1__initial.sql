@@ -59,3 +59,13 @@ create table command_queue(
     updated_at DATETIME,
     PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+create table safety_key (
+    id bigint NOT NULL AUTO_INCREMENT,
+    name varchar(25) NOT NULL,
+    state varchar(25) NOT NULL,
+    private_key BLOB NOT NULL,
+    public_key BLOB NOT NULL,
+    created_at DATETIME,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

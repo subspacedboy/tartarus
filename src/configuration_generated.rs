@@ -182,7 +182,8 @@ impl<'a> flatbuffers::Follow<'a> for CoordinatorConfiguration<'a> {
 impl<'a> CoordinatorConfiguration<'a> {
   pub const VT_WEB_URI: flatbuffers::VOffsetT = 4;
   pub const VT_MQTT_URI: flatbuffers::VOffsetT = 6;
-  pub const VT_SAFETY_KEYS: flatbuffers::VOffsetT = 8;
+  pub const VT_API_URI: flatbuffers::VOffsetT = 8;
+  pub const VT_SAFETY_KEYS: flatbuffers::VOffsetT = 10;
 
   #[inline]
   pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -195,6 +196,7 @@ impl<'a> CoordinatorConfiguration<'a> {
   ) -> flatbuffers::WIPOffset<CoordinatorConfiguration<'bldr>> {
     let mut builder = CoordinatorConfigurationBuilder::new(_fbb);
     if let Some(x) = args.safety_keys { builder.add_safety_keys(x); }
+    if let Some(x) = args.api_uri { builder.add_api_uri(x); }
     if let Some(x) = args.mqtt_uri { builder.add_mqtt_uri(x); }
     if let Some(x) = args.web_uri { builder.add_web_uri(x); }
     builder.finish()
@@ -216,6 +218,13 @@ impl<'a> CoordinatorConfiguration<'a> {
     unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CoordinatorConfiguration::VT_MQTT_URI, None)}
   }
   #[inline]
+  pub fn api_uri(&self) -> Option<&'a str> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CoordinatorConfiguration::VT_API_URI, None)}
+  }
+  #[inline]
   pub fn safety_keys(&self) -> Option<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Key<'a>>>> {
     // Safety:
     // Created from valid Table for this object
@@ -233,6 +242,7 @@ impl flatbuffers::Verifiable for CoordinatorConfiguration<'_> {
     v.visit_table(pos)?
      .visit_field::<flatbuffers::ForwardsUOffset<&str>>("web_uri", Self::VT_WEB_URI, false)?
      .visit_field::<flatbuffers::ForwardsUOffset<&str>>("mqtt_uri", Self::VT_MQTT_URI, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("api_uri", Self::VT_API_URI, false)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<Key>>>>("safety_keys", Self::VT_SAFETY_KEYS, false)?
      .finish();
     Ok(())
@@ -241,6 +251,7 @@ impl flatbuffers::Verifiable for CoordinatorConfiguration<'_> {
 pub struct CoordinatorConfigurationArgs<'a> {
     pub web_uri: Option<flatbuffers::WIPOffset<&'a str>>,
     pub mqtt_uri: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub api_uri: Option<flatbuffers::WIPOffset<&'a str>>,
     pub safety_keys: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Key<'a>>>>>,
 }
 impl<'a> Default for CoordinatorConfigurationArgs<'a> {
@@ -249,6 +260,7 @@ impl<'a> Default for CoordinatorConfigurationArgs<'a> {
     CoordinatorConfigurationArgs {
       web_uri: None,
       mqtt_uri: None,
+      api_uri: None,
       safety_keys: None,
     }
   }
@@ -266,6 +278,10 @@ impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> CoordinatorConfigurationBuilder
   #[inline]
   pub fn add_mqtt_uri(&mut self, mqtt_uri: flatbuffers::WIPOffset<&'b  str>) {
     self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CoordinatorConfiguration::VT_MQTT_URI, mqtt_uri);
+  }
+  #[inline]
+  pub fn add_api_uri(&mut self, api_uri: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CoordinatorConfiguration::VT_API_URI, api_uri);
   }
   #[inline]
   pub fn add_safety_keys(&mut self, safety_keys: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<Key<'b >>>>) {
@@ -291,6 +307,7 @@ impl core::fmt::Debug for CoordinatorConfiguration<'_> {
     let mut ds = f.debug_struct("CoordinatorConfiguration");
       ds.field("web_uri", &self.web_uri());
       ds.field("mqtt_uri", &self.mqtt_uri());
+      ds.field("api_uri", &self.api_uri());
       ds.field("safety_keys", &self.safety_keys());
       ds.finish()
   }

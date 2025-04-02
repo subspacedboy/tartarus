@@ -20,6 +20,7 @@ use base64::Engine;
 use base64::prelude::BASE64_URL_SAFE;
 use embedded_svc::mqtt::client::EventPayload;
 use embedded_svc::mqtt::client::EventPayload::Received;
+use esp_idf_hal::sys::topic_t;
 use esp_idf_svc::mqtt::client::{EspMqttClient, EspMqttConnection, LwtConfiguration, MqttClientConfiguration, QoS};
 use flatbuffers::FlatBufferBuilder;
 use p256::ecdsa::signature::Signer;
@@ -28,7 +29,9 @@ use p256::pkcs8::der::Writer;
 use postcard::{from_bytes};
 use sha2::{Digest, Sha256};
 use crate::acknowledger::Acknowledger;
+use crate::config_verifier::ConfigVerifier;
 use crate::internal_config::InternalConfig;
+use crate::lock_ctx::TopicType::{Acknowledgments, ConfigurationData, SignedMessages};
 use crate::servo::Servo;
 use crate::under_contract_screen::UnderContractScreen;
 use crate::verifier::{SignedMessageVerifier, VerifiedType};
@@ -43,8 +46,14 @@ pub struct TickUpdate {
 }
 
 #[derive(Debug, Clone)]
+enum TopicType {
+    SignedMessages, ConfigurationData, Acknowledgments
+}
+
+#[derive(Debug, Clone)]
 pub struct SignedMessageTransport {
-    buffer: Vec<u8>
+    buffer: Vec<u8>,
+    topic: TopicType
 }
 
 pub struct LockCtx {
@@ -104,6 +113,8 @@ impl LockCtx {
 
         let config = lck.get_configuration_or_default();
         lck.configuration = config;
+
+        log::info!("Loaded configuration {:?}", lck.configuration);
 
         // This must come after key loading because we're announcing to the coordinator with our
         // public key.
@@ -257,13 +268,26 @@ impl LockCtx {
 
         // Process message queue
         let mut commands : VecDeque<Vec<u8>> = VecDeque::new();
+        let mut configuration : VecDeque<Vec<u8>> = VecDeque::new();
 
         if let Ok(mut message_queue) = self.incoming_messages.lock() {
             while message_queue.len() > 0 {
                 let current = message_queue.pop_front();
                 if let Some(message) = current {
-                    log::info!("Received: {:?}", message);
-                    commands.push_back(message.buffer);
+                    match message.topic {
+                        TopicType::SignedMessages => {
+                            log::info!("Received Command: {:?}", message);
+                            commands.push_back(message.buffer);
+                        }
+                        TopicType::ConfigurationData => {
+                            log::info!("Received Configuration: {:?}", message);
+                            configuration.push_back(message.buffer);
+                        }
+                        _ => {
+                            log::info!("Received Unknown message?!: {:?}", message);
+                        }
+                    }
+
                 }
             }
         }
@@ -291,7 +315,8 @@ impl LockCtx {
                             let signing_key = self.get_signing_key();
                             let ack_buffer = acknowledger.build_acknowledgement(for_acknowledgement, &self.session_token, &self.lock_public_key.unwrap(), &signing_key);
                             let ack_message = SignedMessageTransport {
-                                buffer: ack_buffer
+                                buffer: ack_buffer,
+                                topic: Acknowledgments
                             };
                             self.enqueue_message(ack_message)
                         }
@@ -300,7 +325,8 @@ impl LockCtx {
                             let signing_key = self.get_signing_key();
                             let ack_buffer = acknowledger.build_error_for_command(for_acknowledgement, &self.session_token, &self.lock_public_key.unwrap(), &signing_key, &e);
                             let ack_message = SignedMessageTransport {
-                                buffer: ack_buffer
+                                buffer: ack_buffer,
+                                topic: Acknowledgments
                             };
                             self.enqueue_message(ack_message)
                         }
@@ -312,10 +338,21 @@ impl LockCtx {
                     let signing_key = self.get_signing_key();
                     let ack_buffer = acknowledger.build_error(verification_error, &self.session_token, &self.lock_public_key.unwrap(), &signing_key);
                     let ack_message = SignedMessageTransport {
-                        buffer: ack_buffer
+                        buffer: ack_buffer,
+                        topic: Acknowledgments
                     };
                     self.enqueue_message(ack_message)
                 }
+            }
+        }
+
+        while(configuration.len() > 0) {
+            // Configuration delivered through this channel is considered trusted.
+            let configuration = configuration.pop_front().unwrap();
+            if let Ok(valid_config) = ConfigVerifier::read_configuration(configuration) {
+                // The only way we can reach here is we have a valid MQTT provider. So theoretically
+                // we're just adding SafetyKeys.
+                self.save_configuration(&valid_config);
             }
         }
 
@@ -377,6 +414,7 @@ impl LockCtx {
                 log::info!("Restarting mqtt");
                 self.schedule_restart_mqtt = None;
                 self.start_mqtt();
+                // TODO - Make a more advananced state machine here.
                 self.enqueue_announce_message();
             }
         }
@@ -544,9 +582,13 @@ impl LockCtx {
         let mut config = MqttClientConfiguration::default();
         config.client_id = Some(self.session_token.as_ref());
         config.network_timeout = Duration::from_secs(5);
-        config.password = Some("maybe?");
+        // This isn't used. It just needs a value.
+        config.password = Some("tartarus");
         config.username = Some(self.session_token.as_ref());
         config.reconnect_timeout = Some(Duration::from_secs(5));
+
+        // Requires -> CONFIG_MBEDTLS_CERTIFICATE_BUNDLE in sdkconfig.defaults
+        config.crt_bundle_attach = Some(esp_idf_svc::sys::esp_crt_bundle_attach);
 
         let lwt_config = LwtConfiguration {
             topic: "devices/status",
@@ -578,19 +620,38 @@ impl LockCtx {
         // Clear the restart flag
         *restart_mqtt_flag.lock().unwrap() = false;
         let session_token = self.session_token.clone();
+        let session_token_2 = self.session_token.clone();
 
         std::thread::Builder::new()
             .stack_size(12000)
             .spawn(move || {
                 log::info!("MQTT Listening for messages");
 
+                let inbound_queue_name = format!("locks/{session_token_2}");
+                let configuration_queue_name = format!("configuration/{session_token_2}");
+
                 while let Ok(event) = connection.next() {
                     if let Ok(mut message_queue) = queue_ref.lock() {
                         match event.payload() {
-                            Received { data, .. } => {
-                                message_queue.push_back(SignedMessageTransport {
-                                    buffer: data.to_vec(), // Convert slice to Vec<u8>
-                                });
+                            Received {topic, data, .. } => {
+                                if let Some(topic) = topic {
+                                    match topic {
+                                        x if x == inbound_queue_name.as_str() => {
+                                            message_queue.push_back(SignedMessageTransport {
+                                                buffer: data.to_vec(),
+                                                topic: SignedMessages
+                                            });
+                                        }
+                                        x if x == configuration_queue_name.as_str() => {
+                                            message_queue.push_back(SignedMessageTransport {
+                                                buffer: data.to_vec(),
+                                                topic: ConfigurationData
+                                            });
+                                        }
+                                        _ => {}
+                                    }
+                                }
+
                                 log::info!("Received MQTT message: {} bytes", data.len());
                             }
                             EventPayload::Disconnected => {
@@ -614,20 +675,26 @@ impl LockCtx {
         std::thread::Builder::new()
             .stack_size(12000)
             .spawn( move || {
-                log::info!("Publish thread");
+                log::info!("Subscribe/Publish thread");
 
                 // let session_token = session_token.clone();
 
-                'outer: loop {
-                    let inbound_queue = format!("locks/{session_token}");
-                    if let Err(e) = client.subscribe(&*inbound_queue, QoS::AtMostOnce) {
-                        log::error!("Failed to subscribe to topic : {e}, retrying...");
-                        std::thread::sleep(Duration::from_secs(2));
-                        continue;
-                    }
+                let inbound_queue = format!("locks/{}", &session_token);
+                let configuration_queue = format!("configuration/{}", &session_token);
+                let queues_to_subscribe_to : Vec<String> = vec![inbound_queue, configuration_queue];
+                let subscription_count = 0_u8;
 
+                'outer: loop {
+                    for q in queues_to_subscribe_to.iter() {
+                        if let Err(e) = client.subscribe(&*q, QoS::AtMostOnce) {
+                            log::error!("Failed to subscribe to topic : {e}, retrying...");
+                            std::thread::sleep(Duration::from_secs(2));
+                            continue;
+                        }
+                        log::info!("Subscribed -> {q}");
+                    }
                     // Just to give a chance of our connection to get even the first published message
-                    std::thread::sleep(Duration::from_millis(500));
+                    std::thread::sleep(Duration::from_millis(800));
                     loop {
 
                         if let Ok(mut message_queue) = out_queue_ref.lock() {
@@ -738,7 +805,8 @@ impl LockCtx {
         let data = builder.finished_data().to_vec();
 
         let t = SignedMessageTransport {
-            buffer: data
+            buffer: data,
+            topic: SignedMessages
         };
 
         self.enqueue_message(t);

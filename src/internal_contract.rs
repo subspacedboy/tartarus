@@ -128,7 +128,7 @@ impl From<ReleaseCommand<'_>> for InternalReleaseCommand {
     }
 }
 
-mod verifying_key_serde {
+pub mod verifying_key_serde {
     use p256::ecdsa::VerifyingKey;
     use p256::EncodedPoint;
     use serde::{Serializer, Deserializer, Serialize, Deserialize};
