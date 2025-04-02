@@ -180,12 +180,42 @@ impl LockCtx {
     pub fn tick(&mut self, update : TickUpdate) -> () {
         self.this_update = Some(update.clone());
 
+        let mut command_data : VecDeque<Vec<u8>> = VecDeque::new();
+
         // Process message queue
         if let Ok(mut message_queue) = self.incoming_messages.lock() {
             while(message_queue.len() > 0) {
                 let current = message_queue.pop_front();
                 if let Some(message) = current {
                     log::info!("Received: {:?}", message);
+                    command_data.push_back(message.buffer);
+                }
+            }
+        }
+
+        while(command_data.len() > 0) {
+            let command = command_data.pop_front().unwrap();
+            log::info!("Processing MQTT command: {:?}", command);
+            if let Some(mut update) = self.this_update.take() {
+                update.qr_data = Some(command);
+                self.this_update = Some(update);
+            }
+
+            if let Some(mut current_screen) = self.current_screen.take() {
+                let result_from_update = current_screen.on_update(self);
+
+                if let Some(mut new_screen) = result_from_update {
+                    log::info!("New screen -> {:?}", new_screen.get_id());
+                    // We state transitioned. So mandatory clear + draw.
+                    self.display.clear(Rgb565::WHITE).unwrap();
+                    new_screen.draw_screen(self);
+                    self.current_screen = Some(new_screen);
+                } else {
+                    if current_screen.needs_redraw() {
+                        current_screen.draw_screen(self);
+                    }
+                    // Put the current screen back
+                    self.current_screen = Some(current_screen);
                 }
             }
         }
@@ -206,7 +236,6 @@ impl LockCtx {
                 // Put the current screen back
                 self.current_screen = Some(current_screen);
             }
-
         }
 
         let mut overlays = core::mem::take(&mut self.overlays);

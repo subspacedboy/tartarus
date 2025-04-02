@@ -1,8 +1,13 @@
 package club.subjugated.tartarus_coordinator.models
 
+import club.subjugated.fb.message.Command
+import club.subjugated.fb.message.CommandType
+import club.subjugated.fb.message.SignedMessage
 import club.subjugated.tartarus_coordinator.models.LockSession.Companion.generateId
 import com.fasterxml.jackson.annotation.JsonFormat
+import com.google.flatbuffers.FlatBufferBuilder
 import jakarta.persistence.*
+import java.nio.ByteBuffer
 import java.time.OffsetDateTime
 
 @Entity
@@ -29,4 +34,18 @@ class Contract(
             return club.subjugated.tartarus_coordinator.util.generateId("c-")
         }
     }
+
+//    fun toCommand() : ByteArray {
+//        val builder = FlatBufferBuilder(1024)
+//
+//        val embeddedOffset = builder.createByteVector(this.body)
+//
+//        Command.startCommand(builder)
+//        Command.addSignedMessage(builder, embeddedOffset)
+//        Command.addCommandType(builder, CommandType.AcceptContract)
+//        val commandOffset = Command.endCommand(builder)
+//
+//        builder.finish(commandOffset)
+//        return builder.sizedByteArray()
+//    }
 }

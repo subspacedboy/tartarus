@@ -13,6 +13,7 @@ use embedded_graphics_core::Drawable;
 use embedded_hal::digital::OutputPin;
 use esp_idf_hal::gpio::{GpioError, Output, PinDriver};
 use qrcode::{Color, QrCode};
+use crate::under_contract_screen::UnderContractScreen;
 
 pub struct BootScreen<SPI, DC, RST, PinE> {
     _spi: core::marker::PhantomData<SPI>,
@@ -56,14 +57,14 @@ where
                             lock_ctx.accept_contract(&contract);
 
                             lock_ctx.contract = Some(contract);
-                            let display_contract = Box::new(
-                                DisplayContractScreen::<
+                            let under_contract = Box::new(
+                                UnderContractScreen::<
                                     MySPI<'static>,
                                     PinDriver<'static, _, Output>,
                                     PinDriver<'static, _, Output>,
                                     GpioError
                                 >::new());
-                            return Some(display_contract);
+                            return Some(under_contract);
                         }
                         _ => {}
                     }

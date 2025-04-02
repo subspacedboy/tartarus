@@ -2,45 +2,49 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
-import { Command } from '../../../../club/subjugated/fb/message/command.js';
 import { Contract } from '../../../../club/subjugated/fb/message/contract.js';
+import { LockCommand } from '../../../../club/subjugated/fb/message/lock-command.js';
 import { LockUpdateEvent } from '../../../../club/subjugated/fb/message/lock-update-event.js';
-import { SimpleContract } from '../../../../club/subjugated/fb/message/simple-contract.js';
+import { ReleaseCommand } from '../../../../club/subjugated/fb/message/release-command.js';
+import { UnlockCommand } from '../../../../club/subjugated/fb/message/unlock-command.js';
 
 
 export enum MessagePayload {
   NONE = 0,
   Contract = 1,
-  SimpleContract = 2,
-  LockUpdateEvent = 3,
-  Command = 4
+  LockUpdateEvent = 2,
+  LockCommand = 3,
+  UnlockCommand = 4,
+  ReleaseCommand = 5
 }
 
 export function unionToMessagePayload(
   type: MessagePayload,
-  accessor: (obj:Command|Contract|LockUpdateEvent|SimpleContract) => Command|Contract|LockUpdateEvent|SimpleContract|null
-): Command|Contract|LockUpdateEvent|SimpleContract|null {
+  accessor: (obj:Contract|LockCommand|LockUpdateEvent|ReleaseCommand|UnlockCommand) => Contract|LockCommand|LockUpdateEvent|ReleaseCommand|UnlockCommand|null
+): Contract|LockCommand|LockUpdateEvent|ReleaseCommand|UnlockCommand|null {
   switch(MessagePayload[type]) {
     case 'NONE': return null; 
     case 'Contract': return accessor(new Contract())! as Contract;
-    case 'SimpleContract': return accessor(new SimpleContract())! as SimpleContract;
     case 'LockUpdateEvent': return accessor(new LockUpdateEvent())! as LockUpdateEvent;
-    case 'Command': return accessor(new Command())! as Command;
+    case 'LockCommand': return accessor(new LockCommand())! as LockCommand;
+    case 'UnlockCommand': return accessor(new UnlockCommand())! as UnlockCommand;
+    case 'ReleaseCommand': return accessor(new ReleaseCommand())! as ReleaseCommand;
     default: return null;
   }
 }
 
 export function unionListToMessagePayload(
   type: MessagePayload, 
-  accessor: (index: number, obj:Command|Contract|LockUpdateEvent|SimpleContract) => Command|Contract|LockUpdateEvent|SimpleContract|null, 
+  accessor: (index: number, obj:Contract|LockCommand|LockUpdateEvent|ReleaseCommand|UnlockCommand) => Contract|LockCommand|LockUpdateEvent|ReleaseCommand|UnlockCommand|null, 
   index: number
-): Command|Contract|LockUpdateEvent|SimpleContract|null {
+): Contract|LockCommand|LockUpdateEvent|ReleaseCommand|UnlockCommand|null {
   switch(MessagePayload[type]) {
     case 'NONE': return null; 
     case 'Contract': return accessor(index, new Contract())! as Contract;
-    case 'SimpleContract': return accessor(index, new SimpleContract())! as SimpleContract;
     case 'LockUpdateEvent': return accessor(index, new LockUpdateEvent())! as LockUpdateEvent;
-    case 'Command': return accessor(index, new Command())! as Command;
+    case 'LockCommand': return accessor(index, new LockCommand())! as LockCommand;
+    case 'UnlockCommand': return accessor(index, new UnlockCommand())! as UnlockCommand;
+    case 'ReleaseCommand': return accessor(index, new ReleaseCommand())! as ReleaseCommand;
     default: return null;
   }
 }

@@ -72,57 +72,50 @@ confirmCodeArray():Uint8Array|null {
   return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
-session():string|null
-session(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-session(optionalEncoding?:any):string|Uint8Array|null {
+notes():string|null
+notes(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+notes(optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 10);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
-notes():string|null
-notes(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-notes(optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
-}
-
 isUnremovable():boolean {
-  const offset = this.bb!.__offset(this.bb_pos, 14);
+  const offset = this.bb!.__offset(this.bb_pos, 12);
   return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
 }
 
 endConditionType():EndCondition {
-  const offset = this.bb!.__offset(this.bb_pos, 16);
+  const offset = this.bb!.__offset(this.bb_pos, 14);
   return offset ? this.bb!.readUint8(this.bb_pos + offset) : EndCondition.NONE;
 }
 
 endCondition<T extends flatbuffers.Table>(obj:any):any|null {
-  const offset = this.bb!.__offset(this.bb_pos, 18);
+  const offset = this.bb!.__offset(this.bb_pos, 16);
   return offset ? this.bb!.__union(obj, this.bb_pos + offset) : null;
 }
 
 webhooks(index: number, obj?:WebHook):WebHook|null {
-  const offset = this.bb!.__offset(this.bb_pos, 20);
+  const offset = this.bb!.__offset(this.bb_pos, 18);
   return offset ? (obj || new WebHook()).__init(this.bb!.__indirect(this.bb!.__vector(this.bb_pos + offset) + index * 4), this.bb!) : null;
 }
 
 webhooksLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 20);
+  const offset = this.bb!.__offset(this.bb_pos, 18);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 isTemporaryUnlockAllowed():boolean {
-  const offset = this.bb!.__offset(this.bb_pos, 22);
+  const offset = this.bb!.__offset(this.bb_pos, 20);
   return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
 }
 
 unlockRules(obj?:TemporaryUnlockRules):TemporaryUnlockRules|null {
-  const offset = this.bb!.__offset(this.bb_pos, 24);
+  const offset = this.bb!.__offset(this.bb_pos, 22);
   return offset ? (obj || new TemporaryUnlockRules()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
 }
 
 static startContract(builder:flatbuffers.Builder) {
-  builder.startObject(11);
+  builder.startObject(10);
 }
 
 static addPublicKey(builder:flatbuffers.Builder, publicKeyOffset:flatbuffers.Offset) {
@@ -173,28 +166,24 @@ static startConfirmCodeVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(1, numElems, 1);
 }
 
-static addSession(builder:flatbuffers.Builder, sessionOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(3, sessionOffset, 0);
-}
-
 static addNotes(builder:flatbuffers.Builder, notesOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(4, notesOffset, 0);
+  builder.addFieldOffset(3, notesOffset, 0);
 }
 
 static addIsUnremovable(builder:flatbuffers.Builder, isUnremovable:boolean) {
-  builder.addFieldInt8(5, +isUnremovable, +false);
+  builder.addFieldInt8(4, +isUnremovable, +false);
 }
 
 static addEndConditionType(builder:flatbuffers.Builder, endConditionType:EndCondition) {
-  builder.addFieldInt8(6, endConditionType, EndCondition.NONE);
+  builder.addFieldInt8(5, endConditionType, EndCondition.NONE);
 }
 
 static addEndCondition(builder:flatbuffers.Builder, endConditionOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(7, endConditionOffset, 0);
+  builder.addFieldOffset(6, endConditionOffset, 0);
 }
 
 static addWebhooks(builder:flatbuffers.Builder, webhooksOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(8, webhooksOffset, 0);
+  builder.addFieldOffset(7, webhooksOffset, 0);
 }
 
 static createWebhooksVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
@@ -210,11 +199,11 @@ static startWebhooksVector(builder:flatbuffers.Builder, numElems:number) {
 }
 
 static addIsTemporaryUnlockAllowed(builder:flatbuffers.Builder, isTemporaryUnlockAllowed:boolean) {
-  builder.addFieldInt8(9, +isTemporaryUnlockAllowed, +false);
+  builder.addFieldInt8(8, +isTemporaryUnlockAllowed, +false);
 }
 
 static addUnlockRules(builder:flatbuffers.Builder, unlockRulesOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(10, unlockRulesOffset, 0);
+  builder.addFieldOffset(9, unlockRulesOffset, 0);
 }
 
 static endContract(builder:flatbuffers.Builder):flatbuffers.Offset {

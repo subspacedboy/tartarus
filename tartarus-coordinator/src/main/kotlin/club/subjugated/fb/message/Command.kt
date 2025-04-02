@@ -28,7 +28,7 @@ class Command : Table() {
         __init(_i, _bb)
         return this
     }
-    fun publicKey(j: Int) : UByte {
+    fun signedMessage(j: Int) : UByte {
         val o = __offset(4)
         return if (o != 0) {
             bb.get(__vector(o) + j * 1).toUByte()
@@ -36,46 +36,15 @@ class Command : Table() {
             0u
         }
     }
-    val publicKeyLength : Int
+    val signedMessageLength : Int
         get() {
             val o = __offset(4); return if (o != 0) __vector_len(o) else 0
         }
-    val publicKeyAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun publicKeyInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
-    val session : String?
-        get() {
-            val o = __offset(6)
-            return if (o != 0) {
-                __string(o + bb_pos)
-            } else {
-                null
-            }
-        }
-    val sessionAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
-    fun sessionInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
-    val body : String?
-        get() {
-            val o = __offset(8)
-            return if (o != 0) {
-                __string(o + bb_pos)
-            } else {
-                null
-            }
-        }
-    val bodyAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(8, 1)
-    fun bodyInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 8, 1)
-    val contract : club.subjugated.fb.message.Contract? get() = contract(club.subjugated.fb.message.Contract())
-    fun contract(obj: club.subjugated.fb.message.Contract) : club.subjugated.fb.message.Contract? {
-        val o = __offset(10)
-        return if (o != 0) {
-            obj.__assign(__indirect(o + bb_pos), bb)
-        } else {
-            null
-        }
-    }
+    val signedMessageAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
+    fun signedMessageInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
     val commandType : Byte
         get() {
-            val o = __offset(12)
+            val o = __offset(6)
             return if(o != 0) bb.get(o + bb_pos) else 0
         }
     companion object {
@@ -85,30 +54,24 @@ class Command : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createCommand(builder: FlatBufferBuilder, publicKeyOffset: Int, sessionOffset: Int, bodyOffset: Int, contractOffset: Int, commandType: Byte) : Int {
-            builder.startTable(5)
-            addContract(builder, contractOffset)
-            addBody(builder, bodyOffset)
-            addSession(builder, sessionOffset)
-            addPublicKey(builder, publicKeyOffset)
+        fun createCommand(builder: FlatBufferBuilder, signedMessageOffset: Int, commandType: Byte) : Int {
+            builder.startTable(2)
+            addSignedMessage(builder, signedMessageOffset)
             addCommandType(builder, commandType)
             return endCommand(builder)
         }
-        fun startCommand(builder: FlatBufferBuilder) = builder.startTable(5)
-        fun addPublicKey(builder: FlatBufferBuilder, publicKey: Int) = builder.addOffset(0, publicKey, 0)
+        fun startCommand(builder: FlatBufferBuilder) = builder.startTable(2)
+        fun addSignedMessage(builder: FlatBufferBuilder, signedMessage: Int) = builder.addOffset(0, signedMessage, 0)
         @kotlin.ExperimentalUnsignedTypes
-        fun createPublicKeyVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
+        fun createSignedMessageVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
             builder.startVector(1, data.size, 1)
             for (i in data.size - 1 downTo 0) {
                 builder.addByte(data[i].toByte())
             }
             return builder.endVector()
         }
-        fun startPublicKeyVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
-        fun addSession(builder: FlatBufferBuilder, session: Int) = builder.addOffset(1, session, 0)
-        fun addBody(builder: FlatBufferBuilder, body: Int) = builder.addOffset(2, body, 0)
-        fun addContract(builder: FlatBufferBuilder, contract: Int) = builder.addOffset(3, contract, 0)
-        fun addCommandType(builder: FlatBufferBuilder, commandType: Byte) = builder.addByte(4, commandType, 0)
+        fun startSignedMessageVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
+        fun addCommandType(builder: FlatBufferBuilder, commandType: Byte) = builder.addByte(1, commandType, 0)
         fun endCommand(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o

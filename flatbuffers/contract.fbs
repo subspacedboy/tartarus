@@ -70,20 +70,21 @@ table LockUpdateEvent {
     this_update_type: UpdateType;
 }
 
-enum CommandType : byte { Undefined = 0, AcceptContract, Lock, Unlock, Release, Ping }
+//enum CommandType : byte { Undefined = 0, AcceptContract, Lock, Unlock, Release, Ping }
 
-table Command {
-    public_key: [ubyte];
-    session: string;
-    body: string;
+// Commands tell the lock what to do. They're always signed, so it's really just a
+// wrapper for cleaner code.
+//table Command {
+//    signed_message: [ubyte];
+//    command_type: CommandType;
+//}
 
-    contract: Contract;
-
-    command_type: CommandType;
-}
+table LockCommand {}
+table UnlockCommand {}
+table ReleaseCommand {}
 
 union MessagePayload {
-  Contract, LockUpdateEvent, Command
+  Contract, LockUpdateEvent, LockCommand, UnlockCommand, ReleaseCommand
 }
 
 table SignedMessage {

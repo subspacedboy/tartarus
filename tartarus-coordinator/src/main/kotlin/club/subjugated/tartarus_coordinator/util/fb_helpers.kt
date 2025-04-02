@@ -28,15 +28,6 @@ fun  signedMessageBytesValidator(buf : ByteBuffer) : ValidatedPayload {
         }
     }
 
-//    if(signedMessage.payloadType == MessagePayload.SimpleContract) {
-//        val contract = Contract()
-//        signedMessage.payload(contract)
-//        val key = ByteArray(contract.publicKeyLength) { contract.publicKey(it).toByte() }
-//        if(verifySignedMessageSignature(contract, key, signatureBytes)) {
-//            return ValidatedPayload.ContractPayload(contract)
-//        }
-//    }
-
     if(signedMessage.payloadType == MessagePayload.LockUpdateEvent) {
         val update = LockUpdateEvent()
         signedMessage.payload(update)

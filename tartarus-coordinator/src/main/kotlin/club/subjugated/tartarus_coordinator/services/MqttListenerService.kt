@@ -26,6 +26,9 @@ class MqttListenerService {
     @Autowired
     lateinit var lockSessionService: LockSessionService
 
+    @Autowired
+    lateinit var contractService: ContractService
+
     private val executorService = Executors.newSingleThreadExecutor()
 
     @PostConstruct
@@ -54,11 +57,18 @@ class MqttListenerService {
                                 sessionToken = theUpdate.session!!
                             )
 
-                            val session = lockSessionService.createLockSession(nlsm)
-                            lockSessionService.saveLockSession(session)
+                            val lockSession = lockSessionService.createLockSession(nlsm)
+                            lockSessionService.saveLockSession(lockSession)
 
                             //todo - get pending commands, send them
                             client.publish("locks/$sessionToken", MqttMessage(byteArrayOf(0x01, 0x02)))
+
+                            val maybeContract = this.contractService.getPendingOnlineContracts(lockSession)
+                            println(maybeContract)
+                            if(maybeContract != null) {
+                                client.publish("locks/$sessionToken", MqttMessage(maybeContract.body))
+                            }
+
                         }
 
                     }

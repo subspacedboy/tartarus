@@ -21,7 +21,7 @@ export const routes: Routes = [
     component: NewSimpleContractComponent
   },
   {
-    path: 'full-contract',
+    path: 'lock-sessions/:sessionToken/full-contract',
     component: NewFullContractComponent
   },
   {
