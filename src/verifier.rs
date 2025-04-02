@@ -70,7 +70,7 @@ impl SignedMessageVerifier {
         Self {}
     }
 
-    pub fn verify(self, incoming_data: Vec<u8>, contract_public_key: Option<&VerifyingKey>, minimum_counter : u16) -> Result<VerifiedType, VerificationError> {
+    pub fn verify(self, incoming_data: Vec<u8>, contract_public_key: Option<&VerifyingKey>, minimum_counter : u16, contract_serial_number: u16) -> Result<VerifiedType, VerificationError> {
         let owned_data = incoming_data.clone();
 
         match crate::contract_generated::club::subjugated::fb::message::root_as_signed_message(owned_data.as_slice()) {
@@ -141,6 +141,15 @@ impl SignedMessageVerifier {
                         match verifying_key.verify(&hash, &signature) {
                             Ok(_) => {
                                 log::debug!("Signature verified!");
+
+                                if unlock.contract_serial_number() != contract_serial_number {
+                                    return Err(VerificationError {
+                                        serial_number: unlock.serial_number(),
+                                        counter: unlock.counter(),
+                                        message: format!("Serial number of command doesn't match current contract [{} vs {}]", unlock.serial_number(), contract_serial_number)
+                                    })
+                                }
+
                                 if unlock.counter() > minimum_counter {
                                     Ok(VerifiedType::UnlockCommand(unlock.into()))
                                 } else {
@@ -181,6 +190,14 @@ impl SignedMessageVerifier {
                         match verifying_key.verify(&hash, &signature) {
                             Ok(_) => {
                                 log::debug!("Signature verified!");
+                                if lock.contract_serial_number() != contract_serial_number {
+                                    return Err(VerificationError {
+                                        serial_number: lock.serial_number(),
+                                        counter: lock.counter(),
+                                        message: format!("Serial number of command doesn't match current contract [{} vs {}]", lock.serial_number(), contract_serial_number)
+                                    })
+                                }
+
                                 if lock.counter() > minimum_counter {
                                     Ok(VerifiedType::LockCommand(lock.into()))
                                 } else {
@@ -221,6 +238,14 @@ impl SignedMessageVerifier {
                         match verifying_key.verify(&hash, &signature) {
                             Ok(_) => {
                                 log::debug!("Signature verified!");
+                                if release.contract_serial_number() != contract_serial_number {
+                                    return Err(VerificationError {
+                                        serial_number: release.serial_number(),
+                                        counter: release.counter(),
+                                        message: format!("Serial number of command doesn't match current contract [{} vs {}]", release.serial_number(), contract_serial_number)
+                                    })
+                                }
+
                                 if release.counter() > minimum_counter {
                                     Ok(VerifiedType::ReleaseCommand(release.into()))
                                 } else {

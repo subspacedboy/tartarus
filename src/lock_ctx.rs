@@ -18,11 +18,13 @@ use rand_core::RngCore;
 use std::time::Duration;
 use base64::Engine;
 use base64::prelude::BASE64_URL_SAFE;
+use embedded_svc::mqtt::client::EventPayload;
 use embedded_svc::mqtt::client::EventPayload::Received;
 use esp_idf_svc::mqtt::client::{EspMqttClient, EspMqttConnection, LwtConfiguration, MqttClientConfiguration, QoS};
 use flatbuffers::FlatBufferBuilder;
 use p256::ecdsa::signature::Signer;
 use p256::ecdsa::{Signature, SigningKey, VerifyingKey};
+use p256::pkcs8::der::Writer;
 use postcard::{from_bytes};
 use sha2::{Digest, Sha256};
 use crate::acknowledger::Acknowledger;
@@ -60,7 +62,10 @@ pub struct LockCtx {
     incoming_messages: Arc<Mutex<VecDeque<SignedMessageTransport>>>,
     outgoing_message: Arc<Mutex<VecDeque<SignedMessageTransport>>>,
     servo: Servo<'static>,
-    dirty: bool
+    dirty: bool,
+    restart_mqtt: Arc<Mutex<bool>>,
+    schedule_restart_mqtt: Option<u64>,
+    time_in_ticks: u64
 }
 
 impl LockCtx {
@@ -81,7 +86,10 @@ impl LockCtx {
             incoming_messages : Arc::new(Mutex::new(VecDeque::new())),
             outgoing_message : Arc::new(Mutex::new(VecDeque::new())),
             servo,
-            dirty: false
+            dirty: false,
+            restart_mqtt: Arc::new(Mutex::new(false)),
+            schedule_restart_mqtt: None,
+            time_in_ticks: 0,
         };
 
         lck.session_token = lck.load_or_create_session_id();
@@ -209,6 +217,9 @@ impl LockCtx {
     }
 
     pub fn tick(&mut self, update : TickUpdate) -> () {
+        // Update time
+        self.time_in_ticks += update.since_last.as_millis() as u64;
+
         // Process message queue
         let mut commands : VecDeque<Vec<u8>> = VecDeque::new();
 
@@ -225,14 +236,16 @@ impl LockCtx {
             let buffer = commands.pop_front().unwrap();
             let verifier = SignedMessageVerifier::new();
             let mut min_counter = 0_u16;
+            let mut contract_serial_number = 0_16;
             let contract_public_key : Option<&VerifyingKey> = if let Some(k) = &self.contract {
                 min_counter = k.command_counter;
+                contract_serial_number = k.serial_number;
                 k.public_key.as_ref()
             } else {
                 None
             };
 
-            match verifier.verify(buffer, contract_public_key, min_counter) {
+            match verifier.verify(buffer, contract_public_key, min_counter, contract_serial_number) {
                 Ok(verified_message) => {
                     let for_acknowledgement = verified_message.clone();
                     self.increment_command_counter();
@@ -316,7 +329,24 @@ impl LockCtx {
             }
         }//end of if let Some(incoming_data)
 
-    }
+        // Let's see if MQTT is alright.
+        if let Ok(needs_restart) = self.restart_mqtt.lock() {
+            if *needs_restart && self.schedule_restart_mqtt.is_none() {
+                log::info!("Scheduling restart of MQTT for 6 seconds");
+                self.schedule_restart_mqtt = Some(self.time_in_ticks + Duration::from_secs(6).as_millis() as u64);
+            }
+        }
+
+        if let Some(scheduled_time) = self.schedule_restart_mqtt {
+            if scheduled_time < self.time_in_ticks {
+                log::info!("Restarting mqtt");
+                self.schedule_restart_mqtt = None;
+                self.start_mqtt();
+                self.enqueue_announce_message();
+            }
+        }
+
+    } // end tick
 
     // NB: Because of poor choices, this expects LockCtx 'this_update' to have the data
     // to actually process the change.
@@ -473,13 +503,14 @@ impl LockCtx {
     }
 
     fn start_mqtt(&self) {
-        let broker_url = "mqtt://192.168.1.180:1883"; // Replace with your MQTT broker
+        let broker_url = "ws://192.168.1.180:8080/mqtt"; // Replace with your MQTT broker
 
         let mut config = MqttClientConfiguration::default();
         config.client_id = Some(self.session_token.as_ref());
         config.network_timeout = Duration::from_secs(5);
         config.password = Some("maybe?");
         config.username = Some(self.session_token.as_ref());
+        config.reconnect_timeout = Some(Duration::from_secs(5));
 
         let lwt_config = LwtConfiguration {
             topic: "devices/status",
@@ -506,6 +537,10 @@ impl LockCtx {
 
         let queue_ref = Arc::clone(&self.incoming_messages);
         let out_queue_ref = Arc::clone(&self.outgoing_message);
+        let restart_mqtt_flag = Arc::clone(&self.restart_mqtt);
+        let restart_mqtt_flag_thread_2 = Arc::clone(&self.restart_mqtt);
+        // Clear the restart flag
+        *restart_mqtt_flag.lock().unwrap() = false;
         let session_token = self.session_token.clone();
 
         std::thread::Builder::new()
@@ -520,17 +555,25 @@ impl LockCtx {
                                 message_queue.push_back(SignedMessageTransport {
                                     buffer: data.to_vec(), // Convert slice to Vec<u8>
                                 });
-
                                 log::info!("Received MQTT message: {} bytes", data.len());
                             }
+                            EventPayload::Disconnected => {
+                                log::info!("DISCONNECTED");
+                                break;
+                            },
                             _ => {}
                         }
                     }
                 }
 
-                log::info!("Connection closed");
-            })
-            .unwrap();
+                // Mark the MQTT as needing a restart. The tick method is responsible for
+                // scheduling it to actually happen.
+                if let Ok(mut restart) = restart_mqtt_flag.lock() {
+                    *restart = true;
+                }
+
+                log::info!("Exiting MQTT Connection thread");
+            }).unwrap();
 
         std::thread::Builder::new()
             .stack_size(12000)
@@ -539,7 +582,7 @@ impl LockCtx {
 
                 // let session_token = session_token.clone();
 
-                loop {
+                'outer: loop {
                     let inbound_queue = format!("locks/{session_token}");
                     if let Err(e) = client.subscribe(&*inbound_queue, QoS::AtMostOnce) {
                         log::error!("Failed to subscribe to topic : {e}, retrying...");
@@ -560,14 +603,20 @@ impl LockCtx {
                             }
                         }
 
+                        if let Ok(restart_flag) = restart_mqtt_flag_thread_2.lock() {
+                            if *restart_flag {
+                                log::info!("Exiting subscribe/publish thread");
+                                break 'outer;
+                            }
+                        }
+
                         // We use publish and not enqueue because this is already an independent thread.
                         // Enqueue will "wait" for its own (internal) thread while publish will go ahead and use ours.
                         let sleep_secs = 2;
                         std::thread::sleep(Duration::from_secs(sleep_secs));
                     }
                 }
-            })
-            .unwrap();
+            }).unwrap();
     }
 
     fn get_signing_key(&self) -> SigningKey {

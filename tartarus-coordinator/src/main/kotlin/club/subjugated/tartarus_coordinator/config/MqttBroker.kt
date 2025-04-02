@@ -54,6 +54,7 @@ class MqttBroker(private val security: CustomMqttSecurity) {
 
     init {
         val properties = Properties().apply {
+            setProperty("websocket_port", "8080")
         }
 
         val config: IConfig = MemoryConfig(properties)
@@ -61,7 +62,7 @@ class MqttBroker(private val security: CustomMqttSecurity) {
         val sslContextCreator: ISslContextCreator? = null
 
         mqttServer.startServer(config, handlers, sslContextCreator, security, security)
-        println("✅ MQTT Broker started on port 1883")
+        println("✅ MQTT Broker started on port 1883, websocket on 8080")
     }
 
     fun stop() {

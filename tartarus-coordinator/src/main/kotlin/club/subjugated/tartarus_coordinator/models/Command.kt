@@ -41,4 +41,10 @@ class Command(
             return club.subjugated.tartarus_coordinator.util.generateId("co-")
         }
     }
+
+    override fun toString(): String {
+        return "Command(name='$name', state=$state, type=$type, serialNumber=$serialNumber, counter=$counter, authorSession=$authorSession)"
+    }
+
+
 }

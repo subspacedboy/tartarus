@@ -1,7 +1,6 @@
 package club.subjugated.tartarus_coordinator.storage
 
 import club.subjugated.tartarus_coordinator.models.Contract
-import club.subjugated.tartarus_coordinator.models.ContractState
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
@@ -9,6 +8,6 @@ import org.springframework.stereotype.Repository
 interface ContractRepository : JpaRepository<Contract, Long> {
 //    fun findByShareableTokenAndStateOrderByCreatedAt(shareableToken : String, contractState: ContractState) : List<Contract>
 
-    fun findByShareableTokenOrderByCreatedAt(shareableToken: String) : List<Contract>
+    fun findByShareableTokenOrderByCreatedAtDesc(shareableToken: String) : List<Contract>
     fun findByName(name : String) : Contract
 }

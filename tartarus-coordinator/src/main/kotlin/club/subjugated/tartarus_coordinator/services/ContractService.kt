@@ -135,7 +135,7 @@ class ContractService {
     }
 
     fun findContractsByShareableToken(someToken : String) : List<Contract> {
-        return this.contractRepository.findByShareableTokenOrderByCreatedAt(someToken)
+        return this.contractRepository.findByShareableTokenOrderByCreatedAtDesc(someToken)
     }
 
     fun getByName(name : String) : Contract {
