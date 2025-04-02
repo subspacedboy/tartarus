@@ -5,6 +5,8 @@
         <h3>Share Link</h3>
         <p>Share this link to have people write contracts that you will have the option to accept/reject.</p>
         <input class="form-control" id="lockLink" [value]="getShareLink()" [disabled]="true">
+
+        <button class="btn btn-info" (click)="copyToClipboard(getShareLink())">Copy to clipboard</button>
       </div>
     </div>
   </div>
@@ -15,6 +17,8 @@
         <h3>Total Control Link</h3>
         <p>Share this link to have people write and assign contracts directly. You will not be presented an option.</p>
         <input class="form-control" id="lockLink2" [value]="getTotalControlLink()" [disabled]="true">
+
+        <button class="btn btn-info" (click)="copyToClipboard(getTotalControlLink())">Copy to clipboard</button>
       </div>
     </div>
   </div>

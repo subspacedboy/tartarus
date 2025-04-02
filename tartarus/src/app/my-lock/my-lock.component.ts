@@ -5,6 +5,7 @@ import {LockSession} from '../models/lock-session';
 import {ConfigService} from '../config.service';
 import {ContractCardComponent} from '../contract-card/contract-card.component';
 import {Contract} from '../models/contract';
+import {ToastService} from '../toast.service';
 
 @Component({
   selector: 'app-my-lock',
@@ -20,7 +21,8 @@ export class MyLockComponent implements OnInit {
 
   constructor(private tartarusCoordinatorService: TartarusCoordinatorService,
               private userDataService: UserDataService,
-              private configService: ConfigService,) {
+              private configService: ConfigService,
+              private toastService: ToastService) {
   }
 
   ngOnInit(): void {
@@ -44,5 +46,33 @@ export class MyLockComponent implements OnInit {
   getTotalControlLink(): string {
     const baseUrl = this.configService.getConfig().webUri;
     return `${baseUrl}/lock-sessions/${this.lockSession!.totalControlToken}`;
+  }
+
+  copyToClipboard(incoming_data : string) {
+    try {
+      const type = "text/plain";
+      const blob = new Blob([incoming_data], { type });
+      const data = [new ClipboardItem({ [type]: blob })];
+
+      navigator.clipboard.write(data).then(
+        () => {
+          /* success */
+          this.toastService.showSuccess("Copied to clipboard");
+        },
+        () => {
+          this.toastService.showSuccess("Copy to clipboard failed...");
+          /* failure */
+        },
+      );
+    } catch(error) {
+      navigator.clipboard.writeText(incoming_data).then(
+        () => {
+          this.toastService.showSuccess("Copied to clipboard");
+        },
+        () => {
+          this.toastService.showSuccess("Copy to clipboard failed...");
+        },
+      );
+    }
   }
 }
