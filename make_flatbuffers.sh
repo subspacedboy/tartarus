@@ -5,6 +5,8 @@ mv contract_generated.rs src/
 mv configuration_generated.rs src/
 mv event_generated.rs src/
 mv firmware_generated.rs src/
+# We don't actually use any bots tables/messages in the firmware
+rm bots_generated.rs
 
 flatc --python flatbuffers/*.fbs
 rm -rf tartarus-bot-example/src/club

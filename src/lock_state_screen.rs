@@ -9,7 +9,7 @@ use embedded_graphics_core::geometry::Point;
 use embedded_graphics_core::pixelcolor::Rgb565;
 use embedded_graphics_core::prelude::{DrawTarget, RgbColor};
 use embedded_graphics_core::Drawable;
-use esp_idf_hal::gpio::{Gpio41, Gpio45, GpioError, Output, PinDriver};
+use esp_idf_hal::gpio::{AnyOutputPin, GpioError};
 
 pub struct LockstateScreen {
     needs_redraw: bool,
@@ -28,8 +28,8 @@ impl LockstateScreen {
 impl ScreenState for LockstateScreen {
     type SPI = MySPI<'static>;
     type PinE = GpioError;
-    type DC = PinDriver<'static, Gpio41, Output>;
-    type RST = PinDriver<'static, Gpio45, Output>;
+    type RST = AnyOutputPin;
+    type DC = AnyOutputPin;
 
     fn on_update(&mut self, lock_ctx: &mut LockCtx) -> Option<usize> {
         let contract_option = lock_ctx.contract.as_ref();
@@ -110,8 +110,12 @@ impl ScreenState for LockstateScreen {
         if let Some(internal_contract) = lock_ctx.contract.as_ref() {
             let contract_position = Point::new(120, 47);
             let contract_str = format!("Contract: {}", internal_contract.serial_number);
-            let text =
-                Text::with_alignment(contract_str.as_str(), contract_position, style, Alignment::Center);
+            let text = Text::with_alignment(
+                contract_str.as_str(),
+                contract_position,
+                style,
+                Alignment::Center,
+            );
             text.draw(&mut lock_ctx.display).expect("Should have drawn");
         }
 

@@ -1,12 +1,13 @@
 use crate::lock_ctx::LockCtx;
 use crate::verifier::VerifiedType;
-use embedded_hal::digital::OutputPin;
+use esp_idf_hal::gpio::OutputPin;
+use mipidsi::interface::Interface;
 
 pub trait ScreenState {
-    type SPI: display_interface::WriteOnlyDataCommand;
+    type SPI: Interface;
     type PinE: std::fmt::Debug;
-    type DC: OutputPin<Error = Self::PinE>;
-    type RST: OutputPin<Error = Self::PinE>;
+    type RST: OutputPin;
+    type DC: OutputPin;
 
     fn on_update(&mut self, lock_ctx: &mut LockCtx) -> Option<usize>;
 

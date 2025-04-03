@@ -10,7 +10,8 @@ use embedded_graphics_core::pixelcolor::Rgb565;
 use embedded_graphics_core::prelude::RgbColor;
 use embedded_graphics_core::primitives::Rectangle;
 use embedded_graphics_core::Drawable;
-use embedded_hal::digital::OutputPin;
+use esp_idf_hal::gpio::OutputPin;
+use mipidsi::interface::Interface;
 
 pub struct WifiOverlay<SPI, DC, RST, PinE> {
     _spi: core::marker::PhantomData<SPI>,
@@ -34,9 +35,9 @@ impl<SPI, DC, RST, PinE> WifiOverlay<SPI, DC, RST, PinE> {
 
 impl<SPI, DC, RST, PinE> Overlay for WifiOverlay<SPI, DC, RST, PinE>
 where
-    SPI: display_interface::WriteOnlyDataCommand,
-    DC: OutputPin<Error = PinE>,
-    RST: OutputPin<Error = PinE>,
+    SPI: Interface,
+    DC: OutputPin,
+    RST: OutputPin,
     PinE: std::fmt::Debug,
 {
     type SPI = SPI;
@@ -83,9 +84,9 @@ impl<SPI, DC, RST, PinE> ButtonPressOverlay<SPI, DC, RST, PinE> {
 
 impl<SPI, DC, RST, PinE> Overlay for ButtonPressOverlay<SPI, DC, RST, PinE>
 where
-    SPI: display_interface::WriteOnlyDataCommand,
-    DC: OutputPin<Error = PinE>,
-    RST: OutputPin<Error = PinE>,
+    SPI: Interface,
+    DC: OutputPin,
+    RST: OutputPin,
     PinE: std::fmt::Debug,
 {
     type SPI = SPI;

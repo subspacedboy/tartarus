@@ -1,11 +1,12 @@
 use crate::lock_ctx::LockCtx;
-use embedded_hal::digital::OutputPin;
+use esp_idf_hal::gpio::OutputPin;
+use mipidsi::interface::Interface;
 
 pub trait Overlay {
-    type SPI: display_interface::WriteOnlyDataCommand;
+    type SPI: Interface;
     type PinE: std::fmt::Debug;
-    type DC: OutputPin<Error = Self::PinE>;
-    type RST: OutputPin<Error = Self::PinE>;
+    type DC: OutputPin;
+    type RST: OutputPin;
 
     fn draw_screen(&mut self, lock_ctx: &mut LockCtx);
 }

@@ -34,13 +34,14 @@ use esp_idf_svc::hal::ledc::LedcTimerDriver;
 use esp_idf_svc::hal::ledc::Resolution;
 use esp_idf_svc::wifi::BlockingWifi;
 use esp_idf_svc::wifi::EspWifi;
+use mipidsi::models::ST7789;
+use mipidsi::options::{ColorInversion, Orientation, Rotation};
+use mipidsi::{Builder, Display};
 use std::thread::sleep;
 use std::time::Duration;
 
-use display_interface_spi::SPIInterface;
-use embedded_hal::spi::MODE_3;
 use esp_idf_hal::delay::NON_BLOCK;
-use esp_idf_hal::gpio::{AnyIOPin, PinDriver, Pull};
+use esp_idf_hal::gpio::{AnyIOPin, Gpio40, Gpio41, Output, PinDriver, Pull};
 use esp_idf_hal::i2c::{I2cConfig, I2cDriver};
 use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_hal::prelude::FromValueType;
@@ -49,17 +50,12 @@ use esp_idf_hal::spi::{SpiDeviceDriver, SpiDriver};
 use esp_idf_hal::units::KiloHertz;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::hal::delay;
-use esp_idf_svc::hal::gpio;
 use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs, NvsDefault};
 use esp_idf_svc::sys::esp_random;
-// use esp_idf_svc::wifi::{AuthMethod, BlockingWifi, ClientConfiguration, Configuration, EspWifi};
 
 use crate::lock_ctx::{LockCtx, TickUpdate};
 
 use crate::wifi_util::connect_wifi;
-// use embedded_svc::http::client::Client as HttpClient;
-// use embedded_svc::io::Write;
-// use esp_idf_hal::sys::EspError;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::mono_font::ascii::FONT_10X20;
@@ -69,8 +65,8 @@ use embedded_graphics::prelude::RgbColor;
 use embedded_graphics::text::{Alignment, Text};
 use embedded_graphics_core::geometry::Point;
 use embedded_graphics_core::Drawable;
+use mipidsi::interface::SpiInterface;
 use rand_core::{CryptoRng, RngCore};
-use st7789::{Orientation, ST7789};
 
 struct Esp32Rng;
 
@@ -115,17 +111,13 @@ fn main() {
 
     let peripherals = Peripherals::take().expect("Peripherals to be available");
 
-    let _config = esp_idf_hal::spi::config::Config {
-        baudrate: 10_000_000.Hz(),
-        data_mode: MODE_3,
-        ..Default::default()
-    };
-
     // Declare all the pins in one spot.
     let mut tft_power = PinDriver::output(peripherals.pins.gpio7).expect("pin to be available");
     let mut tft_rst = PinDriver::output(peripherals.pins.gpio41).expect("to work");
     let mut tft_bl = PinDriver::output(peripherals.pins.gpio45).expect("to work");
-    let tft_dc = peripherals.pins.gpio40;
+    // let tft_dc = peripherals.pins.gpio40;
+    let tft_dc: PinDriver<Gpio40, Output> =
+        PinDriver::output(peripherals.pins.gpio40).expect("pin to work");
     let tft_cs = peripherals.pins.gpio42;
     let sclk = peripherals.pins.gpio36;
     let sdo = peripherals.pins.gpio35; // Mosi
@@ -161,20 +153,23 @@ fn main() {
     )
     .expect("SpiDeviceDriver to work");
 
-    let spi_interface = SPIInterface::new(
-        spi,
-        gpio::PinDriver::output(tft_dc).expect("Pin driver for DC to work"),
-    );
+    let buffer = Box::leak(Box::new([0_u8; 512]));
+    let di = SpiInterface::new(spi, tft_dc, buffer);
 
-    let mut display = ST7789::new(spi_interface, Some(tft_rst), Some(tft_bl), 135, 240, 40, 53);
-    log::info!("Display size: {:?}", display.size());
-    display
+    let mut display: Display<
+        SpiInterface<SpiDeviceDriver<SpiDriver>, PinDriver<Gpio40, Output>>,
+        ST7789,
+        PinDriver<Gpio41, Output>,
+    > = Builder::new(ST7789, di)
+        .reset_pin(tft_rst)
+        .invert_colors(ColorInversion::Inverted)
+        .display_size(135, 240)
+        .display_offset(52, 40)
+        .orientation(Orientation::new().rotate(Rotation::Deg90))
         .init(&mut delay::Ets)
-        .expect("Display to initialize");
+        .expect("All to initialize");
 
-    display
-        .set_orientation(Orientation::Landscape)
-        .expect("To set landscape");
+    log::info!("Display size: {:?}", display.size());
     display.clear(Rgb565::BLACK).expect("Display to clear");
 
     let style = MonoTextStyle::new(&FONT_10X20, Rgb565::GREEN);
@@ -186,22 +181,6 @@ fn main() {
         Alignment::Center,
     );
     text.draw(&mut display).expect("Should have drawn");
-
-    // let sq_size = 50_u16;
-
-    // The Correct 0,0 offset for the set_pixels call is 40,53 in landscape.
-
-    // let color16 = RawU16::from(Rgb565::BLUE).into_inner();
-    // let colors = (0..=(sq_size * sq_size)).map(|_| color16);
-    // display.set_pixels(0, 0, sq_size, sq_size, colors);
-    //
-    // let color16 = RawU16::from(Rgb565::GREEN).into_inner();
-    // let colors = (0..=(sq_size * sq_size)).map(|_| color16);
-    // display.set_pixels(sq_size, 0, sq_size * 2, sq_size, colors);
-    //
-    // let color16 = RawU16::from(Rgb565::RED).into_inner();
-    // let colors = (0..=(sq_size * sq_size)).map(|_| color16);
-    // display.set_pixels(0, sq_size, sq_size, sq_size * 2, colors);
 
     // Warm up NVS (non-volatile storage)
     let nvs_partition =

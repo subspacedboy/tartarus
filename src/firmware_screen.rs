@@ -9,7 +9,7 @@ use embedded_graphics_core::geometry::Point;
 use embedded_graphics_core::pixelcolor::Rgb565;
 use embedded_graphics_core::prelude::{DrawTarget, RgbColor};
 use embedded_graphics_core::Drawable;
-use esp_idf_hal::gpio::{Gpio41, Gpio45, GpioError, Output, PinDriver};
+use esp_idf_hal::gpio::{AnyOutputPin, GpioError};
 
 pub struct FirmwareScreen {
     needs_redraw: bool,
@@ -24,8 +24,8 @@ impl FirmwareScreen {
 impl ScreenState for FirmwareScreen {
     type SPI = MySPI<'static>;
     type PinE = GpioError;
-    type DC = PinDriver<'static, Gpio41, Output>;
-    type RST = PinDriver<'static, Gpio45, Output>;
+    type DC = AnyOutputPin;
+    type RST = AnyOutputPin;
 
     fn on_update(&mut self, _lock_ctx: &mut LockCtx) -> Option<usize> {
         None

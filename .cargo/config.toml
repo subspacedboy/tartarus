@@ -4,7 +4,7 @@ target = "xtensa-esp32s3-espidf"
 [target.xtensa-esp32s3-espidf]
 linker = "ldproxy"
 # runner = "espflash --monitor" # Select this runner for espflash v1.x.x
-runner = "espflash flash --monitor --partition-table partitions_2.csv --no-skip --erase-parts otadata" # Select this runner for espflash v2.x.x
+runner = "espflash flash --monitor --partition-table partitions.csv --no-skip --erase-parts otadata" # Select this runner for espflash v2.x.x
 rustflags = [ "--cfg",  "espidf_time64"] # Extending time_t for ESP IDF 5: https://github.com/esp-rs/rust/issues/110
 
 [unstable]

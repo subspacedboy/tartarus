@@ -34,7 +34,7 @@ use crate::Esp32Rng;
 use data_encoding::{BASE32_NOPAD, BASE64, BASE64URL};
 use embedded_graphics_core::pixelcolor::Rgb565;
 use embedded_graphics_core::prelude::{DrawTarget, RgbColor};
-use esp_idf_hal::gpio::{GpioError, Output, PinDriver};
+use esp_idf_hal::gpio::{AnyOutputPin, GpioError};
 use esp_idf_svc::nvs::{EspNvs, NvsDefault};
 use esp_idf_svc::wifi::{BlockingWifi, EspWifi};
 use flatbuffers::FlatBufferBuilder;
@@ -183,16 +183,16 @@ impl LockCtx {
 
         let wifi_overlay: Box<DynOverlay<'static>> = Box::new(WifiOverlay::<
             MySPI<'static>,
-            PinDriver<'static, _, Output>,
-            PinDriver<'static, _, Output>,
+            AnyOutputPin,
+            AnyOutputPin,
             GpioError,
         >::new());
         lck.overlays.push(wifi_overlay);
 
         let button_overlay: Box<DynOverlay<'static>> = Box::new(ButtonPressOverlay::<
             MySPI<'static>,
-            PinDriver<'static, _, Output>,
-            PinDriver<'static, _, Output>,
+            AnyOutputPin,
+            AnyOutputPin,
             GpioError,
         >::new());
         lck.overlays.push(button_overlay);

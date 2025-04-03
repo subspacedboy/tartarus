@@ -13,7 +13,7 @@ use embedded_graphics_core::geometry::{Point, Size};
 use embedded_graphics_core::prelude::DrawTarget;
 use embedded_graphics_core::primitives::Rectangle;
 use embedded_graphics_core::Drawable;
-use esp_idf_hal::gpio::{Gpio41, Gpio45, GpioError, Output, PinDriver};
+use esp_idf_hal::gpio::{AnyOutputPin, GpioError};
 use qrcode::{Color, QrCode};
 
 pub struct QrCodeScreen {
@@ -33,8 +33,8 @@ impl QrCodeScreen {
 impl ScreenState for QrCodeScreen {
     type SPI = MySPI<'static>;
     type PinE = GpioError;
-    type DC = PinDriver<'static, Gpio41, Output>;
-    type RST = PinDriver<'static, Gpio45, Output>;
+    type DC = AnyOutputPin;
+    type RST = AnyOutputPin;
 
     fn on_update(&mut self, lock_ctx: &mut LockCtx) -> Option<usize> {
         if let Some(update) = &lock_ctx.this_update {
