@@ -33,6 +33,6 @@ class AddFirmwareImage(
 //        val projectNameBytes = ByteArray(32).also { buffer.get(it) }
 //        val projectName = projectNameBytes.takeWhile { it != 0.toByte() }.toByteArray().toString(Charsets.UTF_8)
 
-        firmwareService.createNewFirmware(byteArray, version)
+        firmwareService.createNewFirmware(byteArray)
     }
 }

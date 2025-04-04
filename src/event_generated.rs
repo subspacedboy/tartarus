@@ -2,8 +2,6 @@
 
 // @generated
 
-#![allow(clippy::all)]
-
 use core::cmp::Ordering;
 use core::mem;
 

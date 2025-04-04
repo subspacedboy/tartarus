@@ -17,6 +17,8 @@ import {KeyHelperComponent} from './key-helper/key-helper.component';
 import {AdminLoginComponent} from './admin/admin-login/admin-login.component';
 import {AdminContractsComponent} from './admin/admin-contracts/admin-contracts.component';
 import {AdminContractDetailComponent} from './admin/admin-contract-detail/admin-contract-detail.component';
+import {AdminAddFirmwareComponent} from "./admin/admin-add-firmware/admin-add-firmware.component";
+import {adminGuard} from "./admin.guard";
 
 export const routes: Routes = [
   {
@@ -84,10 +86,17 @@ export const routes: Routes = [
   },
   {
     path: 'admin/contracts',
+    canActivate: [adminGuard],
     component: AdminContractsComponent
   },
   {
     path: 'admin/contract/:contractName',
+    canActivate: [adminGuard],
     component: AdminContractDetailComponent
+  },
+  {
+    path: 'admin/add-firmware',
+    canActivate: [adminGuard],
+    component: AdminAddFirmwareComponent
   }
 ];

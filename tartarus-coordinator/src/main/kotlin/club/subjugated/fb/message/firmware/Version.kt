@@ -39,8 +39,19 @@ class Version : Table() {
         }
     val nameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
     fun nameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val versionName : String?
+        get() {
+            val o = __offset(6)
+            return if (o != 0) {
+                __string(o + bb_pos)
+            } else {
+                null
+            }
+        }
+    val versionNameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
+    fun versionNameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
     fun signature(j: Int) : UByte {
-        val o = __offset(6)
+        val o = __offset(8)
         return if (o != 0) {
             bb.get(__vector(o) + j * 1).toUByte()
         } else {
@@ -49,10 +60,10 @@ class Version : Table() {
     }
     val signatureLength : Int
         get() {
-            val o = __offset(6); return if (o != 0) __vector_len(o) else 0
+            val o = __offset(8); return if (o != 0) __vector_len(o) else 0
         }
-    val signatureAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
-    fun signatureInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
+    val signatureAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(8, 1)
+    fun signatureInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 8, 1)
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsVersion(_bb: ByteBuffer): Version = getRootAsVersion(_bb, Version())
@@ -60,15 +71,17 @@ class Version : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createVersion(builder: FlatBufferBuilder, nameOffset: Int, signatureOffset: Int) : Int {
-            builder.startTable(2)
+        fun createVersion(builder: FlatBufferBuilder, nameOffset: Int, versionNameOffset: Int, signatureOffset: Int) : Int {
+            builder.startTable(3)
             addSignature(builder, signatureOffset)
+            addVersionName(builder, versionNameOffset)
             addName(builder, nameOffset)
             return endVersion(builder)
         }
-        fun startVersion(builder: FlatBufferBuilder) = builder.startTable(2)
+        fun startVersion(builder: FlatBufferBuilder) = builder.startTable(3)
         fun addName(builder: FlatBufferBuilder, name: Int) = builder.addOffset(0, name, 0)
-        fun addSignature(builder: FlatBufferBuilder, signature: Int) = builder.addOffset(1, signature, 0)
+        fun addVersionName(builder: FlatBufferBuilder, versionName: Int) = builder.addOffset(1, versionName, 0)
+        fun addSignature(builder: FlatBufferBuilder, signature: Int) = builder.addOffset(2, signature, 0)
         @kotlin.ExperimentalUnsignedTypes
         fun createSignatureVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
             builder.startVector(1, data.size, 1)

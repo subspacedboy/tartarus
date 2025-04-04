@@ -2,6 +2,7 @@ namespace club.subjugated.fb.message.firmware;
 
 table Version {
   name: string;
+  version_name: string;
   signature: [ubyte];
 }
 

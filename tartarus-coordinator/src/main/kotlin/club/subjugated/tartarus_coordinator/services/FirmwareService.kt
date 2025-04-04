@@ -6,7 +6,9 @@ import club.subjugated.fb.message.firmware.MessagePayload
 import club.subjugated.tartarus_coordinator.events.FirmwareValidationEvent
 import club.subjugated.tartarus_coordinator.models.Firmware
 import club.subjugated.tartarus_coordinator.models.FirmwareState
+import club.subjugated.tartarus_coordinator.models.FirmwareUpgradePath
 import club.subjugated.tartarus_coordinator.storage.FirmwareRepository
+import club.subjugated.tartarus_coordinator.storage.FirmwareUpgradePathRepository
 import club.subjugated.tartarus_coordinator.util.TimeSource
 import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromCompressedKeyByteArray
 import club.subjugated.tartarus_coordinator.util.rawToDerSignature
@@ -25,14 +27,12 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.min
 
 @Service
-class FirmwareService {
-    @Autowired
-    lateinit var firmwareRepository: FirmwareRepository
-    @Autowired
-    lateinit var timeSource: TimeSource
-
-    @Autowired lateinit var publisher: ApplicationEventPublisher
-
+class FirmwareService(
+    private var firmwareRepository: FirmwareRepository,
+    private var firmwareUpgradePathRepository: FirmwareUpgradePathRepository,
+    private var timeSource: TimeSource,
+    private var publisher: ApplicationEventPublisher
+) {
     @Value("\${tartarus.firmware.challenge_key}")
     var challengeKey : String = ""
 
@@ -42,7 +42,16 @@ class FirmwareService {
     private val firmwareImages: Cache<String, ByteArray> =
         Caffeine.newBuilder().maximumSize(2).build()
 
-    fun createNewFirmware(image : ByteArray, version : String) : Firmware {
+    fun createNewFirmware(image : ByteArray) : Firmware {
+        if(image[0] == 0xE9.toByte()) {
+            println("Magic byte matches")
+        } else {
+            throw IllegalArgumentException("Firmware doesn't start with magic byte 0xE9")
+        }
+
+        val versionBytes = image.copyOfRange(48, 80)
+        val version = versionBytes.takeWhile { it != 0.toByte() }.toByteArray().toString(Charsets.UTF_8)
+
         val digest = MessageDigest.getInstance("SHA-256")
         digest.update(image)
         val hash = Base64.getEncoder().encodeToString(digest.digest())
@@ -63,6 +72,10 @@ class FirmwareService {
 
     fun getLatest() : Firmware {
         return firmwareRepository.findFirstByOrderByCreatedAtDesc()
+    }
+
+    fun getByVersion(versionName : String) : List<Firmware> {
+        return firmwareRepository.findByVersion(versionName)
     }
 
     fun getFirmwareBytes(name : String, size: Int, offset : Int) : ByteArray {
@@ -130,5 +143,19 @@ class FirmwareService {
         publisher.publishEvent(event)
 
         return validated
+    }
+
+    fun createUpgradePath(fromVersion: String, toVersion: String) : FirmwareUpgradePath {
+        val upgradePath = FirmwareUpgradePath(
+            fromVersion = fromVersion,
+            toVersion = toVersion,
+            createdAt = timeSource.nowInUtc()
+        )
+        firmwareUpgradePathRepository.save(upgradePath)
+        return upgradePath
+    }
+
+    fun findUpgradesForVersion(fromVersion: String) : List<FirmwareUpgradePath> {
+        return firmwareUpgradePathRepository.findByFromVersion(fromVersion)
     }
 }

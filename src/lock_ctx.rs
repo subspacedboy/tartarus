@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use crate::acknowledger::Acknowledger;
 use crate::config_verifier::ConfigVerifier;
 use crate::contract_generated::club::subjugated::fb::message::{
@@ -45,6 +44,7 @@ use p256::{PublicKey, SecretKey};
 use postcard::from_bytes;
 use rand_core::RngCore;
 use sha2::{Digest, Sha256};
+use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
@@ -125,7 +125,8 @@ impl LockCtx {
         let secret_key = lck.load_or_create_key();
         let my_public = PublicKey::from_secret_scalar(&secret_key.to_nonzero_scalar());
 
-        lck.firmware_manager.set_session_token(lck.session_token.clone());
+        lck.firmware_manager
+            .set_session_token(lck.session_token.clone());
 
         lck.lock_secret_key = Some(secret_key);
         lck.lock_public_key = Some(my_public);
@@ -150,11 +151,10 @@ impl LockCtx {
             }
 
             lck.enqueue_announce_message();
-            lck.enqueue_get_latest_firmware();
-
             if let Some(mqtt_service) = lck.mqtt_service.as_ref() {
                 lck.firmware_manager.set_mqtt_service(mqtt_service.clone());
             }
+            lck.firmware_manager.enqueue_get_latest_firmware();
         }
 
         log::info!("Seeing if we have previous state...");
@@ -319,11 +319,12 @@ impl LockCtx {
         // Firmware we might need to apply or challenge to respond to
         let mut firmware: VecDeque<Vec<u8>> = VecDeque::new();
 
-        let mut message_queue = if let Some(mut mqtt_service) = self.mqtt_service.as_ref().map(|m| m.borrow_mut()) {
-            mqtt_service.get_incoming_messages()
-        } else {
-            Vec::new()
-        };
+        let mut message_queue =
+            if let Some(mut mqtt_service) = self.mqtt_service.as_ref().map(|m| m.borrow_mut()) {
+                mqtt_service.get_incoming_messages()
+            } else {
+                Vec::new()
+            };
 
         while !message_queue.is_empty() {
             let message = message_queue.remove(0);
@@ -428,7 +429,8 @@ impl LockCtx {
 
         while !firmware.is_empty() {
             let firmware_data = firmware.pop_front().unwrap();
-            self.firmware_manager.process_message(firmware_data, self.contract.is_some());
+            self.firmware_manager
+                .process_message(firmware_data, self.contract.is_some());
         }
 
         if let Some(mut wifi_screen) = self.wifi_info_screen.take() {
@@ -472,7 +474,6 @@ impl LockCtx {
                 }
             }
         }
-
 
         if update.d2_pressed {
             self.active_screen_idx = (self.active_screen_idx + 1) % 4;
@@ -791,44 +792,6 @@ impl LockCtx {
         let bytes = cloned_secret.to_bytes();
         let key_bytes = bytes.as_slice();
         SigningKey::from_slice(key_bytes).unwrap()
-    }
-
-    fn enqueue_get_latest_firmware(&self) {
-        let mut builder = FlatBufferBuilder::with_capacity(1024);
-
-        let version = Version::create(
-            &mut builder,
-            &VersionArgs {
-                name: None,
-                signature: None,
-            },
-        );
-
-        let session = builder.create_string(&self.session_token);
-
-        let get_latest_firmware_request_offset = GetLatestFirmwareRequest::create(
-            &mut builder,
-            &GetLatestFirmwareRequestArgs {
-                version: Some(version),
-            },
-        );
-
-        let mut rng = Esp32Rng;
-        let request_id = rng.next_u64();
-
-        let firmware_message = FirmwareMessage::create(&mut builder, &FirmwareMessageArgs {
-            payload_type: club::subjugated::fb::message::firmware::MessagePayload::GetLatestFirmwareRequest,
-            payload: Some(get_latest_firmware_request_offset.as_union_value()),
-            request_id: request_id as i64,
-            session_token: Some(session),
-        });
-
-        builder.finish(firmware_message, None);
-        let data = builder.finished_data().to_vec();
-
-        let t = SignedMessageTransport::new(data, TopicType::FirmwareMessage);
-
-        self.enqueue_message(t);
     }
 
     fn enqueue_announce_message(&self) {

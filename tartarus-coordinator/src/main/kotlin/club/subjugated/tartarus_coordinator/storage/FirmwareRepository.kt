@@ -9,4 +9,5 @@ interface FirmwareRepository : JpaRepository<Firmware, Long> {
     fun findFirstByOrderByCreatedAtDesc() : Firmware
     fun findFirstByDigest(digest : String): Firmware?
     fun findByName(name : String) : Firmware
+    fun findByVersion(versionName : String): List<Firmware>
 }

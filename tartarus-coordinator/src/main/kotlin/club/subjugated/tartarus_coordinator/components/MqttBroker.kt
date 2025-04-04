@@ -139,7 +139,7 @@ class MqttBroker(private val security: CustomMqttSecurity) {
         val properties =
             Properties().apply {
                 setProperty("websocket_port", wsPortNumber.toString())
-//                setProperty("netty.mqtt.message_size", "2097152");
+                setProperty("netty.mqtt.message_size", "20587") // 20KB
             }
 
         val config: IConfig = MemoryConfig(properties)

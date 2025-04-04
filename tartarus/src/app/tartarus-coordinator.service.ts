@@ -393,6 +393,21 @@ export class TartarusCoordinatorService {
     }));
   }
 
+  // Admin firmware
+
+  public addFirmware(firmwareBytes : string) : Observable<boolean> {
+    const add_firmware_uri = `${this.baseUrl}/admin/firmware/`;
+    const body = JSON.stringify({
+      firmware : firmwareBytes,
+    });
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json', 'X-Require-Admin': 'requires authorization tokens' });
+    return this.http.post(add_firmware_uri, body, {headers} ).pipe(map((res:any) => {
+      return true;
+    }),  catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
   // Error handling
 
   private handleError(error: HttpErrorResponse) {

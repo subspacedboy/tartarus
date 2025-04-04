@@ -29,31 +29,42 @@ name(optionalEncoding?:any):string|Uint8Array|null {
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
-signature(index: number):number|null {
+versionName():string|null
+versionName(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+versionName(optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
+signature(index: number):number|null {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
   return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
 }
 
 signatureLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 6);
+  const offset = this.bb!.__offset(this.bb_pos, 8);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 signatureArray():Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 6);
+  const offset = this.bb!.__offset(this.bb_pos, 8);
   return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
 static startVersion(builder:flatbuffers.Builder) {
-  builder.startObject(2);
+  builder.startObject(3);
 }
 
 static addName(builder:flatbuffers.Builder, nameOffset:flatbuffers.Offset) {
   builder.addFieldOffset(0, nameOffset, 0);
 }
 
+static addVersionName(builder:flatbuffers.Builder, versionNameOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, versionNameOffset, 0);
+}
+
 static addSignature(builder:flatbuffers.Builder, signatureOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(1, signatureOffset, 0);
+  builder.addFieldOffset(2, signatureOffset, 0);
 }
 
 static createSignatureVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
@@ -73,9 +84,10 @@ static endVersion(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createVersion(builder:flatbuffers.Builder, nameOffset:flatbuffers.Offset, signatureOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createVersion(builder:flatbuffers.Builder, nameOffset:flatbuffers.Offset, versionNameOffset:flatbuffers.Offset, signatureOffset:flatbuffers.Offset):flatbuffers.Offset {
   Version.startVersion(builder);
   Version.addName(builder, nameOffset);
+  Version.addVersionName(builder, versionNameOffset);
   Version.addSignature(builder, signatureOffset);
   return Version.endVersion(builder);
 }

@@ -28,6 +28,13 @@ impl ScreenState for FirmwareScreen {
     type DC = AnyOutputPin;
 
     fn on_update(&mut self, _lock_ctx: &mut LockCtx) -> Option<usize> {
+        if let Some(update) = _lock_ctx.this_update.as_ref() {
+            if update.d1_pressed {
+                log::info!("User initiated a firmware update");
+                _lock_ctx.firmware_manager.initiate_firmware_update();
+            }
+        }
+
         None
     }
 
@@ -70,7 +77,6 @@ impl ScreenState for FirmwareScreen {
             .draw(&mut lock_ctx.display)
             .expect("Should have drawn");
 
-
         if lock_ctx.firmware_manager.is_update_available() {
             let upgrade_available_position = Point::new(60, 60);
 
@@ -84,7 +90,9 @@ impl ScreenState for FirmwareScreen {
                 Alignment::Left,
             );
 
-            version_text.draw(&mut lock_ctx.display).expect("Should have drawn");
+            version_text
+                .draw(&mut lock_ctx.display)
+                .expect("Should have drawn");
         }
 
         self.needs_redraw = false;

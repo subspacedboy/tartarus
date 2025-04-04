@@ -1,0 +1,4 @@
+<form [formGroup]="firmwareForm" (ngSubmit)="onSubmit()">
+  <input type="file" (change)="onFileChange($event)" />
+  <button type="submit">Upload</button>
+</form>

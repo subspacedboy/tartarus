@@ -69,24 +69,37 @@ class FirmwareApiController {
     }
 
     fun handleGetLatestFirmwareRequest(message : GetLatestFirmwareRequest) : ResponseBuilderContext<GetLatestFirmwareResponse> {
-        val firmware = firmwareService.getLatest()
+        val possibleUpgrades = firmwareService.findUpgradesForVersion(message.version!!.versionName!!)
 
         val builder = FlatBufferBuilder(1024)
 
-        val size = firmware.image!!.size
+        if(possibleUpgrades.isEmpty()) {
+            // No upgrade is available so just return the name of whatever the firmware
+            // said.
+            val versionNameOffset = builder.createString(message.version!!.versionName)
 
-        val firmware_name_offset = builder.createString(firmware.name)
-        val versionNameOffset = builder.createString(firmware.version)
-        val hashOffset = builder.createByteVector(Base64.getDecoder().decode(firmware.digest))
+            GetLatestFirmwareResponse.startGetLatestFirmwareResponse(builder)
+            GetLatestFirmwareResponse.addSize(builder, 0)
+            GetLatestFirmwareResponse.addVersionName(builder, versionNameOffset)
+            GetLatestFirmwareResponse.addFirmwareName(builder, versionNameOffset)
+        } else {
+            var someUpgrade = possibleUpgrades.first()
 
-        GetLatestFirmwareResponse.startGetLatestFirmwareResponse(builder)
-        GetLatestFirmwareResponse.addSize(builder, size)
-        GetLatestFirmwareResponse.addFirmwareName(builder, firmware_name_offset)
-        GetLatestFirmwareResponse.addVersionName(builder, versionNameOffset)
-        GetLatestFirmwareResponse.addDigest(builder, hashOffset)
+            val firmware = firmwareService.getByVersion(someUpgrade.toVersion).first()
+            val size = firmware.image!!.size
+
+            val firmware_name_offset = builder.createString(firmware.name)
+            val versionNameOffset = builder.createString(firmware.version)
+            val hashOffset = builder.createByteVector(Base64.getDecoder().decode(firmware.digest))
+
+            GetLatestFirmwareResponse.startGetLatestFirmwareResponse(builder)
+            GetLatestFirmwareResponse.addSize(builder, size)
+            GetLatestFirmwareResponse.addFirmwareName(builder, firmware_name_offset)
+            GetLatestFirmwareResponse.addVersionName(builder, versionNameOffset)
+            GetLatestFirmwareResponse.addDigest(builder, hashOffset)
+        }
 
         val getLatestFirmwareVersionResponseOffset = GetLatestFirmwareResponse.endGetLatestFirmwareResponse(builder)
-
         return ResponseBuilderContext(builder, getLatestFirmwareVersionResponseOffset)
     }
 
