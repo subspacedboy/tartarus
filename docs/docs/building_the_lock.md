@@ -12,18 +12,19 @@ In order to build the lock you will need:
 * [Micro servo - TowerPro SG92R](https://www.adafruit.com/product/169) - You can also use any generic SG90/SG92 form factor servo.
 * [7x Socket Head Cap Screw: M2-0.4 Thread Size, 8 mm Lg, Std, Black Oxide, Steel, Class 12.9, 100 PK](https://www.grainger.com/product/6CE33)
 * [7x Hex Nut: M2-0.40 Thread, 4 mm Hex Wd, 1.6 mm Hex Ht, Steel, Class 8, Zinc Plated, 100 PK](https://www.grainger.com/product/26KR83)
-* [3x Female-to-male jumper wires](https://www.amazon.com/dp/B09FPJM3L9) - Shorter the better.
+* [3x Female-to-male jumper wires](https://www.amazon.com/dp/B09FPJM3L9) - Shorter the better. These are 10cm.
 * Adhesive. Hot glue if you want some margin of error, superglue if you want a more "secure" experience.
 
 ### Optional, but good to have
 
-* [Loctite Threadlocker Blue](https://www.loctiteproducts.com/products/central-pdp.html/loctite-threadlocker-blue/SAP_0201OHL029W4.html)
+* [Loctite Threadlocker Blue](https://www.loctiteproducts.com/products/central-pdp.html/loctite-threadlocker-blue/SAP_0201OHL029W4.html) - Makes the lock more tamper resistant.
 * Tiny cable tie
+* [4mm Nut driver](https://www.amazon.com/dp/B0009OIJMI?th=1) - Definitely makes tightening the nuts easier, but far from necessary. Also you probably want a magnetized one, but this is what I have.
 
 ### Tools
 
 * Soldering iron
-* Technical screwdriver
+* Technical screwdriver (T6 bit)
 
 ## 3D Files
 
@@ -36,7 +37,12 @@ Feel free to adjust as necessary. I recommend printing with PLA.
 
 ## Step 1: Print the parts
 
+* 3D printer
+* Several hours
+
 ## Step 2: Solder headers to ESP32-S3
+
+* ESP32-S3 + included headers
 
 ![ESP32-S3 with full headers](images/2.png)
 
@@ -49,6 +55,7 @@ Feel free to adjust as necessary. I recommend printing with PLA.
 Use a pair of pliers and break off 3 headers from the full strip that comes with the ESP32-S3.
 
 You'll solder these headers (short-side through top) across 3V3, GND, and A0. See picture.
+Also check out the [pinout guide](https://learn.adafruit.com/esp32-s3-reverse-tft-feather/pinouts) from Adafruit.
 
 ## Step 3: Flash the firmware
 
@@ -57,9 +64,9 @@ You'll solder these headers (short-side through top) across 3V3, GND, and A0. Se
 Hold down D0 and press Reset. Flash the firmware with `espflash flash`. Manually reset it once.
 You should see the boot screen.
 
-We need the firmware to calibrate the servo so we can mount the horn.
+We do this now because we need the firmware to calibrate the servo.
 
-## Step 3: Assemble servo bracket
+## Step 4: Assemble servo bracket
 
 * 2x 2mm screws
 * 2x hex nuts
@@ -85,7 +92,7 @@ in the "down" angle position so we can mount the horn.
 ![Servo wiring with flipped wires](images/9.png)`
 
 Mount the horn at 6 as if it were a clock. Connect power back to the ESP32-S3 and make sure the
-servo starts at 6. Toggle the lock on the second screen (by pressing D1, the middle button). It should freely rotate
+servo starts at 6. Toggle the lock on the second screen (D2 to change screen and then by pressing D1, the middle button). It should freely rotate
 to a 3 o'clock position and back. If it does, use the small-sized screw and mount the horn permanently. Try
 not to rotate the horn while tightening.
 

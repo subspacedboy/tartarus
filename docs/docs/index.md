@@ -3,3 +3,5 @@
 Collection of guides for the Tartarus lock ecosystem.
 
 Go to the full [Github repo](https://github.com/subspacedboy/tartarus).
+
+The [Build Guide](building_the_lock).
