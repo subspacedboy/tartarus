@@ -24,8 +24,8 @@ impl FirmwareScreen {
 impl ScreenState for FirmwareScreen {
     type SPI = MySPI<'static>;
     type PinE = GpioError;
-    type DC = AnyOutputPin;
     type RST = AnyOutputPin;
+    type DC = AnyOutputPin;
 
     fn on_update(&mut self, _lock_ctx: &mut LockCtx) -> Option<usize> {
         None
@@ -70,12 +70,25 @@ impl ScreenState for FirmwareScreen {
             .draw(&mut lock_ctx.display)
             .expect("Should have drawn");
 
+
+        if lock_ctx.firmware_manager.is_update_available() {
+            let upgrade_available_position = Point::new(60, 60);
+
+            let next_version = lock_ctx.firmware_manager.next_firmware_version();
+            let t = format!("Upgrade: {}", next_version);
+
+            let version_text = Text::with_alignment(
+                t.as_str(),
+                upgrade_available_position,
+                style,
+                Alignment::Left,
+            );
+
+            version_text.draw(&mut lock_ctx.display).expect("Should have drawn");
+        }
+
         self.needs_redraw = false;
     }
-
-    // fn get_id(&self) -> ScreenId {
-    //     ScreenId::WifiInfo
-    // }
 
     fn needs_redraw(&self) -> bool {
         self.needs_redraw

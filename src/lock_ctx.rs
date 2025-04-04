@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use crate::acknowledger::Acknowledger;
 use crate::config_verifier::ConfigVerifier;
 use crate::contract_generated::club::subjugated::fb::message::{
@@ -45,6 +46,8 @@ use postcard::from_bytes;
 use rand_core::RngCore;
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, VecDeque};
+use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 #[derive(Debug, Clone)]
@@ -76,7 +79,7 @@ pub struct LockCtx {
     pub(crate) firmware_manager: FirmwareManager,
 
     schedule_next_update: Option<u64>,
-    mqtt_service: Option<MqttService>,
+    mqtt_service: Option<Rc<RefCell<MqttService>>>,
     active_screen_idx: usize,
 
     qr_code_screen: Option<Box<QrCodeScreen>>,
@@ -122,6 +125,8 @@ impl LockCtx {
         let secret_key = lck.load_or_create_key();
         let my_public = PublicKey::from_secret_scalar(&secret_key.to_nonzero_scalar());
 
+        lck.firmware_manager.set_session_token(lck.session_token.clone());
+
         lck.lock_secret_key = Some(secret_key);
         lck.lock_public_key = Some(my_public);
 
@@ -138,12 +143,17 @@ impl LockCtx {
             // Start MQTT service
             let mqtt_service =
                 MqttService::new(lck.configuration.clone(), lck.session_token.clone());
-            lck.mqtt_service = Some(mqtt_service);
-            if let Some(mqtt_service) = lck.mqtt_service.as_mut() {
+            lck.mqtt_service = Some(Rc::new(RefCell::new(mqtt_service)));
+
+            if let Some(mut mqtt_service) = lck.mqtt_service.as_ref().map(|m| m.borrow_mut()) {
                 mqtt_service.start_mqtt();
-                std::thread::sleep(Duration::from_secs(2));
-                lck.enqueue_announce_message();
-                lck.enqueue_get_latest_firmware();
+            }
+
+            lck.enqueue_announce_message();
+            lck.enqueue_get_latest_firmware();
+
+            if let Some(mqtt_service) = lck.mqtt_service.as_ref() {
+                lck.firmware_manager.set_mqtt_service(mqtt_service.clone());
             }
         }
 
@@ -309,7 +319,7 @@ impl LockCtx {
         // Firmware we might need to apply or challenge to respond to
         let mut firmware: VecDeque<Vec<u8>> = VecDeque::new();
 
-        let mut message_queue = if let Some(mqtt_service) = self.mqtt_service.as_mut() {
+        let mut message_queue = if let Some(mut mqtt_service) = self.mqtt_service.as_ref().map(|m| m.borrow_mut()) {
             mqtt_service.get_incoming_messages()
         } else {
             Vec::new()
@@ -418,81 +428,7 @@ impl LockCtx {
 
         while !firmware.is_empty() {
             let firmware_data = firmware.pop_front().unwrap();
-
-            if let Ok(msg) = read_as_firmware_message(firmware_data.as_slice()) {
-                match msg {
-                    FirmwareMessageType::Challenge(challenge) => {
-                        log::info!("We got firmware challenge");
-                        let response_bytes = self
-                            .firmware_manager
-                            .respond_to_challenge(&challenge, &self.session_token);
-                        self.enqueue_message(SignedMessageTransport::new(
-                            response_bytes,
-                            TopicFirmwareMessage,
-                        ));
-                    }
-                    FirmwareMessageType::FirmwareResponse(internal_response) => {
-                        log::info!(
-                            "Got latest firmware info -> Name {}",
-                            internal_response.firmware_name
-                        );
-
-                        // For "safety" we only allow firmware updates when not under contract.
-                        if self
-                            .firmware_manager
-                            .should_update_firmware(&internal_response.version_name)
-                            && self.contract.is_none()
-                        {
-                            self.firmware_manager.start_requesting_firmware(
-                                internal_response.size,
-                                internal_response.firmware_name.clone(),
-                            );
-
-                            let request_bytes = self
-                                .firmware_manager
-                                .request_firmware_chunk(&self.session_token);
-                            self.enqueue_message(SignedMessageTransport::new(
-                                request_bytes,
-                                TopicFirmwareMessage,
-                            ));
-                        } else {
-                            log::info!("Not updating firmware");
-                        }
-                    }
-                    FirmwareMessageType::FirmwareChunk(chunk) => {
-                        log::info!(
-                            "We asked for a chunk and we got a chunk [Size={}, Offset={}]",
-                            chunk.size(),
-                            chunk.offset()
-                        );
-                        self.firmware_manager.ack_chunk(chunk.size(), chunk.data());
-
-                        if self.firmware_manager.needs_more() {
-                            let request_bytes = self
-                                .firmware_manager
-                                .request_firmware_chunk(&self.session_token);
-                            self.enqueue_message(SignedMessageTransport::new(
-                                request_bytes,
-                                TopicFirmwareMessage,
-                            ));
-                        } else {
-                            log::info!(
-                                "Got the firmware image: bytes {} of {}",
-                                self.firmware_manager.acked_size,
-                                self.firmware_manager.total_size
-                            );
-                            match self.firmware_manager.finalize() {
-                                Ok(digest) => {
-                                    log::info!("Firmware digest: bytes {} ", digest);
-                                }
-                                Err(..) => {
-                                    log::info!("Couldn't get firmware digest...");
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            self.firmware_manager.process_message(firmware_data, self.contract.is_some());
         }
 
         if let Some(mut wifi_screen) = self.wifi_info_screen.take() {
@@ -514,9 +450,13 @@ impl LockCtx {
 
         // If MQTT is running, run its tick to process all message queues.
         // Also schedule next periodic update.
-        if let Some(mqtt_service) = self.mqtt_service.as_mut() {
+        if let Some(mut mqtt_service) = self.mqtt_service.as_ref().map(|m| m.borrow_mut()) {
             mqtt_service.tick(self.time_in_ticks);
+        }
 
+        // We need a check that the service was started, but we don't try to lock/borrow it.
+        // The individual enqueue methods will do that.
+        if self.mqtt_service.is_some() {
             if self.schedule_next_update.is_none() {
                 log::info!("Scheduling next periodic update for 60 seconds");
                 self.schedule_next_update =
@@ -532,6 +472,7 @@ impl LockCtx {
                 }
             }
         }
+
 
         if update.d2_pressed {
             self.active_screen_idx = (self.active_screen_idx + 1) % 4;
@@ -1118,8 +1059,8 @@ impl LockCtx {
         }
     }
 
-    fn enqueue_message(&self, message: SignedMessageTransport) {
-        if let Some(mqtt_service) = self.mqtt_service.as_ref() {
+    pub(crate) fn enqueue_message(&self, message: SignedMessageTransport) {
+        if let Some(mut mqtt_service) = self.mqtt_service.as_ref().map(|m| m.borrow_mut()) {
             mqtt_service.enqueue_message(message);
         }
     }

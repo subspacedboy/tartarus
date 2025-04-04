@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+use std::borrow::BorrowMut;
 use crate::firmware_generated::club;
 use crate::firmware_generated::club::subjugated::fb::message::firmware::{
     FirmwareChallengeResponse, FirmwareChallengeResponseArgs, FirmwareMessageArgs,
@@ -20,9 +22,12 @@ use p256::ecdsa::Signature;
 use rand_core::RngCore;
 use sha2::{Digest, Sha256};
 use std::collections::VecDeque;
+use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
+use crate::lock_ctx::LockCtx;
+use crate::mqtt_service::{MqttService, SignedMessageTransport};
 
 pub struct FirmwareAssembler {
     pub current_message: Vec<u8>,
@@ -112,9 +117,13 @@ pub fn read_as_firmware_message(data: &[u8]) -> Result<FirmwareMessageType, Stri
 pub struct FirmwareManager {
     pub total_size: usize,
     pub acked_size: usize,
-    pub next_firmware_name: Option<String>,
-    current_digest: Option<Sha256>,
+    session_token: Option<String>,
+    current_running_firmware: Option<String>,
+    next_firmware_version: Option<String>,
+    next_firmware_name: Option<String>,
+    currently_updating_digest: Option<Sha256>,
     firmware_updater: Option<FirmwareUpdater>,
+    mqtt_service: Option<Rc<RefCell<MqttService>>>,
 }
 
 impl FirmwareManager {
@@ -123,10 +132,107 @@ impl FirmwareManager {
             total_size: 0,
             acked_size: 0,
             next_firmware_name: None,
-            current_digest: None,
+            next_firmware_version: None,
+            currently_updating_digest: None,
             firmware_updater: None,
+            current_running_firmware: None,
+            session_token: None,
+            mqtt_service: None,
         }
     }
+
+    pub fn set_session_token(&mut self, session_token: String) {
+        self.session_token = Some(session_token);
+    }
+
+    pub fn set_mqtt_service(&mut self, mqtt_service: Rc<RefCell<MqttService>>) {
+        self.mqtt_service = Some(mqtt_service);
+    }
+
+    pub fn process_message (&mut self, firmware_data : Vec<u8>, under_contract: bool) {
+        if let Ok(msg) = read_as_firmware_message(firmware_data.as_slice()) {
+            match msg {
+                FirmwareMessageType::Challenge(challenge) => {
+                    log::info!("We got firmware challenge");
+                    let response_bytes = self
+                        .respond_to_challenge(&challenge, self.session_token.as_ref().unwrap());
+                    self.enqueue_message(SignedMessageTransport::new(
+                        response_bytes,
+                        crate::mqtt_service::TopicType::FirmwareMessage,
+                    ));
+
+                }
+                FirmwareMessageType::FirmwareResponse(internal_response) => {
+                    log::info!(
+                            "Got latest firmware info -> Name {}",
+                            internal_response.firmware_name
+                        );
+
+                    self.next_firmware_name = Some(internal_response.firmware_name.clone());
+
+                    // For "safety" we only allow firmware updates when not under contract.
+                    if self
+                        .is_update_available()
+                        && !under_contract
+                    {
+                        self.start_requesting_firmware(
+                            internal_response.size,
+                            internal_response.firmware_name.clone(),
+                        );
+
+                        let request_bytes = self
+                            .request_firmware_chunk(self.session_token.as_ref().unwrap());
+                        self.enqueue_message(SignedMessageTransport::new(
+                            request_bytes,
+                            crate::mqtt_service::TopicType::FirmwareMessage,
+                        ));
+                    } else {
+                        log::info!("Not updating firmware");
+                    }
+                }
+                FirmwareMessageType::FirmwareChunk(chunk) => {
+                    log::info!(
+                            "We asked for a chunk and we got a chunk [Size={}, Offset={}]",
+                            chunk.size(),
+                            chunk.offset()
+                        );
+                    self.ack_chunk(chunk.size(), chunk.data());
+
+                    if self.needs_more() {
+                        let request_bytes = self
+                            .request_firmware_chunk(self.session_token.as_ref().unwrap());
+                        self.enqueue_message(SignedMessageTransport::new(
+                            request_bytes,
+                            crate::mqtt_service::TopicType::FirmwareMessage,
+                        ));
+                    } else {
+                        log::info!(
+                                "Got the firmware image: bytes {} of {}",
+                                self.acked_size,
+                                self.total_size
+                            );
+                        match self.finalize() {
+                            Ok(digest) => {
+                                log::info!("Firmware digest: bytes {} ", digest);
+                            }
+                            Err(..) => {
+                                log::info!("Couldn't get firmware digest...");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn enqueue_message(&mut self, message: SignedMessageTransport) {
+        if let Some(mqtt_service) = &mut self.mqtt_service {
+            let service = mqtt_service.borrow_mut();
+            let mqtt = service.as_ref().borrow_mut();
+            mqtt.enqueue_message(message);
+        }
+    }
+
 
     pub fn respond_to_challenge(
         &self,
@@ -175,13 +281,13 @@ impl FirmwareManager {
     pub fn start_requesting_firmware(&mut self, total_size: usize, name: String) {
         self.total_size = total_size;
         self.next_firmware_name = Some(name);
-        self.current_digest = Some(Sha256::new());
+        self.currently_updating_digest = Some(Sha256::new());
         self.firmware_updater = Some(FirmwareUpdater::new());
     }
 
     pub fn ack_chunk(&mut self, size: usize, data: &[u8]) {
         self.acked_size += size;
-        if let Some(digest) = &mut self.current_digest {
+        if let Some(digest) = &mut self.currently_updating_digest {
             let start = &data[..5.min(data.len())];
             let end = &data[data.len().saturating_sub(5)..];
             log::info!("Chunk [First 5={:02x?}, Last 5={:02x?}]", start, end);
@@ -216,7 +322,7 @@ impl FirmwareManager {
             }
         }
 
-        let o = self.current_digest.take();
+        let o = self.currently_updating_digest.take();
         if let Some(digest) = o {
             let value = digest.finalize();
             Ok(data_encoding::HEXLOWER.encode(&value))
@@ -263,9 +369,17 @@ impl FirmwareManager {
         builder.finished_data().to_vec()
     }
 
-    pub fn should_update_firmware(&mut self, version: &String) -> bool {
+    pub fn is_update_available(&mut self) -> bool {
+        if self.next_firmware_version.is_none() {
+            return false;
+        }
+
         let current_version = self.get_running_version().unwrap();
-        current_version.as_str() != version
+        current_version.as_str() != self.next_firmware_version.as_ref().unwrap()
+    }
+
+    pub fn next_firmware_version(&mut self) -> String {
+        self.next_firmware_version.as_ref().unwrap().clone()
     }
 
     pub fn sanity_check_or_abort(&self) -> anyhow::Result<()> {
@@ -295,17 +409,23 @@ impl FirmwareManager {
         Ok(())
     }
 
-    pub fn get_running_version(&self) -> anyhow::Result<heapless::String<24>> {
-        let ota = EspOta::new().expect("Ota new");
+    pub fn get_running_version(&mut self) -> anyhow::Result<String> {
+        if self.current_running_firmware.is_none() {
+            let ota = EspOta::new().expect("Ota new");
 
-        if let Ok(slot) = ota.get_running_slot() {
-            if let Some(firmware) = slot.firmware {
-                Ok(firmware.version)
+            if let Ok(slot) = ota.get_running_slot() {
+                if let Some(firmware) = slot.firmware {
+                    self.current_running_firmware = Some(firmware.version.to_string());
+                    Ok(firmware.version.to_string())
+                } else {
+                    Err(anyhow!("Failed to get firmware version"))
+                }
             } else {
                 Err(anyhow!("Failed to get firmware version"))
             }
-        } else {
-            Err(anyhow!("Failed to get firmware version"))
+        }else {
+            let current_running = self.current_running_firmware.as_ref().unwrap();
+            Ok(current_running.clone())
         }
     }
 }
