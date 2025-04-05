@@ -23,6 +23,8 @@ class ConfigurationService {
 
     @Value("\${tartarus.mqtt_uri}") var mqttUri: String = ""
 
+    @Value("\${tartarus.enable_reset_command}") var enableReset: Boolean = false
+
     @Autowired lateinit var safetyKeyService: SafetyKeyService
 
     fun getConfigurationAsMessage(): ConfigurationMessage {
@@ -34,6 +36,7 @@ class ConfigurationService {
                 webUri = webUri,
                 mqttUri = mqttUri,
                 safetyKeys = safetyKeys.map { SafetyKeyMessage.fromSafetyKey(it) },
+                enableResetCommand = enableReset
             )
         return configuration
     }
@@ -74,6 +77,7 @@ class ConfigurationService {
         CoordinatorConfiguration.addMqttUri(builder, mqttUriOffset)
         CoordinatorConfiguration.addApiUri(builder, apiUriOffset)
         CoordinatorConfiguration.addSafetyKeys(builder, keysVector)
+        CoordinatorConfiguration.addEnableResetCommand(builder, enableReset)
         val configOffset = CoordinatorConfiguration.endCoordinatorConfiguration(builder)
 
         builder.finish(configOffset)

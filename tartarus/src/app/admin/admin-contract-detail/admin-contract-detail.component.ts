@@ -51,6 +51,11 @@ export class AdminContractDetailComponent implements OnInit {
     this.tartarusCoordinatorService.abortContract(this.contractName).subscribe(aborted => {
       this.refreshData();
     });
+  }
 
+  reset() {
+    this.tartarusCoordinatorService.fullReset(this.contractName).subscribe(aborted => {
+      this.refreshData();
+    });
   }
 }

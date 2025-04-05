@@ -9,6 +9,7 @@ import { Error } from '../../../../club/subjugated/fb/message/error.js';
 import { LockCommand } from '../../../../club/subjugated/fb/message/lock-command.js';
 import { PeriodicUpdate } from '../../../../club/subjugated/fb/message/periodic-update.js';
 import { ReleaseCommand } from '../../../../club/subjugated/fb/message/release-command.js';
+import { ResetCommand } from '../../../../club/subjugated/fb/message/reset-command.js';
 import { StartedUpdate } from '../../../../club/subjugated/fb/message/started-update.js';
 import { UnlockCommand } from '../../../../club/subjugated/fb/message/unlock-command.js';
 
@@ -23,13 +24,14 @@ export enum MessagePayload {
   PeriodicUpdate = 6,
   Acknowledgement = 7,
   Error = 8,
-  AbortCommand = 9
+  AbortCommand = 9,
+  ResetCommand = 10
 }
 
 export function unionToMessagePayload(
   type: MessagePayload,
-  accessor: (obj:AbortCommand|Acknowledgement|Contract|Error|LockCommand|PeriodicUpdate|ReleaseCommand|StartedUpdate|UnlockCommand) => AbortCommand|Acknowledgement|Contract|Error|LockCommand|PeriodicUpdate|ReleaseCommand|StartedUpdate|UnlockCommand|null
-): AbortCommand|Acknowledgement|Contract|Error|LockCommand|PeriodicUpdate|ReleaseCommand|StartedUpdate|UnlockCommand|null {
+  accessor: (obj:AbortCommand|Acknowledgement|Contract|Error|LockCommand|PeriodicUpdate|ReleaseCommand|ResetCommand|StartedUpdate|UnlockCommand) => AbortCommand|Acknowledgement|Contract|Error|LockCommand|PeriodicUpdate|ReleaseCommand|ResetCommand|StartedUpdate|UnlockCommand|null
+): AbortCommand|Acknowledgement|Contract|Error|LockCommand|PeriodicUpdate|ReleaseCommand|ResetCommand|StartedUpdate|UnlockCommand|null {
   switch(MessagePayload[type]) {
     case 'NONE': return null; 
     case 'Contract': return accessor(new Contract())! as Contract;
@@ -41,15 +43,16 @@ export function unionToMessagePayload(
     case 'Acknowledgement': return accessor(new Acknowledgement())! as Acknowledgement;
     case 'Error': return accessor(new Error())! as Error;
     case 'AbortCommand': return accessor(new AbortCommand())! as AbortCommand;
+    case 'ResetCommand': return accessor(new ResetCommand())! as ResetCommand;
     default: return null;
   }
 }
 
 export function unionListToMessagePayload(
   type: MessagePayload, 
-  accessor: (index: number, obj:AbortCommand|Acknowledgement|Contract|Error|LockCommand|PeriodicUpdate|ReleaseCommand|StartedUpdate|UnlockCommand) => AbortCommand|Acknowledgement|Contract|Error|LockCommand|PeriodicUpdate|ReleaseCommand|StartedUpdate|UnlockCommand|null, 
+  accessor: (index: number, obj:AbortCommand|Acknowledgement|Contract|Error|LockCommand|PeriodicUpdate|ReleaseCommand|ResetCommand|StartedUpdate|UnlockCommand) => AbortCommand|Acknowledgement|Contract|Error|LockCommand|PeriodicUpdate|ReleaseCommand|ResetCommand|StartedUpdate|UnlockCommand|null, 
   index: number
-): AbortCommand|Acknowledgement|Contract|Error|LockCommand|PeriodicUpdate|ReleaseCommand|StartedUpdate|UnlockCommand|null {
+): AbortCommand|Acknowledgement|Contract|Error|LockCommand|PeriodicUpdate|ReleaseCommand|ResetCommand|StartedUpdate|UnlockCommand|null {
   switch(MessagePayload[type]) {
     case 'NONE': return null; 
     case 'Contract': return accessor(index, new Contract())! as Contract;
@@ -61,6 +64,7 @@ export function unionListToMessagePayload(
     case 'Acknowledgement': return accessor(index, new Acknowledgement())! as Acknowledgement;
     case 'Error': return accessor(index, new Error())! as Error;
     case 'AbortCommand': return accessor(index, new AbortCommand())! as AbortCommand;
+    case 'ResetCommand': return accessor(index, new ResetCommand())! as ResetCommand;
     default: return null;
   }
 }

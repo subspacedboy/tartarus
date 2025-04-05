@@ -83,4 +83,16 @@ class AdminContractController {
 
         return ResponseEntity.ok(ContractMessage.fromContract(contract))
     }
+
+    @PostMapping("/{someToken}/reset")
+    @ResponseBody
+    @PreAuthorize("hasAuthority('ADMIN')")
+    fun resetLock(@AuthenticationPrincipal admin: UserDetails, @PathVariable someToken: String) : ResponseEntity<ContractMessage> {
+        var contract = this.contractService.getByNameAdminOnly(someToken)
+        val safetyKey = this.safetyKeyService.getAllActiveSafetyKeys().first()
+
+        contract = this.contractService.resetWithSafetyKey(contract, safetyKey)
+
+        return ResponseEntity.ok(ContractMessage.fromContract(contract))
+    }
 }

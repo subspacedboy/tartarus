@@ -85,6 +85,11 @@ class CoordinatorConfiguration : Table() {
         get() {
             val o = __offset(12); return if (o != 0) __vector_len(o) else 0
         }
+    val enableResetCommand : Boolean
+        get() {
+            val o = __offset(14)
+            return if(o != 0) 0.toByte() != bb.get(o + bb_pos) else false
+        }
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsCoordinatorConfiguration(_bb: ByteBuffer): CoordinatorConfiguration = getRootAsCoordinatorConfiguration(_bb, CoordinatorConfiguration())
@@ -92,16 +97,17 @@ class CoordinatorConfiguration : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createCoordinatorConfiguration(builder: FlatBufferBuilder, webUriOffset: Int, wsUriOffset: Int, mqttUriOffset: Int, apiUriOffset: Int, safetyKeysOffset: Int) : Int {
-            builder.startTable(5)
+        fun createCoordinatorConfiguration(builder: FlatBufferBuilder, webUriOffset: Int, wsUriOffset: Int, mqttUriOffset: Int, apiUriOffset: Int, safetyKeysOffset: Int, enableResetCommand: Boolean) : Int {
+            builder.startTable(6)
             addSafetyKeys(builder, safetyKeysOffset)
             addApiUri(builder, apiUriOffset)
             addMqttUri(builder, mqttUriOffset)
             addWsUri(builder, wsUriOffset)
             addWebUri(builder, webUriOffset)
+            addEnableResetCommand(builder, enableResetCommand)
             return endCoordinatorConfiguration(builder)
         }
-        fun startCoordinatorConfiguration(builder: FlatBufferBuilder) = builder.startTable(5)
+        fun startCoordinatorConfiguration(builder: FlatBufferBuilder) = builder.startTable(6)
         fun addWebUri(builder: FlatBufferBuilder, webUri: Int) = builder.addOffset(0, webUri, 0)
         fun addWsUri(builder: FlatBufferBuilder, wsUri: Int) = builder.addOffset(1, wsUri, 0)
         fun addMqttUri(builder: FlatBufferBuilder, mqttUri: Int) = builder.addOffset(2, mqttUri, 0)
@@ -115,6 +121,7 @@ class CoordinatorConfiguration : Table() {
             return builder.endVector()
         }
         fun startSafetyKeysVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(4, numElems, 4)
+        fun addEnableResetCommand(builder: FlatBufferBuilder, enableResetCommand: Boolean) = builder.addBoolean(5, enableResetCommand, false)
         fun endCoordinatorConfiguration(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o

@@ -77,8 +77,15 @@ class CoordinatorConfiguration(object):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
         return o == 0
 
+    # CoordinatorConfiguration
+    def EnableResetCommand(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
+        if o != 0:
+            return bool(self._tab.Get(flatbuffers.number_types.BoolFlags, o + self._tab.Pos))
+        return False
+
 def CoordinatorConfigurationStart(builder):
-    builder.StartObject(5)
+    builder.StartObject(6)
 
 def Start(builder):
     CoordinatorConfigurationStart(builder)
@@ -118,6 +125,12 @@ def CoordinatorConfigurationStartSafetyKeysVector(builder, numElems):
 
 def StartSafetyKeysVector(builder, numElems):
     return CoordinatorConfigurationStartSafetyKeysVector(builder, numElems)
+
+def CoordinatorConfigurationAddEnableResetCommand(builder, enableResetCommand):
+    builder.PrependBoolSlot(5, enableResetCommand, 0)
+
+def AddEnableResetCommand(builder, enableResetCommand):
+    CoordinatorConfigurationAddEnableResetCommand(builder, enableResetCommand)
 
 def CoordinatorConfigurationEnd(builder):
     return builder.EndObject()

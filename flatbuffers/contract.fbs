@@ -79,9 +79,22 @@ table AbortCommand {
     serial_number: ushort;
     counter: ushort;
 }
+table ResetCommand {
+    session: string;
+    serial_number: ushort;
+}
 
 union MessagePayload {
-  Contract, LockCommand, UnlockCommand, ReleaseCommand, StartedUpdate, PeriodicUpdate, Acknowledgement, Error, AbortCommand
+  Contract,
+  LockCommand,
+  UnlockCommand,
+  ReleaseCommand,
+  StartedUpdate,
+  PeriodicUpdate,
+  Acknowledgement,
+  Error,
+  AbortCommand,
+  ResetCommand
 }
 
 table SignedMessage {

@@ -50,13 +50,13 @@ pub mod club {
                     since = "2.0.0",
                     note = "Use associated constants instead. This will no longer be generated in 2021."
                 )]
-                pub const ENUM_MAX_MESSAGE_PAYLOAD: u8 = 9;
+                pub const ENUM_MAX_MESSAGE_PAYLOAD: u8 = 10;
                 #[deprecated(
                     since = "2.0.0",
                     note = "Use associated constants instead. This will no longer be generated in 2021."
                 )]
                 #[allow(non_camel_case_types)]
-                pub const ENUM_VALUES_MESSAGE_PAYLOAD: [MessagePayload; 10] = [
+                pub const ENUM_VALUES_MESSAGE_PAYLOAD: [MessagePayload; 11] = [
                     MessagePayload::NONE,
                     MessagePayload::Contract,
                     MessagePayload::LockCommand,
@@ -67,6 +67,7 @@ pub mod club {
                     MessagePayload::Acknowledgement,
                     MessagePayload::Error,
                     MessagePayload::AbortCommand,
+                    MessagePayload::ResetCommand,
                 ];
 
                 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
@@ -84,9 +85,10 @@ pub mod club {
                     pub const Acknowledgement: Self = Self(7);
                     pub const Error: Self = Self(8);
                     pub const AbortCommand: Self = Self(9);
+                    pub const ResetCommand: Self = Self(10);
 
                     pub const ENUM_MIN: u8 = 0;
-                    pub const ENUM_MAX: u8 = 9;
+                    pub const ENUM_MAX: u8 = 10;
                     pub const ENUM_VALUES: &'static [Self] = &[
                         Self::NONE,
                         Self::Contract,
@@ -98,6 +100,7 @@ pub mod club {
                         Self::Acknowledgement,
                         Self::Error,
                         Self::AbortCommand,
+                        Self::ResetCommand,
                     ];
                     /// Returns the variant's name or "" if unknown.
                     pub fn variant_name(self) -> Option<&'static str> {
@@ -112,6 +115,7 @@ pub mod club {
                             Self::Acknowledgement => Some("Acknowledgement"),
                             Self::Error => Some("Error"),
                             Self::AbortCommand => Some("AbortCommand"),
+                            Self::ResetCommand => Some("ResetCommand"),
                             _ => None,
                         }
                     }
@@ -2267,6 +2271,151 @@ pub mod club {
                         ds.finish()
                     }
                 }
+                pub enum ResetCommandOffset {}
+                #[derive(Copy, Clone, PartialEq)]
+
+                pub struct ResetCommand<'a> {
+                    pub _tab: flatbuffers::Table<'a>,
+                }
+
+                impl<'a> flatbuffers::Follow<'a> for ResetCommand<'a> {
+                    type Inner = ResetCommand<'a>;
+                    #[inline]
+                    unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+                        Self {
+                            _tab: flatbuffers::Table::new(buf, loc),
+                        }
+                    }
+                }
+
+                impl<'a> ResetCommand<'a> {
+                    pub const VT_SESSION: flatbuffers::VOffsetT = 4;
+                    pub const VT_SERIAL_NUMBER: flatbuffers::VOffsetT = 6;
+
+                    #[inline]
+                    pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+                        ResetCommand { _tab: table }
+                    }
+                    #[allow(unused_mut)]
+                    pub fn create<
+                        'bldr: 'args,
+                        'args: 'mut_bldr,
+                        'mut_bldr,
+                        A: flatbuffers::Allocator + 'bldr,
+                    >(
+                        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
+                        args: &'args ResetCommandArgs<'args>,
+                    ) -> flatbuffers::WIPOffset<ResetCommand<'bldr>> {
+                        let mut builder = ResetCommandBuilder::new(_fbb);
+                        if let Some(x) = args.session {
+                            builder.add_session(x);
+                        }
+                        builder.add_serial_number(args.serial_number);
+                        builder.finish()
+                    }
+
+                    #[inline]
+                    pub fn session(&self) -> Option<&'a str> {
+                        // Safety:
+                        // Created from valid Table for this object
+                        // which contains a valid value in this slot
+                        unsafe {
+                            self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(
+                                ResetCommand::VT_SESSION,
+                                None,
+                            )
+                        }
+                    }
+                    #[inline]
+                    pub fn serial_number(&self) -> u16 {
+                        // Safety:
+                        // Created from valid Table for this object
+                        // which contains a valid value in this slot
+                        unsafe {
+                            self._tab
+                                .get::<u16>(ResetCommand::VT_SERIAL_NUMBER, Some(0))
+                                .unwrap()
+                        }
+                    }
+                }
+
+                impl flatbuffers::Verifiable for ResetCommand<'_> {
+                    #[inline]
+                    fn run_verifier(
+                        v: &mut flatbuffers::Verifier,
+                        pos: usize,
+                    ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
+                        use self::flatbuffers::Verifiable;
+                        v.visit_table(pos)?
+                            .visit_field::<flatbuffers::ForwardsUOffset<&str>>(
+                                "session",
+                                Self::VT_SESSION,
+                                false,
+                            )?
+                            .visit_field::<u16>("serial_number", Self::VT_SERIAL_NUMBER, false)?
+                            .finish();
+                        Ok(())
+                    }
+                }
+                pub struct ResetCommandArgs<'a> {
+                    pub session: Option<flatbuffers::WIPOffset<&'a str>>,
+                    pub serial_number: u16,
+                }
+                impl<'a> Default for ResetCommandArgs<'a> {
+                    #[inline]
+                    fn default() -> Self {
+                        ResetCommandArgs {
+                            session: None,
+                            serial_number: 0,
+                        }
+                    }
+                }
+
+                pub struct ResetCommandBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
+                    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
+                    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+                }
+                impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> ResetCommandBuilder<'a, 'b, A> {
+                    #[inline]
+                    pub fn add_session(&mut self, session: flatbuffers::WIPOffset<&'b str>) {
+                        self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
+                            ResetCommand::VT_SESSION,
+                            session,
+                        );
+                    }
+                    #[inline]
+                    pub fn add_serial_number(&mut self, serial_number: u16) {
+                        self.fbb_.push_slot::<u16>(
+                            ResetCommand::VT_SERIAL_NUMBER,
+                            serial_number,
+                            0,
+                        );
+                    }
+                    #[inline]
+                    pub fn new(
+                        _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
+                    ) -> ResetCommandBuilder<'a, 'b, A> {
+                        let start = _fbb.start_table();
+                        ResetCommandBuilder {
+                            fbb_: _fbb,
+                            start_: start,
+                        }
+                    }
+                    #[inline]
+                    pub fn finish(self) -> flatbuffers::WIPOffset<ResetCommand<'a>> {
+                        let o = self.fbb_.end_table(self.start_);
+                        flatbuffers::WIPOffset::new(o.value())
+                    }
+                }
+
+                impl core::fmt::Debug for ResetCommand<'_> {
+                    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                        let mut ds = f.debug_struct("ResetCommand");
+                        ds.field("session", &self.session());
+                        ds.field("serial_number", &self.serial_number());
+                        ds.finish()
+                    }
+                }
                 pub enum SignedMessageOffset {}
                 #[derive(Copy, Clone, PartialEq)]
 
@@ -2504,6 +2653,21 @@ pub mod club {
                             None
                         }
                     }
+
+                    #[inline]
+                    #[allow(non_snake_case)]
+                    pub fn payload_as_reset_command(&self) -> Option<ResetCommand<'a>> {
+                        if self.payload_type() == MessagePayload::ResetCommand {
+                            self.payload().map(|t| {
+                                // Safety:
+                                // Created from a valid Table for this object
+                                // Which contains a valid union in this slot
+                                unsafe { ResetCommand::init_from_table(t) }
+                            })
+                        } else {
+                            None
+                        }
+                    }
                 }
 
                 impl flatbuffers::Verifiable for SignedMessage<'_> {
@@ -2526,6 +2690,7 @@ pub mod club {
           MessagePayload::Acknowledgement => v.verify_union_variant::<flatbuffers::ForwardsUOffset<Acknowledgement>>("MessagePayload::Acknowledgement", pos),
           MessagePayload::Error => v.verify_union_variant::<flatbuffers::ForwardsUOffset<Error>>("MessagePayload::Error", pos),
           MessagePayload::AbortCommand => v.verify_union_variant::<flatbuffers::ForwardsUOffset<AbortCommand>>("MessagePayload::AbortCommand", pos),
+          MessagePayload::ResetCommand => v.verify_union_variant::<flatbuffers::ForwardsUOffset<ResetCommand>>("MessagePayload::ResetCommand", pos),
           _ => Ok(()),
         }
      })?
@@ -2676,6 +2841,13 @@ pub mod club {
                             }
                             MessagePayload::AbortCommand => {
                                 if let Some(x) = self.payload_as_abort_command() {
+                                    ds.field("payload", &x)
+                                } else {
+                                    ds.field("payload", &"InvalidFlatbuffer: Union discriminant does not match value.")
+                                }
+                            }
+                            MessagePayload::ResetCommand => {
+                                if let Some(x) = self.payload_as_reset_command() {
                                     ds.field("payload", &x)
                                 } else {
                                     ds.field("payload", &"InvalidFlatbuffer: Union discriminant does not match value.")

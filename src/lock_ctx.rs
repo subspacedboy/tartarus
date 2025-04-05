@@ -16,7 +16,7 @@ use crate::firmware_generated::club::subjugated::fb::message::firmware::{
 use crate::firmware_screen::FirmwareScreen;
 use crate::firmware_updater::{read_as_firmware_message, FirmwareManager};
 use crate::internal_config::InternalConfig;
-use crate::internal_contract::{InternalContract, SaveState};
+use crate::internal_contract::{InternalContract, InternalResetCommand, SaveState};
 use crate::internal_firmware::FirmwareMessageType;
 use crate::lock_ctx::TopicType::{Acknowledgments, ConfigurationData, SignedMessages};
 use crate::lock_state_screen::LockstateScreen;
@@ -25,6 +25,7 @@ use crate::mqtt_service::{MqttService, SignedMessageTransport, TopicType};
 use crate::overlays::{ButtonPressOverlay, WifiOverlay};
 use crate::prelude::{DynOverlay, MyDisplay, MySPI};
 use crate::qr_screen::QrCodeScreen;
+use crate::screen_ids::ScreenId;
 use crate::screen_state::ScreenState;
 use crate::servo::Servo;
 use crate::verifier::{SignedMessageVerifier, VerifiedType};
@@ -36,6 +37,7 @@ use embedded_graphics_core::pixelcolor::Rgb565;
 use embedded_graphics_core::prelude::{DrawTarget, RgbColor};
 use esp_idf_hal::gpio::{AnyOutputPin, GpioError};
 use esp_idf_svc::nvs::{EspNvs, NvsDefault};
+use esp_idf_svc::sys::{nvs_flash_deinit, nvs_flash_erase, nvs_flash_init};
 use esp_idf_svc::wifi::{BlockingWifi, EspWifi};
 use flatbuffers::FlatBufferBuilder;
 use p256::ecdsa::signature::Signer;
@@ -304,7 +306,7 @@ impl LockCtx {
         private_key
     }
 
-    /// The primary event loop of the firmware. This is called by main in fixed intervals of milliseconds.
+    /// The primary event loop of the firmware. This is called by `main` in fixed intervals of milliseconds.
     /// If the buttons on the face are pressed they'll be passed in here as part of the TickUpdate.
     pub fn tick(&mut self, update: TickUpdate) {
         // Update time
@@ -421,8 +423,8 @@ impl LockCtx {
             // Configuration delivered through this channel is considered trusted.
             let configuration = configuration.pop_front().unwrap();
             if let Ok(valid_config) = ConfigVerifier::read_configuration(configuration) {
-                // The only way we can reach here is we have a valid MQTT provider. So theoretically
-                // we're just adding SafetyKeys.
+                // The only way we can reach here is we have a valid MQTT provider and connection. So theoretically
+                // we're just adding SafetyKeys and/or enable_reset_command.
                 self.save_configuration(&valid_config);
             }
         }
@@ -438,8 +440,7 @@ impl LockCtx {
             self.wifi_info_screen = Some(wifi_screen);
         }
 
-        // After all the MQTT-based channels see if the user has physically
-        // done something.
+        // See if the user has physically pressed some buttons or scanned a QR code.
         self.this_update = Some(update.clone());
         self.process_updates();
 
@@ -456,7 +457,7 @@ impl LockCtx {
             mqtt_service.tick(self.time_in_ticks);
         }
 
-        // We need a check that the service was started, but we don't try to lock/borrow it.
+        // We need to check that the MQTT service was started, but we don't try to lock/borrow it.
         // The individual enqueue methods will do that.
         if self.mqtt_service.is_some() {
             if self.schedule_next_update.is_none() {
@@ -475,18 +476,20 @@ impl LockCtx {
             }
         }
 
+        // D2 to cycle through the screens...
         if update.d2_pressed {
             self.active_screen_idx = (self.active_screen_idx + 1) % 4;
             screen_changed = true;
         }
 
         if screen_idx_at_start_of_tick != self.active_screen_idx {
-            log::info!("Active screen idx: {}", self.active_screen_idx);
+            log::info!("Active screen now idx -> {}", self.active_screen_idx);
             screen_changed = true;
         }
 
-        match self.active_screen_idx {
-            0 => {
+        // Explicitly draw a screen.
+        match ScreenId::from(self.active_screen_idx) {
+            ScreenId::QrCode => {
                 if let Some(mut qr_screen) = self.qr_code_screen.take() {
                     if screen_changed || qr_screen.needs_redraw() {
                         qr_screen.draw_screen(self);
@@ -494,7 +497,7 @@ impl LockCtx {
                     self.qr_code_screen = Some(qr_screen);
                 }
             }
-            1 => {
+            ScreenId::LockState => {
                 if let Some(mut lock_screen) = self.lock_state_screen.take() {
                     if screen_changed || lock_screen.needs_redraw() {
                         log::info!("Drawing lock screen");
@@ -503,7 +506,7 @@ impl LockCtx {
                     self.lock_state_screen = Some(lock_screen);
                 }
             }
-            2 => {
+            ScreenId::WifiInfo => {
                 if let Some(mut wifi_screen) = self.wifi_info_screen.take() {
                     if screen_changed || wifi_screen.needs_redraw() {
                         wifi_screen.draw_screen(self);
@@ -511,7 +514,7 @@ impl LockCtx {
                     self.wifi_info_screen = Some(wifi_screen);
                 }
             }
-            3 => {
+            ScreenId::FirmwareInfo => {
                 if let Some(mut firmware_screen) = self.firmware_screen.take() {
                     if screen_changed || firmware_screen.needs_redraw() {
                         firmware_screen.draw_screen(self);
@@ -519,7 +522,6 @@ impl LockCtx {
                     self.firmware_screen = Some(firmware_screen);
                 }
             }
-            _ => {}
         }
 
         if self.qr_code_screen.is_none()
@@ -754,6 +756,19 @@ impl LockCtx {
         self.enqueue_bot_event(EventType::ReleaseContract);
 
         self.clear_contract();
+    }
+
+    pub fn full_reset(&mut self, reset_command: &InternalResetCommand) {
+        if self.configuration.enable_reset_command && reset_command.session() == self.session_token
+        {
+            unsafe {
+                nvs_flash_deinit();
+                nvs_flash_erase();
+                nvs_flash_init();
+
+                esp_idf_svc::hal::reset::restart();
+            }
+        }
     }
 
     pub fn read_contract(&mut self) -> Option<SaveState> {

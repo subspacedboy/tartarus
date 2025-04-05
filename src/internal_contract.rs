@@ -1,5 +1,6 @@
 use crate::contract_generated::club::subjugated::fb::message::{
-    AbortCommand, Bot, Contract, LockCommand, Permission, ReleaseCommand, UnlockCommand,
+    AbortCommand, Bot, Contract, LockCommand, Permission, ReleaseCommand, ResetCommand,
+    UnlockCommand,
 };
 use p256::ecdsa::VerifyingKey;
 use serde::{Deserialize, Serialize};
@@ -64,16 +65,19 @@ pub struct InternalAbortCommand {
     pub counter: u16,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum EndCriteria {
-    WhenISaySo,
-    Time,
+#[derive(Debug, Clone)]
+pub struct InternalResetCommand {
+    session: String,
+    serial_number: u16,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum TempUnlockRules {
-    Remaining(u16),
-    TimeLimit(u16),
+impl InternalResetCommand {
+    pub fn session(&self) -> &str {
+        self.session.as_str()
+    }
+    pub fn serial_number(&self) -> u16 {
+        self.serial_number
+    }
 }
 
 impl From<Contract<'_>> for InternalContract {
@@ -169,6 +173,15 @@ impl From<Permission<'_>> for InternalPermission {
             receive_events: permission.receive_events(),
             can_unlock: permission.can_unlock(),
             can_release: permission.can_release(),
+        }
+    }
+}
+
+impl From<ResetCommand<'_>> for InternalResetCommand {
+    fn from(reset: ResetCommand) -> InternalResetCommand {
+        Self {
+            session: reset.session().unwrap().to_string(),
+            serial_number: reset.serial_number(),
         }
     }
 }

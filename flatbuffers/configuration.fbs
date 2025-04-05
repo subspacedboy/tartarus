@@ -11,6 +11,8 @@ table CoordinatorConfiguration {
   mqtt_uri: string;
   api_uri: string;
   safety_keys: [Key];
+
+  enable_reset_command: bool;
 }
 
 root_type CoordinatorConfiguration;

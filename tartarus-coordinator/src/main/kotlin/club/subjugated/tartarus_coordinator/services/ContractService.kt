@@ -1,6 +1,7 @@
 package club.subjugated.tartarus_coordinator.services
 
 import club.subjugated.fb.message.AbortCommand
+import club.subjugated.fb.message.ResetCommand
 import club.subjugated.fb.message.SignedMessage
 import club.subjugated.fb.message.firmware.MessagePayload
 import club.subjugated.tartarus_coordinator.api.messages.NewContractMessage
@@ -327,6 +328,83 @@ class ContractService {
                 type = CommandType.ABORT,
                 serialNumber = serialNumber,
                 counter = counter,
+                body = signedMessage,
+                authorSession = contract.authorSession,
+                createdAt = timeSource.nowInUtc(),
+                updatedAt = timeSource.nowInUtc(),
+                contract = contract,
+            )
+        this.commandQueueService.saveCommand(command)
+        publisher.publishEvent(NewCommandEvent(this, contract.lockSession.sessionToken!!))
+
+        contract.state = ContractState.ABORTED
+        contractRepository.save(contract)
+
+        return contract
+    }
+
+    // It's not a contract operation per se, but it's processed, handled, and structured like all the other
+    // "contract" commands. There's almost certainly an associated contract though to wind up in this situation.
+    fun resetWithSafetyKey(contract: Contract, safetyKey : SafetyKey) : Contract {
+        val builder = FlatBufferBuilder(1024)
+
+        val sessionTokenOffset = builder.createString(contract.lockSession.sessionToken!!)
+
+        ResetCommand.startResetCommand(builder)
+        ResetCommand.addSession(builder, sessionTokenOffset)
+        val serialNumber = 55
+        AbortCommand.addSerialNumber(builder, serialNumber.toUShort())
+        val resetOffset = ResetCommand.endResetCommand(builder)
+
+        builder.finish(resetOffset)
+        val data = builder.sizedByteArray()
+
+        val offsetToTable = (data[0].toInt() and 0xFF) or ((data[1].toInt() and 0xFF) shl 8)
+        val offsetToVTable = (data[offsetToTable].toInt() and 0xFF) or ((data[offsetToTable + 1].toInt() and 0xFF) shl 8)
+        val vTableStart = offsetToTable - offsetToVTable
+        val vtableAndContract = data.copyOfRange(vTableStart, data.size)
+
+        val keySpec = PKCS8EncodedKeySpec(safetyKey.privateKey)
+        val keyFactory = KeyFactory.getInstance("EC", "BC")
+        val privateKey = keyFactory.generatePrivate(keySpec)
+
+        val digest = MessageDigest.getInstance("SHA-256")
+        digest.update(vtableAndContract)
+        val hash = digest.digest()
+
+        val signature = Signature.getInstance("SHA256withECDSA", "BC").apply {
+            initSign(privateKey)
+            update(hash)
+        }.sign()
+
+        val rawSig = derToRawSignature(signature)
+
+        val authorityOffset = builder.createString(safetyKey.name)
+        val sigOffset = builder.createByteVector(rawSig)
+
+        SignedMessage.startSignedMessage(builder)
+        SignedMessage.addPayloadType(builder, club.subjugated.fb.message.MessagePayload.ResetCommand)
+        SignedMessage.addPayload(builder, resetOffset)
+        SignedMessage.addSignature(builder, sigOffset)
+        SignedMessage.addAuthorityIdentifier(builder, authorityOffset)
+        val smOffset = SignedMessage.endSignedMessage(builder)
+
+        builder.finish(smOffset)
+        val signedMessage = builder.sizedByteArray()
+
+        val publicKey = loadECPublicKeyFromPkcs8(safetyKey.publicKey!!)
+        val ecPublicKey = publicKey as java.security.interfaces.ECPublicKey
+        val compressedPubKey = encodePublicKeySecp1(ecPublicKey)
+
+        val validated = signedMessageBytesValidatorWithExternalKey(ByteBuffer.wrap(signedMessage), compressedPubKey)
+
+        val command =
+            Command(
+                commandQueue = contract.lockSession.commandQueue.first(),
+                state = CommandState.PENDING,
+                type = CommandType.RESET,
+                serialNumber = serialNumber,
+                counter = 0,
                 body = signedMessage,
                 authorSession = contract.authorSession,
                 createdAt = timeSource.nowInUtc(),

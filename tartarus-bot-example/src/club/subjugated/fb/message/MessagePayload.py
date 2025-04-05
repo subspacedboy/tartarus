@@ -13,3 +13,4 @@ class MessagePayload(object):
     Acknowledgement = 7
     Error = 8
     AbortCommand = 9
+    ResetCommand = 10

@@ -393,6 +393,18 @@ export class TartarusCoordinatorService {
     }));
   }
 
+  public fullReset(contractName: string) : Observable<Contract> {
+    const reset_uri = `${this.baseUrl}/admin/contracts/${contractName}/reset`;
+    const body = JSON.stringify({
+    });
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json', 'X-Require-Admin': 'requires authorization tokens' });
+    return this.http.post(reset_uri, body, {headers} ).pipe(map((res:any) => {
+      return new Contract(res);
+    }),  catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
   // Admin firmware
 
   public addFirmware(firmwareBytes : string) : Observable<boolean> {

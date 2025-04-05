@@ -30,6 +30,8 @@ impl Acknowledger {
             VerifiedType::LockCommand(lock) => (lock.serial_number, lock.counter),
             VerifiedType::ReleaseCommand(release) => (release.serial_number, release.counter),
             VerifiedType::AbortCommand(abort) => (abort.serial_number, abort.counter),
+            // An "acknowledged" reset means that it wasn't enabled...
+            VerifiedType::ResetCommand(reset) => (reset.serial_number(), 0),
         };
 
         let public_key_bytes: Vec<u8> = public_key.to_sec1_bytes().to_vec();
@@ -106,6 +108,7 @@ impl Acknowledger {
             VerifiedType::LockCommand(lock) => (lock.serial_number, lock.counter),
             VerifiedType::ReleaseCommand(release) => (release.serial_number, release.counter),
             VerifiedType::AbortCommand(abort) => (abort.serial_number, abort.counter),
+            VerifiedType::ResetCommand(reset) => (reset.serial_number(), 0),
         };
 
         let public_key_bytes: Vec<u8> = public_key.to_sec1_bytes().to_vec();

@@ -211,6 +211,7 @@ pub mod club {
                         pub const VT_MQTT_URI: flatbuffers::VOffsetT = 8;
                         pub const VT_API_URI: flatbuffers::VOffsetT = 10;
                         pub const VT_SAFETY_KEYS: flatbuffers::VOffsetT = 12;
+                        pub const VT_ENABLE_RESET_COMMAND: flatbuffers::VOffsetT = 14;
 
                         #[inline]
                         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -243,6 +244,7 @@ pub mod club {
                             if let Some(x) = args.web_uri {
                                 builder.add_web_uri(x);
                             }
+                            builder.add_enable_reset_command(args.enable_reset_command);
                             builder.finish()
                         }
 
@@ -310,6 +312,20 @@ pub mod club {
                                 )
                             }
                         }
+                        #[inline]
+                        pub fn enable_reset_command(&self) -> bool {
+                            // Safety:
+                            // Created from valid Table for this object
+                            // which contains a valid value in this slot
+                            unsafe {
+                                self._tab
+                                    .get::<bool>(
+                                        CoordinatorConfiguration::VT_ENABLE_RESET_COMMAND,
+                                        Some(false),
+                                    )
+                                    .unwrap()
+                            }
+                        }
                     }
 
                     impl flatbuffers::Verifiable for CoordinatorConfiguration<'_> {
@@ -345,6 +361,11 @@ pub mod club {
                                 >>(
                                     "safety_keys", Self::VT_SAFETY_KEYS, false
                                 )?
+                                .visit_field::<bool>(
+                                    "enable_reset_command",
+                                    Self::VT_ENABLE_RESET_COMMAND,
+                                    false,
+                                )?
                                 .finish();
                             Ok(())
                         }
@@ -359,6 +380,7 @@ pub mod club {
                                 flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Key<'a>>>,
                             >,
                         >,
+                        pub enable_reset_command: bool,
                     }
                     impl<'a> Default for CoordinatorConfigurationArgs<'a> {
                         #[inline]
@@ -369,6 +391,7 @@ pub mod club {
                                 mqtt_uri: None,
                                 api_uri: None,
                                 safety_keys: None,
+                                enable_reset_command: false,
                             }
                         }
                     }
@@ -423,6 +446,14 @@ pub mod club {
                             );
                         }
                         #[inline]
+                        pub fn add_enable_reset_command(&mut self, enable_reset_command: bool) {
+                            self.fbb_.push_slot::<bool>(
+                                CoordinatorConfiguration::VT_ENABLE_RESET_COMMAND,
+                                enable_reset_command,
+                                false,
+                            );
+                        }
+                        #[inline]
                         pub fn new(
                             _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
                         ) -> CoordinatorConfigurationBuilder<'a, 'b, A> {
@@ -450,6 +481,7 @@ pub mod club {
                             ds.field("mqtt_uri", &self.mqtt_uri());
                             ds.field("api_uri", &self.api_uri());
                             ds.field("safety_keys", &self.safety_keys());
+                            ds.field("enable_reset_command", &self.enable_reset_command());
                             ds.finish()
                         }
                     }

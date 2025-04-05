@@ -305,9 +305,9 @@ async def scan_contracts_and_release(timer: TimerBot):
 async def main():
     args = parse_args()
 
-    bot_name = "b-JKSMF9G" # Production bot name
+    # bot_name = "b-JKSMF9G" # Production bot name
 
-    # bot_name = "b-42R6AGO" # Local development
+    bot_name = "b-42R6AGO" # Local development
 
     # make_create_contract_request(args.shareableToken, "b-42R6AGO")
     # make_get_lock_session_request(bot_name, args.shareableToken)
@@ -315,8 +315,8 @@ async def main():
     timer = TimerBot(bot_name=bot_name, work_dir="/tmp/workspace")
 
     try:
-        # client = AsyncTartarusClient(bot_name=bot_name, broker="localhost", port=4447, callback_obj=timer)
-        client = AsyncTartarusClient(bot_name=bot_name, broker="tartarus-mqtt.subjugated.club", port=4447, callback_obj=timer, require_tls=True)
+        client = AsyncTartarusClient(bot_name=bot_name, broker="localhost", port=4447, callback_obj=timer)
+        # client = AsyncTartarusClient(bot_name=bot_name, broker="tartarus-mqtt.subjugated.club", port=4447, callback_obj=timer, require_tls=True)
         timer.tartarus = client
         asyncio.create_task(call_timer_method(timer, args.shareableToken))
         asyncio.create_task(scan_contracts_and_release(timer))

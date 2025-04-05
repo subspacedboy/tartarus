@@ -6,4 +6,5 @@ data class ConfigurationMessage(
     var webUri: String?,
     var mqttUri: String?,
     var safetyKeys: List<SafetyKeyMessage>?,
+    var enableResetCommand: Boolean?
 )

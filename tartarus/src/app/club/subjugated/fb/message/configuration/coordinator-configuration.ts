@@ -63,8 +63,13 @@ safetyKeysLength():number {
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
+enableResetCommand():boolean {
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
+}
+
 static startCoordinatorConfiguration(builder:flatbuffers.Builder) {
-  builder.startObject(5);
+  builder.startObject(6);
 }
 
 static addWebUri(builder:flatbuffers.Builder, webUriOffset:flatbuffers.Offset) {
@@ -99,6 +104,10 @@ static startSafetyKeysVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(4, numElems, 4);
 }
 
+static addEnableResetCommand(builder:flatbuffers.Builder, enableResetCommand:boolean) {
+  builder.addFieldInt8(5, +enableResetCommand, +false);
+}
+
 static endCoordinatorConfiguration(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   return offset;
@@ -112,13 +121,14 @@ static finishSizePrefixedCoordinatorConfigurationBuffer(builder:flatbuffers.Buil
   builder.finish(offset, undefined, true);
 }
 
-static createCoordinatorConfiguration(builder:flatbuffers.Builder, webUriOffset:flatbuffers.Offset, wsUriOffset:flatbuffers.Offset, mqttUriOffset:flatbuffers.Offset, apiUriOffset:flatbuffers.Offset, safetyKeysOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createCoordinatorConfiguration(builder:flatbuffers.Builder, webUriOffset:flatbuffers.Offset, wsUriOffset:flatbuffers.Offset, mqttUriOffset:flatbuffers.Offset, apiUriOffset:flatbuffers.Offset, safetyKeysOffset:flatbuffers.Offset, enableResetCommand:boolean):flatbuffers.Offset {
   CoordinatorConfiguration.startCoordinatorConfiguration(builder);
   CoordinatorConfiguration.addWebUri(builder, webUriOffset);
   CoordinatorConfiguration.addWsUri(builder, wsUriOffset);
   CoordinatorConfiguration.addMqttUri(builder, mqttUriOffset);
   CoordinatorConfiguration.addApiUri(builder, apiUriOffset);
   CoordinatorConfiguration.addSafetyKeys(builder, safetyKeysOffset);
+  CoordinatorConfiguration.addEnableResetCommand(builder, enableResetCommand);
   return CoordinatorConfiguration.endCoordinatorConfiguration(builder);
 }
 }

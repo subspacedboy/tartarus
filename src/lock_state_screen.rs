@@ -59,6 +59,8 @@ impl ScreenState for LockstateScreen {
             }
         }
 
+        // TODO Add processing the commands via QR code.
+
         None
     }
 
@@ -89,6 +91,10 @@ impl ScreenState for LockstateScreen {
             }
             VerifiedType::AbortCommand(_) => {
                 lock_ctx.end_contract();
+                Ok(Some(0))
+            }
+            VerifiedType::ResetCommand(reset) => {
+                lock_ctx.full_reset(&reset);
                 Ok(Some(0))
             }
         }

@@ -1,9 +1,10 @@
 use crate::contract_generated::club::subjugated::fb::message::{
-    AbortCommand, Contract, LockCommand, MessagePayload, ReleaseCommand, UnlockCommand,
+    AbortCommand, Contract, LockCommand, MessagePayload, ReleaseCommand, ResetCommand,
+    UnlockCommand,
 };
 use crate::internal_contract::{
     InternalAbortCommand, InternalContract, InternalLockCommand, InternalReleaseCommand,
-    InternalUnlockCommand,
+    InternalResetCommand, InternalUnlockCommand,
 };
 // use aes_gcm::aes::cipher::crypto_common::Output;
 use p256::ecdsa::signature::Verifier;
@@ -22,6 +23,7 @@ pub enum VerifiedType {
     LockCommand(InternalLockCommand),
     ReleaseCommand(InternalReleaseCommand),
     AbortCommand(InternalAbortCommand),
+    ResetCommand(InternalResetCommand),
 }
 
 #[derive(Debug, Clone)]
@@ -48,7 +50,8 @@ impl_has_table!(
     UnlockCommand<'_>,
     LockCommand<'_>,
     ReleaseCommand<'_>,
-    AbortCommand<'_>
+    AbortCommand<'_>,
+    ResetCommand<'_>
 );
 
 pub trait HashTableBytes<T> {
@@ -99,6 +102,14 @@ impl SignedMessageVerifier {
             Ok(signed_msg) => {
                 log::info!("Signed message: {:?}", signed_msg);
 
+                /// There are two situations here.
+                /// 1) The message has an indicated authority, in which case that trumps everything.
+                /// The only situation that applies to as of writing this is an Abort or a Reset command
+                /// because it has to refer to a safety key.
+                ///
+                /// 2) A Contract command and the key we need to use is embedded in the first message.
+                /// Otherwise, it's a command that has to be signed by the key in the Contract we're
+                /// already under.
                 let verifying_key: Option<_> = if let Some(authority) =
                     signed_msg.authority_identifier()
                 {
@@ -171,7 +182,9 @@ impl SignedMessageVerifier {
                         return Err(VerificationError {
                             serial_number: 0,
                             counter: 0,
-                            message: "Signature bytes couldn't be parsed".to_string(),
+                            message:
+                                "Signature bytes couldn't be parsed. Needs to be RAW and not DER"
+                                    .to_string(),
                         });
                     }
                 };
@@ -351,6 +364,20 @@ impl SignedMessageVerifier {
                                 serial_number: abort.serial_number(),
                                 counter: abort.counter(),
                                 message: "Invalid signature on abort command".to_string(),
+                            }),
+                        }
+                    }
+                    MessagePayload::ResetCommand => {
+                        log::info!("Processing reset command");
+                        let reset = signed_msg.payload_as_reset_command().unwrap();
+
+                        let hash = reset.calculate_hash(&incoming_data);
+                        match verifying_key.unwrap().verify(&hash, &signature) {
+                            Ok(_) => Ok(VerifiedType::ResetCommand(reset.into())),
+                            Err(_) => Err(VerificationError {
+                                serial_number: reset.serial_number(),
+                                counter: 0,
+                                message: "Invalid reset command".to_string(),
                             }),
                         }
                     }
