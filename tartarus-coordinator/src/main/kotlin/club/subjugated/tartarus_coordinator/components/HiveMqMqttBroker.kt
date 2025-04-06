@@ -84,8 +84,10 @@ class AuthExtension(
 
             if(username.startsWith("b-")) {
                 val bot = botService.getByName(username)
-                output.authenticateSuccessfully()
-                return
+                if(bot.checkPassword(actualPassword)) {
+                    output.authenticateSuccessfully()
+                    return
+                }
             }
 
             if(isLockUser(username)) {

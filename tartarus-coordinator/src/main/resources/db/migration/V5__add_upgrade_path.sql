@@ -9,3 +9,6 @@ create table firmware_upgrade_path (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE INDEX idx_from_version ON firmware_upgrade_path (from_version);
+
+ALTER TABLE bot ADD COLUMN password varchar(64) NOT NULL AFTER public_key;
+ALTER TABLE bot ADD COLUMN salt varchar(32) NOT NULL AFTER password;

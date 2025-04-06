@@ -12,11 +12,7 @@ import club.subjugated.fb.bots.GetContractRequest
 import club.subjugated.fb.bots.GetContractResponse
 import club.subjugated.fb.bots.GetLockSessionRequest
 import club.subjugated.fb.bots.GetLockSessionResponse
-//import club.subjugated.fb.bots.GetContractRequest
-//import club.subjugated.fb.bots.GetContractResponse
 import club.subjugated.fb.bots.MessagePayload
-import club.subjugated.fb.message.Contract
-import club.subjugated.tartarus_coordinator.api.ContractController
 import club.subjugated.tartarus_coordinator.api.messages.NewContractMessage
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
 import club.subjugated.tartarus_coordinator.services.BotService
@@ -25,7 +21,6 @@ import club.subjugated.tartarus_coordinator.services.LockSessionService
 import club.subjugated.tartarus_coordinator.util.ValidatedPayload
 import club.subjugated.tartarus_coordinator.util.encodePublicKeySecp1
 import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromCompressedKeyByteArray
-import club.subjugated.tartarus_coordinator.util.loadECPublicKeyFromPkcs8
 import club.subjugated.tartarus_coordinator.util.signedMessageBytesValidator
 import com.google.flatbuffers.FlatBufferBuilder
 import com.google.flatbuffers.Table
@@ -41,8 +36,6 @@ class ResponseBuilderContext<T>(
 
 @Controller
 class BotApiController {
-//    @Autowired
-//    lateinit var contractController: ContractController
     @Autowired
     lateinit var contractService: ContractService
     @Autowired

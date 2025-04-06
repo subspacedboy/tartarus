@@ -10,6 +10,7 @@ import java.security.interfaces.ECPublicKey
 import java.security.spec.*
 import org.bouncycastle.asn1.sec.SECNamedCurves
 import org.bouncycastle.asn1.x9.X9ECParameters
+import org.bouncycastle.crypto.generators.SCrypt
 import org.bouncycastle.crypto.signers.StandardDSAEncoding
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -206,4 +207,14 @@ fun derToRawSignature(derSig: ByteArray, outputLength: Int = 64): ByteArray {
     }
 
     return bigIntToFixedBytes(r) + bigIntToFixedBytes(s)
+}
+
+fun generateSalt(): ByteArray {
+    val salt = ByteArray(16)
+    SecureRandom().nextBytes(salt)
+    return salt
+}
+
+fun runSCryptWithCommonParams(input : ByteArray, salt : ByteArray) : ByteArray {
+    return SCrypt.generate(input, salt, 16384, 8, 1, 32)
 }

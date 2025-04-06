@@ -7,7 +7,8 @@ import picocli.CommandLine
     name = "tartarus",
     subcommands = [
         AddAdminKeyCommand::class,
-//        ListUsersCli::class
+        AddFirmwareImage::class,
+        MakePasswordsForBots::class
     ],
     description = ["Tartarus CLI entry point"]
 )

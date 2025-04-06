@@ -24,7 +24,7 @@ def has_callable(obj, method_name):
     return hasattr(obj, method_name) and callable(getattr(obj, method_name))
 
 class AsyncTartarusClient:
-    def __init__(self, bot_name, broker, port, websocket_path="/mqtt", callback_obj=None, require_tls=False):
+    def __init__(self, bot_name, password, broker, port, websocket_path="/mqtt", callback_obj=None, require_tls=False):
         self.broker = broker
         self.port = port
         self.bot_name = bot_name
@@ -32,8 +32,7 @@ class AsyncTartarusClient:
             client_id=f"{bot_name}",
             transport="websockets",)
         self.client.username = self.bot_name
-        nonce = os.urandom(32)
-        self.client.password = str(base64.b64encode(signer.sign(nonce)))
+        self.client.password = password
         self.client.keepalive = 30
 
         self.client.ws_set_options(path=websocket_path)
@@ -312,6 +311,7 @@ async def main():
     # bot_name = "b-JKSMF9G" # Production bot name
 
     bot_name = "b-42R6AGO" # Local development
+    password = "V24S25R6SJQERMRX"
 
     # make_create_contract_request(args.shareableToken, "b-42R6AGO")
     # make_get_lock_session_request(bot_name, args.shareableToken)
@@ -319,7 +319,7 @@ async def main():
     timer = TimerBot(bot_name=bot_name, work_dir="/tmp/workspace")
 
     try:
-        client = AsyncTartarusClient(bot_name=bot_name, broker="localhost", port=4447, callback_obj=timer)
+        client = AsyncTartarusClient(bot_name=bot_name, password=password, broker="localhost", port=4447, callback_obj=timer)
         # client = AsyncTartarusClient(bot_name=bot_name, broker="tartarus-mqtt.subjugated.club", port=4447, callback_obj=timer, require_tls=True)
         timer.tartarus = client
         asyncio.create_task(call_timer_method(timer, args.shareableToken))

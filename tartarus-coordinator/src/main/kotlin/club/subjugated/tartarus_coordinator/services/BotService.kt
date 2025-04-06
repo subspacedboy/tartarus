@@ -5,8 +5,11 @@ import club.subjugated.tartarus_coordinator.models.Bot
 import club.subjugated.tartarus_coordinator.models.BotState
 import club.subjugated.tartarus_coordinator.storage.BotRepository
 import club.subjugated.tartarus_coordinator.util.TimeSource
+import club.subjugated.tartarus_coordinator.util.generateSalt
 import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromCompressedKeyByteArray
 import org.bouncycastle.crypto.CryptoException
+import org.bouncycastle.crypto.generators.SCrypt
+import org.bouncycastle.util.encoders.Base32
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import java.util.*
@@ -31,6 +34,7 @@ class BotService {
             createdAt = timeSource.nowInUtc(),
             updatedAt = timeSource.nowInUtc()
         )
+        bot.generatePassword()
         botRepository.save(bot)
 
         return bot
