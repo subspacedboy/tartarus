@@ -26,9 +26,11 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
 import java.nio.charset.StandardCharsets
+import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.nio.file.StandardCopyOption
 import java.util.*
 
 fun isLockUser(username: String?): Boolean {
@@ -183,6 +185,9 @@ class AuthExtension(
     }
 }
 
+/**
+ * HiveMQ broker component for managing the lifecycle of the embedded HiveMQ instance.
+ */
 @Component
 @Profile("!cli")
 class HiveMqMqttBroker(
@@ -213,11 +218,7 @@ class HiveMqMqttBroker(
             .withExtensionMain(AuthExtension(internalPassword.toString(), botService))
             .build()
 
-        val classLoader = Thread.currentThread().contextClassLoader
-        val resourceDir = configDirectory
-        val resource = classLoader.getResource(resourceDir) ?: error("Config dir not found")
-        val uri = resource.toURI()
-        val sourcePath = Path.of(uri)
+        val pathToConfig = extractResourceDir(configDirectory)
 
         Files.createDirectories(Paths.get(dataDirectory))
 
@@ -225,7 +226,7 @@ class HiveMqMqttBroker(
             .withDataFolder(Path.of(dataDirectory)) // Specify the data folder for persistence
             .withoutLoggingBootstrap()
             .withEmbeddedExtension(embeddedExtension)
-            .withConfigurationFolder(sourcePath)
+            .withConfigurationFolder(pathToConfig)
             .build()
 
         println("💬 (HiveMQ) Started")
@@ -233,6 +234,48 @@ class HiveMqMqttBroker(
         // If we don't wait for this there's no guarantee the listeners will be setup
         // by the time we need to connect.
         hiveMQ.start().join()
+    }
+
+    /**
+     * HiveMQ can't read its configuration when it's packed inside a jar file. This will make
+     * a temporary directory and extract the contents there and return the path to that directory.
+     */
+    private fun extractResourceDir(resourceDir: String): Path {
+        val tempDir = Files.createTempDirectory("hivemq-config")
+
+        val classLoader = Thread.currentThread().contextClassLoader
+        val resource = classLoader.getResource(resourceDir)
+            ?: error("Resource directory not found: $resourceDir")
+
+        val uri = resource.toURI()
+
+        if (uri.scheme == "jar") {
+            // Walk inside the JAR and copy to temp
+            val fs = FileSystems.newFileSystem(uri, mapOf<String, Any>())
+            val jarPath = fs.getPath("/$resourceDir")
+
+            Files.walk(jarPath).forEach { path ->
+                val dest = tempDir.resolve(jarPath.relativize(path).toString())
+                if (Files.isDirectory(path)) {
+                    Files.createDirectories(dest)
+                } else {
+                    Files.copy(path, dest, StandardCopyOption.REPLACE_EXISTING)
+                }
+            }
+        } else {
+            // Resource is on the real filesystem already
+            val srcPath = Path.of(uri)
+            Files.walk(srcPath).forEach { path ->
+                val dest = tempDir.resolve(srcPath.relativize(path).toString())
+                if (Files.isDirectory(path)) {
+                    Files.createDirectories(dest)
+                } else {
+                    Files.copy(path, dest, StandardCopyOption.REPLACE_EXISTING)
+                }
+            }
+        }
+
+        return tempDir
     }
 
     @PreDestroy
