@@ -48,7 +48,6 @@ impl ScreenState for QrCodeScreen {
                     } else {
                         log::info!("Configuration cannot be changed while under contract.");
                     }
-
                 } else {
                     let verifier = SignedMessageVerifier::new();
 

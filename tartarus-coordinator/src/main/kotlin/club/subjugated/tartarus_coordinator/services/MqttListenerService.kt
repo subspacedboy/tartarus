@@ -21,26 +21,39 @@ import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Profile
 import org.springframework.context.event.EventListener
+import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionTemplate
 import java.util.concurrent.ScheduledExecutorService
 
+@Component
+class InternalMqttClient {
+    private val clientId: String = "internal"
+    @Value("\${tartarus.hivemq.local_tcp_port}") val localTcpPort: Long = 0
+
+    private fun brokerUrl() : String {
+        return "tcp://localhost:${localTcpPort}"
+    }
+
+    @Bean
+    fun mqttClient() : MqttClient {
+        return MqttClient(brokerUrl(), clientId, null)
+    }
+}
+
 @Service
 @Transactional
 @Profile("!cli")
 class MqttListenerService(private val transactionManager: PlatformTransactionManager) {
-    private val clientId: String = "internal"
-
-    @Value("\${tartarus.hivemq.local_tcp_port}") val localTcpPort: Long = 0
-
     private val lockUpdateTopic: String = "locks/updates"
 
     private val transactionTemplate = TransactionTemplate(transactionManager)
-    private val client: MqttClient = MqttClient(brokerUrl(), clientId, null)
+    @Autowired lateinit var client: MqttClient
 
     private val liveClients: Cache<String, String> =
         Caffeine.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(10_000).build()
@@ -59,6 +72,9 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
 
     private val botExecutorWatchdogService = Executors.newSingleThreadScheduledExecutor()
 
+    @Value("\${tartarus.hivemq.local_tcp_port}") val localTcpPort: Long = 0
+
+    // TODO Remove this duped brokerUrl and consolidate the client code. Main lock updates should also have watchdog
     private fun brokerUrl() : String {
         return "tcp://localhost:${localTcpPort}"
     }
@@ -216,10 +232,6 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
         val lockSession = lockSessionService.createLockSession(nlsm)
         lockSessionService.saveLockSession(lockSession)
 
-//        val commands =
-//            this.commandQueueService.getPendingCommandsForSession(
-//                lockSession
-//            )
         val commands = lockSession.commandQueue.first().commands.filter { it.state == CommandState.PENDING }
 
         for (command in commands) {
