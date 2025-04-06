@@ -41,9 +41,14 @@ impl ScreenState for QrCodeScreen {
             if let Some(qr_data) = &update.qr_data {
                 //Maybe it's config data.
                 if let Ok(config) = ConfigVerifier::read_configuration(qr_data.clone()) {
-                    lock_ctx.save_configuration(&config);
-                    self.configuration_changed = true;
-                    self.needs_redraw = true;
+                    if lock_ctx.contract.is_none() {
+                        lock_ctx.save_configuration(&config);
+                        self.configuration_changed = true;
+                        self.needs_redraw = true;
+                    } else {
+                        log::info!("Configuration cannot be changed while under contract.");
+                    }
+
                 } else {
                     let verifier = SignedMessageVerifier::new();
 
@@ -144,10 +149,6 @@ impl ScreenState for QrCodeScreen {
 
         self.needs_redraw = false;
     }
-
-    // fn get_id(&self) -> ScreenId {
-    //     ScreenId::Boot
-    // }
 
     fn needs_redraw(&self) -> bool {
         self.needs_redraw

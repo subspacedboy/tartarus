@@ -51,7 +51,7 @@ use esp_idf_hal::units::KiloHertz;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::hal::delay;
 use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs, NvsDefault};
-use esp_idf_svc::sys::esp_random;
+use esp_idf_svc::sys::{esp_efuse_desc_t, esp_efuse_read_field_bit, esp_random};
 
 use crate::lock_ctx::{LockCtx, TickUpdate};
 
@@ -236,6 +236,11 @@ fn main() {
 
     let servo = Servo::new(driver);
 
+    // Checking eFuses
+
+    log::info!("JTAG disabled: {}", is_jtag_disabled());
+    log::info!("USB download disabled: {}", is_usb_download_disabled());
+
     log::info!("Initializing code reader");
     const READER_ADDRESS: u8 = 0x0c;
 
@@ -294,4 +299,16 @@ fn main() {
 
         // continue; // keep optimizer from removing in --release
     }
+}
+
+fn is_jtag_disabled() -> bool {
+    const JTAG_DISABLE_BIT: u32 = 1 << 24;
+    let val = unsafe { core::ptr::read_volatile(0x6001A008 as *const u32) };
+    (val & JTAG_DISABLE_BIT) != 0
+}
+
+fn is_usb_download_disabled() -> bool {
+    const USB_DISABLE_BIT: u32 = 1 << 11;
+    let val = unsafe { core::ptr::read_volatile(0x6001A008 as *const u32) };
+    (val & USB_DISABLE_BIT) != 0
 }
