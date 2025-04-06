@@ -26,7 +26,9 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.Paths
 import java.util.*
 
 fun isLockUser(username: String?): Boolean {
@@ -191,6 +193,8 @@ class HiveMqMqttBroker(
     private final val internalPassword: UUID = UUID.randomUUID()
 
     @Value("\${tartarus.mqtt_ws_port}") val wsPortNumber: Long = 0
+    @Value("\${tartarus.hivemq.config_directory}") val configDirectory: String = ""
+    @Value("\${tartarus.hivemq.data_directory}") val dataDirectory: String = ""
 
     @Bean
     fun internalMqttSubscriberPassword() : String {
@@ -210,13 +214,15 @@ class HiveMqMqttBroker(
             .build()
 
         val classLoader = Thread.currentThread().contextClassLoader
-        val resourceDir = "hivemq_config"
+        val resourceDir = configDirectory
         val resource = classLoader.getResource(resourceDir) ?: error("Config dir not found")
         val uri = resource.toURI()
         val sourcePath = Path.of(uri)
 
+        Files.createDirectories(Paths.get(dataDirectory))
+
         hiveMQ = EmbeddedHiveMQBuilder.builder()
-            .withDataFolder(Path.of("/tmp/hivemq-data")) // Specify the data folder for persistence
+            .withDataFolder(Path.of(dataDirectory)) // Specify the data folder for persistence
             .withoutLoggingBootstrap()
             .withEmbeddedExtension(embeddedExtension)
             .withConfigurationFolder(sourcePath)

@@ -22,7 +22,6 @@ java { toolchain { languageVersion = JavaLanguageVersion.of(21) } }
 
 repositories {
     mavenCentral()
-    maven { url = uri("https://jitpack.io") }
 }
 
 extra["springAiVersion"] = "1.0.0-M6"
@@ -106,4 +105,36 @@ tasks.getByName<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar
     this.archiveFileName.set(
         "${archiveBaseName.get()}-${formatter.format(today)}.${archiveExtension.get()}"
     )
+}
+
+val integrationTest: SourceSet = sourceSets.create("integrationTest") {
+    java {
+        compileClasspath += sourceSets.main.get().output + sourceSets.test.get().output
+        runtimeClasspath += sourceSets.main.get().output + sourceSets.test.get().output
+        srcDir("src/integrationTest/kotlin")
+    }
+
+    resources.srcDir("src/integrationTest/resources")
+}
+
+configurations[integrationTest.implementationConfigurationName].extendsFrom(configurations.testImplementation.get())
+configurations[integrationTest.runtimeOnlyConfigurationName].extendsFrom(configurations.testRuntimeOnly.get())
+
+val integrationTestTask = tasks.register<Test>("integrationTest") {
+    group = "verification"
+
+    useJUnitPlatform()
+
+    testClassesDirs = integrationTest.output.classesDirs
+    classpath = sourceSets["integrationTest"].runtimeClasspath
+
+    shouldRunAfter("test")
+}
+
+tasks.check {
+    dependsOn(integrationTestTask)
+}
+
+tasks.named<Copy>("processIntegrationTestResources") {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }

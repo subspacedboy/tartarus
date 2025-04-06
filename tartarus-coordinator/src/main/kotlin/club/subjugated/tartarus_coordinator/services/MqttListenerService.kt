@@ -20,6 +20,7 @@ import org.eclipse.paho.client.mqttv3.MqttClient
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Profile
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
@@ -32,13 +33,14 @@ import java.util.concurrent.ScheduledExecutorService
 @Transactional
 @Profile("!cli")
 class MqttListenerService(private val transactionManager: PlatformTransactionManager) {
-    private val brokerUrl: String = "tcp://localhost:1883"
     private val clientId: String = "internal"
+
+    @Value("\${tartarus.hivemq.local_tcp_port}") val localTcpPort: Long = 0
 
     private val lockUpdateTopic: String = "locks/updates"
 
     private val transactionTemplate = TransactionTemplate(transactionManager)
-    private val client: MqttClient = MqttClient(brokerUrl, clientId, null)
+    private val client: MqttClient = MqttClient(brokerUrl(), clientId, null)
 
     private val liveClients: Cache<String, String> =
         Caffeine.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(10_000).build()
@@ -57,9 +59,13 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
 
     private val botExecutorWatchdogService = Executors.newSingleThreadScheduledExecutor()
 
+    private fun brokerUrl() : String {
+        return "tcp://localhost:${localTcpPort}"
+    }
+
     fun createBotApiExecutor(): ScheduledExecutorService {
         return Executors.newSingleThreadScheduledExecutor().apply {
-            val client = MqttClient(brokerUrl, "bot_processor", null)
+            val client = MqttClient(brokerUrl(), "bot_processor", null)
             val options =
                 MqttConnectOptions().apply {
                     isCleanSession = false

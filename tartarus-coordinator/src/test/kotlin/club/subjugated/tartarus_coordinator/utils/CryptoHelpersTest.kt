@@ -3,10 +3,12 @@ package club.subjugated.tartarus_coordinator.utils
 import club.subjugated.tartarus_coordinator.util.encodePublicKey
 import club.subjugated.tartarus_coordinator.util.encodePublicKeySecp1
 import club.subjugated.tartarus_coordinator.util.generateECKeyPair
+import club.subjugated.tartarus_coordinator.util.generateSalt
 import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromCompressedKeyByteArray
 import club.subjugated.tartarus_coordinator.util.getPemEncoding
 import club.subjugated.tartarus_coordinator.util.loadECPublicKeyFromPem
 import club.subjugated.tartarus_coordinator.util.loadECPublicKeyFromPkcs8
+import club.subjugated.tartarus_coordinator.util.runSCryptWithCommonParams
 import org.assertj.core.api.Assertions.assertThat
 import org.bouncycastle.jce.interfaces.ECPrivateKey
 import org.bouncycastle.jce.interfaces.ECPublicKey
@@ -69,6 +71,22 @@ class CryptoHelpersTest {
         assertThat(keypair).isNotNull()
         assertThat(keypair.private).isInstanceOf(ECPrivateKey::class.java)
         assertThat(keypair.public).isInstanceOf(ECPublicKey::class.java)
+    }
+
+    @Test
+    fun testSaltSize() {
+        val salt = generateSalt()
+        assertThat(salt.size).isEqualTo(16)
+    }
+
+    @Test
+    fun testSCrypt() {
+        val salt = Base64.getDecoder().decode("ja9Dm4yrJmASnjaWAgZu/Q==")
+        val expected = "HwqpXm6IHaDND62d3FX0H2XFFFrln+iQTZwF8s1AJwM="
+        val password = "secret".toByteArray()
+
+        val derived = runSCryptWithCommonParams(password, salt)
+        assertThat(Base64.getEncoder().encodeToString(derived)).isEqualTo(expected)
     }
 
     companion object {
