@@ -54,7 +54,7 @@ export class AppComponent implements OnInit {
   }
 
   private updateSessionStatus() {
-    this.hasLockSessions = this.userData.hasLockSessions();
+    this.hasLockSessions = this.userData.hasLockUserSession();
     this.hasAuthorSession = this.userData.hasAuthorSession();
   }
 }

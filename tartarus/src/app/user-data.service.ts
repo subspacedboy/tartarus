@@ -26,10 +26,6 @@ export class UserDataService {
     return JSON.parse(localStorage.getItem(key) || '[]');
   }
 
-  hasLockSessions(): boolean {
-    return this.getLockSessions().length > 0;
-  }
-
   hasLockUserSessionKeyPair() {
     return localStorage.getItem("lock_user_private_pem") !== null;
   }
@@ -80,6 +76,16 @@ export class UserDataService {
 
     localStorage.removeItem('has_author_session');
     localStorage.removeItem('author_session_token');
+  }
+
+  logoutLockUserSession() {
+    localStorage.removeItem('lock_user_private_pem');
+    localStorage.removeItem('lock_user_public_pem');
+
+    localStorage.removeItem('has_lock_user_session');
+    localStorage.removeItem('lock_user_session_token');
+
+    localStorage.removeItem('lock_sessions');
   }
 
   getAuthorName() : string {

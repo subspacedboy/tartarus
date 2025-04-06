@@ -19,6 +19,7 @@ import {AdminContractsComponent} from './admin/admin-contracts/admin-contracts.c
 import {AdminContractDetailComponent} from './admin/admin-contract-detail/admin-contract-detail.component';
 import {AdminAddFirmwareComponent} from "./admin/admin-add-firmware/admin-add-firmware.component";
 import {adminGuard} from "./admin.guard";
+import {LogoutLockUserComponent} from "./logout-lock-user/logout-lock-user.component";
 
 export const routes: Routes = [
   {
@@ -45,6 +46,10 @@ export const routes: Routes = [
   {
     path: 'logout-author',
     component: LogoutAuthorComponent
+  },
+  {
+    path: 'logout-lock-user',
+    component: LogoutLockUserComponent
   },
   {
     path: 'lock-sessions',

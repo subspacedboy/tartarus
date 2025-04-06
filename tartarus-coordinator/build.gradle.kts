@@ -49,13 +49,12 @@ dependencies {
 
     implementation("com.google.flatbuffers:flatbuffers-java:24.3.25")
 
-    // https://mvnrepository.com/artifact/io.moquette/moquette-broker
-//    implementation("io.moquette:moquette-broker:0.17") {
-//        exclude(group = "org.slf4j", module = "slf4j-reload4j")
-//    }
-    implementation("com.github.moquette-io.moquette:distribution:v0.18.0") {
-        exclude(group = "org.slf4j", module = "slf4j-reload4j")
-    }
+    // HiveMQ and some ancient jaxb implementations...
+    implementation("com.hivemq:hivemq-community-edition-embedded:2025.2")
+    implementation("javax.xml.bind:jaxb-api:2.3.1")
+    implementation("org.glassfish.jaxb:jaxb-runtime:4.0.5")
+    implementation("com.sun.xml.bind:jaxb-impl:2.3.4")
+    implementation("jakarta.xml.bind:jakarta.xml.bind-api:4.0.2")
 
     implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
     implementation("org.bouncycastle:bcprov-jdk18on:1.80")

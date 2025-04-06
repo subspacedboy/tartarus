@@ -140,8 +140,8 @@ impl LockCtx {
 
         // This must come after key loading because we're announcing to the coordinator with our
         // public key.
-        if let Ok(connected) = lck.wifi.is_connected() {
-            lck.wifi_connected = connected;
+        if lck.wifi.is_connected().unwrap() && lck.wifi.is_up().unwrap() {
+            lck.wifi_connected = true;
 
             // Start MQTT service
             let mqtt_service =
@@ -594,6 +594,8 @@ impl LockCtx {
                 log::info!("Connected!");
                 self.wifi_connected = true;
                 connected = true;
+
+                // TODO start mqtt or just reset?
 
                 self.nvs.set_blob("ssid", ssid.as_bytes()).unwrap();
                 self.nvs.set_blob("password", password.as_bytes()).unwrap();

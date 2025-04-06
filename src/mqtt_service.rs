@@ -142,6 +142,7 @@ impl MqttService {
 
         let config = MqttClientConfiguration::<'_> {
             client_id: Some(self.session_token.as_ref()),
+            disable_clean_session: true,
             network_timeout: Duration::from_secs(5),
             // Password is not used. Just needs a value.
             password: Some("tartarus"),

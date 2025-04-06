@@ -1,8 +1,10 @@
 import asyncio
 import argparse
+import base64
 import ssl
 import paho.mqtt.client as mqtt
 import random
+import os
 from datetime import datetime, timedelta, timezone
 import traceback
 
@@ -27,9 +29,11 @@ class AsyncTartarusClient:
         self.port = port
         self.bot_name = bot_name
         self.client = mqtt.Client(
-            client_id=f"bot-{bot_name}",
+            client_id=f"{bot_name}",
             transport="websockets",)
         self.client.username = self.bot_name
+        nonce = os.urandom(32)
+        self.client.password = str(base64.b64encode(signer.sign(nonce)))
         self.client.keepalive = 30
 
         self.client.ws_set_options(path=websocket_path)

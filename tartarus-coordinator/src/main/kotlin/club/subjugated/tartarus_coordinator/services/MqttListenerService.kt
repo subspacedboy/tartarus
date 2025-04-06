@@ -5,7 +5,6 @@ import club.subjugated.fb.message.firmware.FirmwareMessage
 import club.subjugated.tartarus_coordinator.api.bots.BotApiController
 import club.subjugated.tartarus_coordinator.api.firmware.FirmwareApiController
 import club.subjugated.tartarus_coordinator.api.messages.NewLockSessionMessage
-import club.subjugated.tartarus_coordinator.components.CustomMqttSecurity
 import club.subjugated.tartarus_coordinator.events.NewCommandEvent
 import club.subjugated.tartarus_coordinator.models.CommandState
 import club.subjugated.tartarus_coordinator.util.*
@@ -34,7 +33,7 @@ import java.util.concurrent.ScheduledExecutorService
 @Profile("!cli")
 class MqttListenerService(private val transactionManager: PlatformTransactionManager) {
     private val brokerUrl: String = "tcp://localhost:1883"
-    private val clientId: String = "InternalSubscriber"
+    private val clientId: String = "internal"
 
     private val lockUpdateTopic: String = "locks/updates"
 
@@ -47,13 +46,12 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
     @Autowired lateinit var lockSessionService: LockSessionService
     @Autowired lateinit var commandQueueService: CommandQueueService
     @Autowired lateinit var configurationService: ConfigurationService
-//    @Autowired lateinit var contractService: ContractService
     @Autowired lateinit var firmwareService: FirmwareService
 
     @Autowired lateinit var botApiController: BotApiController
     @Autowired lateinit var firmwareApiController: FirmwareApiController
 
-    @Autowired lateinit var security: CustomMqttSecurity
+    @Autowired lateinit var internalMqttSubscriberPassword : String
 
     private val executorService = Executors.newSingleThreadExecutor()
 
@@ -64,9 +62,9 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
             val client = MqttClient(brokerUrl, "bot_processor", null)
             val options =
                 MqttConnectOptions().apply {
-                    isCleanSession = true
-                    userName = "internal"
-                    password = security.passAsString.toCharArray()
+                    isCleanSession = false
+                    userName = "bot_processor"
+                    password = internalMqttSubscriberPassword.toCharArray()
                 }
 
             client.connect(options)
@@ -104,9 +102,9 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
         executorService.submit {
             val options =
                 MqttConnectOptions().apply {
-                    isCleanSession = true
+                    isCleanSession = false
                     userName = "internal"
-                    password = security.passAsString.toCharArray()
+                    password = internalMqttSubscriberPassword.toCharArray()
                 }
 
             client.connect(options)
@@ -155,6 +153,9 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                             }
                             is ValidatedPayload.ErrorPayload -> {
                                 handleErrorPayload(signedMessage)
+                            }
+                            is ValidatedPayload.UnknownPayload -> {
+                                println("‼️ Unknown payload received.")
                             }
                             else -> TODO()
                         }
