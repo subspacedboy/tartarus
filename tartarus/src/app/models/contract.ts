@@ -13,6 +13,7 @@ export class Contract {
   nextCounter?: number;
   serialNumber?: number;
   lockState?: LockState;
+  lockLastUpdate?: Date | null;
   notes?: string;
   messages?: Message[];
 

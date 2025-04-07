@@ -26,6 +26,7 @@ class Contract(
     var nextCounter: Int = 0,
     var serialNumber: Int = 0,
     @Transient var lockState: Boolean? = null,
+    @Transient @JsonFormat(shape = JsonFormat.Shape.STRING) var lockLastUpdate: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
 ) {

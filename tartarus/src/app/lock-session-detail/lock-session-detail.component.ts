@@ -7,14 +7,16 @@ import {Contract} from '../models/contract';
 import {ContractCardComponent} from '../contract-card/contract-card.component';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {ToastService} from '../toast.service';
+import {DateAgoPipe} from "../date-ago.pipe";
 
 @Component({
   selector: 'app-lock-session-detail',
-  imports: [
-    RouterLink,
-    ContractCardComponent,
-    ReactiveFormsModule
-  ],
+    imports: [
+        RouterLink,
+        ContractCardComponent,
+        ReactiveFormsModule,
+        DateAgoPipe
+    ],
   templateUrl: './lock-session-detail.component.html',
   styleUrl: './lock-session-detail.component.scss'
 })

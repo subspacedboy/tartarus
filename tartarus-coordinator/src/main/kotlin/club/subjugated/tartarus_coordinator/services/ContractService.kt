@@ -231,6 +231,7 @@ class ContractService {
         val contract = this.contractRepository.findByName(name)
         if(contract.state == ContractState.CONFIRMED) {
             contract.lockState = contract.lockSession.isLocked
+            contract.lockLastUpdate = contract.lockSession.updatedAt
         }
         return contract
     }

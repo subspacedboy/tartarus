@@ -13,6 +13,7 @@
     <div class="alert alert-warning">
       <h4 class="alert-heading">Stale!</h4>
       <p class="mb-0">Heads up! This lock session hasn't updated for over a day. It might not be online or it's been reset.</p>
+        <p>Last update {{lockSession.updatedAt | dateAgo}}</p>
     </div>
   }
 

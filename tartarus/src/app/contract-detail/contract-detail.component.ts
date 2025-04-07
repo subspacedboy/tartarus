@@ -14,12 +14,14 @@ import {WebsocketService} from '../websocket.service';
 import {Command} from '../models/command';
 import {CommandCardComponent} from '../command-card/command-card.component';
 import {ToastService} from '../toast.service';
+import {DateAgoPipe} from "../date-ago.pipe";
 
 @Component({
   selector: 'app-contract-detail',
-  imports: [
-    CommandCardComponent
-  ],
+    imports: [
+        CommandCardComponent,
+        DateAgoPipe
+    ],
   templateUrl: './contract-detail.component.html',
   styleUrl: './contract-detail.component.scss'
 })
