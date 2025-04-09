@@ -236,6 +236,12 @@ class ContractService {
         return contract
     }
 
+    fun getByNameForBot(name : String, botName : String) : Contract {
+        val contract = this.contractRepository.findByName(name)
+        assert(contract.getEmbeddedBots().filter { it.name == botName }.isNotEmpty())
+        return contract
+    }
+
     fun addMessageForBot(message: String, bot : Bot, contract: Contract) {
         val contractMessage = Message(
             body = message,

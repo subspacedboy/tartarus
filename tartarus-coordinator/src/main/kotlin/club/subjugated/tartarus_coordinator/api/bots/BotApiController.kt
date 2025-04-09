@@ -197,17 +197,19 @@ class BotApiController {
 
         val authorSession = authorSessionService.getSessionForBot(reencode)
 
-        val lockSession =
-            this.lockSessionService.findByShareableToken(createCommandRequest.shareableToken!!)
+        val contract = contractService.getByNameForBot(createCommandRequest.contractName!!, botName)
 
-        val contract = this.contractService.getByNameForAuthor(createCommandRequest.contractName!!)
+//        val lockSession =
+//            this.lockSessionService.findByShareableToken(createCommandRequest.shareableToken!!)
+
+//        val contract = this.contractService.getByNameForAuthor(createCommandRequest.contractName!!)
 
         val commandBytes =
             ByteArray(createCommandRequest.commandBodyLength) { createCommandRequest.commandBody(it).toByte() }
 
         this.contractService.saveCommand(
             authorSession,
-            lockSession!!,
+            contract.lockSession,
             contract,
             Base64.getEncoder().encodeToString(commandBytes),
         )
