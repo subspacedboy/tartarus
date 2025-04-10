@@ -188,7 +188,6 @@ impl From<ResetCommand<'_>> for InternalResetCommand {
 
 pub mod verifying_key_serde {
     use p256::ecdsa::VerifyingKey;
-    use p256::EncodedPoint;
     use serde::de::Error;
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -196,11 +195,12 @@ pub mod verifying_key_serde {
     where
         S: Serializer,
     {
-        if let Some(key) = key {
-            let bytes = key.to_encoded_point(true).as_bytes().to_vec(); // Serialize as compressed SEC1
-            Ok(bytes.serialize(serializer)?)
-        } else {
-            serializer.serialize_none()
+        match key {
+            Some(k) => {
+                let bytes = k.to_encoded_point(true);
+                serializer.serialize_some(bytes.as_bytes())
+            }
+            None => serializer.serialize_none(),
         }
     }
 
@@ -208,9 +208,13 @@ pub mod verifying_key_serde {
     where
         D: Deserializer<'de>,
     {
-        let bytes: Vec<u8> = Deserialize::deserialize(deserializer)?;
-        let encoded_point = EncodedPoint::from_bytes(&bytes).map_err(D::Error::custom)?;
-        let vk = VerifyingKey::from_encoded_point(&encoded_point).map_err(D::Error::custom)?;
-        Ok(Some(vk))
+        let maybe_bytes: Option<Vec<u8>> = Option::deserialize(deserializer)?;
+        match maybe_bytes {
+            Some(bytes) => {
+                let key = VerifyingKey::from_sec1_bytes(&bytes).map_err(D::Error::custom)?;
+                Ok(Some(key))
+            }
+            None => Ok(None),
+        }
     }
 }

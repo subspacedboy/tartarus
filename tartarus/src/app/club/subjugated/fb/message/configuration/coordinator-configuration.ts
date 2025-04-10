@@ -68,8 +68,43 @@ enableResetCommand():boolean {
   return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
 }
 
+disableSafetyKeys():boolean {
+  const offset = this.bb!.__offset(this.bb_pos, 16);
+  return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
+}
+
+enableAuxiliarySafetyKeys():boolean {
+  const offset = this.bb!.__offset(this.bb_pos, 18);
+  return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
+}
+
+auxiliarySafetyKeys(index: number, obj?:Key):Key|null {
+  const offset = this.bb!.__offset(this.bb_pos, 20);
+  return offset ? (obj || new Key()).__init(this.bb!.__indirect(this.bb!.__vector(this.bb_pos + offset) + index * 4), this.bb!) : null;
+}
+
+auxiliarySafetyKeysLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 20);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+loginTokenPublicKey(index: number):number|null {
+  const offset = this.bb!.__offset(this.bb_pos, 22);
+  return offset ? this.bb!.readInt8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
+}
+
+loginTokenPublicKeyLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 22);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+loginTokenPublicKeyArray():Int8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 22);
+  return offset ? new Int8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
+}
+
 static startCoordinatorConfiguration(builder:flatbuffers.Builder) {
-  builder.startObject(6);
+  builder.startObject(10);
 }
 
 static addWebUri(builder:flatbuffers.Builder, webUriOffset:flatbuffers.Offset) {
@@ -108,6 +143,51 @@ static addEnableResetCommand(builder:flatbuffers.Builder, enableResetCommand:boo
   builder.addFieldInt8(5, +enableResetCommand, +false);
 }
 
+static addDisableSafetyKeys(builder:flatbuffers.Builder, disableSafetyKeys:boolean) {
+  builder.addFieldInt8(6, +disableSafetyKeys, +false);
+}
+
+static addEnableAuxiliarySafetyKeys(builder:flatbuffers.Builder, enableAuxiliarySafetyKeys:boolean) {
+  builder.addFieldInt8(7, +enableAuxiliarySafetyKeys, +false);
+}
+
+static addAuxiliarySafetyKeys(builder:flatbuffers.Builder, auxiliarySafetyKeysOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(8, auxiliarySafetyKeysOffset, 0);
+}
+
+static createAuxiliarySafetyKeysVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
+  builder.startVector(4, data.length, 4);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addOffset(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startAuxiliarySafetyKeysVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(4, numElems, 4);
+}
+
+static addLoginTokenPublicKey(builder:flatbuffers.Builder, loginTokenPublicKeyOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(9, loginTokenPublicKeyOffset, 0);
+}
+
+static createLoginTokenPublicKeyVector(builder:flatbuffers.Builder, data:number[]|Int8Array):flatbuffers.Offset;
+/**
+ * @deprecated This Uint8Array overload will be removed in the future.
+ */
+static createLoginTokenPublicKeyVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset;
+static createLoginTokenPublicKeyVector(builder:flatbuffers.Builder, data:number[]|Int8Array|Uint8Array):flatbuffers.Offset {
+  builder.startVector(1, data.length, 1);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addInt8(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startLoginTokenPublicKeyVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(1, numElems, 1);
+}
+
 static endCoordinatorConfiguration(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   return offset;
@@ -121,7 +201,7 @@ static finishSizePrefixedCoordinatorConfigurationBuffer(builder:flatbuffers.Buil
   builder.finish(offset, undefined, true);
 }
 
-static createCoordinatorConfiguration(builder:flatbuffers.Builder, webUriOffset:flatbuffers.Offset, wsUriOffset:flatbuffers.Offset, mqttUriOffset:flatbuffers.Offset, apiUriOffset:flatbuffers.Offset, safetyKeysOffset:flatbuffers.Offset, enableResetCommand:boolean):flatbuffers.Offset {
+static createCoordinatorConfiguration(builder:flatbuffers.Builder, webUriOffset:flatbuffers.Offset, wsUriOffset:flatbuffers.Offset, mqttUriOffset:flatbuffers.Offset, apiUriOffset:flatbuffers.Offset, safetyKeysOffset:flatbuffers.Offset, enableResetCommand:boolean, disableSafetyKeys:boolean, enableAuxiliarySafetyKeys:boolean, auxiliarySafetyKeysOffset:flatbuffers.Offset, loginTokenPublicKeyOffset:flatbuffers.Offset):flatbuffers.Offset {
   CoordinatorConfiguration.startCoordinatorConfiguration(builder);
   CoordinatorConfiguration.addWebUri(builder, webUriOffset);
   CoordinatorConfiguration.addWsUri(builder, wsUriOffset);
@@ -129,6 +209,10 @@ static createCoordinatorConfiguration(builder:flatbuffers.Builder, webUriOffset:
   CoordinatorConfiguration.addApiUri(builder, apiUriOffset);
   CoordinatorConfiguration.addSafetyKeys(builder, safetyKeysOffset);
   CoordinatorConfiguration.addEnableResetCommand(builder, enableResetCommand);
+  CoordinatorConfiguration.addDisableSafetyKeys(builder, disableSafetyKeys);
+  CoordinatorConfiguration.addEnableAuxiliarySafetyKeys(builder, enableAuxiliarySafetyKeys);
+  CoordinatorConfiguration.addAuxiliarySafetyKeys(builder, auxiliarySafetyKeysOffset);
+  CoordinatorConfiguration.addLoginTokenPublicKey(builder, loginTokenPublicKeyOffset);
   return CoordinatorConfiguration.endCoordinatorConfiguration(builder);
 }
 }

@@ -43,7 +43,6 @@ use flatbuffers::FlatBufferBuilder;
 use p256::ecdsa::signature::Signer;
 use p256::ecdsa::{Signature, SigningKey, VerifyingKey};
 use p256::{PublicKey, SecretKey};
-use postcard::from_bytes;
 use rand_core::RngCore;
 use sha2::{Digest, Sha256};
 use std::cell::RefCell;
@@ -73,6 +72,7 @@ pub struct LockCtx {
     pub(crate) contract: Option<InternalContract>,
     is_locked: bool,
     pub(crate) session_token: String,
+    pub(crate) mqtt_password: String,
     servo: Servo<'static>,
     dirty: bool,
 
@@ -110,6 +110,7 @@ impl LockCtx {
             contract: None,
             is_locked: false,
             session_token: String::new(),
+            mqtt_password: String::new(),
             servo,
             dirty: false,
             time_in_ticks: 0,
@@ -124,6 +125,7 @@ impl LockCtx {
         };
 
         lck.session_token = lck.load_or_create_session_id();
+        lck.mqtt_password = lck.load_or_create_mqtt_password();
         let secret_key = lck.load_or_create_key();
         let my_public = PublicKey::from_secret_scalar(&secret_key.to_nonzero_scalar());
 
@@ -144,8 +146,11 @@ impl LockCtx {
             lck.wifi_connected = true;
 
             // Start MQTT service
-            let mqtt_service =
-                MqttService::new(lck.configuration.clone(), lck.session_token.clone());
+            let mqtt_service = MqttService::new(
+                lck.configuration.clone(),
+                lck.session_token.clone(),
+                lck.mqtt_password.clone(),
+            );
             lck.mqtt_service = Some(Rc::new(RefCell::new(mqtt_service)));
 
             if let Some(mut mqtt_service) = lck.mqtt_service.as_ref().map(|m| m.borrow_mut()) {
@@ -224,33 +229,35 @@ impl LockCtx {
     }
 
     pub fn save_configuration(&mut self, config: &InternalConfig) {
-        use postcard::to_vec;
+        use ciborium::ser::into_writer;
 
         self.configuration = config.clone();
 
-        if let Ok(bytes) = to_vec::<_, 1024>(&config) {
-            if self.nvs.set_blob("config", bytes.as_slice()).is_ok() {
-                log::info!("Configuration saved to NVS");
+        let mut buf = Vec::new();
+        if into_writer(config, &mut buf).is_ok() {
+            if self.nvs.set_blob("config", &buf).is_ok() {
+                log::info!("Configuration saved to NVS -> [{:?}]", config);
             }
         }
     }
 
     pub fn get_configuration_or_default(&mut self) -> InternalConfig {
+        use ciborium::de::from_reader;
+
         let mut buffer: [u8; 1024] = [0; 1024];
-        if let Ok(maybe_byte_buffer) = self.nvs.get_blob("config", &mut buffer) {
-            if let Some(_byte_buffer) = maybe_byte_buffer {
-                if let Ok(deserialized_config) = from_bytes::<InternalConfig>(&buffer) {
-                    deserialized_config
-                } else {
-                    log::error!("Failed to deserialize config data");
+        match self.nvs.get_blob("config", &mut buffer) {
+            Ok(Some(bytes)) => {
+                let len = bytes.len();
+                from_reader(&buffer[..len]).unwrap_or_else(|e| {
+                    log::error!("Failed to deserialize config data: {}", e);
                     InternalConfig::default()
-                }
-            } else {
+                })
+            }
+            Ok(None) => {
                 log::info!("No configuration data was found, using default");
                 InternalConfig::default()
             }
-        } else {
-            InternalConfig::default()
+            Err(_) => InternalConfig::default(),
         }
     }
 
@@ -277,6 +284,31 @@ impl LockCtx {
         };
 
         session_id
+    }
+
+    fn load_or_create_mqtt_password(&mut self) -> String {
+        let key_name = "mqtt_password";
+        let mut buffer: [u8; 128] = [0; 128];
+        let existing_key: Option<&[u8]> = self
+            .nvs
+            .get_blob(key_name, &mut buffer)
+            .expect("The NVS mechanism should have worked");
+        let mut rng = Esp32Rng;
+
+        let password: String = if let Some(token_bytes) = existing_key {
+            let token = String::from_utf8(token_bytes.to_vec()).unwrap();
+            log::info!("Loaded existing MQTT password: {:?}", token);
+            token
+        } else {
+            log::info!("Generating a new MQTT password...");
+            let mut bytes = [0u8; 32];
+            rng.fill_bytes(&mut bytes);
+            let token = BASE32_NOPAD.encode(&bytes)[..].to_string();
+            self.nvs.set_blob(key_name, token.as_bytes()).unwrap();
+            token
+        };
+
+        password
     }
 
     fn load_or_create_key(&mut self) -> SecretKey {
@@ -730,7 +762,8 @@ impl LockCtx {
     }
 
     fn save_state_if_dirty(&mut self) {
-        use postcard::to_vec;
+        use ciborium::ser::into_writer;
+
         if self.dirty {
             if let Some(internal_contract) = self.contract.as_ref() {
                 let save_state = SaveState {
@@ -738,8 +771,9 @@ impl LockCtx {
                     is_locked: self.is_locked,
                 };
 
-                if let Ok(bytes) = to_vec::<_, 1024>(&save_state) {
-                    if self.nvs.set_blob("contract", bytes.as_slice()).is_ok() {
+                let mut bytes = Vec::new();
+                if into_writer(&save_state, &mut bytes).is_ok() {
+                    if self.nvs.set_blob("contract", &bytes).is_ok() {
                         log::info!("Contract saved to NVS");
                     }
                 }
@@ -774,23 +808,29 @@ impl LockCtx {
     }
 
     pub fn read_contract(&mut self) -> Option<SaveState> {
+        use ciborium::de::from_reader;
+
         let key_name = "contract";
         let mut buffer: [u8; 1024] = [0; 1024];
-        if let Ok(maybe_byte_buffer) = self.nvs.get_blob(key_name, &mut buffer) {
-            if let Some(_byte_buffer) = maybe_byte_buffer {
-                if let Ok(deserialized_state) = from_bytes(&buffer) {
-                    Some(deserialized_state)
-                } else {
-                    log::error!("Failed to deserialize save state");
-                    None
+        match self.nvs.get_blob(key_name, &mut buffer) {
+            Ok(Some(bytes)) => {
+                let len = bytes.len();
+                match from_reader(&buffer[..len]) {
+                    Ok(state) => Some(state),
+                    Err(e) => {
+                        log::error!("Failed to deserialize save state: {}", e);
+                        None
+                    }
                 }
-            } else {
+            }
+            Ok(None) => {
                 log::info!("No contract data was present");
                 None
             }
-        } else {
-            log::info!("No contract key was set");
-            None
+            Err(_) => {
+                log::info!("No contract key was set");
+                None
+            }
         }
     }
 

@@ -1,6 +1,6 @@
 use crate::configuration_generated::club::subjugated::fb::message::configuration::CoordinatorConfiguration;
 use crate::internal_contract::verifying_key_serde;
-use p256::ecdsa::VerifyingKey;
+use p256::ecdsa::{SigningKey, VerifyingKey};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -9,6 +9,8 @@ pub struct InternalConfig {
     pub(crate) web_uri: String,
     pub(crate) safety_keys: Option<Vec<InternalSafetyKey>>,
     pub(crate) enable_reset_command: bool,
+    #[serde(with = "verifying_key_serde")]
+    login_token_public_key: Option<VerifyingKey>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -25,6 +27,7 @@ impl Default for InternalConfig {
             web_uri: "https://tartarus.subjugated.club".to_string(),
             safety_keys: None,
             enable_reset_command: false,
+            login_token_public_key: None,
         }
     }
 }
@@ -51,11 +54,23 @@ impl From<CoordinatorConfiguration<'_>> for InternalConfig {
             Some(key_holder)
         };
 
+        let login_token_public_key: Option<VerifyingKey> =
+            if let Some(login_token_key) = config.login_token_public_key() {
+                log::info!("Created the login_token_public_key");
+                Some(
+                    VerifyingKey::from_sec1_bytes(login_token_key.bytes())
+                        .expect("Valid login_token_public_key"),
+                )
+            } else {
+                None
+            };
+
         InternalConfig {
             web_uri: config.web_uri().unwrap().to_string(),
             mqtt_broker_uri: config.mqtt_uri().unwrap().to_string(),
             safety_keys: keys,
             enable_reset_command: config.enable_reset_command(),
+            login_token_public_key,
             ..InternalConfig::default()
         }
     }

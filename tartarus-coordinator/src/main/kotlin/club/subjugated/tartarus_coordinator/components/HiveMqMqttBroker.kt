@@ -1,6 +1,7 @@
 package club.subjugated.tartarus_coordinator.components
 
 import club.subjugated.tartarus_coordinator.services.BotService
+import club.subjugated.tartarus_coordinator.services.LockSessionService
 import com.hivemq.embedded.EmbeddedExtension
 import com.hivemq.embedded.EmbeddedHiveMQ
 import com.hivemq.embedded.EmbeddedHiveMQBuilder
@@ -43,12 +44,13 @@ fun isLockUser(username: String?): Boolean {
 
 class AuthExtension(
     private var internalPassword : String,
-    private var botService: BotService
+    private var botService: BotService,
+    private var lockSessionService: LockSessionService
 ) : ExtensionMain {
 
     override fun extensionStart(input: ExtensionStartInput, output: ExtensionStartOutput) {
         Services.securityRegistry().setAuthenticatorProvider {
-            MyAuthenticator(internalPassword, botService)
+            MyAuthenticator(internalPassword, botService, lockSessionService)
         }
         Services.securityRegistry().setAuthorizerProvider {
             MyAuthorizer(botService)
@@ -61,7 +63,8 @@ class AuthExtension(
 
     class MyAuthenticator(
         private var internalPassword: String,
-        private var botService: BotService) : SimpleAuthenticator {
+        private var botService: BotService,
+        private var lockSessionService: LockSessionService) : SimpleAuthenticator {
 
         override fun onConnect(input: SimpleAuthInput, output: SimpleAuthOutput) {
             val clientId = input.connectPacket.clientId
@@ -95,7 +98,24 @@ class AuthExtension(
             }
 
             if(isLockUser(username)) {
-                output.authenticateSuccessfully()
+                val session = lockSessionService.findBySessionToken(username)
+                if (session == null) {
+                    output.authenticateSuccessfully()
+                    return
+                }
+
+                if (session.shouldCheckPassword()) {
+                    if (session.checkPassword(actualPassword)) {
+                        output.authenticateSuccessfully()
+                    } else {
+                        output.failAuthentication()
+                    }
+                } else {
+                    session.setPassword(actualPassword)
+                    lockSessionService.saveLockSession(session)
+                    output.authenticateSuccessfully()
+                }
+
                 return
             }
 
@@ -191,7 +211,8 @@ class AuthExtension(
 @Component
 @Profile("!cli")
 class HiveMqMqttBroker(
-    private var botService: BotService
+    private var botService: BotService,
+    private var lockSessionService: LockSessionService
 ) {
     lateinit var hiveMQ: EmbeddedHiveMQ
 
@@ -215,7 +236,7 @@ class HiveMqMqttBroker(
             .withPriority(0)
             .withStartPriority(1000)
             .withAuthor("Me")
-            .withExtensionMain(AuthExtension(internalPassword.toString(), botService))
+            .withExtensionMain(AuthExtension(internalPassword.toString(), botService, lockSessionService))
             .build()
 
         val pathToConfig = extractResourceDir(configDirectory)

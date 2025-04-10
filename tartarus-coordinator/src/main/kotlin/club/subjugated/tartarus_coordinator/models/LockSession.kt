@@ -1,6 +1,8 @@
 package club.subjugated.tartarus_coordinator.models
 
+import club.subjugated.tartarus_coordinator.util.generateSalt
 import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromCompressedKeyByteArray
+import club.subjugated.tartarus_coordinator.util.runSCryptWithCommonParams
 import com.fasterxml.jackson.annotation.JsonFormat
 import jakarta.persistence.*
 import java.security.interfaces.ECPublicKey
@@ -18,6 +20,8 @@ class LockSession(
     var isLocked: Boolean = false,
     var availableForContract: Boolean = true,
     var validatedFirmware: Boolean = false,
+    var mqttPassword: String? = null,
+    var mqttSalt: String? = "",
     @JsonFormat(shape = JsonFormat.Shape.STRING) var lastValidated: OffsetDateTime? = null,
     @OneToMany(mappedBy = "id", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     var commandQueue: MutableList<CommandQueue> = mutableListOf(),
@@ -40,5 +44,24 @@ class LockSession(
         } catch (e : IllegalArgumentException) {
             Base64.getUrlDecoder().decode(this.publicKey)
         }
+    }
+
+    fun setPassword(input : String) {
+        val salt = generateSalt()
+
+        val derived = runSCryptWithCommonParams(input.toByteArray(), salt)
+
+        this.mqttSalt = Base64.getEncoder().encodeToString(salt)
+        this.mqttPassword = Base64.getEncoder().encodeToString(derived)
+    }
+
+    fun checkPassword(input : String) : Boolean {
+        val salt = Base64.getDecoder().decode(this.mqttSalt)
+        val derived = runSCryptWithCommonParams(input.toByteArray(), salt)
+        return Base64.getEncoder().encodeToString(derived) == this.mqttPassword
+    }
+
+    fun shouldCheckPassword(): Boolean {
+        return this.mqttPassword != null && this.mqttSalt != null
     }
 }

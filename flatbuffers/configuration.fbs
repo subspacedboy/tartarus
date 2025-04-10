@@ -13,6 +13,11 @@ table CoordinatorConfiguration {
   safety_keys: [Key];
 
   enable_reset_command: bool;
+  disable_safety_keys: bool;
+  enable_auxiliary_safety_keys: bool;
+  auxiliary_safety_keys: [Key];
+
+  login_token_public_key: [byte];
 }
 
 root_type CoordinatorConfiguration;

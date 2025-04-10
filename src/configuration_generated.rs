@@ -212,6 +212,10 @@ pub mod club {
                         pub const VT_API_URI: flatbuffers::VOffsetT = 10;
                         pub const VT_SAFETY_KEYS: flatbuffers::VOffsetT = 12;
                         pub const VT_ENABLE_RESET_COMMAND: flatbuffers::VOffsetT = 14;
+                        pub const VT_DISABLE_SAFETY_KEYS: flatbuffers::VOffsetT = 16;
+                        pub const VT_ENABLE_AUXILIARY_SAFETY_KEYS: flatbuffers::VOffsetT = 18;
+                        pub const VT_AUXILIARY_SAFETY_KEYS: flatbuffers::VOffsetT = 20;
+                        pub const VT_LOGIN_TOKEN_PUBLIC_KEY: flatbuffers::VOffsetT = 22;
 
                         #[inline]
                         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -229,6 +233,12 @@ pub mod club {
                         ) -> flatbuffers::WIPOffset<CoordinatorConfiguration<'bldr>>
                         {
                             let mut builder = CoordinatorConfigurationBuilder::new(_fbb);
+                            if let Some(x) = args.login_token_public_key {
+                                builder.add_login_token_public_key(x);
+                            }
+                            if let Some(x) = args.auxiliary_safety_keys {
+                                builder.add_auxiliary_safety_keys(x);
+                            }
                             if let Some(x) = args.safety_keys {
                                 builder.add_safety_keys(x);
                             }
@@ -244,6 +254,10 @@ pub mod club {
                             if let Some(x) = args.web_uri {
                                 builder.add_web_uri(x);
                             }
+                            builder.add_enable_auxiliary_safety_keys(
+                                args.enable_auxiliary_safety_keys,
+                            );
+                            builder.add_disable_safety_keys(args.disable_safety_keys);
                             builder.add_enable_reset_command(args.enable_reset_command);
                             builder.finish()
                         }
@@ -326,6 +340,61 @@ pub mod club {
                                     .unwrap()
                             }
                         }
+                        #[inline]
+                        pub fn disable_safety_keys(&self) -> bool {
+                            // Safety:
+                            // Created from valid Table for this object
+                            // which contains a valid value in this slot
+                            unsafe {
+                                self._tab
+                                    .get::<bool>(
+                                        CoordinatorConfiguration::VT_DISABLE_SAFETY_KEYS,
+                                        Some(false),
+                                    )
+                                    .unwrap()
+                            }
+                        }
+                        #[inline]
+                        pub fn enable_auxiliary_safety_keys(&self) -> bool {
+                            // Safety:
+                            // Created from valid Table for this object
+                            // which contains a valid value in this slot
+                            unsafe {
+                                self._tab
+                                    .get::<bool>(
+                                        CoordinatorConfiguration::VT_ENABLE_AUXILIARY_SAFETY_KEYS,
+                                        Some(false),
+                                    )
+                                    .unwrap()
+                            }
+                        }
+                        #[inline]
+                        pub fn auxiliary_safety_keys(
+                            &self,
+                        ) -> Option<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Key<'a>>>>
+                        {
+                            // Safety:
+                            // Created from valid Table for this object
+                            // which contains a valid value in this slot
+                            unsafe {
+                                self._tab.get::<flatbuffers::ForwardsUOffset<
+                                    flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Key>>,
+                                >>(
+                                    CoordinatorConfiguration::VT_AUXILIARY_SAFETY_KEYS, None
+                                )
+                            }
+                        }
+                        #[inline]
+                        pub fn login_token_public_key(
+                            &self,
+                        ) -> Option<flatbuffers::Vector<'a, i8>> {
+                            // Safety:
+                            // Created from valid Table for this object
+                            // which contains a valid value in this slot
+                            unsafe {
+                                self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, i8>>>(CoordinatorConfiguration::VT_LOGIN_TOKEN_PUBLIC_KEY, None)
+                            }
+                        }
                     }
 
                     impl flatbuffers::Verifiable for CoordinatorConfiguration<'_> {
@@ -336,37 +405,17 @@ pub mod club {
                         ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
                             use self::flatbuffers::Verifiable;
                             v.visit_table(pos)?
-                                .visit_field::<flatbuffers::ForwardsUOffset<&str>>(
-                                    "web_uri",
-                                    Self::VT_WEB_URI,
-                                    false,
-                                )?
-                                .visit_field::<flatbuffers::ForwardsUOffset<&str>>(
-                                    "ws_uri",
-                                    Self::VT_WS_URI,
-                                    false,
-                                )?
-                                .visit_field::<flatbuffers::ForwardsUOffset<&str>>(
-                                    "mqtt_uri",
-                                    Self::VT_MQTT_URI,
-                                    false,
-                                )?
-                                .visit_field::<flatbuffers::ForwardsUOffset<&str>>(
-                                    "api_uri",
-                                    Self::VT_API_URI,
-                                    false,
-                                )?
-                                .visit_field::<flatbuffers::ForwardsUOffset<
-                                    flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<Key>>,
-                                >>(
-                                    "safety_keys", Self::VT_SAFETY_KEYS, false
-                                )?
-                                .visit_field::<bool>(
-                                    "enable_reset_command",
-                                    Self::VT_ENABLE_RESET_COMMAND,
-                                    false,
-                                )?
-                                .finish();
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("web_uri", Self::VT_WEB_URI, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("ws_uri", Self::VT_WS_URI, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("mqtt_uri", Self::VT_MQTT_URI, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("api_uri", Self::VT_API_URI, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<Key>>>>("safety_keys", Self::VT_SAFETY_KEYS, false)?
+     .visit_field::<bool>("enable_reset_command", Self::VT_ENABLE_RESET_COMMAND, false)?
+     .visit_field::<bool>("disable_safety_keys", Self::VT_DISABLE_SAFETY_KEYS, false)?
+     .visit_field::<bool>("enable_auxiliary_safety_keys", Self::VT_ENABLE_AUXILIARY_SAFETY_KEYS, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<Key>>>>("auxiliary_safety_keys", Self::VT_AUXILIARY_SAFETY_KEYS, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, i8>>>("login_token_public_key", Self::VT_LOGIN_TOKEN_PUBLIC_KEY, false)?
+     .finish();
                             Ok(())
                         }
                     }
@@ -381,6 +430,15 @@ pub mod club {
                             >,
                         >,
                         pub enable_reset_command: bool,
+                        pub disable_safety_keys: bool,
+                        pub enable_auxiliary_safety_keys: bool,
+                        pub auxiliary_safety_keys: Option<
+                            flatbuffers::WIPOffset<
+                                flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Key<'a>>>,
+                            >,
+                        >,
+                        pub login_token_public_key:
+                            Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, i8>>>,
                     }
                     impl<'a> Default for CoordinatorConfigurationArgs<'a> {
                         #[inline]
@@ -392,6 +450,10 @@ pub mod club {
                                 api_uri: None,
                                 safety_keys: None,
                                 enable_reset_command: false,
+                                disable_safety_keys: false,
+                                enable_auxiliary_safety_keys: false,
+                                auxiliary_safety_keys: None,
+                                login_token_public_key: None,
                             }
                         }
                     }
@@ -454,6 +516,49 @@ pub mod club {
                             );
                         }
                         #[inline]
+                        pub fn add_disable_safety_keys(&mut self, disable_safety_keys: bool) {
+                            self.fbb_.push_slot::<bool>(
+                                CoordinatorConfiguration::VT_DISABLE_SAFETY_KEYS,
+                                disable_safety_keys,
+                                false,
+                            );
+                        }
+                        #[inline]
+                        pub fn add_enable_auxiliary_safety_keys(
+                            &mut self,
+                            enable_auxiliary_safety_keys: bool,
+                        ) {
+                            self.fbb_.push_slot::<bool>(
+                                CoordinatorConfiguration::VT_ENABLE_AUXILIARY_SAFETY_KEYS,
+                                enable_auxiliary_safety_keys,
+                                false,
+                            );
+                        }
+                        #[inline]
+                        pub fn add_auxiliary_safety_keys(
+                            &mut self,
+                            auxiliary_safety_keys: flatbuffers::WIPOffset<
+                                flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<Key<'b>>>,
+                            >,
+                        ) {
+                            self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
+                                CoordinatorConfiguration::VT_AUXILIARY_SAFETY_KEYS,
+                                auxiliary_safety_keys,
+                            );
+                        }
+                        #[inline]
+                        pub fn add_login_token_public_key(
+                            &mut self,
+                            login_token_public_key: flatbuffers::WIPOffset<
+                                flatbuffers::Vector<'b, i8>,
+                            >,
+                        ) {
+                            self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
+                                CoordinatorConfiguration::VT_LOGIN_TOKEN_PUBLIC_KEY,
+                                login_token_public_key,
+                            );
+                        }
+                        #[inline]
                         pub fn new(
                             _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
                         ) -> CoordinatorConfigurationBuilder<'a, 'b, A> {
@@ -482,6 +587,13 @@ pub mod club {
                             ds.field("api_uri", &self.api_uri());
                             ds.field("safety_keys", &self.safety_keys());
                             ds.field("enable_reset_command", &self.enable_reset_command());
+                            ds.field("disable_safety_keys", &self.disable_safety_keys());
+                            ds.field(
+                                "enable_auxiliary_safety_keys",
+                                &self.enable_auxiliary_safety_keys(),
+                            );
+                            ds.field("auxiliary_safety_keys", &self.auxiliary_safety_keys());
+                            ds.field("login_token_public_key", &self.login_token_public_key());
                             ds.finish()
                         }
                     }

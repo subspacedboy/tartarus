@@ -19,6 +19,7 @@ pub struct MqttService {
     outgoing_message: Arc<Mutex<VecDeque<SignedMessageTransport>>>,
     configuration: InternalConfig,
     session_token: String,
+    password: String,
 }
 
 #[derive(Debug, Clone)]
@@ -77,7 +78,7 @@ pub enum MqttStateMachine {
 }
 
 impl MqttService {
-    pub fn new(config: InternalConfig, session_token: String) -> MqttService {
+    pub fn new(config: InternalConfig, session_token: String, password: String) -> MqttService {
         Self {
             mqtt_state_machine: Arc::new(Mutex::new(MqttStateMachine::NotRunning)),
             schedule_restart_mqtt: None,
@@ -89,6 +90,7 @@ impl MqttService {
 
             configuration: config,
             session_token,
+            password,
         }
     }
 
@@ -145,7 +147,7 @@ impl MqttService {
             disable_clean_session: true,
             network_timeout: Duration::from_secs(5),
             // Password is not used. Just needs a value.
-            password: Some("tartarus"),
+            password: Some(self.password.as_ref()),
             username: Some(self.session_token.as_ref()),
             reconnect_timeout: Some(Duration::from_secs(5)),
             keep_alive_interval: Some(Duration::from_secs(20)),

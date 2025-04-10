@@ -90,6 +90,43 @@ class CoordinatorConfiguration : Table() {
             val o = __offset(14)
             return if(o != 0) 0.toByte() != bb.get(o + bb_pos) else false
         }
+    val disableSafetyKeys : Boolean
+        get() {
+            val o = __offset(16)
+            return if(o != 0) 0.toByte() != bb.get(o + bb_pos) else false
+        }
+    val enableAuxiliarySafetyKeys : Boolean
+        get() {
+            val o = __offset(18)
+            return if(o != 0) 0.toByte() != bb.get(o + bb_pos) else false
+        }
+    fun auxiliarySafetyKeys(j: Int) : club.subjugated.fb.message.configuration.Key? = auxiliarySafetyKeys(club.subjugated.fb.message.configuration.Key(), j)
+    fun auxiliarySafetyKeys(obj: club.subjugated.fb.message.configuration.Key, j: Int) : club.subjugated.fb.message.configuration.Key? {
+        val o = __offset(20)
+        return if (o != 0) {
+            obj.__assign(__indirect(__vector(o) + j * 4), bb)
+        } else {
+            null
+        }
+    }
+    val auxiliarySafetyKeysLength : Int
+        get() {
+            val o = __offset(20); return if (o != 0) __vector_len(o) else 0
+        }
+    fun loginTokenPublicKey(j: Int) : Byte {
+        val o = __offset(22)
+        return if (o != 0) {
+            bb.get(__vector(o) + j * 1)
+        } else {
+            0
+        }
+    }
+    val loginTokenPublicKeyLength : Int
+        get() {
+            val o = __offset(22); return if (o != 0) __vector_len(o) else 0
+        }
+    val loginTokenPublicKeyAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(22, 1)
+    fun loginTokenPublicKeyInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 22, 1)
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsCoordinatorConfiguration(_bb: ByteBuffer): CoordinatorConfiguration = getRootAsCoordinatorConfiguration(_bb, CoordinatorConfiguration())
@@ -97,17 +134,21 @@ class CoordinatorConfiguration : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createCoordinatorConfiguration(builder: FlatBufferBuilder, webUriOffset: Int, wsUriOffset: Int, mqttUriOffset: Int, apiUriOffset: Int, safetyKeysOffset: Int, enableResetCommand: Boolean) : Int {
-            builder.startTable(6)
+        fun createCoordinatorConfiguration(builder: FlatBufferBuilder, webUriOffset: Int, wsUriOffset: Int, mqttUriOffset: Int, apiUriOffset: Int, safetyKeysOffset: Int, enableResetCommand: Boolean, disableSafetyKeys: Boolean, enableAuxiliarySafetyKeys: Boolean, auxiliarySafetyKeysOffset: Int, loginTokenPublicKeyOffset: Int) : Int {
+            builder.startTable(10)
+            addLoginTokenPublicKey(builder, loginTokenPublicKeyOffset)
+            addAuxiliarySafetyKeys(builder, auxiliarySafetyKeysOffset)
             addSafetyKeys(builder, safetyKeysOffset)
             addApiUri(builder, apiUriOffset)
             addMqttUri(builder, mqttUriOffset)
             addWsUri(builder, wsUriOffset)
             addWebUri(builder, webUriOffset)
+            addEnableAuxiliarySafetyKeys(builder, enableAuxiliarySafetyKeys)
+            addDisableSafetyKeys(builder, disableSafetyKeys)
             addEnableResetCommand(builder, enableResetCommand)
             return endCoordinatorConfiguration(builder)
         }
-        fun startCoordinatorConfiguration(builder: FlatBufferBuilder) = builder.startTable(6)
+        fun startCoordinatorConfiguration(builder: FlatBufferBuilder) = builder.startTable(10)
         fun addWebUri(builder: FlatBufferBuilder, webUri: Int) = builder.addOffset(0, webUri, 0)
         fun addWsUri(builder: FlatBufferBuilder, wsUri: Int) = builder.addOffset(1, wsUri, 0)
         fun addMqttUri(builder: FlatBufferBuilder, mqttUri: Int) = builder.addOffset(2, mqttUri, 0)
@@ -122,6 +163,26 @@ class CoordinatorConfiguration : Table() {
         }
         fun startSafetyKeysVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(4, numElems, 4)
         fun addEnableResetCommand(builder: FlatBufferBuilder, enableResetCommand: Boolean) = builder.addBoolean(5, enableResetCommand, false)
+        fun addDisableSafetyKeys(builder: FlatBufferBuilder, disableSafetyKeys: Boolean) = builder.addBoolean(6, disableSafetyKeys, false)
+        fun addEnableAuxiliarySafetyKeys(builder: FlatBufferBuilder, enableAuxiliarySafetyKeys: Boolean) = builder.addBoolean(7, enableAuxiliarySafetyKeys, false)
+        fun addAuxiliarySafetyKeys(builder: FlatBufferBuilder, auxiliarySafetyKeys: Int) = builder.addOffset(8, auxiliarySafetyKeys, 0)
+        fun createAuxiliarySafetyKeysVector(builder: FlatBufferBuilder, data: IntArray) : Int {
+            builder.startVector(4, data.size, 4)
+            for (i in data.size - 1 downTo 0) {
+                builder.addOffset(data[i])
+            }
+            return builder.endVector()
+        }
+        fun startAuxiliarySafetyKeysVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(4, numElems, 4)
+        fun addLoginTokenPublicKey(builder: FlatBufferBuilder, loginTokenPublicKey: Int) = builder.addOffset(9, loginTokenPublicKey, 0)
+        fun createLoginTokenPublicKeyVector(builder: FlatBufferBuilder, data: ByteArray) : Int {
+            builder.startVector(1, data.size, 1)
+            for (i in data.size - 1 downTo 0) {
+                builder.addByte(data[i])
+            }
+            return builder.endVector()
+        }
+        fun startLoginTokenPublicKeyVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
         fun endCoordinatorConfiguration(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o
