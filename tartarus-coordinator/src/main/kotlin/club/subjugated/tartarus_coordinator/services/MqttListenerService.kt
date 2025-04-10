@@ -232,9 +232,11 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
         val lockSession = lockSessionService.createLockSession(nlsm)
         lockSessionService.saveLockSession(lockSession)
 
-        val commands = lockSession.commandQueue.first().commands.filter { it.state == CommandState.PENDING }
+        val queue = lockSession.commandQueue.first()
+        val commands = queue.commands
+        val pendingCommands = commands.filter { it.state == CommandState.PENDING }
 
-        for (command in commands) {
+        for (command in pendingCommands) {
             println("📤 Transmitting command ${command} -> ${sessionToken}")
             client.publish("locks/$sessionToken", MqttMessage(command.body))
         }

@@ -20,6 +20,15 @@ fun generateECKeyPair(): KeyPair {
     return keyGen.generateKeyPair()
 }
 
+fun loadECPublicKeyFromPkcs8(keyBytes: ByteArray): PublicKey {
+    Security.addProvider(BouncyCastleProvider())
+
+    val keySpec = X509EncodedKeySpec(keyBytes)
+    val keyFactory = KeyFactory.getInstance("EC", "BC")
+
+    return keyFactory.generatePublic(keySpec)
+}
+
 fun encodePublicKeySecp1(publicKey: ECPublicKey): ByteArray {
     val point = publicKey.w
     val xBytes = point.affineX.toByteArray()

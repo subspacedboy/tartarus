@@ -2,8 +2,12 @@ package club.subjugated.overlord_exe.services
 
 import club.subjugated.fb.bots.BotApiMessage
 import club.subjugated.fb.bots.CreateCommandRequest
+import club.subjugated.fb.bots.CreateContractRequest
+import club.subjugated.fb.bots.CreateMessageRequest
 import club.subjugated.fb.bots.GetContractRequest
 import club.subjugated.fb.bots.MessagePayload
+import club.subjugated.fb.message.Bot
+import club.subjugated.fb.message.Permission
 import club.subjugated.fb.message.ReleaseCommand
 import club.subjugated.fb.message.SignedMessage
 import club.subjugated.overlord_exe.models.Contract
@@ -146,7 +150,126 @@ class ContractService(
         return builder3.sizedByteArray()
     }
 
+    fun makeCreateContractCommand(botName : String, shareableToken: String, terms: String, temporaryUnlock: Boolean, privateKey: ByteArray, publicKey : ByteArray) : ByteArray {
+        val builder = FlatBufferBuilder(1024)
 
+        // Build Permission
+        Permission.startPermission(builder)
+        Permission.addReceiveEvents(builder, true)
+        Permission.addCanUnlock(builder, true)
+        Permission.addCanRelease(builder, true)
+        val permissionOffset = Permission.endPermission(builder)
+
+        val botNameOffset1 = builder.createString(botName)
+        val publicKeyOffset = builder.createByteVector(publicKey)
+
+        Bot.startBot(builder)
+        Bot.addName(builder, botNameOffset1)
+        Bot.addPublicKey(builder, publicKeyOffset)
+        Bot.addPermissions(builder, permissionOffset)
+        val botOffset = Bot.endBot(builder)
+
+        val termsOffset = builder.createString(terms)
+        club.subjugated.fb.message.Contract.startBotsVector(builder, 1)
+        builder.addOffset(botOffset)
+        val botsVectorOffset = builder.endVector()
+
+        val serialNumber = Random.nextInt(0, 1 shl 16)
+
+        club.subjugated.fb.message.Contract.startContract(builder)
+        club.subjugated.fb.message.Contract.addSerialNumber(builder, serialNumber.toUShort())
+        club.subjugated.fb.message.Contract.addPublicKey(builder, publicKeyOffset)
+        club.subjugated.fb.message.Contract.addTerms(builder, termsOffset)
+        club.subjugated.fb.message.Contract.addIsTemporaryUnlockAllowed(builder, temporaryUnlock)
+        club.subjugated.fb.message.Contract.addBots(builder, botsVectorOffset)
+        val contractOffset = club.subjugated.fb.message.Contract.endContract(builder)
+
+        builder.finish(contractOffset)
+        val contractBytes = builder.sizedByteArray()
+
+        // Hash payload
+        val start = contractBytes[0].toInt() and 0xFF
+        val contractStart = contractBytes[start].toInt() and 0xFF
+        val vtableStart = start - contractStart
+        val payloadToHash = contractBytes.copyOfRange(vtableStart, contractBytes.size)
+        val hash = MessageDigest.getInstance("SHA-256").digest(payloadToHash)
+
+        val keySpec = PKCS8EncodedKeySpec(privateKey)
+        val keyFactory = KeyFactory.getInstance("EC", "BC")
+        val privateKey = keyFactory.generatePrivate(keySpec)
+
+        var signature = Signature.getInstance("SHA256withECDSA", "BC").apply {
+            initSign(privateKey)
+            update(hash)
+        }.sign()
+        signature = derToRawSignature(signature)
+
+        val signatureOffset = builder.createByteVector(signature)
+
+        SignedMessage.startSignedMessage(builder)
+        SignedMessage.addSignature(builder, signatureOffset)
+        SignedMessage.addPayload(builder, contractOffset)
+        SignedMessage.addPayloadType(builder, club.subjugated.fb.message.MessagePayload.Contract)
+        // NB: Even if a bot is the issuer of the contract we don't set the authority identifier
+        // because that will break contract acceptance. The lock will try and validate against a key
+        // it doesn't have.
+        // SignedMessage.addAuthorityIdentifier(builder, botAuthorityIdentifer)
+        val signedMessageOffset = SignedMessage.endSignedMessage(builder)
+
+        builder.finish(signedMessageOffset)
+        val signedMessageBytes = builder.sizedByteArray()
+
+        // --- Build CreateCommandRequest ---
+        val builder3 = FlatBufferBuilder(1024)
+        val contractAsSignedMessageOffset = builder3.createByteVector(signedMessageBytes)
+
+        val shareableTokenOffset = builder3.createString(shareableToken)
+
+        CreateContractRequest.startCreateContractRequest(builder3)
+        CreateContractRequest.addShareableToken(builder3, shareableTokenOffset)
+        CreateContractRequest.addContract(builder3, contractAsSignedMessageOffset)
+        val createContractOffset = CreateContractRequest.endCreateContractRequest(builder3)
+
+        // --- Build BotApiMessage ---
+        val botNameOffset = builder3.createString(botName)
+        val requestId = Random.nextLong(Long.MAX_VALUE)
+
+        BotApiMessage.startBotApiMessage(builder3)
+        BotApiMessage.addName(builder3, botNameOffset)
+        BotApiMessage.addPayloadType(builder3, MessagePayload.CreateContractRequest)
+        BotApiMessage.addPayload(builder3, createContractOffset)
+        BotApiMessage.addRequestId(builder3, requestId)
+        val botApiMessageOffset = BotApiMessage.endBotApiMessage(builder3)
+
+        builder3.finish(botApiMessageOffset)
+        return builder3.sizedByteArray()
+    }
+
+    fun makeAddMessageToContractMessage(botName: String, contractName: String, message: String) : ByteArray {
+        val builder3 = FlatBufferBuilder(1024)
+
+        val contractNameOffset = builder3.createString(contractName)
+        val messageOffset = builder3.createString(message)
+
+        CreateMessageRequest.startCreateMessageRequest(builder3)
+        CreateMessageRequest.addContractName(builder3, contractNameOffset)
+        CreateMessageRequest.addMessage(builder3, messageOffset)
+        val createRequestOffset = CreateMessageRequest.endCreateMessageRequest(builder3)
+
+        // --- Build BotApiMessage ---
+        val botNameOffset = builder3.createString(botName)
+        val requestId = Random.nextLong(Long.MAX_VALUE)
+
+        BotApiMessage.startBotApiMessage(builder3)
+        BotApiMessage.addName(builder3, botNameOffset)
+        BotApiMessage.addPayloadType(builder3, MessagePayload.CreateMessageRequest)
+        BotApiMessage.addPayload(builder3, createRequestOffset)
+        BotApiMessage.addRequestId(builder3, requestId)
+        val botApiMessageOffset = BotApiMessage.endBotApiMessage(builder3)
+
+        builder3.finish(botApiMessageOffset)
+        return builder3.sizedByteArray()
+    }
 
     fun createContract(botName : String, lockSessionToken: String, serialNumber: Int) : Contract {
         val contract = Contract(

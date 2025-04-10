@@ -1,0 +1,194 @@
+package club.subjugated.overlord_exe.services
+
+import club.subjugated.overlord_exe.util.TimeSource
+import jakarta.annotation.PostConstruct
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.stereotype.Component
+import org.springframework.stereotype.Service
+import work.socialhub.kbsky.BlueskyFactory
+import work.socialhub.kbsky.api.app.bsky.FeedResource
+import work.socialhub.kbsky.api.chat.bsky.ConvoResource
+import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetAuthorFeedRequest
+import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetPostThreadRequest
+import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedSearchPostsRequest
+import work.socialhub.kbsky.api.entity.chat.bsky.convo.ConvoGetListConvosRequest
+import work.socialhub.kbsky.api.entity.chat.bsky.convo.ConvoGetLogRequest
+import work.socialhub.kbsky.api.entity.chat.bsky.convo.ConvoSendMessageRequest
+import work.socialhub.kbsky.api.entity.chat.bsky.convo.ConvoUpdateReadRequest
+import work.socialhub.kbsky.api.entity.com.atproto.server.ServerCreateSessionRequest
+import work.socialhub.kbsky.api.entity.share.AuthRequest
+import work.socialhub.kbsky.auth.BearerTokenAuthProvider
+import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
+import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsPostView
+import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsThreadUnion
+import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageInput
+import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageView
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.time.OffsetDateTime
+import kotlin.collections.addAll
+import kotlin.collections.removeFirst
+import kotlin.math.log
+
+@Service
+class BlueSkyService(
+    @Value("\${overlord.bsky.user}") private val bskyUser : String,
+    @Value("\${overlord.bsky.password_file}") private val bskyPasswordFile : String,
+    var publisher: ApplicationEventPublisher,
+    var timeSource: TimeSource
+) {
+    lateinit var accessJwt : BearerTokenAuthProvider
+    lateinit var refreshJwt : BearerTokenAuthProvider
+    lateinit var lastRefresh : OffsetDateTime
+    lateinit var myPds: String
+    lateinit var myId : String
+    lateinit var chatService:  ConvoResource
+    lateinit var feedService: FeedResource
+
+    var dmLogCursor: String? = null
+
+    @PostConstruct
+    fun start() {
+        val password = Files.readString(Paths.get(bskyPasswordFile)).trim()
+
+        val response = BlueskyFactory
+            .instance(BSKY_SOCIAL.uri)
+            .server()
+            .createSession(
+                ServerCreateSessionRequest().also {
+                    it.identifier = bskyUser
+                    it.password = password
+                }
+            )
+        accessJwt = BearerTokenAuthProvider(response.data.accessJwt)
+        refreshJwt = BearerTokenAuthProvider(response.data.refreshJwt)
+        lastRefresh = timeSource.nowInUtc()
+
+        myPds = response.data.didDoc!!.asDIDDetails!!.pdsEndpoint()!!
+        println("My PDS $myPds")
+
+        myId = response.data.didDoc!!.asDIDDetails!!.id!!
+
+        chatService = BlueskyFactory
+            .instance(myPds)
+            .convo()
+
+        feedService = BlueskyFactory.instance(BSKY_SOCIAL.uri)
+            .feed()
+    }
+
+    private fun refreshJwtIfNeeded() {
+        if(lastRefresh < lastRefresh.plusMinutes(1)) {
+            return
+        }
+
+        val refreshData = BlueskyFactory
+            .instance(BSKY_SOCIAL.uri)
+            .server()
+            .refreshSession(AuthRequest(
+                refreshJwt
+            )).data
+
+        accessJwt = BearerTokenAuthProvider(refreshData.accessJwt)
+        refreshJwt = BearerTokenAuthProvider(refreshData.refreshJwt)
+        lastRefresh = timeSource.nowInUtc()
+    }
+
+    fun traceThread(uri : String, action:(post : FeedDefsPostView) -> Unit) {
+        refreshJwtIfNeeded()
+
+        val thread = feedService
+            .getPostThread(FeedGetPostThreadRequest(accessJwt).also {
+                it.uri = uri
+            })
+
+        val asViewPost = thread.data.thread.asViewPost
+        val post = asViewPost!!.post
+
+        action(post)
+
+        val repliesToProcess = ArrayDeque<FeedDefsThreadUnion>()
+        repliesToProcess.addAll(asViewPost.replies!!)
+
+        while(repliesToProcess.isNotEmpty()) {
+            val r = repliesToProcess.removeFirst()
+
+            val someResponse = r.asViewPost
+            val moreReplies = someResponse!!.replies
+            if(moreReplies != null) {
+                repliesToProcess.addAll(moreReplies)
+            }
+
+            val asPost = someResponse.asViewPost!!.post
+            action(asPost)
+        }
+    }
+
+    fun getnewDms(onNewMessage: (convoId: String, message :  ConvoDefsMessageView) -> Unit) {
+        refreshJwtIfNeeded()
+
+        val convos = chatService.getListConvos(ConvoGetListConvosRequest(accessJwt)).data
+
+        for(c in convos.convos) {
+            val lastMessage = c.lastMessage!!.asMessageView
+            if(lastMessage!!.sender.did == myId){
+                // I was the last person to say something.
+            } else {
+                onNewMessage(c.id, lastMessage)
+                chatService.updateRead(ConvoUpdateReadRequest(accessJwt).also {
+                    it.messageId = lastMessage.id
+                    it.convoId = c.id
+                })
+            }
+        }
+    }
+
+    fun sendDm(convoId: String, text: String) {
+        refreshJwtIfNeeded()
+
+        val message = ConvoDefsMessageInput()
+        message.text = text
+
+        chatService.sendMessage(ConvoSendMessageRequest(accessJwt).also {
+            it.convoId = convoId
+            it.message = message
+        })
+    }
+
+    fun getAuthorFeed(authorDid: String, from: OffsetDateTime, onMessage: (post:  FeedDefsPostView) -> Unit) {
+        refreshJwtIfNeeded()
+
+        var feed = feedService.getAuthorFeed(FeedGetAuthorFeedRequest(accessJwt).also {
+            it.actor = authorDid
+            it.limit = 10
+        }).data
+
+        var finished = false
+
+        outer@ while(!finished) {
+            for(f in feed.feed) {
+                val createdAt = OffsetDateTime.parse(f.post.record!!.asFeedPost!!.createdAt!!)
+                if(createdAt < from) {
+                    //Before start time.
+                    println("We're before the start time")
+                    finished = true
+                    break@outer
+                }
+
+                onMessage(f.post)
+            }
+
+            feed = feedService.getAuthorFeed(FeedGetAuthorFeedRequest(accessJwt).also {
+                it.actor = authorDid
+                it.limit = 10
+                it.cursor = feed.cursor
+            }).data
+
+            if(feed.feed.isEmpty()) {
+                println("No more")
+                finished = true
+            }
+        }
+    }
+}

@@ -1,11 +1,12 @@
 plugins {
-	kotlin("jvm") version "2.0.21"
-	kotlin("plugin.spring") version "2.0.21"
-	id("org.jetbrains.kotlin.plugin.serialization") version "2.0.21"
+	kotlin("jvm") version "2.1.0"
+	kotlin("plugin.spring") version "2.1.0"
+
+	id("org.jetbrains.kotlin.plugin.serialization") version "2.1.0"
 
 	id("org.springframework.boot") version "3.4.4"
 	id("io.spring.dependency-management") version "1.1.7"
-	kotlin("plugin.jpa") version "2.0.21"
+	kotlin("plugin.jpa") version "2.1.0"
 
 	id("idea")
 }
@@ -21,6 +22,7 @@ java {
 
 repositories {
 	mavenCentral()
+	maven { url = uri("https://repo.repsy.io/mvn/uakihir0/public") }
 }
 
 dependencies {
@@ -47,22 +49,54 @@ dependencies {
 	implementation("org.bouncycastle:bcprov-jdk18on:1.80")
 	implementation("info.picocli:picocli:4.7.6")
 
-	implementation("work.socialhub.kbsky:core:0.3.0")
-	implementation("work.socialhub.kbsky:auth:0.3.0")
-	implementation("work.socialhub.kbsky:stream:0.3.0")
+	implementation("work.socialhub.kbsky:core-jvm:0.4.0-SNAPSHOT") {
+		exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-serialization-json")
+	}
+	implementation("work.socialhub.kbsky:auth-jvm:0.4.0-SNAPSHOT") {
+		exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-serialization-json")
+	}
+	implementation("work.socialhub.kbsky:stream-jvm:0.4.0-SNAPSHOT") {
+		exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-serialization-json")
+	}
 
 	// https://mvnrepository.com/artifact/commons-codec/commons-codec
 	implementation("commons-codec:commons-codec:1.18.0")
-	implementation("io.ktor:ktor-client-core:3.1.2")
-	implementation("io.ktor:ktor-client-content-negotiation:3.1.2")
-	implementation("io.ktor:ktor-serialization-kotlinx-json:3.1.2")
-	implementation("io.ktor:ktor-client-okhttp:3.1.2")
+	var ktorVersion = "3.1.2"
+	implementation("io.ktor:ktor-client-core:$ktorVersion")
+	implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
+	implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+	implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
 
+	implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.8.1")
+	implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
+	implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.8.1")
+	implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.8.1")
+}
+
+// ktor, or something, is somehow importing 1.6.3 of kotlinx-serialization despite
+// trying to override and block it. So we're just going to rewrite the dependency.
+configurations.all {
+	resolutionStrategy {
+		force("org.jetbrains.kotlinx:kotlinx-serialization-core:1.8.1")
+		force("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
+		force("org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.8.1")
+
+		eachDependency {
+			if (requested.group == "org.jetbrains.kotlinx" &&
+				requested.name.contains("serialization")) {
+				useVersion("1.8.1")
+			}
+		}
+	}
 }
 
 kotlin {
 	compilerOptions {
 		freeCompilerArgs.addAll("-Xjsr305=strict")
+	}
+
+	sourceSets.all {
+		languageSettings.optIn("kotlinx.serialization.ExperimentalSerializationApi")
 	}
 }
 

@@ -20,11 +20,11 @@ fun main(args: Array<String>) {
 		.profiles("cli")
 		.run(*args)
 
-//	val factory = ctx.getBean(CommandLine.IFactory::class.java)
-//	val root = ctx.getBean(CliRoot::class.java)
-//
-//	val cmd = CommandLine(root, factory)
-//
-//	val exitCode = cmd.execute(*args)
+	val factory = ctx.getBean(CommandLine.IFactory::class.java)
+	val root = ctx.getBean(CliRoot::class.java)
+
+	val cmd = CommandLine(root, factory)
+
+	val exitCode = cmd.execute(*args)
 //	exitProcess(exitCode)
 }

@@ -5,11 +5,14 @@ import club.subjugated.fb.bots.GetContractResponse
 import club.subjugated.fb.bots.MessagePayload
 import club.subjugated.fb.event.EventType
 import club.subjugated.fb.event.SignedEvent
+import club.subjugated.overlord_exe.bots.timer_bot.events.IssueContract
 import club.subjugated.overlord_exe.models.BotMap
 import club.subjugated.overlord_exe.models.ContractState
 import club.subjugated.overlord_exe.services.BotMapService
 import club.subjugated.overlord_exe.services.ContractService
 import club.subjugated.overlord_exe.util.TimeSource
+import club.subjugated.overlord_exe.util.encodePublicKeySecp1
+import club.subjugated.overlord_exe.util.loadECPublicKeyFromPkcs8
 import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
 import kotlinx.coroutines.CompletableDeferred
@@ -24,9 +27,11 @@ import org.eclipse.paho.client.mqttv3.MqttClient
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
 import org.springframework.transaction.support.TransactionTemplate
 import java.nio.ByteBuffer
+import java.security.interfaces.ECPublicKey
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
@@ -100,9 +105,7 @@ class TimerBot(
                     }
                 }
 
-                override fun deliveryComplete(token: IMqttDeliveryToken?) {
-
-                }
+                override fun deliveryComplete(token: IMqttDeliveryToken?) {}
             })
 
             client.connectWithResult(options).also { connResult ->
@@ -125,6 +128,19 @@ class TimerBot(
                 botName,
                 lockSession,
                 serial
+            )
+            client.publish("coordinator/inbox", MqttMessage(requestBody))
+            responseFuture.await()
+        }
+    }
+
+    suspend fun addMessage(botName : String, contractName : String, message : String, client : MqttClient) : BotApiMessage {
+        return withContext(Dispatchers.IO) {
+            responseFuture = CompletableDeferred()
+            val requestBody = contractService.makeAddMessageToContractMessage(
+                botName,
+                contractName,
+                message
             )
             client.publish("coordinator/inbox", MqttMessage(requestBody))
             responseFuture.await()
@@ -162,8 +178,12 @@ class TimerBot(
             contract.externalContractName = response.name
             contractService.save(contract)
 
-            val endsAt = timeSource.nowInUtc().plusMinutes(1)
+            val timeInMinutes = 1L
+            val endsAt = timeSource.nowInUtc().plusMinutes(timeInMinutes)
             timerBotRecordService.createTimerBotRecord(contract.id, endsAt)
+
+            val response2 = addMessage(botMap.externalName, contract.externalContractName!!, "Your time was decided: $timeInMinutes", otherClient)
+            // We don't need to anything with response 2
         }
     }
 
@@ -180,6 +200,16 @@ class TimerBot(
         }
     }
 
+    @EventListener
+    fun handleIssueContractRequest(event: IssueContract) {
+        val compressedPublicKey = encodePublicKeySecp1(loadECPublicKeyFromPkcs8(botMap.publicKey!!) as ECPublicKey)
+        val commandBytes = contractService.makeCreateContractCommand(botMap.externalName, event.shareableToken, "Timer lock", false, botMap.privateKey!!, compressedPublicKey)
+        otherClient.publish("coordinator/inbox", MqttMessage(commandBytes))
+    }
+
+    /**
+     * The periodic task that reviews (and releases) active contracts.
+     */
     private fun reviewContracts() {
         val contracts = contractService.getLiveContractsForBot(botMap.externalName)
 
@@ -188,6 +218,14 @@ class TimerBot(
         for(record in tbrs) {
             if(record.endsAt!! < timeSource.nowInUtc()) {
                 val contract = contracts.find { it.id == record.contractId }!!
+
+                val scope = CoroutineScope(Dispatchers.Default)
+                val handler = CoroutineExceptionHandler { _, e ->
+                    println("Unhandled exception: $e")
+                }
+                scope.async(handler) {
+                    addMessage(botMap.externalName, contract.externalContractName!!, "Time complete", otherClient)
+                }
 
                 val releaseCommand = contractService.makeReleaseCommand(botMap.externalName, contract.externalContractName!!, contract.serialNumber, botMap.privateKey!!)
                 otherClient.publish("coordinator/inbox", MqttMessage(releaseCommand))
