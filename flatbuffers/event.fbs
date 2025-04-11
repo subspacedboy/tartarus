@@ -7,66 +7,8 @@ table CommonMetadata {
     counter: ushort;
 }
 
-/*table LocalLock {
-
-}
-
-table LocalUnlock {
-}
-
-table Lock {}
-
-table Unlock {}
-
-table AcceptContract {}
-
-table Update {}
-
-
-table Acknowledgement {
-    public_key: [ubyte];
-    session: string;
-
-    serial_number: ushort;
-    counter: ushort;
-}
-
-table Error {
-    public_key: [ubyte];
-    session: string;
-
-    serial_number: ushort;
-    counter: ushort;
-
-    message: string;
-}
-
-table LockCommand {
-    contract_serial_number: ushort;
-    serial_number: ushort;
-    counter: ushort;
-}
-table UnlockCommand {
-    contract_serial_number: ushort;
-    serial_number: ushort;
-    counter: ushort;
-}
-table ReleaseCommand {
-    contract_serial_number: ushort;
-    serial_number: ushort;
-    counter: ushort;
-}
-table AbortCommand {
-    contract_serial_number: ushort;
-    serial_number: ushort;
-    counter: ushort;
-}*/
-
 enum EventType : byte { Undefined = 0, AcceptContract, LocalLock, LocalUnlock, Lock, Unlock, ReleaseContract }
 
-/*union EventPayload {
-  LocalLock, LocalUnlock, Lock, Unlock, AcceptContract, ReleaseContract
-}*/
 table Event {
   metadata: CommonMetadata;
   event_type: EventType;

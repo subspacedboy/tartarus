@@ -203,8 +203,8 @@ class TimerBot(
     @EventListener
     fun handleIssueContractRequest(event: IssueContract) {
         val compressedPublicKey = encodePublicKeySecp1(loadECPublicKeyFromPkcs8(botMap.publicKey!!) as ECPublicKey)
-        val commandBytes = contractService.makeCreateContractCommand(botMap.externalName, event.shareableToken, "Timer lock", false, botMap.privateKey!!, compressedPublicKey)
-        otherClient.publish("coordinator/inbox", MqttMessage(commandBytes))
+        val wrapper = contractService.makeCreateContractCommand(botMap.externalName, event.shareableToken, "Timer lock", false, botMap.privateKey!!, compressedPublicKey)
+        otherClient.publish("coordinator/inbox", MqttMessage(wrapper.messageBytes))
     }
 
     /**

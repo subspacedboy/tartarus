@@ -13,6 +13,7 @@ import club.subjugated.fb.message.SignedMessage
 import club.subjugated.overlord_exe.models.Contract
 import club.subjugated.overlord_exe.models.ContractState
 import club.subjugated.overlord_exe.storage.ContractRepository
+import club.subjugated.overlord_exe.util.ContractCommandWrapper
 import club.subjugated.overlord_exe.util.TimeSource
 import club.subjugated.overlord_exe.util.derToRawSignature
 import com.google.flatbuffers.FlatBufferBuilder
@@ -150,7 +151,7 @@ class ContractService(
         return builder3.sizedByteArray()
     }
 
-    fun makeCreateContractCommand(botName : String, shareableToken: String, terms: String, temporaryUnlock: Boolean, privateKey: ByteArray, publicKey : ByteArray) : ByteArray {
+    fun makeCreateContractCommand(botName : String, shareableToken: String, terms: String, temporaryUnlock: Boolean, privateKey: ByteArray, publicKey : ByteArray) : ContractCommandWrapper {
         val builder = FlatBufferBuilder(1024)
 
         // Build Permission
@@ -242,7 +243,7 @@ class ContractService(
         val botApiMessageOffset = BotApiMessage.endBotApiMessage(builder3)
 
         builder3.finish(botApiMessageOffset)
-        return builder3.sizedByteArray()
+        return ContractCommandWrapper(builder3.sizedByteArray(), serialNumber)
     }
 
     fun makeAddMessageToContractMessage(botName: String, contractName: String, message: String) : ByteArray {

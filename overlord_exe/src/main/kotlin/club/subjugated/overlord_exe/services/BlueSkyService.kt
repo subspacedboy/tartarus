@@ -4,16 +4,13 @@ import club.subjugated.overlord_exe.util.TimeSource
 import jakarta.annotation.PostConstruct
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
-import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
 import work.socialhub.kbsky.BlueskyFactory
 import work.socialhub.kbsky.api.app.bsky.FeedResource
 import work.socialhub.kbsky.api.chat.bsky.ConvoResource
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetAuthorFeedRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetPostThreadRequest
-import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedSearchPostsRequest
 import work.socialhub.kbsky.api.entity.chat.bsky.convo.ConvoGetListConvosRequest
-import work.socialhub.kbsky.api.entity.chat.bsky.convo.ConvoGetLogRequest
 import work.socialhub.kbsky.api.entity.chat.bsky.convo.ConvoSendMessageRequest
 import work.socialhub.kbsky.api.entity.chat.bsky.convo.ConvoUpdateReadRequest
 import work.socialhub.kbsky.api.entity.com.atproto.server.ServerCreateSessionRequest
@@ -26,10 +23,8 @@ import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageInput
 import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageView
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.time.Duration
 import java.time.OffsetDateTime
-import kotlin.collections.addAll
-import kotlin.collections.removeFirst
-import kotlin.math.log
 
 @Service
 class BlueSkyService(
@@ -79,9 +74,11 @@ class BlueSkyService(
     }
 
     private fun refreshJwtIfNeeded() {
-        if(lastRefresh < lastRefresh.plusMinutes(1)) {
+        if (Duration.between(lastRefresh, timeSource.nowInUtc()) < Duration.ofMinutes(1)) {
             return
         }
+
+        println("Refreshed session")
 
         val refreshData = BlueskyFactory
             .instance(BSKY_SOCIAL.uri)
@@ -156,7 +153,7 @@ class BlueSkyService(
         })
     }
 
-    fun getAuthorFeed(authorDid: String, from: OffsetDateTime, onMessage: (post:  FeedDefsPostView) -> Unit) {
+    fun getAuthorFeedFromTime(authorDid: String, from: OffsetDateTime, onMessage: (post:  FeedDefsPostView) -> Unit) {
         refreshJwtIfNeeded()
 
         var feed = feedService.getAuthorFeed(FeedGetAuthorFeedRequest(accessJwt).also {

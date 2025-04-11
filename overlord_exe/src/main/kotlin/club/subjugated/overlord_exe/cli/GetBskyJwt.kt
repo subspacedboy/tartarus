@@ -33,21 +33,21 @@ class GetBskyJwt(
 
         println("Total likes accumulated: ${totalLikes}")
 
-        blueSkyService.getnewDms {convoId, message ->
-            val shareableToken = message.text
-            val authorDid = message.sender.did
-
-            val before = timeSource.nowInUtc().minusDays(2)
-            blueSkyService.getAuthorFeed(authorDid, before) {message ->
-                println(message)
-            }
-
-            applicationEventPublisher.publishEvent(IssueContract(
-                    source = this,
-                    shareableToken = shareableToken
-                ))
-            blueSkyService.sendDm(convoId, "Issued")
-        }
+//        blueSkyService.getnewDms {convoId, message ->
+//            val shareableToken = message.text
+//            val authorDid = message.sender.did
+//
+//            val before = timeSource.nowInUtc().minusDays(2)
+//            blueSkyService.getAuthorFeedFromTime(authorDid, before) { message ->
+//                println(message)
+//            }
+//
+//            applicationEventPublisher.publishEvent(IssueContract(
+//                    source = this,
+//                    shareableToken = shareableToken
+//                ))
+//            blueSkyService.sendDm(convoId, "Issued")
+//        }
 
 
 
