@@ -1,4 +1,5 @@
 extern crate core;
+
 mod acknowledger;
 mod config_verifier;
 mod configuration_generated;

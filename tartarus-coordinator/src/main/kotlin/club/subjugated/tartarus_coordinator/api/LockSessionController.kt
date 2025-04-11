@@ -27,10 +27,11 @@ class LockSessionController {
     @Autowired lateinit var lockUserSessionService: LockUserSessionService
     @Autowired lateinit var authorSessionService: AuthorSessionService
 
-    @GetMapping("/mine/{someToken}", produces = [MediaType.APPLICATION_JSON])
+    @GetMapping("/mine", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
-    fun findMyLockSession(@AuthenticationPrincipal user: UserDetails, @PathVariable someToken: String): ResponseEntity<LockSessionMessage> {
-        val maybeSession = this.lockSessionService.findBySessionToken(someToken)
+    fun findMyLockSession(@AuthenticationPrincipal user: UserDetails): ResponseEntity<LockSessionMessage> {
+        val lockUserSession = lockUserSessionService.findByName(user.username)
+        val maybeSession = this.lockSessionService.findBySessionToken(lockUserSession.lockSession.sessionToken!!)
         return ResponseEntity.ok(LockSessionMessage.fromLockSession(maybeSession!!, null, null,  listOf()))
     }
 
@@ -78,25 +79,5 @@ class LockSessionController {
     ): ResponseEntity<Void> {
         val knownToken = this.authorSessionService.updateKnownToken(authorUser.username, updateKnownTokenMessage)
         return ResponseEntity.ok(null)
-    }
-
-    @PostMapping("/", produces = [MediaType.APPLICATION_JSON])
-    @ResponseBody
-    fun saveLockSession(
-        @RequestBody newLockSessionMessage: NewLockSessionMessage
-    ): ResponseEntity<LockSessionMessage> {
-        val decodedKeyBytes = Base64.getUrlDecoder().decode(newLockSessionMessage.publicKey)
-
-        try {
-            // Validate the public key
-            getECPublicKeyFromCompressedKeyByteArray(decodedKeyBytes)
-        } catch (e: CryptoException) {
-            return ResponseEntity.badRequest().build()
-        }
-
-        val session = lockSessionService.createLockSession(newLockSessionMessage)
-        val userSession = lockUserSessionService.saveNewLockUserSession(session, newLockSessionMessage.userSessionPublicKey)
-
-        return ResponseEntity.ok(LockSessionMessage.fromLockSession(session, userSession, null, listOf()))
     }
 }

@@ -12,6 +12,7 @@ import {ToastService} from './toast.service';
 import {Command} from './models/command';
 import {Bot} from './models/bot';
 import {AdminSession} from './models/admin-session';
+import {LockUserSession} from './models/lock-user-session';
 
 @Injectable({
   providedIn: 'root'
@@ -52,8 +53,8 @@ export class TartarusCoordinatorService {
     }));
   }
 
-  public getMyLockSession(sessionToken: string) : Observable<LockSession> {
-    const get_my_lock_session_uri = `${this.baseUrl}/lock_sessions/mine/${sessionToken}`;
+  public getMyLockSession() : Observable<LockSession> {
+    const get_my_lock_session_uri = `${this.baseUrl}/lock_sessions/mine`;
     return this.http.get(get_my_lock_session_uri, {
       headers: new HttpHeaders({ 'X-Require-LockUser': 'requires authorization tokens' }),
     }).pipe(map((res:any) => {
@@ -93,20 +94,21 @@ export class TartarusCoordinatorService {
     }));
   }
 
-  public saveLockPubKeyAndSession(public_key: string, session: string, userSessionPublicPem: string) : Observable<LockSession> {
-    const save_key_uri = `${this.baseUrl}/lock_sessions/`;
-    const body = JSON.stringify({
-      'publicKey' : public_key,
-      'sessionToken' : session,
-      'userSessionPublicKey' : userSessionPublicPem,
-    });
-    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-    return this.http.post(save_key_uri, body, {headers} ).pipe(map((res:any) => {
-      return new LockSession(res);
-    }),  catchError(error => {
-      return this.handleError(error);
-    }));
-  }
+  public saveLockUserSessionWithCryptogram(nonce: string, cipher: string, session: string, userSessionPublicPem: string) : Observable<LockUserSession> {
+      const save_key_uri = `${this.baseUrl}/lock_user_sessions/`;
+      const body = JSON.stringify({
+        'lockUserSessionPublicKey' : userSessionPublicPem,
+        'sessionToken' : session,
+        'cipher' : cipher,
+        'nonce' : nonce,
+      });
+      const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+      return this.http.post(save_key_uri, body, {headers} ).pipe(map((res:any) => {
+        return new LockUserSession(res);
+      }),  catchError(error => {
+        return this.handleError(error);
+      }));
+    }
 
   // Author sessions
   public createAuthorSession(public_key: string, session_token: string, signature : string): Observable<AuthorSession> {
@@ -197,7 +199,7 @@ export class TartarusCoordinatorService {
   }
 
   public getContractsForLockSession() : Observable<Contract[]> {
-    const get_contracts_uri = `${this.baseUrl}/contracts/byLockSession`;
+    const get_contracts_uri = `${this.baseUrl}/contracts/byLockUserSession`;
     return this.http.get(get_contracts_uri, {
       headers: new HttpHeaders({ 'X-Require-LockUser': 'requires authorization tokens' }),
     }).pipe(map((res:any) => {

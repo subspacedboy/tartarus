@@ -30,9 +30,7 @@ export class MyLockComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // TODO: Make this safer.
-    const sessionToken = this.userDataService.getLockSessions()[0];
-    this.tartarusCoordinatorService.getMyLockSession(sessionToken).subscribe(lockSession => {
+    this.tartarusCoordinatorService.getMyLockSession().subscribe(lockSession => {
       this.lockSession = lockSession;
     });
 

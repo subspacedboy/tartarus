@@ -67,7 +67,7 @@ class ContractController {
         return ResponseEntity.ok(contracts.map { ContractMessage.fromContract(it) })
     }
 
-    @GetMapping("/byLockSession", produces = [MediaType.APPLICATION_JSON])
+    @GetMapping("/byLockUserSession", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
     fun getContractsForLockSession(
         @AuthenticationPrincipal lockUser: UserDetails,

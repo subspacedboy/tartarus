@@ -16,6 +16,7 @@ class LockUserSession (
     @GeneratedValue(strategy = GenerationType.IDENTITY) var id: Long = 0,
     var name: String = generateId(),
     var publicKey: String,
+    var nonceUsed: String?,
     @ManyToOne @JoinColumn(name = "lock_session_id") var lockSession: LockSession,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,

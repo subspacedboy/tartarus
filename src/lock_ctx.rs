@@ -32,6 +32,10 @@ use crate::verifier::{SignedMessageVerifier, VerifiedType};
 use crate::wifi_info_screen::WifiInfoScreen;
 use crate::wifi_util::connect_wifi;
 use crate::Esp32Rng;
+use aes_gcm::aead::generic_array::GenericArray;
+use aes_gcm::aead::{Aead, Nonce};
+use aes_gcm::KeyInit;
+use aes_gcm::{AeadCore, Aes256Gcm, Key};
 use data_encoding::{BASE32_NOPAD, BASE64, BASE64URL};
 use embedded_graphics_core::pixelcolor::Rgb565;
 use embedded_graphics_core::prelude::{DrawTarget, RgbColor};
@@ -40,6 +44,8 @@ use esp_idf_svc::nvs::{EspNvs, NvsDefault};
 use esp_idf_svc::sys::{nvs_flash_deinit, nvs_flash_erase, nvs_flash_init};
 use esp_idf_svc::wifi::{BlockingWifi, EspWifi};
 use flatbuffers::FlatBufferBuilder;
+use hkdf::Hkdf;
+use p256::ecdh::diffie_hellman;
 use p256::ecdsa::signature::Signer;
 use p256::ecdsa::{Signature, SigningKey, VerifyingKey};
 use p256::{PublicKey, SecretKey};
@@ -88,6 +94,9 @@ pub struct LockCtx {
     wifi_info_screen: Option<Box<WifiInfoScreen>>,
     lock_state_screen: Option<Box<LockstateScreen>>,
     firmware_screen: Option<Box<FirmwareScreen>>,
+
+    login_cryptogram: Option<Box<String>>,
+    login_cryptogram_nonce: Option<Box<String>>,
 }
 
 impl LockCtx {
@@ -122,6 +131,8 @@ impl LockCtx {
             wifi_info_screen: None,
             lock_state_screen: None,
             firmware_screen: None,
+            login_cryptogram: None,
+            login_cryptogram_nonce: None,
         };
 
         lck.session_token = lck.load_or_create_session_id();
@@ -739,19 +750,55 @@ impl LockCtx {
         self.is_locked
     }
 
-    pub fn get_lock_url(&self) -> Result<String, String> {
-        // const COORDINATOR: &str = "http://192.168.1.180:4200/lock-start";
-        let coordinator = format!("{}/lock-start", self.configuration.web_uri);
-        if let Some(pub_key) = self.lock_public_key {
-            let compressed_bytes = pub_key.to_sec1_bytes();
-            let encoded_key = BASE64URL.encode(&compressed_bytes);
-            Ok(format!(
-                "{}?public={}&session={}",
-                coordinator, encoded_key, self.session_token
-            ))
-        } else {
-            Err("Wasn't able to make the url?!".parse().unwrap())
+    pub fn needs_configuration(&self) -> bool {
+        !self.configuration.has_token_public_key()
+    }
+
+    fn compute_login_credentials(&mut self) {
+        if self.needs_configuration() {
+            return;
         }
+        if self.login_cryptogram.is_some() && self.login_cryptogram_nonce.is_some() {
+            return;
+        }
+
+        let verifying_key = self.configuration.login_token_public_key();
+        let public_key_bytes = verifying_key.to_encoded_point(false);
+        let pub_key = PublicKey::from_sec1_bytes(public_key_bytes.as_bytes())
+            .expect("Invalid public key bytes");
+
+        let shared_secret = diffie_hellman(
+            self.lock_secret_key.as_ref().unwrap().to_nonzero_scalar(),
+            pub_key.as_affine(),
+        );
+        let hkdf = Hkdf::<Sha256>::new(None, shared_secret.raw_secret_bytes());
+        let mut okm = [0u8; 32];
+        hkdf.expand(b"aes-gcm key", &mut okm)
+            .expect("HKDF expand failed");
+
+        let aes_key = Key::<Aes256Gcm>::from_slice(&okm).clone();
+        let mut rng = Esp32Rng;
+        let nonce = Aes256Gcm::generate_nonce(&mut rng);
+
+        let cipher = Aes256Gcm::new(&aes_key);
+        let clear_text = self.session_token.as_bytes();
+        let cipher_text = cipher.encrypt(&nonce, clear_text).unwrap();
+
+        self.login_cryptogram = Some(Box::new(BASE64URL.encode(&cipher_text)));
+        self.login_cryptogram_nonce = Some(Box::new(BASE64URL.encode(&nonce)));
+    }
+
+    pub fn get_lock_url(&mut self) -> Result<String, String> {
+        self.compute_login_credentials();
+
+        let coordinator = format!("{}/lock-start", self.configuration.web_uri);
+        Ok(format!(
+            "{}?cipher={}&nonce={}&session={}",
+            coordinator,
+            self.login_cryptogram.as_ref().unwrap().as_ref(),
+            self.login_cryptogram_nonce.as_ref().unwrap().as_ref(),
+            self.session_token
+        ))
     }
 
     pub fn accept_contract(&mut self, _contract: &InternalContract) {

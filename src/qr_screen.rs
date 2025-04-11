@@ -8,7 +8,7 @@ use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::{Rgb565, RgbColor};
 use embedded_graphics::prelude::Primitive;
 use embedded_graphics::primitives::PrimitiveStyleBuilder;
-use embedded_graphics::text::Text;
+use embedded_graphics::text::{Alignment, Text};
 use embedded_graphics_core::geometry::{Point, Size};
 use embedded_graphics_core::prelude::DrawTarget;
 use embedded_graphics_core::primitives::Rectangle;
@@ -83,56 +83,68 @@ impl ScreenState for QrCodeScreen {
     fn draw_screen(&mut self, lock_ctx: &mut LockCtx) {
         lock_ctx.display.clear(Rgb565::BLACK).unwrap();
 
-        let whole_message = lock_ctx.get_lock_url().unwrap();
-        let qr = QrCode::new(whole_message).expect("Valid QR code");
+        if lock_ctx.needs_configuration() {
+            let style = MonoTextStyle::new(&FONT_10X20, Rgb565::RED);
+            let message_position = Point::new(120, 47);
+            let text = Text::with_alignment(
+                "Needs configuration",
+                message_position,
+                style,
+                Alignment::Center,
+            );
+            text.draw(&mut lock_ctx.display).expect("Should have drawn");
+        } else {
+            let whole_message = lock_ctx.get_lock_url().unwrap();
+            let qr = QrCode::new(whole_message).expect("Valid QR code");
 
-        let qr_width = qr.width() as u32;
+            let qr_width = qr.width() as u32;
 
-        log::info!("Generated code with version: {:?}", qr.version());
-        log::info!("Has width: {:?}", qr_width);
+            log::info!("Generated code with version: {:?}", qr.version());
+            log::info!("Has width: {:?}", qr_width);
 
-        // Scale factor and positioning
-        let scale = 2;
-        // let offset_y = (240 - qr_width * scale) / 2;
-        let offset_y = 5_u32;
-        // let offset_y = (240 - qr_width * scale) / 2;
-        let offset_x = 70_u32;
+            // Scale factor and positioning
+            let scale = 2;
+            // let offset_y = (240 - qr_width * scale) / 2;
+            let offset_y = 5_u32;
+            // let offset_y = (240 - qr_width * scale) / 2;
+            let offset_x = 70_u32;
 
-        let border_width = 5;
+            let border_width = 5;
 
-        let rect = Rectangle::new(
-            Point::new(
-                (offset_x - border_width) as i32,
-                (offset_y - border_width) as i32,
-            ),
-            Size::new(
-                qr_width * scale + border_width * 2,
-                qr_width * scale + border_width * 2,
-            ),
-        )
-        .into_styled(
-            PrimitiveStyleBuilder::new()
-                .fill_color(Rgb565::WHITE)
-                .build(),
-        );
-        rect.draw(&mut lock_ctx.display).expect("Expected to draw");
+            let rect = Rectangle::new(
+                Point::new(
+                    (offset_x - border_width) as i32,
+                    (offset_y - border_width) as i32,
+                ),
+                Size::new(
+                    qr_width * scale + border_width * 2,
+                    qr_width * scale + border_width * 2,
+                ),
+            )
+            .into_styled(
+                PrimitiveStyleBuilder::new()
+                    .fill_color(Rgb565::WHITE)
+                    .build(),
+            );
+            rect.draw(&mut lock_ctx.display).expect("Expected to draw");
 
-        for y in 0..qr_width {
-            for x in 0..qr_width {
-                let color = if qr[(x as usize, y as usize)] == Color::Dark {
-                    Rgb565::BLACK
-                } else {
-                    Rgb565::WHITE
-                };
-                let rect = Rectangle::new(
-                    Point::new(
-                        (offset_x + (x * scale)) as i32,
-                        (offset_y + (y * scale)) as i32,
-                    ),
-                    Size::new(scale, scale),
-                )
-                .into_styled(PrimitiveStyleBuilder::new().fill_color(color).build());
-                rect.draw(&mut lock_ctx.display).expect("Expected to draw");
+            for y in 0..qr_width {
+                for x in 0..qr_width {
+                    let color = if qr[(x as usize, y as usize)] == Color::Dark {
+                        Rgb565::BLACK
+                    } else {
+                        Rgb565::WHITE
+                    };
+                    let rect = Rectangle::new(
+                        Point::new(
+                            (offset_x + (x * scale)) as i32,
+                            (offset_y + (y * scale)) as i32,
+                        ),
+                        Size::new(scale, scale),
+                    )
+                    .into_styled(PrimitiveStyleBuilder::new().fill_color(color).build());
+                    rect.draw(&mut lock_ctx.display).expect("Expected to draw");
+                }
             }
         }
 

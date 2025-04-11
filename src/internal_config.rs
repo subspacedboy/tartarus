@@ -13,6 +13,16 @@ pub struct InternalConfig {
     login_token_public_key: Option<VerifyingKey>,
 }
 
+impl InternalConfig {
+    pub(crate) fn login_token_public_key(&self) -> &VerifyingKey {
+        self.login_token_public_key.as_ref().unwrap()
+    }
+
+    pub(crate) fn has_token_public_key(&self) -> bool {
+        self.login_token_public_key.is_some()
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InternalSafetyKey {
     pub(crate) name: String,

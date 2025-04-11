@@ -6,6 +6,7 @@ import {LockSession} from '../models/lock-session';
 import {ConfigService} from '../config.service';
 import {CryptoService} from '../crypto.service';
 import {firstValueFrom, Subject} from 'rxjs';
+import {LockUserSession} from '../models/lock-user-session';
 
 @Component({
   selector: 'app-lock-start',
@@ -15,8 +16,9 @@ import {firstValueFrom, Subject} from 'rxjs';
 })
 export class LockStartComponent implements OnInit, AfterViewInit {
   session: string | null = null;
-  lockSession? : LockSession;
-  publicKey: string | null = null;
+  lockUserSession? : LockUserSession;
+  nonce: string | null = null;
+  cipher: string | null = null;
   showDetails: boolean = false;
 
   loaded = false;
@@ -29,11 +31,15 @@ export class LockStartComponent implements OnInit, AfterViewInit {
               private cryptoService: CryptoService,) {
     this.activatedRoute.queryParamMap.subscribe(params => {
       this.session = params.get('session');
-      this.publicKey = params.get('public');
+      this.nonce = params.get('nonce');
+      this.cipher = params.get('cipher');
     });
   }
 
   async ngOnInit() {
+    /**
+     * If we don't have a keypair for this lockUser then we generate it now.
+     */
     if(!this.userDataService.hasLockUserSessionKeyPair()){
       const key_pair = await this.cryptoService.generateKeyPair();
       this.userDataService.addPublicAndPrivateKeyToLocalUserSession(key_pair.privateKeyPEM, key_pair.publicKeyPEM);
@@ -43,9 +49,9 @@ export class LockStartComponent implements OnInit, AfterViewInit {
     const publicECKey = await this.cryptoService.importPublicKeyOnlyFromPem(key_pair.publicPem!);
     const compressedPublicKey = await this.cryptoService.generateCompressedPublicKey(publicECKey);
 
-    this.lockSession = await firstValueFrom(this.tartarusCoordinatorService.saveLockPubKeyAndSession(String(this.publicKey), String(this.session), btoa(String.fromCharCode(...compressedPublicKey))));
-    this.userDataService.addLockSession(String(this.session), String(this.publicKey));
-    this.userDataService.setLockUserSessionToken(this.lockSession.lockUserSession?.name!);
+    let b64compressed = btoa(String.fromCharCode(...new Uint8Array(compressedPublicKey)));
+    this.lockUserSession = await firstValueFrom(this.tartarusCoordinatorService.saveLockUserSessionWithCryptogram(this.nonce!, this.cipher!, this.session!, b64compressed));
+    this.userDataService.setLockUserSessionToken(this.lockUserSession.name!);
     this.loaded = true;
   }
 
@@ -58,11 +64,11 @@ export class LockStartComponent implements OnInit, AfterViewInit {
 
   getShareLink(): string {
     const baseUrl = this.configService.getConfig().webUri;
-    return `${baseUrl}/lock-sessions/${this.lockSession!.shareToken}`;
+    return `${baseUrl}/lock-sessions/${this.lockUserSession!.lockSession!.shareToken}`;
   }
 
   getTotalControlLink(): string {
     const baseUrl = this.configService.getConfig().webUri;
-    return `${baseUrl}/lock-sessions/${this.lockSession!.totalControlToken}`;
+    return `${baseUrl}/lock-sessions/${this.lockUserSession!.lockSession!.totalControlToken}`;
   }
 }

@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import {Observable} from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -7,24 +6,6 @@ import {Observable} from 'rxjs';
 export class UserDataService {
 
   constructor() { }
-
-  addLockSession(token: string, publicKey: string) {
-    const key = 'lock_sessions';
-    const existingTokens = new Set(JSON.parse(localStorage.getItem(key) || '[]'));
-
-    if (!existingTokens.has(token)) {
-      existingTokens.add(token);
-      localStorage.setItem(key, JSON.stringify(Array.from(existingTokens)));
-    }
-
-    const token_to_pubkey_key = `${token}-key`;
-    localStorage.setItem(token_to_pubkey_key, JSON.stringify(publicKey));
-  }
-
-  getLockSessions(): string[] {
-    const key = 'lock_sessions';
-    return JSON.parse(localStorage.getItem(key) || '[]');
-  }
 
   hasLockUserSessionKeyPair() {
     return localStorage.getItem("lock_user_private_pem") !== null;
