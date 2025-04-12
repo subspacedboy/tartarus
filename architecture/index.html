@@ -9,10 +9,10 @@
       
       
       
-        <link rel="prev" href="../architecture/">
+        <link rel="prev" href="..">
       
       
-        <link rel="next" href="../setting_up_the_lock/">
+        <link rel="next" href="../building_the_lock/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -20,7 +20,7 @@
     
     
       
-        <title>Building the Lock - Tartarus Docs</title>
+        <title>Architecture Notes: How It All Works - Tartarus Docs</title>
       
     
     
@@ -62,7 +62,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#building-the-lock" class="md-skip">
+        <a href="#architecture-notes-how-it-all-works" class="md-skip">
           Skip to content
         </a>
       
@@ -98,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Building the Lock
+              Architecture Notes: How It All Works
             
           </span>
         </div>
@@ -213,28 +213,6 @@
       
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../architecture/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Architecture Notes: How It All Works
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
     
   
   
@@ -252,7 +230,7 @@
   
   
   <span class="md-ellipsis">
-    Building the Lock
+    Architecture Notes: How It All Works
     
   </span>
   
@@ -265,7 +243,7 @@
   
   
   <span class="md-ellipsis">
-    Building the Lock
+    Architecture Notes: How It All Works
     
   </span>
   
@@ -288,37 +266,46 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#bill-of-materials" class="md-nav__link">
+  <a href="#cryptography" class="md-nav__link">
     <span class="md-ellipsis">
-      Bill of Materials
+      Cryptography
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Bill of Materials">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#signedmessage" class="md-nav__link">
+    <span class="md-ellipsis">
+      SignedMessage
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SignedMessage">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#mandatory-parts" class="md-nav__link">
+  <a href="#commands-counters-serial-numbers" class="md-nav__link">
     <span class="md-ellipsis">
-      Mandatory parts
+      Commands, Counters &amp; Serial Numbers
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#optional-but-good-to-have" class="md-nav__link">
+  <a href="#hashing" class="md-nav__link">
     <span class="md-ellipsis">
-      Optional, but good to have
+      Hashing
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#tools" class="md-nav__link">
+  <a href="#signature-format" class="md-nav__link">
     <span class="md-ellipsis">
-      Tools
+      Signature Format
     </span>
   </a>
   
@@ -330,74 +317,28 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3d-files" class="md-nav__link">
+  <a href="#signedevent" class="md-nav__link">
     <span class="md-ellipsis">
-      3D Files
+      SignedEvent
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#assembly" class="md-nav__link">
+  <a href="#contract-structure" class="md-nav__link">
     <span class="md-ellipsis">
-      Assembly
+      Contract structure
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Assembly">
+    <nav class="md-nav" aria-label="Contract structure">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#step-1-print-the-parts" class="md-nav__link">
+  <a href="#bots-permissions" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 1: Print the parts
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-2-solder-headers-to-esp32-s3" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 2: Solder headers to ESP32-S3
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-3-flash-the-firmware" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 3: Flash the firmware
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-4-assemble-servo-bracket" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 4: Assemble servo bracket
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-5-wire-servo-to-esp32-s3" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 5: Wire servo to ESP32-S3.
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Step 5: Wire servo to ESP32-S3.">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#alternative" class="md-nav__link">
-    <span class="md-ellipsis">
-      Alternative
+      Bots &amp; Permissions
     </span>
   </a>
   
@@ -407,74 +348,66 @@
     </nav>
   
 </li>
+      
+        <li class="md-nav__item">
+  <a href="#lock-startup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Lock Startup
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#terms" class="md-nav__link">
+    <span class="md-ellipsis">
+      Terms
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Terms">
+      <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#step-6-mount-the-horn" class="md-nav__link">
+  <a href="#locksession" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 6: Mount the horn
+      LockSession
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-7-mount-esp32-s3-to-lid" class="md-nav__link">
+  <a href="#lockusersession" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 7: Mount ESP32-S3 to lid
+      LockUserSession
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-8-wire-and-mount-code-reader" class="md-nav__link">
+  <a href="#authorsession" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 8: Wire and mount code reader
+      AuthorSession
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-9-test-and-then-make-wire-connections-permanent" class="md-nav__link">
+  <a href="#adminsession" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 9: Test and then make wire connections permanent
+      AdminSession
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-10-mount-servo-to-main-body" class="md-nav__link">
+  <a href="#safetykey" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 10: Mount servo to main body
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-11-mount-technical-lid-to-main-body" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 11: Mount technical lid to main body
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-12-seal-top" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 12: Seal top
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#done" class="md-nav__link">
-    <span class="md-ellipsis">
-      Done!
+      SafetyKey
     </span>
   </a>
   
@@ -489,6 +422,28 @@
   
 </nav>
       
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../building_the_lock/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Building the Lock
+    
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -586,37 +541,46 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#bill-of-materials" class="md-nav__link">
+  <a href="#cryptography" class="md-nav__link">
     <span class="md-ellipsis">
-      Bill of Materials
+      Cryptography
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Bill of Materials">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#signedmessage" class="md-nav__link">
+    <span class="md-ellipsis">
+      SignedMessage
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SignedMessage">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#mandatory-parts" class="md-nav__link">
+  <a href="#commands-counters-serial-numbers" class="md-nav__link">
     <span class="md-ellipsis">
-      Mandatory parts
+      Commands, Counters &amp; Serial Numbers
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#optional-but-good-to-have" class="md-nav__link">
+  <a href="#hashing" class="md-nav__link">
     <span class="md-ellipsis">
-      Optional, but good to have
+      Hashing
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#tools" class="md-nav__link">
+  <a href="#signature-format" class="md-nav__link">
     <span class="md-ellipsis">
-      Tools
+      Signature Format
     </span>
   </a>
   
@@ -628,74 +592,28 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3d-files" class="md-nav__link">
+  <a href="#signedevent" class="md-nav__link">
     <span class="md-ellipsis">
-      3D Files
+      SignedEvent
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#assembly" class="md-nav__link">
+  <a href="#contract-structure" class="md-nav__link">
     <span class="md-ellipsis">
-      Assembly
+      Contract structure
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Assembly">
+    <nav class="md-nav" aria-label="Contract structure">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#step-1-print-the-parts" class="md-nav__link">
+  <a href="#bots-permissions" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 1: Print the parts
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-2-solder-headers-to-esp32-s3" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 2: Solder headers to ESP32-S3
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-3-flash-the-firmware" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 3: Flash the firmware
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-4-assemble-servo-bracket" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 4: Assemble servo bracket
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-5-wire-servo-to-esp32-s3" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 5: Wire servo to ESP32-S3.
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Step 5: Wire servo to ESP32-S3.">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#alternative" class="md-nav__link">
-    <span class="md-ellipsis">
-      Alternative
+      Bots &amp; Permissions
     </span>
   </a>
   
@@ -705,74 +623,66 @@
     </nav>
   
 </li>
+      
+        <li class="md-nav__item">
+  <a href="#lock-startup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Lock Startup
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#terms" class="md-nav__link">
+    <span class="md-ellipsis">
+      Terms
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Terms">
+      <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#step-6-mount-the-horn" class="md-nav__link">
+  <a href="#locksession" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 6: Mount the horn
+      LockSession
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-7-mount-esp32-s3-to-lid" class="md-nav__link">
+  <a href="#lockusersession" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 7: Mount ESP32-S3 to lid
+      LockUserSession
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-8-wire-and-mount-code-reader" class="md-nav__link">
+  <a href="#authorsession" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 8: Wire and mount code reader
+      AuthorSession
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-9-test-and-then-make-wire-connections-permanent" class="md-nav__link">
+  <a href="#adminsession" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 9: Test and then make wire connections permanent
+      AdminSession
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-10-mount-servo-to-main-body" class="md-nav__link">
+  <a href="#safetykey" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 10: Mount servo to main body
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-11-mount-technical-lid-to-main-body" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 11: Mount technical lid to main body
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-12-seal-top" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 12: Seal top
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#done" class="md-nav__link">
-    <span class="md-ellipsis">
-      Done!
+      SafetyKey
     </span>
   </a>
   
@@ -799,135 +709,141 @@
 
 
 
-<h1 id="building-the-lock">Building the Lock</h1>
-<h2 id="bill-of-materials">Bill of Materials</h2>
-<p>In order to build the lock you will need:</p>
-<h3 id="mandatory-parts">Mandatory parts</h3>
+<h1 id="architecture-notes-how-it-all-works">Architecture Notes: How It All Works</h1>
+<p>This doc is a continuous work in progress.</p>
+<p>This serves as the rough architecture guide for how the whole
+thing works if you're curious.</p>
+<p>There's essentially three components: the lock, the website <a href="https://tartarus.subjugated.club">Tartarus</a>, and the coordinator(API).</p>
+<p>The "center" of the system is the Coordinator. The locks need somewhere to send and receive updates, process commands etc.
+When they startup they check their local configuration and go through these steps:</p>
+<h2 id="cryptography">Cryptography</h2>
+<p>Almost every entity in the system has a public and private keypair.</p>
+<p>Going into the details of a asymmetric cryptography is way beyond the scope
+of this doc. That being said:</p>
 <ul>
-<li><a href="https://www.adafruit.com/product/5691">Adafruit ESP32-S3 Reverse TFT Feather - 4MB Flash, 2MB PSRAM, STEMMA QT</a>. If you want an "official" build + badge on the coordinator, you'll need to order one from subjugated.club. Homebrew versions are totally welcome and don't limit your features.</li>
-<li><a href="https://www.adafruit.com/product/4399">STEMMA QT / Qwiic JST SH 4-Pin Cable - 50mm Long</a></li>
-<li><a href="https://www.adafruit.com/product/5744">Tiny Code Reader from Useful Sensors</a></li>
-<li><a href="https://www.adafruit.com/product/169">Micro servo - TowerPro SG92R</a> - You can also use any generic SG90/SG92 form factor servo.</li>
-<li><a href="https://www.grainger.com/product/6CE33">7x Socket Head Cap Screw: M2-0.4 Thread Size, 8 mm Lg, Std, Black Oxide, Steel, Class 12.9, 100 PK</a></li>
-<li><a href="https://www.grainger.com/product/26KR83">7x Hex Nut: M2-0.40 Thread, 4 mm Hex Wd, 1.6 mm Hex Ht, Steel, Class 8, Zinc Plated, 100 PK</a></li>
-<li><a href="https://www.amazon.com/dp/B09FPJM3L9">3x Female-to-male jumper wires</a> - Shorter the better. These are 10cm.</li>
-<li>Adhesive. Hot glue if you want some margin of error, superglue if you want a more "secure" experience.</li>
+<li>All keys use curve <code>secp256r1</code>.</li>
+<li>All public keys are represented in compressed form.</li>
+<li>All hashes are calculated with <code>sha256</code>.</li>
+<li>All signatures are to be in <code>raw</code> format, not <code>DER</code>.</li>
+<li>All symmetric cryptography is <code>aes-256-gcm</code>.</li>
+<li>All password that need to be verified are stored with <code>Scrypt</code> and params: 16384, 8, 1, 32.</li>
+<li>Where <code>HKDF</code> is used, we populate the info field with the task at hand.</li>
+<li>All <code>ByteArrays</code> are encoded with Base64 unless they are meant to be in a URL in which case we use URL-safe Base64.</li>
+<li>Online keys (<code>SafetyKey</code>) are stored as PKCS8 since they aren't transmitted.</li>
 </ul>
-<h3 id="optional-but-good-to-have">Optional, but good to have</h3>
-<ul>
-<li><a href="https://www.loctiteproducts.com/products/central-pdp.html/loctite-threadlocker-blue/SAP_0201OHL029W4.html">Loctite Threadlocker Blue</a> - Makes the lock more tamper resistant.</li>
-<li>Tiny cable tie</li>
-<li><a href="https://www.amazon.com/dp/B0009OIJMI?th=1">4mm Nut driver</a> - Definitely makes tightening the nuts easier, but far from necessary. Also you probably want a magnetized one, but this is what I have.</li>
-</ul>
-<h3 id="tools">Tools</h3>
-<ul>
-<li>Soldering iron</li>
-<li>Technical screwdriver (T6 bit)</li>
-</ul>
-<h2 id="3d-files">3D Files</h2>
-<p>You can get the full kit of parts here: <a href="../static/tartarus_parts.3mf">Full kit</a></p>
-<p>I personally use Prusa slicer + the Prusa MINI+ for most builds. I use organic supports, 15% infill, and the 0.20mm SPEED profile.
-Feel free to adjust as necessary. I recommend printing with PLA.</p>
-<h2 id="assembly">Assembly</h2>
-<h3 id="step-1-print-the-parts">Step 1: Print the parts</h3>
-<ul>
-<li>3D printer</li>
-<li>Several hours</li>
-</ul>
-<h3 id="step-2-solder-headers-to-esp32-s3">Step 2: Solder headers to ESP32-S3</h3>
-<ul>
-<li>ESP32-S3 + included headers</li>
-</ul>
-<p><img alt="ESP32-S3 with full headers" src="../images/2.png" /></p>
-<p><img alt="Break headers off" src="../images/3.png" /></p>
-<p><img alt="Break headers off" src="../images/4.png" /></p>
-<p><img alt="Break headers off" src="../images/5.png" />``</p>
-<p>Use a pair of pliers and break off 3 headers from the full strip that comes with the ESP32-S3.</p>
-<p>You'll solder these headers (short-side through top) across 3V, GND, and A0. See picture.
-Also check out the <a href="https://learn.adafruit.com/esp32-s3-reverse-tft-feather/pinouts">pinout guide</a> from Adafruit.</p>
-<h3 id="step-3-flash-the-firmware">Step 3: Flash the firmware</h3>
-<p><img alt="Flash firmware" src="../images/6.png" />`</p>
-<p>Hold down D0 and press Reset. Flash the firmware with:</p>
-<pre><code>espflash flash --monitor --partition-table partitions.csv --no-skip --erase-parts otadata
+<h2 id="signedmessage"><code>SignedMessage</code></h2>
+<p>All the commands and contracts are implemented as <code>SignedMessage</code>.
+A <code>SignedMessage</code> is a flatbuffer with a signed payload. So when you make
+a contract you generate the entire <code>Contract</code> flatbuffer, calculate a hash of the
+whole table, sign that, and then attach the signature to the outer-wrapper of the
+<code>SignedMessage</code>.</p>
+<p>Every entity that receives or forwards a <code>SignedMessage</code> will check the signature
+and reject the message if it fails to pass.</p>
+<h3 id="commands-counters-serial-numbers">Commands, Counters &amp; Serial Numbers</h3>
+<p>All the commands after a <code>Contract</code> is accepted are to include a counter value. In order for a <code>SignedMessage</code> to be valid
+the counter value in the message has to be greater than or equal to the current counter in the lock.
+This is designed to prevent message replay (Someone trying to use an unlock code twice).</p>
+<p>All commands also have to include both their own unique serial number and the serial number
+of the contract they are issued under. If the contract serial number in a message doesn't match
+the current contract it will be rejected. This prevents one person's messages from being used on
+a different lock.</p>
+<h3 id="hashing">Hashing</h3>
+<p>The hash of a flatbuffer has to also include the vtable of the message.
+Because the format essentially uses "pointers" in the format, all of those
+pointers also have to be covered- and those are the vtable. You'll see code like this almost anywhere a signature is needed:</p>
+<pre><code>builder.Finish(contract_offset)
+bytes = builder.Output()
+
+start = bytes[0]
+contract_start = bytes[start]
+vtable_start = start - contract_start
+hash = hashlib.sha256(bytes[vtable_start:]).digest()
+signature = signer.sign(hash)contract_start = bytes[start]
+vtable_start = start - contract_start
+hash = hashlib.sha256(bytes[vtable_start:]).digest()
+signature = signer.sign(hash)
 </code></pre>
-<p>If it looks like it succeeded but says "Waiting for download" you just need to reset it one more time.</p>
-<p>You should see the boot screen followed by "Needs configuration."</p>
-<p>We do this now because we need the firmware to calibrate the servo.</p>
-<h3 id="step-4-assemble-servo-bracket">Step 4: Assemble servo bracket</h3>
+<h3 id="signature-format">Signature Format</h3>
+<p>Signatures need to be raw r + s values, not <code>DER</code> encoded.
+This was an early design decision to minimize the size of <code>SignedMessage</code> tables
+so they would help fit inside scannable QR code blocks. The downside is most
+verification libraries like BouncyCastle want signatures in <code>DER</code> format so you'll need to convert them
+around.</p>
+<h2 id="signedevent"><code>SignedEvent</code></h2>
+<p>The lock will generate signed events for both the coordinator and any bots
+that are listed on a contract. They are similar in structure to <code>SignedMessage</code>.</p>
+<p>The events in the contract lifecycle are:</p>
 <ul>
-<li>2x 2mm screws</li>
-<li>2x hex nuts</li>
-<li>1x mounting bracket</li>
-<li>1x SG92 servo (with single-ended horn, and small screw that came with it) </li>
+<li><code>Accept</code> - This event is emitted after the contract has been confirmed in the hardware.</li>
+<li><code>Lock</code> - The lock was locked via command from the coordinator.</li>
+<li><code>Unlock</code> - The lock was unlocked via command.</li>
+<li><code>LocalLock</code> - The lock button on the face of the lock was used. Only emits if temporary unlocking is allowed.</li>
+<li><code>LocalUnlock</code> - The unlock button on the face of the lock was used. Only emits if temporary unlocking is allowed.</li>
+<li><code>Release</code> - The contract was released and confirmed in hardware.</li>
+<li><code>Abort</code> - The contract was aborted via a <code>SafetyKey</code>.</li>
 </ul>
-<p><img alt="Servo bracket" src="../images/1.png" />`</p>
-<h3 id="step-5-wire-servo-to-esp32-s3">Step 5: Wire servo to ESP32-S3.</h3>
+<h2 id="contract-structure">Contract structure</h2>
+<p>Contracts are pretty straight forward:</p>
+<pre><code>table Contract {
+  serial_number: ushort;
+  public_key: [ubyte];
+  bots: [Bot];
+  terms: string;
+  // If true, subject can freely cycle the lock.
+  is_temporary_unlock_allowed: bool;
+}
+</code></pre>
+<p>Notes:</p>
 <ul>
-<li>3x jumper wires</li>
+<li>The serial number is randomly generated by the author.</li>
+<li>The <code>public_key</code> is the author's public key. All future commands will need to be signed
+by this key.</li>
+<li>The <code>bots</code> vector identifies which bots are allowed to participate in this contract.</li>
+<li>The <code>terms</code> string is just an unstructured string. It can include whatever you want. None of the core
+bits of the system will try and interpret this field.</li>
+<li>Lastly, should temporary unlocks be allowed. If this is true the buttons
+on the lock face will work, otherwise they won't.</li>
 </ul>
-<p><img alt="Servo wiring with flipped wires" src="../images/7.png" />`</p>
-<p>Unfortunately, the board layout is 3V, GND, A0 and the servo's wiring is GND, 3V, Signal.
-Use the jumper wires to connect the servo the board headers but swap the power and ground.</p>
-<p>Connect USB power to the ESP32-S3 and you will probably hear a quick buzz. The servo is now
-in the "down" angle position so we can mount the horn.</p>
-<h4 id="alternative">Alternative</h4>
-<p>You can also pop the pins out of the servo connector and swap them there and omit this step.</p>
-<h3 id="step-6-mount-the-horn">Step 6: Mount the horn</h3>
-<p><img alt="Servo wiring with flipped wires" src="../images/9.png" />`</p>
-<p>Mount the horn at 6 as if it were a clock. Connect power back to the ESP32-S3 and make sure the
-servo starts at 6. Toggle the lock on the second screen (D2 to change screen and then by pressing D1, the middle button). It should freely rotate
-to a 3 o'clock position and back. If it does, use the small-sized screw and mount the horn permanently. Try
-not to rotate the horn while tightening.</p>
-<h3 id="step-7-mount-esp32-s3-to-lid">Step 7: Mount ESP32-S3 to lid</h3>
+<p>In the original design it was </p>
+<h3 id="bots-permissions">Bots &amp; Permissions</h3>
+<p>Only bots listed on the contract body will be able to receive events.
+Events come directly from the lock, not the coordinator.</p>
+<p>Additionally, bots have four possible permission settings:</p>
 <ul>
-<li>4x bolts</li>
-<li>4x nuts</li>
+<li><code>receive_events</code> - Whether or not <code>SignedEvent</code> messages will be generated at their appropriate point in the lifecycle.
+If this is false no events will be sent to the bot.</li>
+<li><code>can_unlock</code> - If this is true the bot can sign an <code>UnlockCommand</code> and it will be accepted.</li>
+<li><code>can_lock</code> - Same as unlock but for lock.</li>
+<li><code>can_release</code> - If this is true the bot can end the contract.</li>
 </ul>
-<p><img alt="3D printed lid backside" src="../images/11.png" />`</p>
-<p><img alt="3D printed lib with header clearance popped out" src="../images/12.png" />`</p>
-<p><img alt="3D printed lib with header clearance popped out" src="../images/13.png" />`</p>
-<p><img alt="3D printed lib with header clearance popped out" src="../images/14.png" />`</p>
-<p>Use a pair of tweezers (or similar) to remove the small section where the headers will fit
-from the underside of the 3D print.</p>
-<p>Attach all the bolts and nuts. Use the thread locker to make sure
-they don't loosen. Also makes sure that subs can't just open it by shaking :-).</p>
-<h3 id="step-8-wire-and-mount-code-reader">Step 8: Wire and mount code reader</h3>
+<h2 id="lock-startup">Lock Startup</h2>
+<p>What happens on lock startup.</p>
 <ul>
-<li>Tiny code reader</li>
-<li>Stemma QT cable</li>
-<li>1 bolt</li>
-<li>1 nut</li>
-<li>2 spacers from 3D print</li>
+<li>Send <code>StartedUpdate</code> from the Contract flatbuffers.
+If the coordinator has never heard from this lock before it will create a new <code>LockSession</code>.
+It also includes the public key material from the lock, whether it started with a contract, and what
+the current lock state is.</li>
+<li>Receive a <code>CoordinatorConfiguration</code> message potentially updating the lock's local configuration.
+Can also be used to set/toggle experimental features in the firmware.</li>
+<li>Sends a <code>GetLatestFirmwareRequest</code> that will us what the latest available version via OTA ("Over the air") is.</li>
+<li>Receive a <code>FirmwareChallengeRequest</code>. If you have an "official" build of the firmware it will have a key
+injected that can prove it's an official firmware. This is pretty much just ceremonial.</li>
 </ul>
-<p><img alt="Tiny code reader and associated parts" src="../images/16.png" />`</p>
-<p><img alt="Tiny code reader and associated parts" src="../images/17.png" />`</p>
-<p><img alt="Tiny code reader and associated parts with spacers glued down" src="../images/18.png" />`</p>
-<p>Connect the tiny code reader with the stemma QT cable to the main board.</p>
-<p>Mount the tiny code reader with the bolt + nut.</p>
-<p>I use 2 "spacers" to secure the code reader in place because it only has the one
-screw mount hole. I use a <em>tiny</em> amount of activator on the board and superglue
-the spacers above and below the reader. See pic.</p>
-<h3 id="step-9-test-and-then-make-wire-connections-permanent">Step 9: Test and then make wire connections permanent</h3>
-<p>Plug it in and cycle the lock. Try and scan a wifi code and make sure it connects.
-When you're satisfied it's all working make the connections permanent with your
-adhesive of choice.</p>
-<h3 id="step-10-mount-servo-to-main-body">Step 10: Mount servo to main body</h3>
-<p><img alt="Servo mounted to main body" src="../images/19.png" />`</p>
-<h3 id="step-11-mount-technical-lid-to-main-body">Step 11: Mount technical lid to main body</h3>
-<p><img alt="Servo mounted to main body" src="../images/20.png" />`</p>
-<p>I use a tiny cable tie to make this a little easier and a little more organized.</p>
-<p>Use your adhesive to secure the front lid to the body.</p>
-<p><img alt="Servo mounted to main body" src="../images/21.png" />`</p>
-<h3 id="step-12-seal-top">Step 12: Seal top</h3>
-<p><img alt="Servo mounted to main body" src="../images/22.png" />`</p>
-<p><img alt="Servo mounted to main body" src="../images/23.png" />`</p>
-<p>I use superglue on the left sill, the right sill, and a tiny bit across
-the front where all the technical parts are mounted.
-If you're using hot glue be sure wherever you apply it doesn't interfere with the tray sliding in and out.</p>
-<p>In order to get the best seal I recommend leaving a heavy weight on it while it cures.
-I have a tupperware full of change for this. Give it an hour or two.</p>
-<h3 id="done">Done!</h3>
-<p><img alt="Servo mounted to main body" src="../images/24.png" />`</p>
+<p>From there it will publish a <code>PeriodicUpdate</code> once a minute indefinitely.</p>
+<h2 id="terms">Terms</h2>
+<h3 id="locksession"><code>LockSession</code></h3>
+<p>A <code>LockSession</code> uniquely defines a particular Tartarus lock.</p>
+<h3 id="lockusersession"><code>LockUserSession</code></h3>
+<p>This is an owner of a Tartarus lock logged into the website.
+You can simultaneously have a <code>LockUserSession</code> and an <code>AuthorSession</code>.</p>
+<h3 id="authorsession"><code>AuthorSession</code></h3>
+<p>This is someone logged into the website with a keypair image they generated and is authoring/managing contracts.
+You can simultaneously have a <code>LockUserSession</code> and an <code>AuthorSession</code>.</p>
+<h3 id="adminsession"><code>AdminSession</code></h3>
+<p>Admin users that have special, magical powers.</p>
+<h3 id="safetykey"><code>SafetyKey</code></h3>
+<p>A set of reserved online keys that can sign <code>Abort</code> messages.
+Only <code>AdminSession</code> users can use <code>SafetyKey</code>s. </p>
 
 
 
