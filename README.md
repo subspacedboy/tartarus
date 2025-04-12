@@ -23,6 +23,12 @@ in `tartarus`.
 The example bot is a Python example for how to make a simple TimerBot.
 Check out `tartarus-bot-example`.
 
+### Overlord_exe
+
+This is a collection of official bots written in Kotlin.
+See [@subjugatedclub.bsky.social](https://bsky.app/profile/subjugatedclub.bsky.social).
+
+
 ### Flatbuffers
 
 All the communication between the various parts are implemented as

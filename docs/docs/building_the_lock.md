@@ -33,14 +33,14 @@ You can get the full kit of parts here: [Full kit](static/tartarus_parts.3mf)
 I personally use Prusa slicer + the Prusa MINI+ for most builds. I use organic supports, 15% infill, and the 0.20mm SPEED profile.
 Feel free to adjust as necessary. I recommend printing with PLA.
 
-# Assembly
+## Assembly
 
-## Step 1: Print the parts
+### Step 1: Print the parts
 
 * 3D printer
 * Several hours
 
-## Step 2: Solder headers to ESP32-S3
+### Step 2: Solder headers to ESP32-S3
 
 * ESP32-S3 + included headers
 
@@ -54,19 +54,24 @@ Feel free to adjust as necessary. I recommend printing with PLA.
 
 Use a pair of pliers and break off 3 headers from the full strip that comes with the ESP32-S3.
 
-You'll solder these headers (short-side through top) across 3V3, GND, and A0. See picture.
+You'll solder these headers (short-side through top) across 3V, GND, and A0. See picture.
 Also check out the [pinout guide](https://learn.adafruit.com/esp32-s3-reverse-tft-feather/pinouts) from Adafruit.
 
-## Step 3: Flash the firmware
+### Step 3: Flash the firmware
 
 ![Flash firmware](images/6.png)`
 
-Hold down D0 and press Reset. Flash the firmware with `espflash flash`. Manually reset it once.
-You should see the boot screen.
+Hold down D0 and press Reset. Flash the firmware with:
+```
+espflash flash --monitor --partition-table partitions.csv --no-skip --erase-parts otadata
+```
+If it looks like it succeeded but says "Waiting for download" you just need to reset it one more time.
+
+You should see the boot screen followed by "Needs configuration."
 
 We do this now because we need the firmware to calibrate the servo.
 
-## Step 4: Assemble servo bracket
+### Step 4: Assemble servo bracket
 
 * 2x 2mm screws
 * 2x hex nuts
@@ -75,19 +80,23 @@ We do this now because we need the firmware to calibrate the servo.
 
 ![Servo bracket](images/1.png)`
 
-## Step 5: Wire servo to ESP32-S3.
+### Step 5: Wire servo to ESP32-S3.
 
 * 3x jumper wires
 
 ![Servo wiring with flipped wires](images/7.png)`
 
-Unfortunately, the board layout is 3V3, GND, A0 and the servo's wiring is GND, 3V3, Signal.
+Unfortunately, the board layout is 3V, GND, A0 and the servo's wiring is GND, 3V, Signal.
 Use the jumper wires to connect the servo the board headers but swap the power and ground.
 
 Connect USB power to the ESP32-S3 and you will probably hear a quick buzz. The servo is now
 in the "down" angle position so we can mount the horn.
 
-## Step 6: Mount the horn
+#### Alternative
+
+You can also pop the pins out of the servo connector and swap them there and omit this step.
+
+### Step 6: Mount the horn
 
 ![Servo wiring with flipped wires](images/9.png)`
 
@@ -96,7 +105,7 @@ servo starts at 6. Toggle the lock on the second screen (D2 to change screen and
 to a 3 o'clock position and back. If it does, use the small-sized screw and mount the horn permanently. Try
 not to rotate the horn while tightening.
 
-## Step 7: Mount ESP32-S3 to lid
+### Step 7: Mount ESP32-S3 to lid
 
 * 4x bolts
 * 4x nuts
@@ -115,7 +124,7 @@ from the underside of the 3D print.
 Attach all the bolts and nuts. Use the thread locker to make sure
 they don't loosen. Also makes sure that subs can't just open it by shaking :-).
 
-## Step 8: Wire and mount code reader
+### Step 8: Wire and mount code reader
 
 * Tiny code reader
 * Stemma QT cable
@@ -137,17 +146,17 @@ I use 2 "spacers" to secure the code reader in place because it only has the one
 screw mount hole. I use a *tiny* amount of activator on the board and superglue
 the spacers above and below the reader. See pic.
 
-## Step 9: Test and then make wire connections permanent
+### Step 9: Test and then make wire connections permanent
 
 Plug it in and cycle the lock. Try and scan a wifi code and make sure it connects.
 When you're satisfied it's all working make the connections permanent with your
 adhesive of choice.
 
-## Step 10: Mount servo to main body
+### Step 10: Mount servo to main body
 
 ![Servo mounted to main body](images/19.png)`
 
-## Step 11: Mount technical lid to main body
+### Step 11: Mount technical lid to main body
 
 ![Servo mounted to main body](images/20.png)`
 
@@ -157,7 +166,7 @@ Use your adhesive to secure the front lid to the body.
 
 ![Servo mounted to main body](images/21.png)`
 
-## Step 12: Seal top
+### Step 12: Seal top
 
 ![Servo mounted to main body](images/22.png)`
 
@@ -170,6 +179,6 @@ If you're using hot glue be sure wherever you apply it doesn't interfere with th
 In order to get the best seal I recommend leaving a heavy weight on it while it cures.
 I have a tupperware full of change for this. Give it an hour or two.
 
-## Done!
+### Done!
 
 ![Servo mounted to main body](images/24.png)`
