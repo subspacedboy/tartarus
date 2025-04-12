@@ -18,6 +18,9 @@ table GetContractResponse {
     next_counter: ushort;
     state: string;
     name: string;
+    shareable_token: string;
+    author_name: string;
+    signed_message: [byte];
 }
 
 table CreateCommandRequest {

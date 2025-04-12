@@ -16,18 +16,25 @@ import club.subjugated.overlord_exe.storage.ContractRepository
 import club.subjugated.overlord_exe.util.ContractCommandWrapper
 import club.subjugated.overlord_exe.util.TimeSource
 import club.subjugated.overlord_exe.util.derToRawSignature
+import club.subjugated.overlord_exe.util.encodePublicKeySecp1
+import club.subjugated.overlord_exe.util.loadECPublicKeyFromPkcs8
 import com.google.flatbuffers.FlatBufferBuilder
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.security.KeyFactory
 import java.security.MessageDigest
 import java.security.Signature
 import java.security.spec.PKCS8EncodedKeySpec
 import kotlin.random.Random
+import java.security.interfaces.ECPublicKey
+
 
 @Service
 class ContractService(
     private var contractRepository: ContractRepository,
-    private var timeSource: TimeSource
+    private var botMapService: BotMapService,
+    private var timeSource: TimeSource,
+    @Value("\${overlord.coordinator}") val coordinator: String = ""
 ) {
 
     fun getLiveContractsForBot(botName : String) : List<Contract> {
@@ -151,8 +158,31 @@ class ContractService(
         return builder3.sizedByteArray()
     }
 
-    fun makeCreateContractCommand(botName : String, shareableToken: String, terms: String, temporaryUnlock: Boolean, privateKey: ByteArray, publicKey : ByteArray) : ContractCommandWrapper {
+    fun makeCreateContractCommand(botName : String, shareableToken: String, terms: String, temporaryUnlock: Boolean, privateKey: ByteArray, publicKey : ByteArray, public: Boolean) : ContractCommandWrapper {
         val builder = FlatBufferBuilder(1024)
+
+        var announcerBotOffset : Int? = 0
+
+        if(public) {
+            val announcerBotMap = botMapService.getBotMap("announcer", coordinator)
+
+            // Build permission for Announcer
+            Permission.startPermission(builder)
+            Permission.addReceiveEvents(builder, true)
+            Permission.addCanUnlock(builder, false)
+            Permission.addCanRelease(builder, false)
+            val announcerPermissionOffset = Permission.endPermission(builder)
+
+            val announcerBotName = builder.createString(announcerBotMap.externalName)
+            val compressedPublicKeyBytes = encodePublicKeySecp1(loadECPublicKeyFromPkcs8(announcerBotMap.publicKey!!) as ECPublicKey)
+            val pubKeyOffset = builder.createByteVector(compressedPublicKeyBytes)
+
+            Bot.startBot(builder)
+            Bot.addName(builder, announcerBotName)
+            Bot.addPublicKey(builder, pubKeyOffset)
+            Bot.addPermissions(builder, announcerPermissionOffset)
+            announcerBotOffset = Bot.endBot(builder)
+        }
 
         // Build Permission
         Permission.startPermission(builder)
@@ -171,9 +201,16 @@ class ContractService(
         val botOffset = Bot.endBot(builder)
 
         val termsOffset = builder.createString(terms)
-        club.subjugated.fb.message.Contract.startBotsVector(builder, 1)
-        builder.addOffset(botOffset)
-        val botsVectorOffset = builder.endVector()
+        val botsVectorOffset = if(public) {
+            club.subjugated.fb.message.Contract.startBotsVector(builder, 2)
+            builder.addOffset(botOffset)
+            builder.addOffset(announcerBotOffset!!)
+            builder.endVector()
+        } else {
+            club.subjugated.fb.message.Contract.startBotsVector(builder, 1)
+            builder.addOffset(botOffset)
+            builder.endVector()
+        }
 
         val serialNumber = Random.nextInt(0, 1 shl 16)
 

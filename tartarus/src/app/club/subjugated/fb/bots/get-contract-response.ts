@@ -41,8 +41,37 @@ name(optionalEncoding?:any):string|Uint8Array|null {
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
+shareableToken():string|null
+shareableToken(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+shareableToken(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
+authorName():string|null
+authorName(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+authorName(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 12);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
+signedMessage(index: number):number|null {
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? this.bb!.readInt8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
+}
+
+signedMessageLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+signedMessageArray():Int8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? new Int8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
+}
+
 static startGetContractResponse(builder:flatbuffers.Builder) {
-  builder.startObject(3);
+  builder.startObject(6);
 }
 
 static addNextCounter(builder:flatbuffers.Builder, nextCounter:number) {
@@ -57,16 +86,48 @@ static addName(builder:flatbuffers.Builder, nameOffset:flatbuffers.Offset) {
   builder.addFieldOffset(2, nameOffset, 0);
 }
 
+static addShareableToken(builder:flatbuffers.Builder, shareableTokenOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(3, shareableTokenOffset, 0);
+}
+
+static addAuthorName(builder:flatbuffers.Builder, authorNameOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(4, authorNameOffset, 0);
+}
+
+static addSignedMessage(builder:flatbuffers.Builder, signedMessageOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(5, signedMessageOffset, 0);
+}
+
+static createSignedMessageVector(builder:flatbuffers.Builder, data:number[]|Int8Array):flatbuffers.Offset;
+/**
+ * @deprecated This Uint8Array overload will be removed in the future.
+ */
+static createSignedMessageVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset;
+static createSignedMessageVector(builder:flatbuffers.Builder, data:number[]|Int8Array|Uint8Array):flatbuffers.Offset {
+  builder.startVector(1, data.length, 1);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addInt8(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startSignedMessageVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(1, numElems, 1);
+}
+
 static endGetContractResponse(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   return offset;
 }
 
-static createGetContractResponse(builder:flatbuffers.Builder, nextCounter:number, stateOffset:flatbuffers.Offset, nameOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createGetContractResponse(builder:flatbuffers.Builder, nextCounter:number, stateOffset:flatbuffers.Offset, nameOffset:flatbuffers.Offset, shareableTokenOffset:flatbuffers.Offset, authorNameOffset:flatbuffers.Offset, signedMessageOffset:flatbuffers.Offset):flatbuffers.Offset {
   GetContractResponse.startGetContractResponse(builder);
   GetContractResponse.addNextCounter(builder, nextCounter);
   GetContractResponse.addState(builder, stateOffset);
   GetContractResponse.addName(builder, nameOffset);
+  GetContractResponse.addShareableToken(builder, shareableTokenOffset);
+  GetContractResponse.addAuthorName(builder, authorNameOffset);
+  GetContractResponse.addSignedMessage(builder, signedMessageOffset);
   return GetContractResponse.endGetContractResponse(builder);
 }
 }

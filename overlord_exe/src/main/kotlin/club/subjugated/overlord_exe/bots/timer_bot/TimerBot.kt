@@ -64,6 +64,7 @@ class TimerBot(
                     isCleanSession = false
                     userName = botMap.externalName
                     password = botMap.password.toCharArray()
+                    keepAliveInterval = 20
                 }
 
             client.setCallback(object : MqttCallback {
@@ -203,7 +204,7 @@ class TimerBot(
     @EventListener
     fun handleIssueContractRequest(event: IssueContract) {
         val compressedPublicKey = encodePublicKeySecp1(loadECPublicKeyFromPkcs8(botMap.publicKey!!) as ECPublicKey)
-        val wrapper = contractService.makeCreateContractCommand(botMap.externalName, event.shareableToken, "Timer lock", false, botMap.privateKey!!, compressedPublicKey)
+        val wrapper = contractService.makeCreateContractCommand(botMap.externalName, event.shareableToken, "Timer lock", false, botMap.privateKey!!, compressedPublicKey, false)
         otherClient.publish("coordinator/inbox", MqttMessage(wrapper.messageBytes))
     }
 
@@ -237,7 +238,7 @@ class TimerBot(
     @PostConstruct
     fun start() {
         println("Starting TimerBot")
-        val botMap = botMapService.getBotMap("timer", coordinator)
+        val botMap = botMapService.getOrCreateBotMap("timer", "TimerBot", coordinator)
         this.botMap = botMap
 
         var executor = createBotApiExecutor(botMap)

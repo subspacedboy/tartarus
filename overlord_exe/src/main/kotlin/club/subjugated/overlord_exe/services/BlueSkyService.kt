@@ -6,13 +6,16 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import work.socialhub.kbsky.BlueskyFactory
+import work.socialhub.kbsky.PLCDirectoryFactory
 import work.socialhub.kbsky.api.app.bsky.FeedResource
 import work.socialhub.kbsky.api.chat.bsky.ConvoResource
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetAuthorFeedRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetPostThreadRequest
+import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedPostRequest
 import work.socialhub.kbsky.api.entity.chat.bsky.convo.ConvoGetListConvosRequest
 import work.socialhub.kbsky.api.entity.chat.bsky.convo.ConvoSendMessageRequest
 import work.socialhub.kbsky.api.entity.chat.bsky.convo.ConvoUpdateReadRequest
+import work.socialhub.kbsky.api.entity.com.atproto.identity.IdentityResolveHandleRequest
 import work.socialhub.kbsky.api.entity.com.atproto.server.ServerCreateSessionRequest
 import work.socialhub.kbsky.api.entity.share.AuthRequest
 import work.socialhub.kbsky.auth.BearerTokenAuthProvider
@@ -21,6 +24,8 @@ import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsPostView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsThreadUnion
 import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageInput
 import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageView
+import work.socialhub.kbsky.util.facet.FacetType
+import work.socialhub.kbsky.util.facet.FacetUtil
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.time.Duration
@@ -187,5 +192,49 @@ class BlueSkyService(
                 finished = true
             }
         }
+    }
+
+    fun resolveDidToHandle(did: String) : String {
+        val response = PLCDirectoryFactory
+            .instance()
+            .DIDDetails(did).data
+
+        return response.alsoKnownAs!!.first().replace("at://", "@")
+    }
+
+    fun post(message : String) {
+        refreshJwtIfNeeded()
+
+        val list = FacetUtil.extractFacets(message)
+
+        val handles = list.records
+            .filter { it.type === FacetType.Mention }
+            .map { it.displayText }
+
+        val handleToDidMap = mutableMapOf<String, String>()
+
+        for (handle in handles) {
+            val response = BlueskyFactory
+                .instance(BSKY_SOCIAL.uri)
+                .identity()
+                .resolveHandle(
+                    IdentityResolveHandleRequest().also {
+                        it.handle = handle.substring(1)
+                    }
+                )
+            handleToDidMap[handle] = checkNotNull(response.data.did)
+        }
+
+        val facets = list.richTextFacets(handleToDidMap)
+
+        BlueskyFactory
+            .instance(BSKY_SOCIAL.uri)
+            .feed()
+            .post(
+                FeedPostRequest(accessJwt).also {
+                    it.text = list.displayText()
+                    it.facets = facets
+                }
+            )
     }
 }

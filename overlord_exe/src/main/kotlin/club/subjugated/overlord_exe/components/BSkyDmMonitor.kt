@@ -1,5 +1,6 @@
 package club.subjugated.overlord_exe.components
 
+import club.subjugated.overlord_exe.bots.announcer.events.ConnectIdentityEvent
 import club.subjugated.overlord_exe.bots.timer_bot.events.IssueContract
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.util.TimeSource
@@ -15,7 +16,7 @@ class BSkyDmMonitor(
     private val timeSource: TimeSource
 ) : Job {
     override fun execute(context: JobExecutionContext?) {
-        println("Running job at ${System.currentTimeMillis()}")
+        println("Checking DMs at ${System.currentTimeMillis()}")
 
         blueSkyService.getnewDms() { convoId, message ->
             val chunks = message.text.trim().split("\\s+".toRegex())
@@ -35,6 +36,13 @@ class BSkyDmMonitor(
                         )
                     )
                     blueSkyService.sendDm(convoId, "Issued")
+                }
+                "announcer" -> {
+                    val token = chunks[1]
+                    val sourceDid = message.sender.did
+                    applicationEventPublisher.publishEvent(ConnectIdentityEvent(this, token, sourceDid))
+
+                    blueSkyService.sendDm(convoId, "Updated")
                 }
                 "timer" -> {}
                 else -> {}

@@ -45,8 +45,49 @@ class GetContractResponse(object):
             return self._tab.String(o + self._tab.Pos)
         return None
 
+    # GetContractResponse
+    def ShareableToken(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        if o != 0:
+            return self._tab.String(o + self._tab.Pos)
+        return None
+
+    # GetContractResponse
+    def AuthorName(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        if o != 0:
+            return self._tab.String(o + self._tab.Pos)
+        return None
+
+    # GetContractResponse
+    def SignedMessage(self, j):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
+        if o != 0:
+            a = self._tab.Vector(o)
+            return self._tab.Get(flatbuffers.number_types.Int8Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 1))
+        return 0
+
+    # GetContractResponse
+    def SignedMessageAsNumpy(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
+        if o != 0:
+            return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Int8Flags, o)
+        return 0
+
+    # GetContractResponse
+    def SignedMessageLength(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
+        if o != 0:
+            return self._tab.VectorLen(o)
+        return 0
+
+    # GetContractResponse
+    def SignedMessageIsNone(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
+        return o == 0
+
 def GetContractResponseStart(builder):
-    builder.StartObject(3)
+    builder.StartObject(6)
 
 def Start(builder):
     GetContractResponseStart(builder)
@@ -68,6 +109,30 @@ def GetContractResponseAddName(builder, name):
 
 def AddName(builder, name):
     GetContractResponseAddName(builder, name)
+
+def GetContractResponseAddShareableToken(builder, shareableToken):
+    builder.PrependUOffsetTRelativeSlot(3, flatbuffers.number_types.UOffsetTFlags.py_type(shareableToken), 0)
+
+def AddShareableToken(builder, shareableToken):
+    GetContractResponseAddShareableToken(builder, shareableToken)
+
+def GetContractResponseAddAuthorName(builder, authorName):
+    builder.PrependUOffsetTRelativeSlot(4, flatbuffers.number_types.UOffsetTFlags.py_type(authorName), 0)
+
+def AddAuthorName(builder, authorName):
+    GetContractResponseAddAuthorName(builder, authorName)
+
+def GetContractResponseAddSignedMessage(builder, signedMessage):
+    builder.PrependUOffsetTRelativeSlot(5, flatbuffers.number_types.UOffsetTFlags.py_type(signedMessage), 0)
+
+def AddSignedMessage(builder, signedMessage):
+    GetContractResponseAddSignedMessage(builder, signedMessage)
+
+def GetContractResponseStartSignedMessageVector(builder, numElems):
+    return builder.StartVector(1, numElems, 1)
+
+def StartSignedMessageVector(builder, numElems):
+    return GetContractResponseStartSignedMessageVector(builder, numElems)
 
 def GetContractResponseEnd(builder):
     return builder.EndObject()

@@ -37,13 +37,13 @@ class BotMapService(
         return botMapRepository.findByInternalNameAndCoordinator(internalName, coordinator)!!
     }
 
-    fun getOrCreateBotMap(internalName : String, coordinator: String) : BotMap {
+    fun getOrCreateBotMap(internalName : String, description: String, coordinator: String) : BotMap {
         val botMap = botMapRepository.findByInternalNameAndCoordinator(internalName, coordinator) ?: run {
             runBlocking {
                 val keyPair = generateECKeyPair()
                 val encodedKey = Base64.getEncoder().encodeToString(encodePublicKeySecp1(keyPair.public as ECPublicKey))
 
-                val newBot = register(encodedKey, "asdf", coordinator)
+                val newBot = register(encodedKey, description, coordinator)
                 createBotMap(internalName, newBot.name, coordinator, newBot.clearTextPassword, keyPair.private.encoded, keyPair.public.encoded)
             }
         }
@@ -58,7 +58,7 @@ class BotMapService(
                 json(Json { ignoreUnknownKeys = true })
             }
         }
-        val response: HttpResponse = client.post("http://localhost:5002/bots/") {
+        val response: HttpResponse = client.post("$coordinator/bots/") {
             contentType(ContentType.Application.Json)
             setBody(newBotRequest)
         }

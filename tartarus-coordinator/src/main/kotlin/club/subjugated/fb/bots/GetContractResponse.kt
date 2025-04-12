@@ -55,6 +55,42 @@ class GetContractResponse : Table() {
         }
     val nameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(8, 1)
     fun nameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 8, 1)
+    val shareableToken : String?
+        get() {
+            val o = __offset(10)
+            return if (o != 0) {
+                __string(o + bb_pos)
+            } else {
+                null
+            }
+        }
+    val shareableTokenAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(10, 1)
+    fun shareableTokenInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 10, 1)
+    val authorName : String?
+        get() {
+            val o = __offset(12)
+            return if (o != 0) {
+                __string(o + bb_pos)
+            } else {
+                null
+            }
+        }
+    val authorNameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(12, 1)
+    fun authorNameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 12, 1)
+    fun signedMessage(j: Int) : Byte {
+        val o = __offset(14)
+        return if (o != 0) {
+            bb.get(__vector(o) + j * 1)
+        } else {
+            0
+        }
+    }
+    val signedMessageLength : Int
+        get() {
+            val o = __offset(14); return if (o != 0) __vector_len(o) else 0
+        }
+    val signedMessageAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(14, 1)
+    fun signedMessageInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 14, 1)
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsGetContractResponse(_bb: ByteBuffer): GetContractResponse = getRootAsGetContractResponse(_bb, GetContractResponse())
@@ -62,17 +98,31 @@ class GetContractResponse : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createGetContractResponse(builder: FlatBufferBuilder, nextCounter: UShort, stateOffset: Int, nameOffset: Int) : Int {
-            builder.startTable(3)
+        fun createGetContractResponse(builder: FlatBufferBuilder, nextCounter: UShort, stateOffset: Int, nameOffset: Int, shareableTokenOffset: Int, authorNameOffset: Int, signedMessageOffset: Int) : Int {
+            builder.startTable(6)
+            addSignedMessage(builder, signedMessageOffset)
+            addAuthorName(builder, authorNameOffset)
+            addShareableToken(builder, shareableTokenOffset)
             addName(builder, nameOffset)
             addState(builder, stateOffset)
             addNextCounter(builder, nextCounter)
             return endGetContractResponse(builder)
         }
-        fun startGetContractResponse(builder: FlatBufferBuilder) = builder.startTable(3)
+        fun startGetContractResponse(builder: FlatBufferBuilder) = builder.startTable(6)
         fun addNextCounter(builder: FlatBufferBuilder, nextCounter: UShort) = builder.addShort(0, nextCounter.toShort(), 0)
         fun addState(builder: FlatBufferBuilder, state: Int) = builder.addOffset(1, state, 0)
         fun addName(builder: FlatBufferBuilder, name: Int) = builder.addOffset(2, name, 0)
+        fun addShareableToken(builder: FlatBufferBuilder, shareableToken: Int) = builder.addOffset(3, shareableToken, 0)
+        fun addAuthorName(builder: FlatBufferBuilder, authorName: Int) = builder.addOffset(4, authorName, 0)
+        fun addSignedMessage(builder: FlatBufferBuilder, signedMessage: Int) = builder.addOffset(5, signedMessage, 0)
+        fun createSignedMessageVector(builder: FlatBufferBuilder, data: ByteArray) : Int {
+            builder.startVector(1, data.size, 1)
+            for (i in data.size - 1 downTo 0) {
+                builder.addByte(data[i])
+            }
+            return builder.endVector()
+        }
+        fun startSignedMessageVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
         fun endGetContractResponse(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o

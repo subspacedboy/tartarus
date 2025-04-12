@@ -50,20 +50,9 @@ class BSkyLikesBot(
             val contractInfo = requestContract(botMap.externalName, commonMetadata.lockSession!!, commonMetadata.contractSerialNumber, otherClient)
             println("Got contract info $contractInfo")
 
-            val response : GetContractResponse = when(contractInfo.payloadType){
-                MessagePayload.GetContractResponse -> {
-                    val response = GetContractResponse()
-                    contractInfo.payload(response)
-                    response
-                }
-                else -> {
-                    throw IllegalStateException()
-                }
-            }
-
             val contract = contractService.getOrCreateContract(botMap.externalName, commonMetadata.lockSession!!, commonMetadata.contractSerialNumber.toInt())
-            contract.state = ContractState.valueOf(response.state!!)
-            contract.externalContractName = response.name
+            contract.state = ContractState.valueOf(contractInfo.state!!)
+            contract.externalContractName = contractInfo.name
             contractService.save(contract)
 
             val record = bSkyLikesBotService.updatePlaceHolderWithContractId(contract.serialNumber, contract.id)
@@ -95,8 +84,7 @@ class BSkyLikesBot(
             println("Reviewing ${r.name}")
 
             var totalLikes = 0L
-            val adjustedTime = r.acceptedAt!!.minusWeeks(1)
-            blueSkyService.getAuthorFeedFromTime(r.did, adjustedTime) { post ->
+            blueSkyService.getAuthorFeedFromTime(r.did, r.acceptedAt!!) { post ->
                 blueSkyService.traceThread(post.uri!!) { post2 ->
                     if(post2.author?.did == r.did) {
                         if(post2.embed?.asImages != null) {
@@ -121,7 +109,7 @@ class BSkyLikesBot(
     @PostConstruct
     fun start() {
         println("Starting BSky Likes Bot")
-        val botMap = botMapService.getBotMap("bsky_likes", coordinator)
+        val botMap = botMapService.getOrCreateBotMap("bsky_likes", "BlueSky likes bot", coordinator)
         this.botMap = botMap
 
         var executor = createBotApiExecutor(botMap)
@@ -147,7 +135,7 @@ class BSkyLikesBot(
     @EventListener
     fun handleIssueContractRequest(event: club.subjugated.overlord_exe.bots.bsky_likes.events.IssueContract) {
         val compressedPublicKey = encodePublicKeySecp1(loadECPublicKeyFromPkcs8(botMap.publicKey!!) as ECPublicKey)
-        val wrapper = contractService.makeCreateContractCommand(botMap.externalName, event.shareableToken, "BSky Likes - Goal ${event.goal}", false, botMap.privateKey!!, compressedPublicKey)
+        val wrapper = contractService.makeCreateContractCommand(botMap.externalName, event.shareableToken, "BSky Likes - Goal ${event.goal}", false, botMap.privateKey!!, compressedPublicKey, true)
         bSkyLikesBotService.createInitialPlaceholderRecord(wrapper.contractSerialNumber, event.did, event.goal)
         otherClient.publish("coordinator/inbox", MqttMessage(wrapper.messageBytes))
     }

@@ -15,41 +15,7 @@ class GetBskyJwt(
     private val timeSource: TimeSource
 ) : Runnable {
     override fun run() {
-        val uri = "at://did:plc:6eneuye2a52t5hbbcaxo7n7h/app.bsky.feed.post/3lmfnuvnwk22i"
-        var totalLikes = 0
-
-        var originalAuthor : String? = null
-        blueSkyService.traceThread(uri) { post ->
-            if(originalAuthor.isNullOrBlank()) {
-                originalAuthor = post.author!!.did
-                println("Original author: ${post.author!!.handle}")
-            }
-
-            if(post.author!!.did == originalAuthor) {
-                println("Processing ${post.author!!.handle} message")
-                totalLikes += post.likeCount!!
-            }
-        }
-
-        println("Total likes accumulated: ${totalLikes}")
-
-//        blueSkyService.getnewDms {convoId, message ->
-//            val shareableToken = message.text
-//            val authorDid = message.sender.did
-//
-//            val before = timeSource.nowInUtc().minusDays(2)
-//            blueSkyService.getAuthorFeedFromTime(authorDid, before) { message ->
-//                println(message)
-//            }
-//
-//            applicationEventPublisher.publishEvent(IssueContract(
-//                    source = this,
-//                    shareableToken = shareableToken
-//                ))
-//            blueSkyService.sendDm(convoId, "Issued")
-//        }
-
-
+//        blueSkyService.post()
 
 //        val stream = ATProtocolStreamFactory
 //            .instance(

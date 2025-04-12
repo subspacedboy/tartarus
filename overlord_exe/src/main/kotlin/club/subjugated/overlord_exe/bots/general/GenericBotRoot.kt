@@ -1,6 +1,8 @@
 package club.subjugated.overlord_exe.bots.general
 
 import club.subjugated.fb.bots.BotApiMessage
+import club.subjugated.fb.bots.GetContractResponse
+import club.subjugated.fb.bots.MessagePayload
 import club.subjugated.fb.event.EventType
 import club.subjugated.fb.event.SignedEvent
 import club.subjugated.overlord_exe.models.BotMap
@@ -53,6 +55,7 @@ abstract class GenericBotRoot(
                     isCleanSession = false
                     userName = botMap.externalName
                     password = botMap.password.toCharArray()
+                    keepAliveInterval = 30
                 }
 
             client.setCallback(object : MqttCallback {
@@ -116,7 +119,7 @@ abstract class GenericBotRoot(
         }
     }
 
-    suspend fun requestContract(botName : String, lockSession: String, serial : UShort, client : MqttClient) : BotApiMessage {
+    suspend fun requestContract(botName : String, lockSession: String, serial : UShort, client : MqttClient) : GetContractResponse {
         return withContext(Dispatchers.IO) {
             responseFuture = CompletableDeferred()
             val requestBody = contractService.makeContractRequest(
@@ -125,7 +128,20 @@ abstract class GenericBotRoot(
                 serial
             )
             client.publish("coordinator/inbox", MqttMessage(requestBody))
-            responseFuture.await()
+            val botApiMessage = responseFuture.await()
+
+            val response : GetContractResponse = when(botApiMessage.payloadType){
+                MessagePayload.GetContractResponse -> {
+                    val response = GetContractResponse()
+                    botApiMessage.payload(response)
+                    response
+                }
+                else -> {
+                    throw IllegalStateException()
+                }
+            }
+
+            response
         }
     }
 

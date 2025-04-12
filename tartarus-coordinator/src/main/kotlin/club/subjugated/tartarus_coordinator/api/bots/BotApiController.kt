@@ -125,11 +125,17 @@ class BotApiController {
 
         val stateOffset = builder.createString(contract.state.toString())
         val nameOffset = builder.createString(contract.name)
+        val shareableTokenOffset = builder.createString(contract.shareableToken)
+        val authorNameOffset = builder.createString(contract.authorSession.name)
+        val signedMessageBytesOffset = builder.createByteVector(contract.body)
 
         GetContractResponse.startGetContractResponse(builder)
         GetContractResponse.addNextCounter(builder, contract.nextCounter.toUShort())
         GetContractResponse.addName(builder, nameOffset)
         GetContractResponse.addState(builder, stateOffset)
+        GetContractResponse.addShareableToken(builder, shareableTokenOffset)
+        GetContractResponse.addAuthorName(builder, authorNameOffset)
+        GetContractResponse.addSignedMessage(builder, signedMessageBytesOffset)
         val response = GetContractResponse.endGetContractResponse(builder)
         return ResponseBuilderContext(builder, response)
     }
