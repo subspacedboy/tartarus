@@ -18,6 +18,8 @@ import org.eclipse.paho.client.mqttv3.MqttCallback
 import org.eclipse.paho.client.mqttv3.MqttClient
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttMessage
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.transaction.support.TransactionTemplate
 import java.nio.ByteBuffer
@@ -33,8 +35,10 @@ abstract class GenericBotRoot(
     private var coordinator: String,
     private var mqttBrokerUrl: String,
 ) {
+    private val logger: Logger = LoggerFactory.getLogger(GenericBotRoot::class.java)
+
     lateinit var botMap : BotMap
-    lateinit var otherClient : MqttClient
+    lateinit var mqttClientRef : MqttClient
 
     protected val botExecutorWatchdogService = Executors.newSingleThreadScheduledExecutor()
 
@@ -48,23 +52,24 @@ abstract class GenericBotRoot(
     fun createBotApiExecutor(botMap: BotMap): ScheduledExecutorService {
         return Executors.newSingleThreadScheduledExecutor().apply {
             val client = MqttClient(mqttBrokerUrl, botMap.externalName, null)
-            otherClient = client
+            mqttClientRef = client
 
             val options =
                 MqttConnectOptions().apply {
                     isCleanSession = false
                     userName = botMap.externalName
                     password = botMap.password.toCharArray()
-                    keepAliveInterval = 30
+                    keepAliveInterval = 45
+                    isAutomaticReconnect = true
                 }
 
             client.setCallback(object : MqttCallback {
                 override fun connectionLost(cause: Throwable?) {
-                    println("Disconnected: $cause")
+                    logger.warn("Disconnected: $cause")
                 }
 
                 override fun messageArrived(topic: String?, message: MqttMessage?) {
-                    println("\uD83D\uDCE8 Received on $topic: ${message!!.id}")
+                    logger.debug("\uD83D\uDCE8 Received on $topic: ${message!!.id}")
 
                     transactionTemplate.execute { status ->
                         try {
@@ -73,7 +78,7 @@ abstract class GenericBotRoot(
 
                                 val e = signedEvent.payload!!
                                 val commonMetadata = e.metadata!!
-                                println("Event -> ${commonMetadata.lockSession} ${commonMetadata.contractSerialNumber}")
+                                logger.debug("Event -> ${commonMetadata.lockSession} ${commonMetadata.contractSerialNumber}")
 
                                 when (e.eventType) {
                                     EventType.AcceptContract -> {
@@ -96,7 +101,7 @@ abstract class GenericBotRoot(
                                 responseFuture.complete(botApiMessage)
                             }
                         } catch (ex : Exception) {
-                            println("Encountered exception in processing MQTT")
+                            logger.error("Encountered exception in processing MQTT")
                             ex.printStackTrace()
                             status.setRollbackOnly()
                         }
@@ -108,7 +113,7 @@ abstract class GenericBotRoot(
 
             client.connectWithResult(options).also { connResult ->
                 val sessionPresent = connResult.sessionPresent
-                println("Session present: $sessionPresent")
+                logger.debug("Session present: $sessionPresent")
 
                 // Only subscribe if there's no session already
                 if (!sessionPresent) {
@@ -160,7 +165,7 @@ abstract class GenericBotRoot(
 
     fun releaseContract(contract: Contract) {
         val releaseCommand = contractService.makeReleaseCommand(botMap.externalName, contract.externalContractName!!, contract.serialNumber, botMap.privateKey!!)
-        otherClient.publish("coordinator/inbox", MqttMessage(releaseCommand))
+        mqttClientRef.publish("coordinator/inbox", MqttMessage(releaseCommand))
     }
 
     fun markReleased(serialNumber: Int) {

@@ -1,7 +1,5 @@
 package club.subjugated.overlord_exe.bots.bsky_likes
 
-import club.subjugated.fb.bots.GetContractResponse
-import club.subjugated.fb.bots.MessagePayload
 import club.subjugated.fb.event.SignedEvent
 import club.subjugated.overlord_exe.bots.general.GenericBotRoot
 import club.subjugated.overlord_exe.models.ContractState
@@ -17,6 +15,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import org.eclipse.paho.client.mqttv3.MqttMessage
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
@@ -34,6 +34,7 @@ class BSkyLikesBot(
     private var blueSkyService: BlueSkyService,
     @Value("\${overlord.coordinator}") val coordinator : String,
     @Value("\${overlord.mqtt_broker_uri}") val brokerUri: String,
+    private val logger: Logger = LoggerFactory.getLogger(BSkyLikesBot::class.java)
 ) : GenericBotRoot(
     botMapService, contractService, timeSource, transactionTemplate, coordinator, brokerUri
 ) {
@@ -41,29 +42,27 @@ class BSkyLikesBot(
         val scope = CoroutineScope(Dispatchers.Default)
 
         val handler = CoroutineExceptionHandler { _, e ->
-            println("Unhandled exception: $e")
+            logger.error("Unhandled exception: $e")
         }
         scope.async(handler) {
             val e = signedEvent.payload!!
             val commonMetadata = e.metadata!!
 
-            val contractInfo = requestContract(botMap.externalName, commonMetadata.lockSession!!, commonMetadata.contractSerialNumber, otherClient)
+            val contractInfo = requestContract(botMap.externalName, commonMetadata.lockSession!!, commonMetadata.contractSerialNumber, mqttClientRef)
             println("Got contract info $contractInfo")
 
             val contract = contractService.getOrCreateContract(botMap.externalName, commonMetadata.lockSession!!, commonMetadata.contractSerialNumber.toInt())
-            contract.state = ContractState.valueOf(contractInfo.state!!)
-            contract.externalContractName = contractInfo.name
-            contractService.save(contract)
+            contractService.updateContractWithGetContractResponse(contract, contractInfo)
 
             val record = bSkyLikesBotService.updatePlaceHolderWithContractId(contract.serialNumber, contract.id)
 
-            val response2 = addMessage(botMap.externalName, contract.externalContractName!!, "Good luck on your goal of ${record.goal} likes", otherClient)
+            val response2 = addMessage(botMap.externalName, contract.externalContractName!!, "Good luck on your goal of ${record.goal} likes", mqttClientRef)
             // We don't need to anything with response 2
         }
     }
 
     override fun handleRelease(signedEvent: SignedEvent) {
-        println("Handle release")
+        logger.info("Handle release")
         val e = signedEvent.payload!!
         val commonMetadata = e.metadata!!
         markReleased(commonMetadata.contractSerialNumber.toInt())
@@ -81,7 +80,7 @@ class BSkyLikesBot(
         val contractIds = contracts.map { it.id }
         val records = bSkyLikesBotService.findByContractIds(contractIds)
         for(r in records) {
-            println("Reviewing ${r.name}")
+            logger.debug("Reviewing ${r.name}")
 
             var totalLikes = 0L
             blueSkyService.getAuthorFeedFromTime(r.did, r.acceptedAt!!) { post ->
@@ -102,13 +101,13 @@ class BSkyLikesBot(
             }
             bSkyLikesBotService.save(r)
 
-            println("Total likes: $totalLikes of ${r.goal}")
+            logger.debug("Total likes: $totalLikes of ${r.goal}")
         }
     }
 
     @PostConstruct
     fun start() {
-        println("Starting BSky Likes Bot")
+        logger.info("Starting BSky Likes Bot")
         val botMap = botMapService.getOrCreateBotMap("bsky_likes", "BlueSky likes bot", coordinator)
         this.botMap = botMap
 
@@ -122,7 +121,7 @@ class BSkyLikesBot(
         }, 1, 5, TimeUnit.SECONDS)
 
         executor.scheduleAtFixedRate({
-            println("BSky - Reviewing live contracts")
+            logger.info("BSky - Reviewing live contracts")
             try {
                 reviewContracts()
             } catch (ex : Exception ) {
@@ -137,6 +136,6 @@ class BSkyLikesBot(
         val compressedPublicKey = encodePublicKeySecp1(loadECPublicKeyFromPkcs8(botMap.publicKey!!) as ECPublicKey)
         val wrapper = contractService.makeCreateContractCommand(botMap.externalName, event.shareableToken, "BSky Likes - Goal ${event.goal}", false, botMap.privateKey!!, compressedPublicKey, true)
         bSkyLikesBotService.createInitialPlaceholderRecord(wrapper.contractSerialNumber, event.did, event.goal)
-        otherClient.publish("coordinator/inbox", MqttMessage(wrapper.messageBytes))
+        mqttClientRef.publish("coordinator/inbox", MqttMessage(wrapper.messageBytes))
     }
 }

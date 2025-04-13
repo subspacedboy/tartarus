@@ -29,8 +29,14 @@ create table contract(
 create table timer_bot_record (
     id bigint NOT NULL AUTO_INCREMENT,
     name varchar(25) NOT NULL,
-    contract_id bigint NOT NULL,
+    is_public tinyint NOT NULL,
+    did varchar(255) NOT NULL,
+    time_amount int NOT NULL,
+    time_unit varchar(25) NOT NULL,
+    contract_serial_number int NOT NULL,
+    contract_id bigint,
     created_at DATETIME,
+    accepted_at DATETIME,
     ends_at DATETIME,
     completed tinyint,
     PRIMARY KEY (id)

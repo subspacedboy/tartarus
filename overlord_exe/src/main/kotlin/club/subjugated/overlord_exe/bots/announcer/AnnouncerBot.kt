@@ -3,6 +3,7 @@ package club.subjugated.overlord_exe.bots.announcer
 import club.subjugated.fb.event.SignedEvent
 import club.subjugated.overlord_exe.bots.announcer.events.ConnectIdentityEvent
 import club.subjugated.overlord_exe.bots.general.GenericBotRoot
+import club.subjugated.overlord_exe.bots.timer_bot.TimerBot
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.services.BotMapService
 import club.subjugated.overlord_exe.services.ContractService
@@ -13,8 +14,9 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.context.annotation.Profile
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
 import org.springframework.transaction.support.TransactionTemplate
@@ -30,10 +32,13 @@ class AnnouncerBot(
     private var announcerRecordService: AnnouncerRecordService,
     @Value("\${overlord.coordinator}") val coordinator : String,
     @Value("\${overlord.mqtt_broker_uri}") val brokerUri: String,
+    private val logger: Logger = LoggerFactory.getLogger(AnnouncerBot::class.java)
 ) : GenericBotRoot(
     botMapService, contractService, timeSource, transactionTemplate, coordinator, brokerUri
 ) {
     override fun handleAccept(signedEvent: SignedEvent) {
+        logger.info("Handle accept")
+
         val scope = CoroutineScope(Dispatchers.Default)
 
         val handler = CoroutineExceptionHandler { _, e ->
@@ -47,15 +52,19 @@ class AnnouncerBot(
                 botMap.externalName,
                 commonMetadata.lockSession!!,
                 commonMetadata.contractSerialNumber,
-                otherClient
+                mqttClientRef
             )
 
             val message = announcerRecordService.generateMessageForAccept(contractInfo.shareableToken!!, contractInfo.authorName!!, contractInfo.signedMessageAsByteBuffer.moveToByteArray())
+            logger.info("Posting to BSky: $message")
             blueSkyService.post(message)
+            logger.info("Post complete")
         }
     }
 
     override fun handleRelease(signedEvent: SignedEvent) {
+        logger.info("Handle release")
+
         val scope = CoroutineScope(Dispatchers.Default)
 
         val handler = CoroutineExceptionHandler { _, e ->
@@ -69,7 +78,7 @@ class AnnouncerBot(
                 botMap.externalName,
                 commonMetadata.lockSession!!,
                 commonMetadata.contractSerialNumber,
-                otherClient
+                mqttClientRef
             )
 
             val message = announcerRecordService.generateMessageForRelease(contractInfo.shareableToken!!)

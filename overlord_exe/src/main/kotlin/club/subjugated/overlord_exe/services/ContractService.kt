@@ -5,6 +5,7 @@ import club.subjugated.fb.bots.CreateCommandRequest
 import club.subjugated.fb.bots.CreateContractRequest
 import club.subjugated.fb.bots.CreateMessageRequest
 import club.subjugated.fb.bots.GetContractRequest
+import club.subjugated.fb.bots.GetContractResponse
 import club.subjugated.fb.bots.MessagePayload
 import club.subjugated.fb.message.Bot
 import club.subjugated.fb.message.Permission
@@ -61,6 +62,14 @@ class ContractService(
 
     fun save(contract: Contract) : Contract {
         return contractRepository.save(contract)
+    }
+
+    fun updateContractWithGetContractResponse(contract: Contract, response: GetContractResponse) : Contract {
+        contract.state = ContractState.valueOf(response.state!!)
+        contract.externalContractName = response.name
+        contract.shareableToken = response.shareableToken
+        contractRepository.save(contract)
+        return contract
     }
 
     fun makeContractRequest(botName : String, lockSession : String, contractSerialNumber : UShort) : ByteArray {

@@ -16,9 +16,15 @@ import java.time.OffsetDateTime
 class TimerBotRecord(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) var id: Long = 0,
     var name: String = generateId("tbr-"),
-    var contractId: Long,
+    var contractSerialNumber: Int,
+    var contractId: Long? = null,
+    var isPublic: Boolean = false,
+    var timeAmount: Long = 0,
+    var timeUnit: String = "minute",
+    var did: String? = "",
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var endsAt: OffsetDateTime? = null,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) var acceptedAt: OffsetDateTime? = null,
     var completed : Boolean = false
 ) {
 }
