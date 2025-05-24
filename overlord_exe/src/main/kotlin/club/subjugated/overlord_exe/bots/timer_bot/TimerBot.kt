@@ -4,6 +4,7 @@ import club.subjugated.fb.event.SignedEvent
 import club.subjugated.overlord_exe.bots.bsky_likes.BSkyLikesBot
 import club.subjugated.overlord_exe.bots.general.GenericBotRoot
 import club.subjugated.overlord_exe.bots.timer_bot.events.IssueContract
+import club.subjugated.overlord_exe.models.Contract
 import club.subjugated.overlord_exe.models.ContractState
 import club.subjugated.overlord_exe.services.BotMapService
 import club.subjugated.overlord_exe.services.ContractService
@@ -16,6 +17,7 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.processNextEventInCurrentThread
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -102,23 +104,32 @@ class TimerBot(
 
         val contractIds = contracts.map { it.id }
         val tbrs = timerBotRecordService.findByContractIds(contractIds)
-        for(record in tbrs) {
-            if(record.endsAt!! < timeSource.nowInUtc()) {
-                val contract = contracts.find { it.id == record.contractId }!!
 
-                val scope = CoroutineScope(Dispatchers.Default)
-                val handler = CoroutineExceptionHandler { _, e ->
-                    logger.error("Unhandled exception: $e")
+        val scope = CoroutineScope(Dispatchers.Default)
+        val handler = CoroutineExceptionHandler { _, e ->
+            logger.error("Unhandled exception: $e")
+        }
+
+        for(record in tbrs) {
+            val contract : Contract = contracts.find { it.id == record.contractId }!!
+
+            scope.async(handler) {
+                val contractInfo = requestContract(botMap.externalName, contract.lockSessionToken!!, contract.serialNumber.toUShort(), mqttClientRef)
+                if(contractInfo.state == "ABORTED") {
+                    logger.info("Aborted contract: ${contract.externalContractName}")
+                    contract.state = ContractState.ABORTED
+                    contractService.save(contract)
                 }
+            }
+
+            if(record.endsAt!! < timeSource.nowInUtc()) {
                 scope.async(handler) {
                     addMessage(botMap.externalName, contract.externalContractName!!, "Time complete", mqttClientRef)
                 }
-
                 val releaseCommand = contractService.makeReleaseCommand(botMap.externalName, contract.externalContractName!!, contract.serialNumber, botMap.privateKey!!)
                 mqttClientRef.publish("coordinator/inbox", MqttMessage(releaseCommand))
             }
         }
-
     }
 
     @PostConstruct

@@ -149,8 +149,9 @@ class BlueSkyService(
     fun sendDm(convoId: String, text: String) {
         refreshJwtIfNeeded()
 
-        val message = ConvoDefsMessageInput()
-        message.text = text
+        val message = ConvoDefsMessageInput(
+            text = text
+        )
 
         chatService.sendMessage(ConvoSendMessageRequest(accessJwt).also {
             it.convoId = convoId
