@@ -61,9 +61,11 @@ Also check out the [pinout guide](https://learn.adafruit.com/esp32-s3-reverse-tf
 
 ![Flash firmware](images/6.png)`
 
-Hold down D0 and press Reset. Flash the firmware with:
+Hold down D0 and press Reset. Build and flash the firmware with:
 ```
-espflash flash --monitor --partition-table partitions.csv --no-skip --erase-parts otadata
+cargo build --release
+
+espflash flash --monitor --partition-table partitions.csv --no-skip --erase-parts otadata target/xtensa-esp32s3-espidf/release/tartarus-firmware
 ```
 If it looks like it succeeded but says "Waiting for download" you just need to reset it one more time.
 
