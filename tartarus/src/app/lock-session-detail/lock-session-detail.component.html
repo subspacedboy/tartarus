@@ -42,16 +42,20 @@
             <p>Note: You have a total control token. This means you can just assign a contract directly
             to the lock. The lock owner will not be prompted.</p>
           </div>
-        }
 
-        @if(lockSession?.availableForContract) {
+          @if(lockSession?.availableForContract) {
+            <div class="d-grid gap-2">
+              <button type="button" class="btn btn-large btn-primary" (click)="navToNewContract()">New Contract</button>
+            </div>
+          } @else {
+            <p class="text-warning">
+              Unavailable for new contract
+            </p>
+          }
+        } @else {
           <div class="d-grid gap-2">
             <button type="button" class="btn btn-large btn-primary" (click)="navToNewContract()">New Contract</button>
           </div>
-        } @else {
-          <p class="text-warning">
-            Unavailable for new contract
-          </p>
         }
 
 
