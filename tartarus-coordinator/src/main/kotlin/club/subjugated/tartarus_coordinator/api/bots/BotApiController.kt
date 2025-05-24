@@ -205,11 +205,6 @@ class BotApiController {
 
         val contract = contractService.getByNameForBot(createCommandRequest.contractName!!, botName)
 
-//        val lockSession =
-//            this.lockSessionService.findByShareableToken(createCommandRequest.shareableToken!!)
-
-//        val contract = this.contractService.getByNameForAuthor(createCommandRequest.contractName!!)
-
         val commandBytes =
             ByteArray(createCommandRequest.commandBodyLength) { createCommandRequest.commandBody(it).toByte() }
 

@@ -212,8 +212,9 @@ class ContractService {
                         updatedAt = timeSource.nowInUtc(),
                         contract = contract,
                     )
-                this.commandQueueService.saveCommand(command)
-                publisher.publishEvent(NewCommandEvent(this, lockSession.sessionToken!!))
+                if(this.commandQueueService.saveCommandIgnoreDupes(command)) {
+                    publisher.publishEvent(NewCommandEvent(this, lockSession.sessionToken!!))
+                }
             }
             else -> {}
         }
