@@ -17,3 +17,14 @@ impl From<usize> for ScreenId {
         }
     }
 }
+
+impl From<ScreenId> for usize {
+    fn from(value: ScreenId) -> Self {
+        match value {
+            ScreenId::QrCode => 0,
+            ScreenId::LockState => 1,
+            ScreenId::WifiInfo => 2,
+            ScreenId::FirmwareInfo => 3,
+        }
+    }
+}

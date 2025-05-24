@@ -1,4 +1,5 @@
 use crate::lock_ctx::LockCtx;
+use crate::screen_ids::ScreenId;
 use crate::verifier::VerifiedType;
 use esp_idf_hal::gpio::OutputPin;
 use mipidsi::interface::Interface;
@@ -15,7 +16,7 @@ pub trait ScreenState {
         &mut self,
         lock_ctx: &mut LockCtx,
         command: VerifiedType,
-    ) -> Result<Option<usize>, String>;
+    ) -> Result<Option<ScreenId>, String>;
 
     fn draw_screen(&mut self, lock_ctx: &mut LockCtx);
 

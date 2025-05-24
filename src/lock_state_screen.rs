@@ -1,5 +1,6 @@
 use crate::lock_ctx::LockCtx;
 use crate::prelude::MySPI;
+use crate::screen_ids::ScreenId;
 use crate::screen_state::ScreenState;
 use crate::verifier::VerifiedType;
 use embedded_graphics::mono_font::ascii::FONT_10X20;
@@ -68,34 +69,38 @@ impl ScreenState for LockstateScreen {
         &mut self,
         lock_ctx: &mut LockCtx,
         command: VerifiedType,
-    ) -> Result<Option<usize>, String> {
+    ) -> Result<Option<ScreenId>, String> {
         log::info!("process_command: {:?}", command);
         self.needs_redraw = true;
         match command {
             VerifiedType::Contract(contract) => {
+                if lock_ctx.contract.is_some() {
+                    return Err("Lock already under contract".to_string());
+                }
+
                 lock_ctx.accept_contract(&contract);
                 lock_ctx.contract = Some(contract);
-                Ok(Some(1))
+                Ok(Some(ScreenId::LockState))
             }
             VerifiedType::UnlockCommand(_) => {
                 lock_ctx.unlock();
-                Ok(Some(1))
+                Ok(Some(ScreenId::LockState))
             }
             VerifiedType::LockCommand(_) => {
                 lock_ctx.lock();
-                Ok(Some(1))
+                Ok(Some(ScreenId::LockState))
             }
             VerifiedType::ReleaseCommand(_) => {
                 lock_ctx.end_contract();
-                Ok(Some(0))
+                Ok(Some(ScreenId::QrCode))
             }
             VerifiedType::AbortCommand(_) => {
                 lock_ctx.end_contract();
-                Ok(Some(0))
+                Ok(Some(ScreenId::QrCode))
             }
             VerifiedType::ResetCommand(reset) => {
                 lock_ctx.full_reset(&reset);
-                Ok(Some(0))
+                Ok(Some(ScreenId::QrCode))
             }
         }
     }

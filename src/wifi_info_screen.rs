@@ -1,5 +1,6 @@
 use crate::lock_ctx::LockCtx;
 use crate::prelude::MySPI;
+use crate::screen_ids::ScreenId;
 use crate::screen_state::ScreenState;
 use crate::verifier::VerifiedType;
 use crate::wifi_util::parse_wifi_qr;
@@ -61,7 +62,7 @@ impl ScreenState for WifiInfoScreen {
         &mut self,
         _lock_ctx: &mut LockCtx,
         _command: VerifiedType,
-    ) -> Result<Option<usize>, String> {
+    ) -> Result<Option<ScreenId>, String> {
         Ok(None)
     }
 

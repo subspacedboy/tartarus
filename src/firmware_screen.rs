@@ -1,5 +1,6 @@
 use crate::lock_ctx::LockCtx;
 use crate::prelude::MySPI;
+use crate::screen_ids::ScreenId;
 use crate::screen_state::ScreenState;
 use crate::verifier::VerifiedType;
 use embedded_graphics::mono_font::ascii::FONT_10X20;
@@ -42,7 +43,7 @@ impl ScreenState for FirmwareScreen {
         &mut self,
         _lock_ctx: &mut LockCtx,
         _command: VerifiedType,
-    ) -> Result<Option<usize>, String> {
+    ) -> Result<Option<ScreenId>, String> {
         Ok(None)
     }
 

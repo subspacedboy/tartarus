@@ -1,6 +1,7 @@
 use crate::config_verifier::ConfigVerifier;
 use crate::lock_ctx::LockCtx;
 use crate::prelude::MySPI;
+use crate::screen_ids::ScreenId;
 use crate::screen_state::ScreenState;
 use crate::verifier::{SignedMessageVerifier, VerifiedType};
 use embedded_graphics::mono_font::ascii::FONT_10X20;
@@ -69,12 +70,12 @@ impl ScreenState for QrCodeScreen {
         &mut self,
         lock_ctx: &mut LockCtx,
         command: VerifiedType,
-    ) -> Result<Option<usize>, String> {
+    ) -> Result<Option<ScreenId>, String> {
         match command {
             VerifiedType::Contract(contract) => {
                 lock_ctx.accept_contract(&contract);
                 lock_ctx.contract = Some(contract);
-                Ok(Some(1))
+                Ok(Some(ScreenId::LockState))
             }
             _ => Err("Command doesn't work on BootScreen".parse().unwrap()),
         }

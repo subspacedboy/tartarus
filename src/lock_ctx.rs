@@ -659,16 +659,17 @@ impl LockCtx {
     pub fn process_command(&mut self, command: VerifiedType) -> Result<bool, String> {
         // Update: Thanks to refactoring, all commands are handled by lock screen.
         if let Some(mut lock_screen) = self.lock_state_screen.take() {
-            if let Ok(succeeded) = lock_screen.process_command(self, command) {
-                if let Some(new_screen) = succeeded {
-                    self.active_screen_idx = new_screen;
-                }
+            match lock_screen.process_command(self, command) {
+                Ok(succeeded) => {
+                    if let Some(new_screen) = succeeded {
+                        self.active_screen_idx = new_screen.into();
+                    }
 
-                self.lock_state_screen = Some(lock_screen);
-                self.save_state_if_dirty();
-                Ok(true)
-            } else {
-                Err("Something went wrong".to_string())
+                    self.lock_state_screen = Some(lock_screen);
+                    self.save_state_if_dirty();
+                    Ok(true)
+                }
+                Err(message) => Err(message),
             }
         } else {
             Err("lock state screen didn't exist?!".to_string())
