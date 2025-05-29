@@ -34,9 +34,10 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-jersey")
 	implementation("org.springframework.boot:spring-boot-starter-quartz")
-	implementation("org.springframework.boot:spring-boot-starter-security")
+//	implementation("org.springframework.boot:spring-boot-starter-security")
 	implementation("org.springframework.boot:spring-boot-starter-web")
-	implementation("org.springframework.boot:spring-boot-starter-websocket")
+	implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
+//	implementation("org.springframework.boot:spring-boot-starter-websocket")
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 	implementation("org.flywaydb:flyway-core")
 	implementation("org.flywaydb:flyway-mysql")
@@ -75,6 +76,9 @@ dependencies {
 	implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
 	implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.8.1")
 	implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.8.1")
+
+	// https://mvnrepository.com/artifact/org.ocpsoft.prettytime/prettytime
+	implementation("org.ocpsoft.prettytime:prettytime:5.0.9.Final")
 }
 
 // ktor, or something, is somehow importing 1.6.3 of kotlinx-serialization despite

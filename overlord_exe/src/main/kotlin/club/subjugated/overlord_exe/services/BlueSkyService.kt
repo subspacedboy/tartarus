@@ -1,5 +1,7 @@
 package club.subjugated.overlord_exe.services
 
+import club.subjugated.overlord_exe.storage.BSkyRepostRepository
+import club.subjugated.overlord_exe.storage.BskyLikeRepository
 import club.subjugated.overlord_exe.util.TimeSource
 import jakarta.annotation.PostConstruct
 import org.springframework.beans.factory.annotation.Value
@@ -10,7 +12,9 @@ import work.socialhub.kbsky.PLCDirectoryFactory
 import work.socialhub.kbsky.api.app.bsky.FeedResource
 import work.socialhub.kbsky.api.chat.bsky.ConvoResource
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetAuthorFeedRequest
+import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetLikesRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetPostThreadRequest
+import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetRepostedByRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedPostRequest
 import work.socialhub.kbsky.api.entity.chat.bsky.convo.ConvoGetListConvosRequest
 import work.socialhub.kbsky.api.entity.chat.bsky.convo.ConvoSendMessageRequest
@@ -20,8 +24,10 @@ import work.socialhub.kbsky.api.entity.com.atproto.server.ServerCreateSessionReq
 import work.socialhub.kbsky.api.entity.share.AuthRequest
 import work.socialhub.kbsky.auth.BearerTokenAuthProvider
 import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
+import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsPostView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsThreadUnion
+import work.socialhub.kbsky.model.app.bsky.feed.FeedGetLikesLike
 import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageInput
 import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageView
 import work.socialhub.kbsky.util.facet.FacetType
@@ -36,7 +42,9 @@ class BlueSkyService(
     @Value("\${overlord.bsky.user}") private val bskyUser : String,
     @Value("\${overlord.bsky.password_file}") private val bskyPasswordFile : String,
     var publisher: ApplicationEventPublisher,
-    var timeSource: TimeSource
+    var timeSource: TimeSource,
+    val bskyLikeRepository: BskyLikeRepository,
+    val bSkyRepostRepository: BSkyRepostRepository
 ) {
     lateinit var accessJwt : BearerTokenAuthProvider
     lateinit var refreshJwt : BearerTokenAuthProvider
@@ -95,6 +103,22 @@ class BlueSkyService(
         accessJwt = BearerTokenAuthProvider(refreshData.accessJwt)
         refreshJwt = BearerTokenAuthProvider(refreshData.refreshJwt)
         lastRefresh = timeSource.nowInUtc()
+    }
+
+    fun getLikes(uri : String): List<FeedGetLikesLike> {
+        val likes = feedService.getLikes(FeedGetLikesRequest(accessJwt).also {
+            it.uri = uri
+        })
+
+        return likes.data.likes
+    }
+
+    fun getReposts(uri : String): List<ActorDefsProfileView> {
+        val reposts = feedService.getRepostedBy(FeedGetRepostedByRequest(accessJwt).also {
+            it.uri = uri
+        })
+
+        return reposts.data.repostedBy
     }
 
     fun traceThread(uri : String, action:(post : FeedDefsPostView) -> Unit) {
@@ -203,7 +227,20 @@ class BlueSkyService(
         return response.alsoKnownAs!!.first().replace("at://", "@")
     }
 
-    fun post(message : String) {
+    fun resolveHandleToDid(handle: String) : String {
+        val response = BlueskyFactory
+            .instance(BSKY_SOCIAL.uri)
+            .identity()
+            .resolveHandle(
+                IdentityResolveHandleRequest().also {
+                    it.handle = handle
+                }
+            )
+
+        return response.data.did
+    }
+
+    fun post(message : String) : String {
         refreshJwtIfNeeded()
 
         val list = FacetUtil.extractFacets(message)
@@ -228,7 +265,7 @@ class BlueSkyService(
 
         val facets = list.richTextFacets(handleToDidMap)
 
-        BlueskyFactory
+        val response = BlueskyFactory
             .instance(BSKY_SOCIAL.uri)
             .feed()
             .post(
@@ -237,5 +274,8 @@ class BlueSkyService(
                     it.facets = facets
                 }
             )
+
+        // this will be the at-proto URI.
+        return response.data.uri
     }
 }
