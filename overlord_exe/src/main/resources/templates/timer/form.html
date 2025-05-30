@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: layout(~{::body})}">
+<body>
+<h2>Contract Terms</h2>
+<p>
+    Upon accepting the contract you will be locked for the specified amount of time.
+</p>
+
+<p>
+    You may also specify a minimum and a maximum amount of time and I will randomly choose a length for you 😈.
+    The duration will be revealed _after_ you accept.
+</p>
+
+<p>
+    Terms:
+<ul>
+    <li>Duration: The minimum time the contract will have. This starts _after_ the open period. Example: Duration of 3 and "HOURS" will be 3 hours after the open has ended.</li>
+    <li>Per like: The amount of time to add per like. For 10 minutes you would set "10" and "Minutes".</li>
+    <li>Per Repost: The amount of time to add per repost. For 10 minutes you would set "10" and "Minutes".</li>
+    <li>Open period amount: How long the open period will last. This time does not count toward minimum duration. For 1 hour you would set "1" and "Hours".</li>
+</ul>
+</p>
+
+<form th:action="@{/timer/submit}" method="post" th:object="${timeForm}" class="needs-validation" novalidate>
+
+    <!-- Hidden name field -->
+    <input type="hidden" th:field="*{name}">
+
+    <!-- Shareable Token -->
+    <div class="mb-3">
+        <label for="shareableToken" class="form-label">Shareable Token</label>
+        <input class="form-control" id="shareableToken" th:field="*{shareableToken}">
+        <div class="text-danger" th:if="${#fields.hasErrors('shareableToken')}" th:errors="*{shareableToken}"></div>
+    </div>
+
+    <!-- Random Checkbox -->
+    <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="random" th:field="*{random}" onchange="toggleRandomFields()">
+        <label class="form-check-label" for="random">Randomize duration</label>
+    </div>
+
+    <!-- Public Checkbox -->
+    <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="public" th:field="*{public}">
+        <label class="form-check-label" for="public">Public?</label>
+    </div>
+
+    <!-- Min Duration -->
+    <div class="mb-3">
+        <label for="minDuration" class="form-label">Minimum Duration</label>
+        <input type="number" class="form-control" id="minDuration" th:field="*{minDuration}">
+        <div class="text-danger" th:if="${#fields.hasErrors('minDuration')}" th:errors="*{minDuration}"></div>
+    </div>
+
+    <!-- Min Unit -->
+    <div class="mb-3">
+        <label for="minUnit" class="form-label">Minimum Duration Unit</label>
+        <select class="form-select" id="minUnit" th:field="*{minUnit}">
+            <option value="SECONDS">Seconds</option>
+            <option value="MINUTES">Minutes</option>
+            <option value="HOURS">Hours</option>
+            <option value="DAYS">Days</option>
+        </select>
+    </div>
+
+    <!-- Max Duration -->
+    <div class="mb-3">
+        <label for="maxDuration" class="form-label">Maximum Duration</label>
+        <input type="number" class="form-control" id="maxDuration" th:field="*{maxDuration}">
+        <div class="text-danger" th:if="${#fields.hasErrors('maxDuration')}" th:errors="*{maxDuration}"></div>
+    </div>
+
+    <!-- Max Unit -->
+    <div class="mb-3">
+        <label for="maxUnit" class="form-label">Maximum Duration Unit</label>
+        <select class="form-select" id="maxUnit" th:field="*{maxUnit}">
+            <option value="SECONDS">Seconds</option>
+            <option value="MINUTES">Minutes</option>
+            <option value="HOURS">Hours</option>
+            <option value="DAYS">Days</option>
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+
+<script>
+    function toggleRandomFields() {
+        const enabled = document.getElementById('random').checked;
+        document.getElementById('minDuration').disabled = !enabled;
+        document.getElementById('minUnit').disabled = !enabled;
+    }
+
+    // Run once on page load to apply correct initial state
+    window.addEventListener('DOMContentLoaded', toggleRandomFields);
+</script>
+
+
+</body>
+</html>

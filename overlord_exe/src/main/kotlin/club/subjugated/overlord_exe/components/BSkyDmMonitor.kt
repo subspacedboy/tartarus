@@ -2,7 +2,9 @@ package club.subjugated.overlord_exe.components
 
 import club.subjugated.overlord_exe.bots.announcer.events.ConnectIdentityEvent
 import club.subjugated.overlord_exe.bots.bsky_selflock.convo.BSkySelfLockConvoHandler
+import club.subjugated.overlord_exe.bots.timer_bot.convo.TimerBotConvoHandler
 import club.subjugated.overlord_exe.bots.timer_bot.events.IssueContract
+import club.subjugated.overlord_exe.convo.ConversationHandler
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.util.TimeSource
 import club.subjugated.overlord_exe.util.encodePublicKeySecp1
@@ -31,7 +33,8 @@ class BSkyDmMonitor(
     private val applicationEventPublisher: ApplicationEventPublisher,
     private val timeSource: TimeSource,
     private val logger: Logger = LoggerFactory.getLogger(BSkyDmMonitor::class.java),
-    private val bSkySelfLockConvoHandler: BSkySelfLockConvoHandler
+    private val bSkySelfLockConvoHandler: BSkySelfLockConvoHandler,
+    private val timerBotConversationHandler: TimerBotConvoHandler
 ) : Job {
     override fun execute(context: JobExecutionContext?) {
         try {
@@ -73,24 +76,8 @@ class BSkyDmMonitor(
                     blueSkyService.sendDm(convoId, "Updated")
                 }
                 "timer" -> {
-                    val shareableToken = chunks[1]
-                    val amount = chunks[2].toLong()
-                    val unit = chunks[3]
-                    val isPublic = chunks[4].toBoolean()
-                    val authorDid = message.sender.did
-
-                    applicationEventPublisher.publishEvent(
-                        club.subjugated.overlord_exe.bots.timer_bot.events.IssueContract(
-                            source = this,
-                            shareableToken = shareableToken,
-                            amount = amount,
-                            unit = unit,
-                            public = isPublic,
-                            did = authorDid
-                        )
-                    )
-
-                    blueSkyService.sendDm(convoId, "Contract issued")
+                    val response = timerBotConversationHandler.handle(convoId, message)
+                    blueSkyService.sendDm(convoId, response)
                 }
                 else -> {}
             }

@@ -4,9 +4,10 @@ import org.springframework.context.ApplicationEvent
 
 class IssueContract(
     source: Any,
+    val recordName: String,
     val shareableToken: String,
-    val amount: Long,
-    val unit: String,
+//    val amount: Long,
+//    val unit: String,
     val public: Boolean,
-    val did: String
+    val terms: String
 ) : ApplicationEvent(source)

@@ -56,6 +56,7 @@
             <option value="MINUTES">Minutes</option>
             <option value="HOURS">Hours</option>
             <option value="DAYS">Days</option>
+            <option value="WEEKS">Weeks</option>
         </select>
         <div class="text-danger" th:if="${#fields.hasErrors('unit')}" th:errors="*{unit}"></div>
     </div>
@@ -74,6 +75,8 @@
             <option value="SECONDS">Seconds</option>
             <option value="MINUTES">Minutes</option>
             <option value="HOURS">Hours</option>
+            <option value="DAYS">Days</option>
+            <option value="WEEKS">Weeks</option>
         </select>
         <div class="text-danger" th:if="${#fields.hasErrors('perLikeAddUnit')}" th:errors="*{perLikeAddUnit}"></div>
     </div>
@@ -92,6 +95,8 @@
             <option value="SECONDS">Seconds</option>
             <option value="MINUTES">Minutes</option>
             <option value="HOURS">Hours</option>
+            <option value="DAYS">Days</option>
+            <option value="WEEKS">Weeks</option>
         </select>
         <div class="text-danger" th:if="${#fields.hasErrors('perRepostAddUnit')}" th:errors="*{perRepostAddUnit}"></div>
     </div>
@@ -110,6 +115,8 @@
             <option value="SECONDS">Seconds</option>
             <option value="MINUTES">Minutes</option>
             <option value="HOURS">Hours</option>
+            <option value="DAYS">Days</option>
+            <option value="WEEKS">Weeks</option>
         </select>
         <div class="text-danger" th:if="${#fields.hasErrors('openPeriodUnit')}" th:errors="*{openPeriodUnit}"></div>
     </div>

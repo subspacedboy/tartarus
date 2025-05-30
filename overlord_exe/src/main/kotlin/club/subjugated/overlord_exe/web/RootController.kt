@@ -12,4 +12,9 @@ class RootController {
     fun getRoot() : String {
         return "welcome"
     }
+
+    @GetMapping("/help", produces = [MediaType.APPLICATION_JSON])
+    fun getHelp() : String {
+        return "help"
+    }
 }

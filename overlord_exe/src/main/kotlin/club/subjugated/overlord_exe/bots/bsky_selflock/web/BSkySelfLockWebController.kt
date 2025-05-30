@@ -73,7 +73,7 @@ class BSkySelfLockWebController(
         }
 
         bSkySelfLockService.processContractForm(form)
-        return "thanks"
+        return "all_done"
     }
 
     @GetMapping("/status/{token}", produces = [MediaType.APPLICATION_JSON])

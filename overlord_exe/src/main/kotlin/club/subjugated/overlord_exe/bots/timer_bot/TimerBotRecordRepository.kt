@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository
 @Repository
 interface TimerBotRecordRepository : JpaRepository<TimerBotRecord, Long> {
 //    fun findByContractId(contractId : Long) : TimerBotRecord
+    fun findByName(name : String) : TimerBotRecord
     fun findByContractIdIn(contractIds : List<Long>) : List<TimerBotRecord>
     fun findByContractSerialNumber(serialNumber: Long) : TimerBotRecord
 }

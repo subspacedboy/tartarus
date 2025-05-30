@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.processNextEventInCurrentThread
 import org.eclipse.paho.client.mqttv3.MqttMessage
+import org.ocpsoft.prettytime.PrettyTime
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -61,8 +62,9 @@ class TimerBot(
             contractService.updateContractWithGetContractResponse(contract, contractInfo)
 
             val record = timerBotRecordService.updatePlaceHolderWithContractIdAndCalcEnd(contract.serialNumber, contract.id.toLong())
+            val relativeTime = PrettyTime().format(record.endsAt)
 
-            val response2 = addMessage(botMap.externalName, contract.externalContractName!!, "Your end time ${record.endsAt}", mqttClientRef)
+            val response2 = addMessage(botMap.externalName, contract.externalContractName!!, "Your end time ${record.endsAt} - $relativeTime", mqttClientRef)
             // We don't need to anything with response 2
         }
     }
@@ -89,9 +91,9 @@ class TimerBot(
     @EventListener
     fun handleIssueContractRequest(event: IssueContract) {
         val compressedPublicKey = encodePublicKeySecp1(loadECPublicKeyFromPkcs8(botMap.publicKey!!) as ECPublicKey)
-        val wrapper = contractService.makeCreateContractCommand(botMap.externalName, event.shareableToken, "Timer lock: ${event.amount} ${event.unit}", false, botMap.privateKey!!, compressedPublicKey, event.public)
+        val wrapper = contractService.makeCreateContractCommand(botMap.externalName, event.shareableToken, event.terms, false, botMap.privateKey!!, compressedPublicKey, event.public)
 
-        timerBotRecordService.createInitialPlaceholderRecord(wrapper.contractSerialNumber, event.public, event.did, event.amount, event.unit)
+        timerBotRecordService.recordSerialNumberForName(event.recordName, wrapper.contractSerialNumber)
 
         mqttClientRef.publish("coordinator/inbox", MqttMessage(wrapper.messageBytes))
     }

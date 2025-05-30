@@ -49,7 +49,6 @@ class GetBskyJwt(
 
 ) : Runnable {
     override fun run() {
-//        val parts = parseBlueskyUri("https://bsky.app/profile/subspacedboy.subjugated.club/post/3lmljxlsz6s27")
         val parts = parseBlueskyUri("https://bsky.app/profile/subspacedboy.subjugated.club/post/3lpzastr63s2d")
 
         val startTime = timeSource.nowInUtc()
@@ -79,7 +78,5 @@ class GetBskyJwt(
         val addHours = Duration.of(totalReposts.size.toLong(), ChronoUnit.HOURS)
 
         val newTime = startTime.plus(addMinutes).plus(addHours)
-        println(newTime)
-
     }
 }
