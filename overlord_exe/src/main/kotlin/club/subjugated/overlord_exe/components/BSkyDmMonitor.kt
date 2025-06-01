@@ -2,8 +2,9 @@ package club.subjugated.overlord_exe.components
 
 import club.subjugated.overlord_exe.bots.announcer.events.ConnectIdentityEvent
 import club.subjugated.overlord_exe.bots.bsky_selflock.convo.BSkySelfLockConvoHandler
+import club.subjugated.overlord_exe.bots.superbot.convo.SuperBotConvoHandler
 import club.subjugated.overlord_exe.bots.timer_bot.convo.TimerBotConvoHandler
-import club.subjugated.overlord_exe.bots.timer_bot.events.IssueContract
+import club.subjugated.overlord_exe.events.IssueContract
 import club.subjugated.overlord_exe.convo.ConversationHandler
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.util.TimeSource
@@ -34,7 +35,8 @@ class BSkyDmMonitor(
     private val timeSource: TimeSource,
     private val logger: Logger = LoggerFactory.getLogger(BSkyDmMonitor::class.java),
     private val bSkySelfLockConvoHandler: BSkySelfLockConvoHandler,
-    private val timerBotConversationHandler: TimerBotConvoHandler
+    private val timerBotConversationHandler: TimerBotConvoHandler,
+    private val superBotConvoHandler: SuperBotConvoHandler
 ) : Job {
     override fun execute(context: JobExecutionContext?) {
         try {
@@ -77,6 +79,10 @@ class BSkyDmMonitor(
                 }
                 "timer" -> {
                     val response = timerBotConversationHandler.handle(convoId, message)
+                    blueSkyService.sendDm(convoId, response)
+                }
+                "own_me" -> {
+                    val response = superBotConvoHandler.handle(convoId, message)
                     blueSkyService.sendDm(convoId, response)
                 }
                 else -> {}

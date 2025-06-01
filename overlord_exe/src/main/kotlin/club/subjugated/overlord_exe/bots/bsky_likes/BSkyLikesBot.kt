@@ -108,7 +108,7 @@ class BSkyLikesBot(
     @PostConstruct
     fun start() {
         logger.info("Starting BSky Likes Bot")
-        val botMap = botMapService.getOrCreateBotMap("bsky_likes", "BlueSky likes bot", coordinator)
+        val botMap = botMapService.getOrCreateBotMap("bsky_likes", "BlueSky likes bot")
         this.botMap = botMap
 
         var executor = createBotApiExecutor(botMap)

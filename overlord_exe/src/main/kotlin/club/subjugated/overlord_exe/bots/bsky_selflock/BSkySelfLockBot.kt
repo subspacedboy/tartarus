@@ -2,9 +2,8 @@ package club.subjugated.overlord_exe.bots.bsky_selflock
 
 import club.subjugated.fb.event.SignedEvent
 import club.subjugated.overlord_exe.bots.general.GenericBotRoot
-import club.subjugated.overlord_exe.bots.timer_bot.TimerBot
 import club.subjugated.overlord_exe.bots.timer_bot.TimerBotRecordService
-import club.subjugated.overlord_exe.bots.timer_bot.events.IssueContract
+import club.subjugated.overlord_exe.events.IssueContract
 import club.subjugated.overlord_exe.models.Contract
 import club.subjugated.overlord_exe.models.ContractState
 import club.subjugated.overlord_exe.services.BotMapService
@@ -37,7 +36,7 @@ class BSkySelfLockBot(
     private var transactionTemplate: TransactionTemplate,
     @Value("\${overlord.coordinator}") val coordinator : String,
     @Value("\${overlord.mqtt_broker_uri}") val brokerUri: String,
-    private val logger: Logger = LoggerFactory.getLogger(TimerBot::class.java)
+    private val logger: Logger = LoggerFactory.getLogger(BSkySelfLockBot::class.java)
 ) : GenericBotRoot(
     botMapService, contractService, timeSource, transactionTemplate, coordinator, brokerUri
 ) {
@@ -138,7 +137,7 @@ class BSkySelfLockBot(
     @PostConstruct
     fun start() {
         logger.info("Starting BSky Self Lock")
-        val botMap = botMapService.getOrCreateBotMap("bsky_selflock", "BSky Self Lock", coordinator)
+        val botMap = botMapService.getOrCreateBotMap("bsky_selflock", "BSky Self Lock")
         this.botMap = botMap
 
         var executor = createBotApiExecutor(botMap)

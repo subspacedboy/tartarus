@@ -18,6 +18,7 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.security.interfaces.ECPublicKey
 import java.util.Base64
@@ -30,28 +31,29 @@ data class NewBotResponse(val name : String, val clearTextPassword: String)
 
 @Service
 class BotMapService(
-    private var botMapRepository: BotMapRepository
+    private var botMapRepository: BotMapRepository,
+    @Value("\${overlord.coordinator}") val coordinator : String,
 ) {
 
-    fun getBotMap(internalName: String, coordinator: String) : BotMap {
+    fun getBotMap(internalName: String) : BotMap {
         return botMapRepository.findByInternalNameAndCoordinator(internalName, coordinator)!!
     }
 
-    fun getOrCreateBotMap(internalName : String, description: String, coordinator: String) : BotMap {
+    fun getOrCreateBotMap(internalName : String, description: String) : BotMap {
         val botMap = botMapRepository.findByInternalNameAndCoordinator(internalName, coordinator) ?: run {
             runBlocking {
                 val keyPair = generateECKeyPair()
                 val encodedKey = Base64.getEncoder().encodeToString(encodePublicKeySecp1(keyPair.public as ECPublicKey))
 
-                val newBot = register(encodedKey, description, coordinator)
-                createBotMap(internalName, newBot.name, coordinator, newBot.clearTextPassword, keyPair.private.encoded, keyPair.public.encoded)
+                val newBot = register(encodedKey, description)
+                createBotMap(internalName, newBot.name, newBot.clearTextPassword, keyPair.private.encoded, keyPair.public.encoded)
             }
         }
 
         return botMap
     }
 
-    suspend fun register(encodedKey: String, description: String, coordinator: String) : NewBotResponse {
+    suspend fun register(encodedKey: String, description: String) : NewBotResponse {
         val newBotRequest = NewBotRequest(encodedKey, description)
         val client = HttpClient(OkHttp) {
             install(ContentNegotiation) {
@@ -70,7 +72,7 @@ class BotMapService(
         return response.body()
     }
 
-    fun createBotMap(internalName : String, externalName : String, coordinator : String, password: String, privateKey: ByteArray, publicKey: ByteArray) : BotMap {
+    fun createBotMap(internalName : String, externalName : String, password: String, privateKey: ByteArray, publicKey: ByteArray) : BotMap {
         val botMap = BotMap(
             internalName = internalName,
             externalName = externalName,

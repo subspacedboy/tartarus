@@ -2,11 +2,28 @@ package club.subjugated.overlord_exe.bots.timer_bot
 
 import club.subjugated.overlord_exe.bots.bsky_likes.BSkyLikeBotRecord
 import club.subjugated.overlord_exe.bots.bsky_selflock.events.IssueContract
+import club.subjugated.overlord_exe.bots.general.BotComponent
+import club.subjugated.overlord_exe.bots.general.MessageHandler
 import club.subjugated.overlord_exe.bots.timer_bot.web.TimeForm
 import club.subjugated.overlord_exe.components.SendDmEvent
+import club.subjugated.overlord_exe.events.AddMessageToContract
+import club.subjugated.overlord_exe.events.IssueRelease
+import club.subjugated.overlord_exe.models.BotMap
+import club.subjugated.overlord_exe.models.Contract
+import club.subjugated.overlord_exe.models.ContractState
+import club.subjugated.overlord_exe.services.BotMapService
 import club.subjugated.overlord_exe.util.TimeSource
 import club.subjugated.overlord_exe.util.extractShareableToken
 import club.subjugated.overlord_exe.util.formatDuration
+import jakarta.annotation.PostConstruct
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import org.eclipse.paho.client.mqttv3.MqttMessage
+import org.ocpsoft.prettytime.PrettyTime
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import java.time.Duration
@@ -18,8 +35,49 @@ import kotlin.random.Random
 class TimerBotRecordService(
     private val timerBotRecordRepository: TimerBotRecordRepository,
     private val timeSource: TimeSource,
-    private val applicationEventPublisher : ApplicationEventPublisher
-) {
+    private val applicationEventPublisher : ApplicationEventPublisher,
+    private val botMapService: BotMapService,
+    private val botComponent: BotComponent
+) : MessageHandler {
+    private val logger: Logger = LoggerFactory.getLogger(TimerBotRecordService::class.java)
+
+    @PostConstruct
+    fun start() {
+        logger.info("Starting TimerBot")
+        val botMap = getBotMap()
+        botComponent.startBot(botMap, this)
+    }
+
+    fun getBotMap() : BotMap {
+        return botMapService.getOrCreateBotMap("timer", "TimerBot")
+    }
+
+    override fun reviewContracts(contracts : List<Contract>) {
+        logger.info("Doing periodic review")
+
+        val contractIds = contracts.map { it.id }
+        val tbrs = findByContractIds(contractIds)
+
+        for(record in tbrs) {
+            logger.info("Reviewing: $record")
+            val contract : Contract = contracts.find { it.id == record.contractId }!!
+
+            if(record.endsAt!! < timeSource.nowInUtc()) {
+                applicationEventPublisher.publishEvent(AddMessageToContract(
+                    source = this,
+                    botMap = getBotMap(),
+                    contract = contract,
+                    message = "Time is up."
+                ))
+
+                applicationEventPublisher.publishEvent(IssueRelease(
+                    source = this,
+                    botMap = getBotMap(),
+                    contract = contract,
+                ))
+            }
+        }
+    }
 
     fun createInitialPlaceholderRecord(did: String, convoId: String) : TimerBotRecord {
         val record = TimerBotRecord(
@@ -66,13 +124,18 @@ class TimerBotRecordService(
         val terms = if(record.isRandom) {
             "Duration revealed on accept"
         } else {
-            formatDuration(maxDurationAmount, maxDurationUnit.toString())
+            formatDuration(maxDurationAmount, form.maxUnit)
         }
 
         // Issue the contract
         applicationEventPublisher.publishEvent(
-            club.subjugated.overlord_exe.bots.timer_bot.events.IssueContract(
+            club.subjugated.overlord_exe.events.IssueContract(
                 source = this,
+                botMap = getBotMap(),
+                serialNumberRecorder = {serial ->
+                    record.contractSerialNumber = serial
+                    save(record)
+                },
                 recordName = record.name,
                 shareableToken = token,
                 public = record.isPublic,
@@ -90,8 +153,22 @@ class TimerBotRecordService(
         return record
     }
 
-    fun updatePlaceHolderWithContractIdAndCalcEnd(serialNumber: Int, contractId : Long) : TimerBotRecord {
-        val record = timerBotRecordRepository.findByContractSerialNumber(serialNumber.toLong())
+    fun findByContractIds(contractIds : List<Long>) : List<TimerBotRecord> {
+        return timerBotRecordRepository.findByContractIdIn(contractIds)
+    }
+
+    fun recordSerialNumberForName(name: String, serialNumber : Int) {
+        val record = getRecordByName(name)
+        record.contractSerialNumber = serialNumber
+        save(record)
+    }
+
+    fun save(record: TimerBotRecord) : TimerBotRecord {
+        return timerBotRecordRepository.save(record)
+    }
+
+    override fun handleAccept(contract: Contract) {
+        val record = timerBotRecordRepository.findByContractSerialNumber(contract.serialNumber.toLong())
 
         record.acceptedAt = timeSource.nowInUtc()
 
@@ -116,23 +193,35 @@ class TimerBotRecordService(
             record.acceptedAt!!.plus(duration)
         }
 
-        record.contractId = contractId
+        if(record.isRandom) {
+            val relativeDuration = PrettyTime().format(record.endsAt)
+            applicationEventPublisher.publishEvent(AddMessageToContract(
+                source = this,
+                botMap = getBotMap(),
+                contract = contract,
+                message = "Ends $relativeDuration"
+            ))
+        }
+
+        record.contractId = contract.id
 
         timerBotRecordRepository.save(record)
-        return record
     }
 
-    fun findByContractIds(contractIds : List<Long>) : List<TimerBotRecord> {
-        return timerBotRecordRepository.findByContractIdIn(contractIds)
+    override fun handleRelease(contract: Contract) {
+        val tbrs = findByContractIds(listOf(contract.id))
+        for(record in tbrs) {
+            record.completed = true
+            record.state = TimerBotRecordState.COMPLETE
+            save(record)
+        }
     }
 
-    fun recordSerialNumberForName(name: String, serialNumber : Int) {
-        val record = getRecordByName(name)
-        record.contractSerialNumber = serialNumber
-        save(record)
+    override fun handleLock(contract: Contract) {
+        // Nothing to do
     }
 
-    fun save(record: TimerBotRecord) : TimerBotRecord {
-        return timerBotRecordRepository.save(record)
+    override fun handleUnlock(contract: Contract) {
+        // Nothing to do
     }
 }

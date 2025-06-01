@@ -22,4 +22,26 @@ class BotMap(
     var publicKey: ByteArray? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
-)
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as BotMap
+
+        if (id != other.id) return false
+        if (name != other.name) return false
+        if (internalName != other.internalName) return false
+        if (externalName != other.externalName) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = id.hashCode()
+        result = 31 * result + name.hashCode()
+        result = 31 * result + internalName.hashCode()
+        result = 31 * result + externalName.hashCode()
+        return result
+    }
+}

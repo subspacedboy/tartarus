@@ -11,6 +11,10 @@ import club.subjugated.fb.message.Bot
 import club.subjugated.fb.message.Permission
 import club.subjugated.fb.message.ReleaseCommand
 import club.subjugated.fb.message.SignedMessage
+import club.subjugated.overlord_exe.events.AddMessageToContract
+import club.subjugated.overlord_exe.events.IssueContract
+import club.subjugated.overlord_exe.events.IssueRelease
+import club.subjugated.overlord_exe.events.SendBotBytes
 import club.subjugated.overlord_exe.models.Contract
 import club.subjugated.overlord_exe.models.ContractState
 import club.subjugated.overlord_exe.storage.ContractRepository
@@ -20,7 +24,10 @@ import club.subjugated.overlord_exe.util.derToRawSignature
 import club.subjugated.overlord_exe.util.encodePublicKeySecp1
 import club.subjugated.overlord_exe.util.loadECPublicKeyFromPkcs8
 import com.google.flatbuffers.FlatBufferBuilder
+import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.security.KeyFactory
 import java.security.MessageDigest
@@ -28,6 +35,7 @@ import java.security.Signature
 import java.security.spec.PKCS8EncodedKeySpec
 import kotlin.random.Random
 import java.security.interfaces.ECPublicKey
+import kotlin.contracts.contract
 
 
 @Service
@@ -35,6 +43,7 @@ class ContractService(
     private var contractRepository: ContractRepository,
     private var botMapService: BotMapService,
     private var timeSource: TimeSource,
+    private val applicationEventPublisher : ApplicationEventPublisher,
     @Value("\${overlord.coordinator}") val coordinator: String = ""
 ) {
 
@@ -70,6 +79,45 @@ class ContractService(
         contract.shareableToken = response.shareableToken
         contractRepository.save(contract)
         return contract
+    }
+
+    @EventListener
+    fun handleIssueContractRequest(event: IssueContract) {
+        val compressedPublicKey = encodePublicKeySecp1(loadECPublicKeyFromPkcs8(event.botMap.publicKey!!) as ECPublicKey)
+        val wrapper = makeCreateContractCommand(event.botMap.externalName, event.shareableToken, event.terms, false, event.botMap.privateKey!!, compressedPublicKey, event.public)
+
+        event.serialNumberRecorder(wrapper.contractSerialNumber)
+
+        applicationEventPublisher.publishEvent(SendBotBytes(
+            source = this,
+            botMap = event.botMap,
+            message = MqttMessage(wrapper.messageBytes)
+        ))
+    }
+
+    @EventListener
+    fun handleAddMessageRequest(event: AddMessageToContract) {
+        val requestBody = makeAddMessageToContractMessage(
+            event.botMap.externalName,
+            event.contract.externalContractName!!,
+            event.message
+        )
+
+        applicationEventPublisher.publishEvent(SendBotBytes(
+            source = this,
+            botMap = event.botMap,
+            message = MqttMessage(requestBody)
+        ))
+    }
+
+    @EventListener
+    fun handleIssueRelease(event : IssueRelease) {
+        val releaseCommand = makeReleaseCommand(event.botMap.externalName, event.contract.externalContractName!!, event.contract.serialNumber, event.botMap.privateKey!!)
+        applicationEventPublisher.publishEvent(SendBotBytes(
+            source = this,
+            botMap = event.botMap,
+            message = MqttMessage(releaseCommand)
+        ))
     }
 
     fun makeContractRequest(botName : String, lockSession : String, contractSerialNumber : UShort) : ByteArray {
@@ -173,7 +221,7 @@ class ContractService(
         var announcerBotOffset : Int? = 0
 
         if(public) {
-            val announcerBotMap = botMapService.getBotMap("announcer", coordinator)
+            val announcerBotMap = botMapService.getBotMap("announcer")
 
             // Build permission for Announcer
             Permission.startPermission(builder)

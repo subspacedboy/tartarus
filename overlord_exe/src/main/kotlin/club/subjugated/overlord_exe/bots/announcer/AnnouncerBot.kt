@@ -3,7 +3,6 @@ package club.subjugated.overlord_exe.bots.announcer
 import club.subjugated.fb.event.SignedEvent
 import club.subjugated.overlord_exe.bots.announcer.events.ConnectIdentityEvent
 import club.subjugated.overlord_exe.bots.general.GenericBotRoot
-import club.subjugated.overlord_exe.bots.timer_bot.TimerBot
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.services.BotMapService
 import club.subjugated.overlord_exe.services.ContractService
@@ -95,7 +94,7 @@ class AnnouncerBot(
     @PostConstruct
     fun start() {
         println("Starting Announcer Bot")
-        val botMap = botMapService.getOrCreateBotMap("announcer", "Announcer bot", coordinator)
+        val botMap = botMapService.getOrCreateBotMap("announcer", "Announcer bot")
         this.botMap = botMap
 
         var executor = createBotApiExecutor(botMap)
