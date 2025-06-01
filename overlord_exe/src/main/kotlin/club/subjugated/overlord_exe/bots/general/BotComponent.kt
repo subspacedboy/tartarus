@@ -56,6 +56,7 @@ class BotComponent(
     var botsToClients : HashMap<BotMap, MqttClient> = HashMap<BotMap, MqttClient>()
 
     fun startBot(botMap : BotMap, handler : MessageHandler) {
+        logger.info("Starting bot: ${botMap.internalName}")
         var executor = createBotApiExecutor(botMap)
         runningBots.put(botMap, executor)
         handlers.put(botMap, handler)

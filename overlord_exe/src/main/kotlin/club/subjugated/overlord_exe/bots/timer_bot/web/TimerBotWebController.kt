@@ -1,6 +1,5 @@
 package club.subjugated.overlord_exe.bots.timer_bot.web
 
-import club.subjugated.overlord_exe.bots.bsky_selflock.BSkySelfLockRecordState
 import club.subjugated.overlord_exe.bots.timer_bot.TimerBotRecordService
 import club.subjugated.overlord_exe.bots.timer_bot.TimerBotRecordState
 import jakarta.validation.Valid
