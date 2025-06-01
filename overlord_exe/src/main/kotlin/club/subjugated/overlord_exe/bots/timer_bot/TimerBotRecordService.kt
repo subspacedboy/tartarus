@@ -1,7 +1,5 @@
 package club.subjugated.overlord_exe.bots.timer_bot
 
-import club.subjugated.overlord_exe.bots.bsky_likes.BSkyLikeBotRecord
-import club.subjugated.overlord_exe.bots.bsky_selflock.events.IssueContract
 import club.subjugated.overlord_exe.bots.general.BotComponent
 import club.subjugated.overlord_exe.bots.general.MessageHandler
 import club.subjugated.overlord_exe.bots.timer_bot.web.TimeForm
@@ -10,24 +8,17 @@ import club.subjugated.overlord_exe.events.AddMessageToContract
 import club.subjugated.overlord_exe.events.IssueRelease
 import club.subjugated.overlord_exe.models.BotMap
 import club.subjugated.overlord_exe.models.Contract
-import club.subjugated.overlord_exe.models.ContractState
 import club.subjugated.overlord_exe.services.BotMapService
 import club.subjugated.overlord_exe.util.TimeSource
 import club.subjugated.overlord_exe.util.extractShareableToken
 import club.subjugated.overlord_exe.util.formatDuration
 import jakarta.annotation.PostConstruct
-import kotlinx.coroutines.CoroutineExceptionHandler
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.ocpsoft.prettytime.PrettyTime
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import java.time.Duration
-import java.time.OffsetDateTime
 import java.time.temporal.ChronoUnit
 import kotlin.random.Random
 
@@ -37,10 +28,9 @@ class TimerBotRecordService(
     private val timeSource: TimeSource,
     private val applicationEventPublisher : ApplicationEventPublisher,
     private val botMapService: BotMapService,
-    private val botComponent: BotComponent
-) : MessageHandler {
+    private val botComponent: BotComponent,
     private val logger: Logger = LoggerFactory.getLogger(TimerBotRecordService::class.java)
-
+) : MessageHandler {
     @PostConstruct
     fun start() {
         logger.info("Starting TimerBot")

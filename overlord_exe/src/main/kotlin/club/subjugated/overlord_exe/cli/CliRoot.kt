@@ -6,7 +6,6 @@ import picocli.CommandLine
 @CommandLine.Command(
     name = "overlord_exe",
     subcommands = [
-        CreateBotMaps::class,
         GetBskyJwt::class,
     ],
     description = ["Overlord.exe CLI entry point"]

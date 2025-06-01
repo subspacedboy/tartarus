@@ -49,34 +49,34 @@ class GetBskyJwt(
 
 ) : Runnable {
     override fun run() {
-        val parts = parseBlueskyUri("https://bsky.app/profile/subspacedboy.subjugated.club/post/3lpzastr63s2d")
-
-        val startTime = timeSource.nowInUtc()
-
-        val did = blueSkyService.resolveHandleToDid(parts!!.handle)
-        val atUri = ATUri(did, parts.collection, parts.rkey)
-        val uri = "at://${atUri.did}/${atUri.recordType}/${atUri.rkey}"
-
-        val totalLikes = HashSet<LikeRecord>()
-        val totalReposts = HashSet<RepostRecord>()
-
-        blueSkyService.traceThread(uri) {
-            post ->
-            val likes = blueSkyService.getLikes(post.uri!!)
-            likes.forEach {
-                totalLikes.add(LikeRecord(it.actor.did))
-            }
-
-            val reposts = blueSkyService.getReposts(post.uri!!)
-            reposts.forEach {
-                totalReposts.add(RepostRecord(it.did))
-            }
-
-        }
-
-        val addMinutes = Duration.of(totalLikes.size.toLong(), ChronoUnit.MINUTES)
-        val addHours = Duration.of(totalReposts.size.toLong(), ChronoUnit.HOURS)
-
-        val newTime = startTime.plus(addMinutes).plus(addHours)
+//        val parts = parseBlueskyUri("https://bsky.app/profile/subspacedboy.subjugated.club/post/3lpzastr63s2d")
+//
+//        val startTime = timeSource.nowInUtc()
+//
+//        val did = blueSkyService.resolveHandleToDid(parts!!.handle)
+//        val atUri = ATUri(did, parts.collection, parts.rkey)
+//        val uri = "at://${atUri.did}/${atUri.recordType}/${atUri.rkey}"
+//
+//        val totalLikes = HashSet<LikeRecord>()
+//        val totalReposts = HashSet<RepostRecord>()
+//
+//        blueSkyService.traceThread(uri) {
+//            post ->
+//            val likes = blueSkyService.getLikes(post.uri!!)
+//            likes.forEach {
+//                totalLikes.add(LikeRecord(it.actor.did))
+//            }
+//
+//            val reposts = blueSkyService.getReposts(post.uri!!)
+//            reposts.forEach {
+//                totalReposts.add(RepostRecord(it.did))
+//            }
+//
+//        }
+//
+//        val addMinutes = Duration.of(totalLikes.size.toLong(), ChronoUnit.MINUTES)
+//        val addHours = Duration.of(totalReposts.size.toLong(), ChronoUnit.HOURS)
+//
+//        val newTime = startTime.plus(addMinutes).plus(addHours)
     }
 }

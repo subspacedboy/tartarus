@@ -4,6 +4,8 @@ import club.subjugated.overlord_exe.storage.BSkyRepostRepository
 import club.subjugated.overlord_exe.storage.BskyLikeRepository
 import club.subjugated.overlord_exe.util.TimeSource
 import jakarta.annotation.PostConstruct
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
@@ -44,7 +46,8 @@ class BlueSkyService(
     var publisher: ApplicationEventPublisher,
     var timeSource: TimeSource,
     val bskyLikeRepository: BskyLikeRepository,
-    val bSkyRepostRepository: BSkyRepostRepository
+    val bSkyRepostRepository: BSkyRepostRepository,
+    private val logger: Logger = LoggerFactory.getLogger(BlueSkyService::class.java)
 ) {
     lateinit var accessJwt : BearerTokenAuthProvider
     lateinit var refreshJwt : BearerTokenAuthProvider
@@ -74,7 +77,7 @@ class BlueSkyService(
         lastRefresh = timeSource.nowInUtc()
 
         myPds = response.data.didDoc!!.asDIDDetails!!.pdsEndpoint()!!
-        println("My PDS $myPds")
+        logger.info("My PDS $myPds")
 
         myId = response.data.didDoc!!.asDIDDetails!!.id!!
 
@@ -91,7 +94,7 @@ class BlueSkyService(
             return
         }
 
-        println("Refreshed session")
+        logger.info("Refreshed session")
 
         val refreshData = BlueskyFactory
             .instance(BSKY_SOCIAL.uri)
@@ -198,7 +201,7 @@ class BlueSkyService(
                 val createdAt = OffsetDateTime.parse(f.post.record!!.asFeedPost!!.createdAt!!)
                 if(createdAt < from) {
                     //Before start time.
-                    println("We're before the start time")
+                    logger.debug("We're before the start time")
                     finished = true
                     break@outer
                 }
@@ -213,7 +216,7 @@ class BlueSkyService(
             }).data
 
             if(feed.feed.isEmpty()) {
-                println("No more")
+                logger.debug("No more")
                 finished = true
             }
         }
