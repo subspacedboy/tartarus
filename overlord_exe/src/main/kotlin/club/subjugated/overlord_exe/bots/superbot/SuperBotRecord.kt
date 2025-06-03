@@ -20,7 +20,7 @@ class SuperBotRecord(
     var contractSerialNumber: Int,
     var contractId: Long? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
-//    @JsonFormat(shape = JsonFormat.Shape.STRING) var acceptedAt: OffsetDateTime? = null,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) var acceptedAt: OffsetDateTime? = null,
 //    @JsonFormat(shape = JsonFormat.Shape.STRING) var openEndsAt: OffsetDateTime? = null,
 //    @JsonFormat(shape = JsonFormat.Shape.STRING) var endsAt: OffsetDateTime? = null,
     var did: String,

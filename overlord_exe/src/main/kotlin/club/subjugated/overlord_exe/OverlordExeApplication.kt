@@ -13,7 +13,6 @@ import kotlin.system.exitProcess
 class OverlordExeApplication
 
 fun main(args: Array<String>) {
-	Security.addProvider(BouncyCastleProvider())
 
 	val ctx = SpringApplicationBuilder(OverlordExeApplication::class.java)
 //		.web(WebApplicationType.NONE)

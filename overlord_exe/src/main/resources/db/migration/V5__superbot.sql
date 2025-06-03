@@ -17,10 +17,22 @@ create table state_machine (
     name varchar(25) NOT NULL,
     state varchar(25) NOT NULL,
     owned_by varchar(25) NOT NULL,
-    machine_type varchar(25) NOT NULL,
+    machine_type varchar(255) NOT NULL,
     machine_version varchar(25) NOT NULL,
     machine_state varchar(25) NOT NULL,
     created_at DATETIME,
     updated_at DATETIME,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+create table bsky_likes_sm_context (
+    id bigint NOT NULL AUTO_INCREMENT,
+    state_machine_id bigint NOT NULL,
+    name varchar(25) NOT NULL,
+    created_at DATETIME,
+    updated_at DATETIME,
+    goal int NOT NULL,
+    likes_so_far int NOT NULL,
+    did varchar(255) NOT NULL,
     PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

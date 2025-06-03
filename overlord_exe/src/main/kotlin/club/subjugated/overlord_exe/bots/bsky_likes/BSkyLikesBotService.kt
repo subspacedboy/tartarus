@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service
 import java.time.OffsetDateTime
 
 @Service
+@Deprecated("Going away")
 class BSkyLikesBotService(
     private var bSkyLikesBotRecordRepository: BSkyLikesBotRecordRepository,
     private var timeSource: TimeSource

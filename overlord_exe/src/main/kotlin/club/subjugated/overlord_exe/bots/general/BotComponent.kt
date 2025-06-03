@@ -101,7 +101,7 @@ class BotComponent(
                 handler.reviewContracts(contracts)
             }
         }
-        , 1, 1, TimeUnit.MINUTES)
+        , 0, 1, TimeUnit.SECONDS)
     }
 
     @PreDestroy

@@ -7,4 +7,5 @@ import org.springframework.stereotype.Repository
 @Repository
 interface StateMachineRepository : JpaRepository<StateMachine, Long> {
     fun findByName(name : String) : StateMachine
+    fun findByOwnedBy(name : String): List<StateMachine>
 }

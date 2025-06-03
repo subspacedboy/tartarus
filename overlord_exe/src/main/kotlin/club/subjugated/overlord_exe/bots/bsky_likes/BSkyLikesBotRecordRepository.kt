@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
 @Repository
+@Deprecated("Going away")
 interface BSkyLikesBotRecordRepository : JpaRepository<BSkyLikeBotRecord, Long> {
     fun findByContractId(contractId : Long) : BSkyLikeBotRecord
     fun findByContractIdIn(contractIds : List<Long>) : List<BSkyLikeBotRecord>

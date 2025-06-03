@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository
 @Repository
 interface SuperBotRecordRepository : JpaRepository<SuperBotRecord, Long> {
     fun findByName(name : String) : SuperBotRecord
+    fun findByContractSerialNumber(serialNumber : Long) : SuperBotRecord
 }

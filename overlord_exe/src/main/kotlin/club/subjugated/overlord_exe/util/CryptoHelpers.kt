@@ -15,6 +15,7 @@ import java.security.spec.ECGenParameterSpec
 import java.security.spec.X509EncodedKeySpec
 
 fun generateECKeyPair(): KeyPair {
+    Security.addProvider(BouncyCastleProvider())
     val keyGen = KeyPairGenerator.getInstance("EC", "BC")
     keyGen.initialize(ECGenParameterSpec("secp256r1"))
     return keyGen.generateKeyPair()
