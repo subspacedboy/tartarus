@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: layout(~{::body})}">
+<body>
+<h2>BlueSky Likes Task</h2>
+<p>
+  These are the terms for the Bluesky Likes task.
+</p>
+
+<form th:action="@{/info/submit}" method="post" th:object="${form}" class="needs-validation" novalidate>
+
+  <!-- Hidden name field -->
+  <input type="hidden" th:field="*{name}">
+
+  <!-- DID -->
+  <div class="mb-3">
+    <label for="did" class="form-label">DID</label>
+    <input class="form-control" id="did" th:field="*{did}">
+    <div class="text-danger" th:if="${#fields.hasErrors('did')}" th:errors="*{did}"></div>
+  </div>
+
+  <!-- Goal -->
+  <div class="mb-3">
+    <label for="goal" class="form-label">Goal</label>
+    <input type="number" class="form-control" id="goal" th:field="*{goal}">
+    <div class="text-danger" th:if="${#fields.hasErrors('goal')}" th:errors="*{goal}"></div>
+  </div>
+
+  <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+
+
+</body>
+</html>

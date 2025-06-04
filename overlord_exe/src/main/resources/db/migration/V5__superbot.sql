@@ -7,6 +7,7 @@ create table super_bot_record (
     contract_id bigint,
     created_at DATETIME,
     accepted_at DATETIME,
+    bsky_user_id bigint,
     did varchar(255) NOT NULL,
     convo_id varchar(255) NOT NULL,
     PRIMARY KEY (id)
@@ -22,6 +23,8 @@ create table state_machine (
     machine_state varchar(25) NOT NULL,
     created_at DATETIME,
     updated_at DATETIME,
+    info_resolve_method varchar(25) NOT NULL,
+    bsky_user_id bigint,
     PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -34,5 +37,29 @@ create table bsky_likes_sm_context (
     goal int NOT NULL,
     likes_so_far int NOT NULL,
     did varchar(255) NOT NULL,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+create table bsky_user (
+    id bigint NOT NULL AUTO_INCREMENT,
+    name varchar(25) NOT NULL,
+    created_at DATETIME,
+    updated_at DATETIME,
+    did varchar(255) NOT NULL,
+    handle varchar(255),
+    convo_id varchar(25),
+    shareable_token varchar(25),
+    do_not_contact tinyint default 0,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+create table info_request (
+    id bigint NOT NULL AUTO_INCREMENT,
+    name varchar(25) NOT NULL,
+    state_machine_id bigint,
+    created_at DATETIME,
+    updated_at DATETIME,
+    form_type varchar(255) NOT NULL,
+    bsky_user_id bigint,
     PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

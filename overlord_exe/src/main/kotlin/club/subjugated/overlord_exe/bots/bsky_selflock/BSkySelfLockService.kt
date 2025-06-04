@@ -5,7 +5,7 @@ import club.subjugated.overlord_exe.bots.bsky_selflock.web.TimeForm
 import club.subjugated.overlord_exe.cli.LikeRecord
 import club.subjugated.overlord_exe.cli.RepostRecord
 import club.subjugated.overlord_exe.cli.parseBlueskyUri
-import club.subjugated.overlord_exe.components.SendDmEvent
+import club.subjugated.overlord_exe.events.SendDmEvent
 import club.subjugated.overlord_exe.models.Contract
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.services.UrlService

@@ -39,8 +39,20 @@ import java.nio.file.Paths
 import java.time.Duration
 import java.time.OffsetDateTime
 
+interface BlueSkyService {
+    fun sendDm(convoId: String, message: String)
+    fun resolveDidToHandle(did : String) : String
+    fun resolveHandleToDid(handle: String) : String
+    fun post(message : String) : String
+    fun getLikes(uri : String): List<FeedGetLikesLike>
+    fun getReposts(uri : String): List<ActorDefsProfileView>
+    fun traceThread(uri : String, action:(post : FeedDefsPostView) -> Unit)
+    fun getAuthorFeedFromTime(authorDid: String, from: OffsetDateTime, onMessage: (post:  FeedDefsPostView) -> Unit)
+    fun getnewDms(onNewMessage: (convoId: String, message :  ConvoDefsMessageView) -> Unit)
+}
+
 @Service
-class BlueSkyService(
+class RealBlueSkyService(
     @Value("\${overlord.bsky.user}") private val bskyUser : String,
     @Value("\${overlord.bsky.password_file}") private val bskyPasswordFile : String,
     var publisher: ApplicationEventPublisher,
@@ -48,7 +60,7 @@ class BlueSkyService(
     val bskyLikeRepository: BskyLikeRepository,
     val bSkyRepostRepository: BSkyRepostRepository,
     private val logger: Logger = LoggerFactory.getLogger(BlueSkyService::class.java)
-) {
+) : BlueSkyService {
     lateinit var accessJwt : BearerTokenAuthProvider
     lateinit var refreshJwt : BearerTokenAuthProvider
     lateinit var lastRefresh : OffsetDateTime
@@ -108,7 +120,7 @@ class BlueSkyService(
         lastRefresh = timeSource.nowInUtc()
     }
 
-    fun getLikes(uri : String): List<FeedGetLikesLike> {
+    override fun getLikes(uri : String): List<FeedGetLikesLike> {
         val likes = feedService.getLikes(FeedGetLikesRequest(accessJwt).also {
             it.uri = uri
         })
@@ -116,7 +128,7 @@ class BlueSkyService(
         return likes.data.likes
     }
 
-    fun getReposts(uri : String): List<ActorDefsProfileView> {
+    override fun getReposts(uri : String): List<ActorDefsProfileView> {
         val reposts = feedService.getRepostedBy(FeedGetRepostedByRequest(accessJwt).also {
             it.uri = uri
         })
@@ -124,7 +136,7 @@ class BlueSkyService(
         return reposts.data.repostedBy
     }
 
-    fun traceThread(uri : String, action:(post : FeedDefsPostView) -> Unit) {
+    override fun traceThread(uri : String, action:(post : FeedDefsPostView) -> Unit) {
         refreshJwtIfNeeded()
 
         val thread = feedService
@@ -154,7 +166,7 @@ class BlueSkyService(
         }
     }
 
-    fun getnewDms(onNewMessage: (convoId: String, message :  ConvoDefsMessageView) -> Unit) {
+    override fun getnewDms(onNewMessage: (convoId: String, message :  ConvoDefsMessageView) -> Unit) {
         refreshJwtIfNeeded()
 
         val convos = chatService.getListConvos(ConvoGetListConvosRequest(accessJwt)).data
@@ -173,7 +185,7 @@ class BlueSkyService(
         }
     }
 
-    fun sendDm(convoId: String, text: String) {
+    override fun sendDm(convoId: String, text: String) {
         refreshJwtIfNeeded()
 
         val message = ConvoDefsMessageInput(
@@ -186,7 +198,7 @@ class BlueSkyService(
         })
     }
 
-    fun getAuthorFeedFromTime(authorDid: String, from: OffsetDateTime, onMessage: (post:  FeedDefsPostView) -> Unit) {
+    override fun getAuthorFeedFromTime(authorDid: String, from: OffsetDateTime, onMessage: (post:  FeedDefsPostView) -> Unit) {
         refreshJwtIfNeeded()
 
         var feed = feedService.getAuthorFeed(FeedGetAuthorFeedRequest(accessJwt).also {
@@ -222,7 +234,7 @@ class BlueSkyService(
         }
     }
 
-    fun resolveDidToHandle(did: String) : String {
+    override fun resolveDidToHandle(did: String) : String {
         val response = PLCDirectoryFactory
             .instance()
             .DIDDetails(did).data
@@ -230,7 +242,7 @@ class BlueSkyService(
         return response.alsoKnownAs!!.first().replace("at://", "@")
     }
 
-    fun resolveHandleToDid(handle: String) : String {
+    override fun resolveHandleToDid(handle: String) : String {
         val response = BlueskyFactory
             .instance(BSKY_SOCIAL.uri)
             .identity()
@@ -243,7 +255,7 @@ class BlueSkyService(
         return response.data.did
     }
 
-    fun post(message : String) : String {
+    override fun post(message : String) : String {
         refreshJwtIfNeeded()
 
         val list = FacetUtil.extractFacets(message)

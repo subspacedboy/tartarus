@@ -6,6 +6,8 @@ import club.subjugated.overlord_exe.bots.superbot.convo.SuperBotConvoHandler
 import club.subjugated.overlord_exe.bots.timer_bot.convo.TimerBotConvoHandler
 import club.subjugated.overlord_exe.events.IssueContract
 import club.subjugated.overlord_exe.convo.ConversationHandler
+import club.subjugated.overlord_exe.events.SendDmEvent
+import club.subjugated.overlord_exe.services.BSkyUserService
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.util.TimeSource
 import club.subjugated.overlord_exe.util.encodePublicKeySecp1
@@ -21,13 +23,6 @@ import org.springframework.stereotype.Component
 import work.socialhub.kbsky.ATProtocolException
 import java.security.interfaces.ECPublicKey
 
-class SendDmEvent (
-    val source: Any,
-    val message: String,
-    val did: String,
-    val convoId: String
-)
-
 @Component
 class BSkyDmMonitor(
     private val blueSkyService: BlueSkyService,
@@ -36,7 +31,8 @@ class BSkyDmMonitor(
     private val logger: Logger = LoggerFactory.getLogger(BSkyDmMonitor::class.java),
     private val bSkySelfLockConvoHandler: BSkySelfLockConvoHandler,
     private val timerBotConversationHandler: TimerBotConvoHandler,
-    private val superBotConvoHandler: SuperBotConvoHandler
+    private val superBotConvoHandler: SuperBotConvoHandler,
+    private val bSkyUserService: BSkyUserService
 ) : Job {
     override fun execute(context: JobExecutionContext?) {
         try {
@@ -49,6 +45,11 @@ class BSkyDmMonitor(
     fun checkDms() {
         blueSkyService.getnewDms() { convoId, message ->
             val chunks = message.text.trim().split("\\s+".toRegex())
+
+            val bskyUser = bSkyUserService.findOrCreateByDid(message.sender.did)
+            bskyUser.convoId = convoId
+            bSkyUserService.save(bskyUser)
+
             when(chunks[0]) {
                 "bsky_selflock" -> {
                     val response = bSkySelfLockConvoHandler.handle(convoId, message)
@@ -73,6 +74,11 @@ class BSkyDmMonitor(
                 "announcer" -> {
                     val token = chunks[1]
                     val sourceDid = message.sender.did
+
+                    bskyUser.shareableToken = token
+                    bSkyUserService.save(bskyUser)
+
+                    // TODO delete this and everything downstream of it.
                     applicationEventPublisher.publishEvent(ConnectIdentityEvent(this, token, sourceDid))
 
                     blueSkyService.sendDm(convoId, "Updated")

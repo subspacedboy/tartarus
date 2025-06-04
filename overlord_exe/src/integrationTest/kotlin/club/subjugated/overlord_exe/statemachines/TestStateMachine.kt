@@ -2,17 +2,16 @@ package club.subjugated.overlord_exe.statemachines
 
 import club.subjugated.overlord_exe.OverlordExeApplication
 import club.subjugated.overlord_exe.integration.config.IntegrationTestConfig
-import club.subjugated.overlord_exe.integration.helpers.FakeTimeSource
 import club.subjugated.overlord_exe.services.StateMachineService
+import club.subjugated.overlord_exe.statemachines.bsky_likes.BSkyLikesForm
+import club.subjugated.overlord_exe.statemachines.bsky_likes.BSkyLikesStateMachine
+import club.subjugated.overlord_exe.statemachines.bsky_likes.BSkyLikesStateMachineContext
 import org.assertj.core.api.Assertions.assertThat
-import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.junit.jupiter.api.BeforeAll
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.annotation.Commit
 import org.springframework.test.context.TestPropertySource
 import org.springframework.transaction.annotation.Transactional
-import java.security.Security
 import kotlin.test.Test
 
 @SpringBootTest(classes = [OverlordExeApplication::class, IntegrationTestConfig::class])
@@ -29,7 +28,7 @@ class TestStateMachine {
             goal = 100
         )
 
-        val sm = stateMachineService.createNewStateMachine<BSkyLikesForm, BSkyLikesStateMachineContext>(
+        val sm = stateMachineService.createNewStateMachine(
             ownerName = "c-blahblah",
             providerClassName = BSkyLikesStateMachine::class.qualifiedName!!,
             form = form

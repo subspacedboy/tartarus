@@ -3,7 +3,9 @@ package club.subjugated.overlord_exe.statemachines
 import club.subjugated.overlord_exe.models.StateMachine
 
 interface ContextForm
-interface Context
+interface Context {
+    fun receive(form : ContextForm)
+}
 
 interface ContextProvider<F : ContextForm, C : Context> {
     fun createContext(stateMachineId : Long, form : F) : C

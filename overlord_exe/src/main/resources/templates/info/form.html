@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: layout(~{::body})}">
+<body>
+<h2>Contract Terms</h2>
+<p>
+    Upon accepting the contract you will be locked for the specified amount of time.
+</p>
+
+<form th:action="@{/info/submit}" method="post" th:object="${form}" class="needs-validation" novalidate>
+
+    <!-- Hidden name field -->
+    <input type="hidden" th:field="*{name}">
+
+<!--    &lt;!&ndash; Shareable Token &ndash;&gt;-->
+<!--    <div class="mb-3">-->
+<!--        <label for="shareableToken" class="form-label">Shareable Token</label>-->
+<!--        <input class="form-control" id="shareableToken" th:field="*{shareableToken}">-->
+<!--        <div class="text-danger" th:if="${#fields.hasErrors('shareableToken')}" th:errors="*{shareableToken}"></div>-->
+<!--    </div>-->
+
+<!--    &lt;!&ndash; Public Checkbox &ndash;&gt;-->
+<!--    <div class="form-check mb-3">-->
+<!--        <input class="form-check-input" type="checkbox" id="public" th:field="*{public}">-->
+<!--        <label class="form-check-label" for="public">Public?</label>-->
+<!--    </div>-->
+
+    <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+
+</body>
+</html>

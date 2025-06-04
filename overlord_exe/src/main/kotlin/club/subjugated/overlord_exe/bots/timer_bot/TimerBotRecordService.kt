@@ -3,9 +3,9 @@ package club.subjugated.overlord_exe.bots.timer_bot
 import club.subjugated.overlord_exe.bots.general.BotComponent
 import club.subjugated.overlord_exe.bots.general.MessageHandler
 import club.subjugated.overlord_exe.bots.timer_bot.web.TimeForm
-import club.subjugated.overlord_exe.components.SendDmEvent
 import club.subjugated.overlord_exe.events.AddMessageToContract
 import club.subjugated.overlord_exe.events.IssueRelease
+import club.subjugated.overlord_exe.events.SendDmEvent
 import club.subjugated.overlord_exe.models.BotMap
 import club.subjugated.overlord_exe.models.Contract
 import club.subjugated.overlord_exe.services.BotMapService

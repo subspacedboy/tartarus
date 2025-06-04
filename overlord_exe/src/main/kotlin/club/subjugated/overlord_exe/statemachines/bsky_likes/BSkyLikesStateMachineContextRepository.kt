@@ -1,4 +1,4 @@
-package club.subjugated.overlord_exe.statemachines
+package club.subjugated.overlord_exe.statemachines.bsky_likes
 
 import org.springframework.data.jpa.repository.JpaRepository
 

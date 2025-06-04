@@ -1,5 +1,7 @@
-package club.subjugated.overlord_exe.statemachines
+package club.subjugated.overlord_exe.statemachines.bsky_likes
 
+import club.subjugated.overlord_exe.statemachines.Context
+import club.subjugated.overlord_exe.statemachines.ContextForm
 import club.subjugated.overlord_exe.util.generateId
 import com.fasterxml.jackson.annotation.JsonFormat
 import jakarta.persistence.Entity
@@ -18,6 +20,14 @@ class BSkyLikesStateMachineContext(
     var goal: Long,
     var likesSoFar: Long,
     var did: String,
+    @Transient var receivedFormData: Boolean = false,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
-) : Context
+) : Context {
+    override fun receive(form: ContextForm) {
+        val actualTypedForm = form as BSkyLikesForm
+        // We should only allow updating goal. DID was configured elsewhere.
+        this.goal = form.goal
+        this.receivedFormData = true
+    }
+}

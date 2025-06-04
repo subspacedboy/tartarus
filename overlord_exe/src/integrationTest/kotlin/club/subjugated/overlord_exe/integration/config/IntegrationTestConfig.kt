@@ -1,6 +1,8 @@
 package club.subjugated.overlord_exe.integration.config
 
+import club.subjugated.overlord_exe.integration.helpers.FakeBlueskyService
 import club.subjugated.overlord_exe.integration.helpers.FakeTimeSource
+import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.util.TimeSource
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
@@ -19,4 +21,8 @@ class IntegrationTestConfig {
         // Return a mock or test implementation of MyBean for testing purposes
         return FakeTimeSource(OffsetDateTime.now())
     }
+
+    @Bean
+    @Primary
+    fun blueSkyService(): BlueSkyService = FakeBlueskyService()
 }

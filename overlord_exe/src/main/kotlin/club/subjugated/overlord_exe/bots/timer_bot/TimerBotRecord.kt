@@ -1,17 +1,13 @@
 package club.subjugated.overlord_exe.bots.timer_bot
 
-import club.subjugated.overlord_exe.models.Contract
 import club.subjugated.overlord_exe.util.generateId
 import com.fasterxml.jackson.annotation.JsonFormat
-import jakarta.persistence.CascadeType
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
-import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
-import jakarta.persistence.OneToMany
 import java.time.OffsetDateTime
 
 @Entity

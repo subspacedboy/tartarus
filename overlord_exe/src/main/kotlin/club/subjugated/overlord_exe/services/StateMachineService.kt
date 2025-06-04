@@ -1,14 +1,18 @@
 package club.subjugated.overlord_exe.services
 
+import club.subjugated.overlord_exe.events.RequestInfo
+import club.subjugated.overlord_exe.models.BSkyUser
 import club.subjugated.overlord_exe.models.StateMachine
 import club.subjugated.overlord_exe.models.StateMachineState
 import club.subjugated.overlord_exe.statemachines.Context
 import club.subjugated.overlord_exe.statemachines.ContextForm
 import club.subjugated.overlord_exe.statemachines.ContextProvider
 import club.subjugated.overlord_exe.statemachines.ContextProviderRegistry
+import club.subjugated.overlord_exe.statemachines.InfoResolveMethod
 import club.subjugated.overlord_exe.storage.StateMachineRepository
 import club.subjugated.overlord_exe.util.TimeSource
 import jakarta.annotation.PostConstruct
+import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import javax.swing.plaf.nimbus.State
 import kotlin.reflect.KClass
@@ -17,7 +21,9 @@ import kotlin.reflect.KClass
 class StateMachineService(
     private val stateMachineRepository: StateMachineRepository,
     private val timeSource: TimeSource,
-    private val providers: List<ContextProvider<*, *>>
+    private val providers: List<ContextProvider<*, *>>,
+//    private val infoRequestService: InfoRequestService,
+    private val urlService: UrlService
 ) {
     val nameToProvider = HashMap<String, ContextProvider<*, *>>()
 
@@ -26,15 +32,17 @@ class StateMachineService(
         providers.forEach { p -> nameToProvider.put(p.javaClass.name, p) }
     }
 
-    fun <F : ContextForm, C : Context> createNewStateMachine(ownerName : String, providerClassName: String, form: F) : StateMachine {
+    fun createNewStateMachine(ownerName : String, providerClassName: String, form: ContextForm, bskyUser : BSkyUser? = null) : StateMachine {
         @Suppress("UNCHECKED_CAST")
-        val provider = nameToProvider.get(providerClassName) as ContextProvider<F, C>
+        val provider = nameToProvider.get(providerClassName) as ContextProvider<ContextForm, Context>
 
         val sm = StateMachine(
             ownedBy = ownerName,
             machineType = provider.javaClass.name,
             machineVersion = "1",
-            providerClass = provider
+            providerClass = provider,
+            infoResolveMethod = InfoResolveMethod.USER,
+            bskyUser = bskyUser
         )
         sm.state = StateMachineState.STARTED
         sm.currentState = provider.getInitialState()

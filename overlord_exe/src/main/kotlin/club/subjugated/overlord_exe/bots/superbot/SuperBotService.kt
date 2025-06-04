@@ -3,18 +3,16 @@ package club.subjugated.overlord_exe.bots.superbot
 import club.subjugated.overlord_exe.bots.general.BotComponent
 import club.subjugated.overlord_exe.bots.general.MessageHandler
 import club.subjugated.overlord_exe.bots.superbot.web.IntakeForm
-import club.subjugated.overlord_exe.bots.timer_bot.TimerBotRecordService
-import club.subjugated.overlord_exe.components.SendDmEvent
 import club.subjugated.overlord_exe.events.IssueRelease
+import club.subjugated.overlord_exe.events.SendDmEvent
 import club.subjugated.overlord_exe.models.BotMap
 import club.subjugated.overlord_exe.models.Contract
 import club.subjugated.overlord_exe.models.StateMachineState
 import club.subjugated.overlord_exe.services.BotMapService
 import club.subjugated.overlord_exe.services.ContractService
 import club.subjugated.overlord_exe.services.StateMachineService
-import club.subjugated.overlord_exe.statemachines.BSkyLikesForm
-import club.subjugated.overlord_exe.statemachines.BSkyLikesStateMachine
-import club.subjugated.overlord_exe.statemachines.BSkyLikesStateMachineContext
+import club.subjugated.overlord_exe.statemachines.bsky_likes.BSkyLikesForm
+import club.subjugated.overlord_exe.statemachines.bsky_likes.BSkyLikesStateMachine
 import club.subjugated.overlord_exe.util.TimeSource
 import jakarta.annotation.PostConstruct
 import org.slf4j.Logger
@@ -70,6 +68,7 @@ class SuperBotService(
     override fun handleAccept(contract: Contract) {
         val record = findByContractSerialNumber(contract.serialNumber.toLong())
         record.acceptedAt = timeSource.nowInUtc()
+        record.contractId = contract.id
         superBotRecordRepository.save(record)
 
         val form = BSkyLikesForm(
@@ -77,8 +76,8 @@ class SuperBotService(
             goal = 100
         )
 
-        val stateMachine = stateMachineService.createNewStateMachine<BSkyLikesForm, BSkyLikesStateMachineContext>(
-            ownerName = contract.name,
+        val stateMachine = stateMachineService.createNewStateMachine(
+            ownerName = record.name,
             providerClassName = BSkyLikesStateMachine::class.qualifiedName!!,
             form = form
         )

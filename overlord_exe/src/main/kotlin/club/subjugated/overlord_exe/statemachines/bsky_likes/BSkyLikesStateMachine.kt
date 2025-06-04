@@ -1,22 +1,20 @@
-package club.subjugated.overlord_exe.statemachines
+package club.subjugated.overlord_exe.statemachines.bsky_likes
 
+import club.subjugated.overlord_exe.events.RequestInfo
 import club.subjugated.overlord_exe.models.StateMachine
 import club.subjugated.overlord_exe.models.StateMachineState
 import club.subjugated.overlord_exe.services.BlueSkyService
-import club.subjugated.overlord_exe.services.StateMachineService
+import club.subjugated.overlord_exe.statemachines.ContextProvider
 import club.subjugated.overlord_exe.util.TimeSource
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
-
-data class BSkyLikesForm (
-    var did: String,
-    var goal: Long
-) : ContextForm
 
 @Service
 class BSkyLikesStateMachine(
-    val timeSource: TimeSource,
-    val bSkyLikesStateMachineContextRepository: BSkyLikesStateMachineContextRepository,
-    var blueSkyService: BlueSkyService
+    private val timeSource: TimeSource,
+    private val bSkyLikesStateMachineContextRepository: BSkyLikesStateMachineContextRepository,
+    private val blueSkyService: BlueSkyService,
+    private val applicationEventPublisher: ApplicationEventPublisher,
 ) : ContextProvider<BSkyLikesForm, BSkyLikesStateMachineContext> {
 
     override fun createContext(stateMachineId : Long, form: BSkyLikesForm): BSkyLikesStateMachineContext {
@@ -38,26 +36,38 @@ class BSkyLikesStateMachine(
     }
 
     override fun getInitialState(): String {
-        return BSkyLikesStates.IN_PROGRESS.toString()
+        return BSkyLikesStates.NEEDS_INFO.toString()
     }
 
     override fun findByStateMachineId(stateMachineId: Long): BSkyLikesStateMachineContext {
         return bSkyLikesStateMachineContextRepository.findByStateMachineId(stateMachineId)
     }
 
-//    fun loadContext(stateMachine: StateMachine) : StateMachine {
-//        val ctx = bSkyLikesStateMachineContextRepository.findByStateMachineId(stateMachine.id)
-//        stateMachine.context = ctx
-//        return stateMachine
-//    }
-
     override fun process(stateMachine: StateMachine, ctx: BSkyLikesStateMachineContext) {
         val state = BSkyLikesStates.valueOf(stateMachine.currentState!!)
         when(state) {
             BSkyLikesStates.UNSPECIFIED -> TODO()
+            BSkyLikesStates.NEEDS_INFO -> stateNeedsInfo(stateMachine)
+            BSkyLikesStates.WAITING -> {
+                if(ctx.receivedFormData) {
+                    stateMachine.currentState = BSkyLikesStates.IN_PROGRESS.toString()
+                }
+            }
             BSkyLikesStates.IN_PROGRESS -> stateInProgress(stateMachine)
             BSkyLikesStates.COMPLETE -> {}
         }
+    }
+
+    fun stateNeedsInfo(stateMachine: StateMachine) {
+        val record = findByStateMachineId(stateMachine.id)
+
+        applicationEventPublisher.publishEvent(RequestInfo(
+            source = this,
+            stateMachine = stateMachine,
+            formClass = BSkyLikesForm::class.qualifiedName!!
+        ))
+
+        stateMachine.currentState = BSkyLikesStates.WAITING.toString()
     }
 
     fun stateInProgress(stateMachine: StateMachine) {
