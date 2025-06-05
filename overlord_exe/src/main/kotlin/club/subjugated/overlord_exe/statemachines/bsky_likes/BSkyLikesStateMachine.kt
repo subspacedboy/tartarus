@@ -22,7 +22,7 @@ class BSkyLikesStateMachine(
             stateMachineId = stateMachineId,
             goal = form.goal,
             likesSoFar = 0,
-            did = form.did,
+            did = form.did ?: "",
             createdAt = timeSource.nowInUtc(),
             updatedAt = timeSource.nowInUtc()
         )

@@ -15,11 +15,14 @@ class BSkyUserService(
             ?: bSkyUserRepository.save(
                 BSkyUser(
                     did = did,
-                    shareableToken = "s-4UD7G60",
                     createdAt = timeSource.nowInUtc(),
                     updatedAt = timeSource.nowInUtc()
                 )
             )
+    }
+
+    fun findByShareableToken(shareableToken: String) : BSkyUser? {
+        return bSkyUserRepository.findByShareableToken(shareableToken)
     }
 
     fun save(bSkyUser: BSkyUser) : BSkyUser {

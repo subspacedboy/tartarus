@@ -8,4 +8,5 @@ import org.springframework.stereotype.Repository
 interface BSkyUserRepository : JpaRepository<BSkyUser, Long> {
     fun findByName(name : String) : BSkyUser
     fun findByDid(did : String) : BSkyUser?
+    fun findByShareableToken(shareableToken: String): BSkyUser?
 }

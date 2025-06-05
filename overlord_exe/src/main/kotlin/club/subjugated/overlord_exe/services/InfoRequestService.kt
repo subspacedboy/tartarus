@@ -4,6 +4,7 @@ import club.subjugated.overlord_exe.events.RequestInfo
 import club.subjugated.overlord_exe.events.SendDmEvent
 import club.subjugated.overlord_exe.models.BSkyUser
 import club.subjugated.overlord_exe.models.InfoRequest
+import club.subjugated.overlord_exe.models.InfoRequestState
 import club.subjugated.overlord_exe.models.StateMachine
 import club.subjugated.overlord_exe.statemachines.Context
 import club.subjugated.overlord_exe.statemachines.ContextForm
@@ -24,6 +25,7 @@ class InfoRequestService(
 ) {
     fun createInfoRequest(stateMachine : StateMachine, formType : String) : InfoRequest {
         val ir = InfoRequest(
+            state = InfoRequestState.CREATED,
             stateMachine = stateMachine,
             formType = formType,
             bskyUser = stateMachine.bskyUser!!,
@@ -46,6 +48,9 @@ class InfoRequestService(
         stateMachine.context!!.receive(form)
         stateMachineService.process(stateMachine)
         stateMachineService.save(stateMachine)
+
+        record.state = InfoRequestState.COMPLETE
+        infoRequestRepository.save(record)
     }
 
     @EventListener
@@ -54,7 +59,7 @@ class InfoRequestService(
         val ir = createInfoRequest(event.stateMachine, event.formClass)
 
         if(stateMachine.infoResolveMethod == InfoResolveMethod.USER) {
-            val url = urlService.generateUrl("ir/${ir.name}")
+            val url = urlService.generateUrl("info/${ir.name}")
             val user = stateMachine.bskyUser!!
 
             applicationEventPublisher.publishEvent(SendDmEvent(

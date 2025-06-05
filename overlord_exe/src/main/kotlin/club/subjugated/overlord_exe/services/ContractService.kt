@@ -24,6 +24,7 @@ import club.subjugated.overlord_exe.util.derToRawSignature
 import club.subjugated.overlord_exe.util.encodePublicKeySecp1
 import club.subjugated.overlord_exe.util.loadECPublicKeyFromPkcs8
 import com.google.flatbuffers.FlatBufferBuilder
+import io.ktor.util.moveToByteArray
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
@@ -74,6 +75,8 @@ class ContractService(
     }
 
     fun updateContractWithGetContractResponse(contract: Contract, response: GetContractResponse) : Contract {
+        contract.signedMessage = response.signedMessageAsByteBuffer.moveToByteArray()
+
         contract.state = ContractState.valueOf(response.state!!)
         contract.externalContractName = response.name
         contract.shareableToken = response.shareableToken

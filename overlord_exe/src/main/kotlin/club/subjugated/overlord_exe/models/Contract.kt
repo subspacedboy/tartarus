@@ -20,6 +20,11 @@ class Contract(
     var shareableToken: String? = null,
     var serialNumber: Int,
     @Enumerated(EnumType.STRING) var state: ContractState = ContractState.UNSPECIFIED,
+
+    // The original contract bytes are always returned from GetContractResponse but we don't
+    // don't need to save them ourselves.
+    @Transient var signedMessage : ByteArray? = null,
+
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
 ) {

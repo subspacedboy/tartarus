@@ -3,7 +3,6 @@ package club.subjugated.overlord_exe.models
 import club.subjugated.overlord_exe.statemachines.Context
 import club.subjugated.overlord_exe.statemachines.ContextProvider
 import club.subjugated.overlord_exe.statemachines.InfoResolveMethod
-import club.subjugated.overlord_exe.statemachines.InfoResolver
 import club.subjugated.overlord_exe.util.generateId
 import com.fasterxml.jackson.annotation.JsonFormat
 import jakarta.persistence.CascadeType
@@ -39,7 +38,7 @@ class StateMachine (
     var infoRequests: MutableList<InfoRequest> = mutableListOf(),
     @Enumerated(EnumType.STRING) var infoResolveMethod : InfoResolveMethod = InfoResolveMethod.USER,
 
-    @ManyToOne @JoinColumn(name = "bsky_user_id") val bskyUser: BSkyUser? = null,
+    @ManyToOne @JoinColumn(name = "bsky_user_id") var bskyUser: BSkyUser? = null,
 
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,

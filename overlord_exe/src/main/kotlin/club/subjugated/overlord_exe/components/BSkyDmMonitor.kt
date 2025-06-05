@@ -1,6 +1,5 @@
 package club.subjugated.overlord_exe.components
 
-import club.subjugated.overlord_exe.bots.announcer.events.ConnectIdentityEvent
 import club.subjugated.overlord_exe.bots.bsky_selflock.convo.BSkySelfLockConvoHandler
 import club.subjugated.overlord_exe.bots.superbot.convo.SuperBotConvoHandler
 import club.subjugated.overlord_exe.bots.timer_bot.convo.TimerBotConvoHandler
@@ -55,34 +54,22 @@ class BSkyDmMonitor(
                     val response = bSkySelfLockConvoHandler.handle(convoId, message)
                     blueSkyService.sendDm(convoId, response)
                 }
-                "bsky_likes" -> {
-                    val shareableToken = chunks[1]
-                    val goal = chunks[2].toLong()
-
-                    val authorDid = message.sender.did
-
-                    applicationEventPublisher.publishEvent(
-                        club.subjugated.overlord_exe.bots.bsky_likes.events.IssueContract(
-                            source = this,
-                            shareableToken = shareableToken,
-                            goal = goal,
-                            did = authorDid
-                        )
-                    )
-                    blueSkyService.sendDm(convoId, "Issued")
-                }
-                "announcer" -> {
-                    val token = chunks[1]
-                    val sourceDid = message.sender.did
-
-                    bskyUser.shareableToken = token
-                    bSkyUserService.save(bskyUser)
-
-                    // TODO delete this and everything downstream of it.
-                    applicationEventPublisher.publishEvent(ConnectIdentityEvent(this, token, sourceDid))
-
-                    blueSkyService.sendDm(convoId, "Updated")
-                }
+//                "bsky_likes" -> {
+//                    val shareableToken = chunks[1]
+//                    val goal = chunks[2].toLong()
+//
+//                    val authorDid = message.sender.did
+//
+//                    applicationEventPublisher.publishEvent(
+//                        club.subjugated.overlord_exe.bots.bsky_likes.events.IssueContract(
+//                            source = this,
+//                            shareableToken = shareableToken,
+//                            goal = goal,
+//                            did = authorDid
+//                        )
+//                    )
+//                    blueSkyService.sendDm(convoId, "Issued")
+//                }
                 "timer" -> {
                     val response = timerBotConversationHandler.handle(convoId, message)
                     blueSkyService.sendDm(convoId, response)

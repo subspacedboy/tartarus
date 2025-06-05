@@ -35,7 +35,7 @@ class SuperBotWebController(
         model.addAttribute("name", record.name)
         model.addAttribute("intakeForm", IntakeForm(
             name = record.name,
-            shareableToken = ""
+            shareableToken = record.shareableToken ?: ""
         )
         )
         return "superbot/form"

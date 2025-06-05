@@ -8,6 +8,7 @@ import club.subjugated.overlord_exe.events.SendDmEvent
 import club.subjugated.overlord_exe.models.BotMap
 import club.subjugated.overlord_exe.models.Contract
 import club.subjugated.overlord_exe.models.StateMachineState
+import club.subjugated.overlord_exe.services.BSkyUserService
 import club.subjugated.overlord_exe.services.BotMapService
 import club.subjugated.overlord_exe.services.ContractService
 import club.subjugated.overlord_exe.services.StateMachineService
@@ -23,13 +24,13 @@ import org.springframework.stereotype.Service
 @Service
 class SuperBotService(
     private val superBotRecordRepository: SuperBotRecordRepository,
-    private val contractService: ContractService,
     private val timeSource: TimeSource,
     private val applicationEventPublisher: ApplicationEventPublisher,
     private val botMapService: BotMapService,
     private val botComponent: BotComponent,
     private val logger: Logger = LoggerFactory.getLogger(SuperBotService::class.java),
-    private val stateMachineService: StateMachineService
+    private val stateMachineService: StateMachineService,
+    private val bSkyUserService: BSkyUserService
 ) : MessageHandler {
     @PostConstruct
     fun start() {
@@ -42,86 +43,20 @@ class SuperBotService(
         return botMapService.getOrCreateBotMap("superBot", "OverLord SuperBot")
     }
 
-    override fun reviewContracts(contracts: List<Contract>) {
-        logger.info("Going through superbot records")
-
-        contracts.forEach { c ->
-            val machines = stateMachineService.findByOwnedBy(c.name)
-            machines.forEach { machine ->
-                if(machine.state == StateMachineState.STARTED) {
-                    stateMachineService.process(machine)
-                    stateMachineService.save(machine)
-                }
-            }
-
-            val allDone = machines.all { it.state == StateMachineState.COMPLETE }
-            if(allDone) {
-                applicationEventPublisher.publishEvent(IssueRelease(
-                    source = this,
-                    botMap = getBotMap(),
-                    contract = c,
-                ))
-            }
-        }
-    }
-
-    override fun handleAccept(contract: Contract) {
-        val record = findByContractSerialNumber(contract.serialNumber.toLong())
-        record.acceptedAt = timeSource.nowInUtc()
-        record.contractId = contract.id
-        superBotRecordRepository.save(record)
-
-        val form = BSkyLikesForm(
-            did = record.did,
-            goal = 100
-        )
-
-        val stateMachine = stateMachineService.createNewStateMachine(
-            ownerName = record.name,
-            providerClassName = BSkyLikesStateMachine::class.qualifiedName!!,
-            form = form
-        )
-
-        stateMachineService.process(stateMachine)
-        stateMachineService.save(stateMachine)
-    }
-
-    override fun handleRelease(contract: Contract) {
-        val record = findByContractSerialNumber(contract.serialNumber.toLong())
-        record.state = SuperBotRecordState.COMPLETE
-        save(record)
-    }
-
-    override fun handleLock(contract: Contract) {
-
-    }
-
-    override fun handleUnlock(contract: Contract) {
-
-    }
-
     fun createPlaceholder(did : String, convoId : String) : String {
+        val user = bSkyUserService.findOrCreateByDid(did)
+
         val record = SuperBotRecord(
             contractSerialNumber = 0,
             state = SuperBotRecordState.CREATED,
             did = did,
             convoId = convoId,
-            createdAt = timeSource.nowInUtc()
+            createdAt = timeSource.nowInUtc(),
+            shareableToken = user.shareableToken
         )
         superBotRecordRepository.save(record)
+
         return record.name
-    }
-
-    fun getRecord(name : String) : SuperBotRecord {
-        return superBotRecordRepository.findByName(name)
-    }
-
-    fun save(record : SuperBotRecord) {
-        superBotRecordRepository.save(record)
-    }
-
-    fun findByContractSerialNumber(serialNumber : Long) : SuperBotRecord {
-        return superBotRecordRepository.findByContractSerialNumber(serialNumber)
     }
 
     fun processContractForm(form : IntakeForm) {
@@ -153,4 +88,82 @@ class SuperBotService(
             did = record.did
         ))
     }
+
+    override fun reviewContracts(contracts: List<Contract>) {
+        logger.info("Going through superbot records")
+
+        contracts.forEach { c ->
+            val machines = stateMachineService.findByOwnedBy(c.name)
+            machines.forEach { machine ->
+                if(machine.state == StateMachineState.STARTED) {
+                    stateMachineService.process(machine)
+                    stateMachineService.save(machine)
+                }
+            }
+
+            val allDone = machines.all { it.state == StateMachineState.COMPLETE }
+            if(allDone && machines.isNotEmpty()) {
+                applicationEventPublisher.publishEvent(IssueRelease(
+                    source = this,
+                    botMap = getBotMap(),
+                    contract = c,
+                ))
+            }
+        }
+    }
+
+    override fun handleAccept(contract: Contract) {
+        val record = findByContractSerialNumber(contract.serialNumber.toLong())
+        record.acceptedAt = timeSource.nowInUtc()
+        record.contractId = contract.id
+        superBotRecordRepository.save(record)
+
+        val form = BSkyLikesForm(
+            did = record.did,
+            goal = 100
+        )
+
+        val stateMachine = stateMachineService.createNewStateMachine(
+            ownerName = contract.name,
+            providerClassName = BSkyLikesStateMachine::class.qualifiedName!!,
+            form = form,
+        )
+
+        val bskyUser = bSkyUserService.findOrCreateByDid(record.did)
+        stateMachine.bskyUser = bskyUser
+        stateMachineService.save(stateMachine)
+
+        stateMachineService.process(stateMachine)
+        stateMachineService.save(stateMachine)
+    }
+
+    override fun handleRelease(contract: Contract) {
+        val record = findByContractSerialNumber(contract.serialNumber.toLong())
+        record.state = SuperBotRecordState.COMPLETE
+        save(record)
+    }
+
+    override fun handleLock(contract: Contract) {
+
+    }
+
+    override fun handleUnlock(contract: Contract) {
+
+    }
+
+
+
+    fun getRecord(name : String) : SuperBotRecord {
+        return superBotRecordRepository.findByName(name)
+    }
+
+    fun save(record : SuperBotRecord) {
+        superBotRecordRepository.save(record)
+    }
+
+    fun findByContractSerialNumber(serialNumber : Long) : SuperBotRecord {
+        return superBotRecordRepository.findByContractSerialNumber(serialNumber)
+    }
+
+
 }

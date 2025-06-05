@@ -1,29 +1,26 @@
 package club.subjugated.overlord_exe.services
 
-import club.subjugated.overlord_exe.events.RequestInfo
 import club.subjugated.overlord_exe.models.BSkyUser
 import club.subjugated.overlord_exe.models.StateMachine
 import club.subjugated.overlord_exe.models.StateMachineState
 import club.subjugated.overlord_exe.statemachines.Context
 import club.subjugated.overlord_exe.statemachines.ContextForm
 import club.subjugated.overlord_exe.statemachines.ContextProvider
-import club.subjugated.overlord_exe.statemachines.ContextProviderRegistry
 import club.subjugated.overlord_exe.statemachines.InfoResolveMethod
 import club.subjugated.overlord_exe.storage.StateMachineRepository
 import club.subjugated.overlord_exe.util.TimeSource
 import jakarta.annotation.PostConstruct
-import org.springframework.context.event.EventListener
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import javax.swing.plaf.nimbus.State
-import kotlin.reflect.KClass
 
 @Service
 class StateMachineService(
     private val stateMachineRepository: StateMachineRepository,
     private val timeSource: TimeSource,
     private val providers: List<ContextProvider<*, *>>,
-//    private val infoRequestService: InfoRequestService,
-    private val urlService: UrlService
+    private val urlService: UrlService,
+    private val logger: Logger = LoggerFactory.getLogger(StateMachineService::class.java)
 ) {
     val nameToProvider = HashMap<String, ContextProvider<*, *>>()
 
@@ -62,6 +59,7 @@ class StateMachineService(
         val stateMachine = stateMachineRepository.findByName(name)
 
         val provider = nameToProvider.get(stateMachine.machineType)
+        stateMachine.providerClass = provider
         stateMachine.context = provider!!.findByStateMachineId(stateMachine.id)
 
         return stateMachine
@@ -69,6 +67,8 @@ class StateMachineService(
 
     fun findByOwnedBy(name : String) : List<StateMachine> {
         val stateMachines = stateMachineRepository.findByOwnedBy(name)
+
+        logger.warn("Zero state machines found for findByOwnedBy -> $name")
 
         stateMachines.forEach { sm ->
             val provider = nameToProvider.get(sm.machineType)

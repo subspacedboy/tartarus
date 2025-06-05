@@ -1,59 +1,27 @@
-create table bsky_self_lock_bot_record (
-    id bigint NOT NULL AUTO_INCREMENT,
-    name varchar(25) NOT NULL,
-    state varchar(25) NOT NULL,
-    shareable_token varchar(25) NOT NULL,
-    contract_serial_number int NOT NULL,
-    contract_id bigint,
-    created_at DATETIME,
-    accepted_at DATETIME,
-    open_ends_at DATETIME,
-    ends_at DATETIME,
-    duration_amount int NOT NULL,
-    duration_unit varchar(25) NOT NULL,
-    per_like_add int NOT NULL,
-    per_like_add_unit varchar(25) NOT NULL,
-    per_repost_add int NOT NULL,
-    per_repost_add_unit varchar(25) NOT NULL,
-    open_period_amount int NOT NULL,
-    open_period_unit varchar(25) NOT NULL,
-    notice_uri varchar(255),
-    has_reposted_notice tinyint NOT NULL default 0,
-    reposted_notice_at DATETIME,
-    did varchar(255) NOT NULL,
-    convo_id varchar(255) NOT NULL,
-    completed tinyint,
-    PRIMARY KEY (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-create table bsky_like (
-    id bigint NOT NULL AUTO_INCREMENT,
-    name varchar(25) NOT NULL,
-    record_id int,
-    record_type varchar(25),
-    at_uri varchar(255) NOT NULL,
-    created_at DATETIME,
-    updated_at DATETIME,
-    did varchar(255) NOT NULL,
-    handle varchar(255) NOT NULL,
-    PRIMARY KEY (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE INDEX idx_did ON bsky_like(did);
-CREATE INDEX idx_record ON bsky_like(record_id, record_type);
-
-create table bsky_repost (
-    id bigint NOT NULL AUTO_INCREMENT,
-    name varchar(25) NOT NULL,
-    record_id int,
-    record_type varchar(25),
-    at_uri varchar(255) NOT NULL,
-    created_at DATETIME,
-    updated_at DATETIME,
-    did varchar(255) NOT NULL,
-    handle varchar(255) NOT NULL,
-    PRIMARY KEY (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE INDEX idx_did ON bsky_repost(did);
-CREATE INDEX idx_record ON bsky_repost(record_id, record_type);
+--create table bsky_self_lock_bot_record (
+--    id bigint NOT NULL AUTO_INCREMENT,
+--    name varchar(25) NOT NULL,
+--    state varchar(25) NOT NULL,
+--    shareable_token varchar(25) NOT NULL,
+--    contract_serial_number int NOT NULL,
+--    contract_id bigint,
+--    created_at DATETIME,
+--    accepted_at DATETIME,
+--    open_ends_at DATETIME,
+--    ends_at DATETIME,
+--    duration_amount int NOT NULL,
+--    duration_unit varchar(25) NOT NULL,
+--    per_like_add int NOT NULL,
+--    per_like_add_unit varchar(25) NOT NULL,
+--    per_repost_add int NOT NULL,
+--    per_repost_add_unit varchar(25) NOT NULL,
+--    open_period_amount int NOT NULL,
+--    open_period_unit varchar(25) NOT NULL,
+--    notice_uri varchar(255),
+--    has_reposted_notice tinyint NOT NULL default 0,
+--    reposted_notice_at DATETIME,
+--    did varchar(255) NOT NULL,
+--    convo_id varchar(255) NOT NULL,
+--    completed tinyint,
+--    PRIMARY KEY (id)
+--) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -1,16 +1,12 @@
 package club.subjugated.overlord_exe.web
 
-import club.subjugated.overlord_exe.bots.superbot.SuperBotRecordState
-import club.subjugated.overlord_exe.bots.superbot.web.IntakeForm
+import club.subjugated.overlord_exe.models.InfoRequestState
 import club.subjugated.overlord_exe.services.InfoRequestService
 import club.subjugated.overlord_exe.statemachines.ContextForm
-import jakarta.validation.Valid
 import jakarta.ws.rs.core.MediaType
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
-import org.springframework.validation.BindingResult
 import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
@@ -27,18 +23,16 @@ class InfoRequestWebController(
     fun getPage(@PathVariable token: String, model: Model): String {
         val record = infoRequestService.getRequestByName(token)
 
-        //TODO Add state.
-//        if(record.state != SuperBotRecordState.CREATED) {
-//            return "no_more_edits"
-//        }
-
+        if(record.state != InfoRequestState.CREATED) {
+            return "no_more_edits"
+        }
 
         val kClass = Class.forName(record.formType).kotlin
-        val instance = kClass.createInstance()
-
+        val instance = kClass.createInstance() as ContextForm
         val name = kClass.qualifiedName!!.lowercase().split(".").last()
 
-        model.addAttribute("name", record.name)
+//        model.addAttribute("name", record.name)
+        instance.name = record.name
         model.addAttribute("form", instance)
         return "info/$name"
     }
@@ -66,6 +60,17 @@ class InfoRequestWebController(
         }
 
         val form = ctor.callBy(args) as ContextForm
+        val validationResult = form.validate()
+        if(validationResult.isNotEmpty()) {
+            model.addAttribute("name", record.name)
+            model.addAttribute("form", form)
+
+            val kClass = Class.forName(record.formType).kotlin
+            val instance = kClass.createInstance()
+            val name = kClass.qualifiedName!!.lowercase().split(".").last()
+
+            return "info/$name"
+        }
 
         // Optionally validate here, or call your service
         model.addAttribute("form", form)

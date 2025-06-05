@@ -11,13 +11,6 @@
   <!-- Hidden name field -->
   <input type="hidden" th:field="*{name}">
 
-  <!-- DID -->
-  <div class="mb-3">
-    <label for="did" class="form-label">DID</label>
-    <input class="form-control" id="did" th:field="*{did}">
-    <div class="text-danger" th:if="${#fields.hasErrors('did')}" th:errors="*{did}"></div>
-  </div>
-
   <!-- Goal -->
   <div class="mb-3">
     <label for="goal" class="form-label">Goal</label>

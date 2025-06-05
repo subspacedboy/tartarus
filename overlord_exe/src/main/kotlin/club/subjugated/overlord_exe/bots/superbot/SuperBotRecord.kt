@@ -16,7 +16,7 @@ class SuperBotRecord(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) var id: Long = 0,
     var name: String = generateId("sb-"),
     @Enumerated(EnumType.STRING) var state: SuperBotRecordState = SuperBotRecordState.UNSPECIFIED,
-    var shareableToken : String = "",
+    var shareableToken : String? = "",
     var contractSerialNumber: Int,
     var contractId: Long? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,

@@ -45,8 +45,6 @@ class BotComponent(
 ) {
     private val logger: Logger = LoggerFactory.getLogger(BotComponent::class.java)
 
-//    lateinit var mqttClientRef : MqttClient
-
     lateinit var botExecutorWatchdogService: ScheduledExecutorService
 
     var responseFuture = CompletableDeferred<BotApiMessage>()
@@ -101,7 +99,7 @@ class BotComponent(
                 handler.reviewContracts(contracts)
             }
         }
-        , 0, 1, TimeUnit.SECONDS)
+        , 0, 1, TimeUnit.MINUTES)
     }
 
     @PreDestroy

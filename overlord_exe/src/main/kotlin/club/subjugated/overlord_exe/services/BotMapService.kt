@@ -2,6 +2,7 @@ package club.subjugated.overlord_exe.services
 
 import club.subjugated.overlord_exe.models.BotMap
 import club.subjugated.overlord_exe.storage.BotMapRepository
+import club.subjugated.overlord_exe.util.TimeSource
 import club.subjugated.overlord_exe.util.encodePublicKeySecp1
 import club.subjugated.overlord_exe.util.generateECKeyPair
 import io.ktor.client.HttpClient
@@ -31,8 +32,9 @@ data class NewBotResponse(val name : String, val clearTextPassword: String)
 
 @Service
 class BotMapService(
-    private var botMapRepository: BotMapRepository,
+    private val botMapRepository: BotMapRepository,
     @Value("\${overlord.coordinator}") val coordinator : String,
+    private val timeSource: TimeSource
 ) {
 
     fun getBotMap(internalName: String) : BotMap {
@@ -79,7 +81,9 @@ class BotMapService(
             coordinator = coordinator,
             password = password,
             privateKey = privateKey,
-            publicKey = publicKey
+            publicKey = publicKey,
+            createdAt = timeSource.nowInUtc(),
+            updatedAt = timeSource.nowInUtc()
         )
 
         botMapRepository.save(botMap)

@@ -2,7 +2,10 @@ package club.subjugated.overlord_exe.statemachines
 
 import club.subjugated.overlord_exe.models.StateMachine
 
-interface ContextForm
+interface ContextForm {
+    var name: String
+    fun validate() : List<String>
+}
 interface Context {
     fun receive(form : ContextForm)
 }
