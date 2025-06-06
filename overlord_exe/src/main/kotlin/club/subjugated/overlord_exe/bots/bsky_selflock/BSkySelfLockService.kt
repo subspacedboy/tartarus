@@ -45,9 +45,9 @@ class BSkySelfLockService(
 
         val subjectHandle = blueSkyService.resolveDidToHandle(record.did)
 
-        val openPeriod = formatDuration(record.openPeriodAmount, record.openPeriodUnit)
-        val likePeriod = formatDuration(record.perLikeAdd, record.perLikeAddUnit)
-        val repostPeriod = formatDuration(record.perRepostAdd, record.perRepostAddUnit)
+        val openPeriod = formatDuration(record.openPeriodAmount.toLong(), record.openPeriodUnit)
+        val likePeriod = formatDuration(record.perLikeAdd.toLong(), record.perLikeAddUnit)
+        val repostPeriod = formatDuration(record.perRepostAdd.toLong(), record.perRepostAddUnit)
 
         val infoUrl = urlService.generateUrl("bsky_selflock/status/${record.name}")
 
@@ -55,7 +55,7 @@ class BSkySelfLockService(
             $subjectHandle has been locked. For the next $openPeriod after $subjectHandle reposts this, you may like and repost this notice.
             1 like = $likePeriod
             1 repost = $repostPeriod
-            
+
             More Information: $infoUrl
         """.trimIndent()
 

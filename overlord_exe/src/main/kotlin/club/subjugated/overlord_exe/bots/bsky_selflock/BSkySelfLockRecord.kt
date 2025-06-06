@@ -2,12 +2,12 @@ package club.subjugated.overlord_exe.bots.bsky_selflock
 
 import club.subjugated.overlord_exe.util.generateId
 import jakarta.persistence.Entity
-
 import com.fasterxml.jackson.annotation.JsonFormat
 import jakarta.persistence.*
 import java.time.OffsetDateTime
 
 @Entity
+@Deprecated("Don't use")
 class BSkySelfLockBotRecord(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) var id: Long = 0,
     var name: String = generateId("bsslr-"),

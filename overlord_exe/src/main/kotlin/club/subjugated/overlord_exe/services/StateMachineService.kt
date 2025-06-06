@@ -55,6 +55,16 @@ class StateMachineService(
         return sm
     }
 
+    fun findById(id : Long) : StateMachine {
+        val stateMachine = stateMachineRepository.findById(id).get()
+
+        val provider = nameToProvider.get(stateMachine.machineType)
+        stateMachine.providerClass = provider
+        stateMachine.context = provider!!.findByStateMachineId(stateMachine.id)
+
+        return stateMachine
+    }
+
     fun findByName(name : String) : StateMachine {
         val stateMachine = stateMachineRepository.findByName(name)
 
@@ -68,7 +78,9 @@ class StateMachineService(
     fun findByOwnedBy(name : String) : List<StateMachine> {
         val stateMachines = stateMachineRepository.findByOwnedBy(name)
 
-        logger.warn("Zero state machines found for findByOwnedBy -> $name")
+        if(stateMachines.isEmpty()) {
+            logger.warn("Zero state machines found for findByOwnedBy -> $name")
+        }
 
         stateMachines.forEach { sm ->
             val provider = nameToProvider.get(sm.machineType)

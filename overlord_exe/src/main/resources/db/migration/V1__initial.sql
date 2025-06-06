@@ -132,6 +132,7 @@ create table bsky_crowd_time_sm_context (
         state_machine_id bigint NOT NULL,
         name varchar(25) NOT NULL,
         created_at DATETIME,
+        updated_at DATETIME,
         accepted_at DATETIME,
         open_ends_at DATETIME,
         ends_at DATETIME,
@@ -144,6 +145,7 @@ create table bsky_crowd_time_sm_context (
         open_period_unit varchar(25) NOT NULL,
         notice_uri varchar(255),
         has_reposted_notice tinyint NOT NULL default 0,
+        subject_did varchar(255) NOT NULL,
         PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

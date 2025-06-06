@@ -3,6 +3,7 @@ package club.subjugated.overlord_exe.bots.superbot
 import club.subjugated.overlord_exe.bots.general.BotComponent
 import club.subjugated.overlord_exe.bots.general.MessageHandler
 import club.subjugated.overlord_exe.bots.superbot.web.IntakeForm
+import club.subjugated.overlord_exe.events.IssueContract
 import club.subjugated.overlord_exe.events.IssueRelease
 import club.subjugated.overlord_exe.events.SendDmEvent
 import club.subjugated.overlord_exe.models.BotMap
@@ -12,6 +13,8 @@ import club.subjugated.overlord_exe.services.BSkyUserService
 import club.subjugated.overlord_exe.services.BotMapService
 import club.subjugated.overlord_exe.services.ContractService
 import club.subjugated.overlord_exe.services.StateMachineService
+import club.subjugated.overlord_exe.statemachines.bsky_crowd_time.BSkyCrowdTimeForm
+import club.subjugated.overlord_exe.statemachines.bsky_crowd_time.BSkyCrowdTimeStateMachine
 import club.subjugated.overlord_exe.statemachines.bsky_likes.BSkyLikesForm
 import club.subjugated.overlord_exe.statemachines.bsky_likes.BSkyLikesStateMachine
 import club.subjugated.overlord_exe.util.TimeSource
@@ -67,7 +70,7 @@ class SuperBotService(
         save(record)
 
         applicationEventPublisher.publishEvent(
-            club.subjugated.overlord_exe.events.IssueContract(
+            IssueContract(
                 source = this,
                 botMap = getBotMap(),
                 serialNumberRecorder = {serial ->
@@ -118,14 +121,25 @@ class SuperBotService(
         record.contractId = contract.id
         superBotRecordRepository.save(record)
 
-        val form = BSkyLikesForm(
-            did = record.did,
-            goal = 100
+//        val form = BSkyLikesForm(
+//            did = record.did,
+//            goal = 100
+//        )
+//
+//        val stateMachine = stateMachineService.createNewStateMachine(
+//            ownerName = contract.name,
+//            providerClassName = BSkyLikesStateMachine::class.qualifiedName!!,
+//            form = form,
+//        )
+
+        val form = BSkyCrowdTimeForm(
+            name = "",
+            subjectDid = record.did
         )
 
         val stateMachine = stateMachineService.createNewStateMachine(
             ownerName = contract.name,
-            providerClassName = BSkyLikesStateMachine::class.qualifiedName!!,
+            providerClassName = BSkyCrowdTimeStateMachine::class.qualifiedName!!,
             form = form,
         )
 

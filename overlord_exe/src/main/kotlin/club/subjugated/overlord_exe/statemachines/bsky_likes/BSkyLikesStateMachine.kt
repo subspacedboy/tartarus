@@ -58,7 +58,7 @@ class BSkyLikesStateMachine(
         }
     }
 
-    fun stateNeedsInfo(stateMachine: StateMachine) {
+    private fun stateNeedsInfo(stateMachine: StateMachine) {
         val record = findByStateMachineId(stateMachine.id)
 
         applicationEventPublisher.publishEvent(RequestInfo(
@@ -70,7 +70,7 @@ class BSkyLikesStateMachine(
         stateMachine.currentState = BSkyLikesStates.WAITING.toString()
     }
 
-    fun stateInProgress(stateMachine: StateMachine) {
+    private fun stateInProgress(stateMachine: StateMachine) {
         val ctx : BSkyLikesStateMachineContext = stateMachine.context!! as BSkyLikesStateMachineContext
 
         var totalLikes = 0L

@@ -114,7 +114,7 @@ class TimerBotRecordService(
         val terms = if(record.isRandom) {
             "Duration revealed on accept"
         } else {
-            formatDuration(maxDurationAmount, form.maxUnit)
+            formatDuration(maxDurationAmount.toLong(), form.maxUnit)
         }
 
         // Issue the contract

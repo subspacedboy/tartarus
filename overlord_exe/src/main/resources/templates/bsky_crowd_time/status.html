@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: layout(~{::body})}">
+<body>
+
+<h2 style="margin-top: 1em">Contract for [[${handle}]]</h2>
+
+<div th:switch="${state}">
+    <p th:case="${T(club.subjugated.overlord_exe.statemachines.bsky_crowd_time.BSkyCrowdTimeState).OPEN_POSTED}">The notice for the open period has been posted, but not reposted by the subject... </p>
+    <p th:case="${T(club.subjugated.overlord_exe.statemachines.bsky_crowd_time.BSkyCrowdTimeState).IN_OPEN}">In the open period. You can still like and repost to drive up the time.
+        Based on minimum time, likes, reposts the current contract end time is [[${endsAtRelative}]]. </p>
+    <p th:case="${T(club.subjugated.overlord_exe.statemachines.bsky_crowd_time.BSkyCrowdTimeState).OPEN_CLOSED}">The open period has closed. The contract will end [[${endsAtRelative}]]. </p>
+    <p th:case="${T(club.subjugated.overlord_exe.statemachines.bsky_crowd_time.BSkyCrowdTimeState).COMPLETE}">The contract ended and the subject was released [[${endsAtRelative}]]. </p>
+    <p th:case="*">Unknown state [[${record.state}]]</p>
+</div>
+
+</body>
+</html>

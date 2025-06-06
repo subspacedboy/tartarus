@@ -14,52 +14,26 @@
 
 <p>
     Terms:
-    <ul>
-        <li>Duration: The minimum time the contract will have. This starts _after_ the open period. Example: Duration of 3 and "HOURS" will be 3 hours after the open has ended.</li>
-        <li>Per like: The amount of time to add per like. For 10 minutes you would set "10" and "Minutes".</li>
-        <li>Per Repost: The amount of time to add per repost. For 10 minutes you would set "10" and "Minutes".</li>
-        <li>Open period amount: How long the open period will last. This time does not count toward minimum duration. For 1 hour you would set "1" and "Hours".</li>
-    </ul>
+<ul>
+    <li>Duration: The minimum time the contract will have. This starts _after_ the open period. Example: Duration of 3 and "HOURS" will be 3 hours after the open has ended.</li>
+    <li>Per like: The amount of time to add per like. For 10 minutes you would set "10" and "Minutes".</li>
+    <li>Per Repost: The amount of time to add per repost. For 10 minutes you would set "10" and "Minutes".</li>
+    <li>Open period amount: How long the open period will last. This time does not count toward minimum duration. For 1 hour you would set "1" and "Hours".</li>
+</ul>
 </p>
 
 <p>
     Examples:
-    <ul>
-        <li>A duration of 1 hour, an open period of 1 hour, 5 minutes per like, 1 hour per repost -> with 3 likes (15 minutes) and 2 reposts (2 hours) means the
+<ul>
+    <li>A duration of 1 hour, an open period of 1 hour, 5 minutes per like, 1 hour per repost -> with 3 likes (15 minutes) and 2 reposts (2 hours) means the
         contract will end after 4 hours (1 for duration, 1 for open, 2 for reposts) and 15 minutes (3 likes).</li>
-    </ul>
+</ul>
 </p>
 
-<form th:action="@{/bsky_selflock/submit}" method="post" th:object="${timeForm}" class="needs-validation" novalidate>
+<form th:action="@{/info/submit}" method="post" th:object="${form}" class="needs-validation" novalidate>
 
     <!-- Hidden name field -->
     <input type="hidden" th:field="*{name}">
-
-    <!-- Shareable Token -->
-    <div class="mb-3">
-        <label for="duration" class="form-label">Shareable Token</label>
-        <input class="form-control" id="shareableToken" th:field="*{shareableToken}" placeholder="Lock shareable token e.g. s-4UD7G60 or tc-JAH4D1G">
-        <div class="text-danger" th:if="${#fields.hasErrors('shareableToken')}" th:errors="*{shareableToken}"></div>
-    </div>
-
-    <!-- Duration -->
-    <div class="mb-3">
-        <label for="duration" class="form-label">Duration</label>
-        <input type="number" class="form-control" id="duration" th:field="*{duration}">
-        <div class="text-danger" th:if="${#fields.hasErrors('duration')}" th:errors="*{duration}"></div>
-    </div>
-
-    <!-- Unit -->
-    <div class="mb-3">
-        <label for="unit" class="form-label">Unit</label>
-        <select class="form-select" id="unit" th:field="*{unit}">
-            <option value="MINUTES">Minutes</option>
-            <option value="HOURS">Hours</option>
-            <option value="DAYS">Days</option>
-            <option value="WEEKS">Weeks</option>
-        </select>
-        <div class="text-danger" th:if="${#fields.hasErrors('unit')}" th:errors="*{unit}"></div>
-    </div>
 
     <!-- Per Like Add -->
     <div class="mb-3">

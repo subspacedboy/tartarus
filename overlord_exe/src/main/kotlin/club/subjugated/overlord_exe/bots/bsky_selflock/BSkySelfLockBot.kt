@@ -28,6 +28,7 @@ import java.security.interfaces.ECPublicKey
 import java.util.concurrent.TimeUnit
 
 @Component
+@Deprecated("Don't use")
 class BSkySelfLockBot(
     private var botMapService: BotMapService,
     private var contractService: ContractService,
@@ -83,46 +84,46 @@ class BSkySelfLockBot(
     override fun handleUnlock(signedEvent: SignedEvent) {
     }
 
-    private fun reviewContracts() {
-        val contracts = contractService.getLiveContractsForBot(botMap.externalName)
-
-        val contractIds = contracts.map { it.id }
-        val tbrs = bSkySelfLockService.findByContractIds(contractIds)
-
-        val scope = CoroutineScope(Dispatchers.Default)
-        val handler = CoroutineExceptionHandler { _, e ->
-            logger.error("Unhandled exception: $e")
-        }
-
-        for(record in tbrs) {
-            val contract : Contract = contracts.find { it.id == record.contractId }!!
-
-            if(record.state == BSkySelfLockRecordState.OPEN_POSTED) {
-                bSkySelfLockService.checkIfNoticeReposted(record)
-            }
-
-            if(record.state == BSkySelfLockRecordState.IN_OPEN) {
-                bSkySelfLockService.checkIfOpenEndedAndCalculate(record)
-            }
-
-            if(record.state == BSkySelfLockRecordState.CLOSED) {
-                if(timeSource.nowInUtc() > record.endsAt) {
-                    val releaseCommand = contractService.makeReleaseCommand(botMap.externalName, contract.externalContractName!!, contract.serialNumber, botMap.privateKey!!)
-                    mqttClientRef.publish("coordinator/inbox", MqttMessage(releaseCommand))
-                }
-            }
-
-            scope.async(handler) {
-                val contractInfo = requestContract(botMap.externalName, contract.lockSessionToken!!, contract.serialNumber.toUShort(), mqttClientRef)
-                if(contractInfo.state == "ABORTED") {
-                    logger.info("Aborted contract: ${contract.externalContractName}")
-                    contract.state = ContractState.ABORTED
-                    contractService.save(contract)
-                }
-            }
-
-        }
-    }
+//    private fun reviewContracts() {
+//        val contracts = contractService.getLiveContractsForBot(botMap.externalName)
+//
+//        val contractIds = contracts.map { it.id }
+//        val tbrs = bSkySelfLockService.findByContractIds(contractIds)
+//
+//        val scope = CoroutineScope(Dispatchers.Default)
+//        val handler = CoroutineExceptionHandler { _, e ->
+//            logger.error("Unhandled exception: $e")
+//        }
+//
+//        for(record in tbrs) {
+//            val contract : Contract = contracts.find { it.id == record.contractId }!!
+//
+//            if(record.state == BSkySelfLockRecordState.OPEN_POSTED) {
+//                bSkySelfLockService.checkIfNoticeReposted(record)
+//            }
+//
+//            if(record.state == BSkySelfLockRecordState.IN_OPEN) {
+//                bSkySelfLockService.checkIfOpenEndedAndCalculate(record)
+//            }
+//
+//            if(record.state == BSkySelfLockRecordState.CLOSED) {
+//                if(timeSource.nowInUtc() > record.endsAt) {
+//                    val releaseCommand = contractService.makeReleaseCommand(botMap.externalName, contract.externalContractName!!, contract.serialNumber, botMap.privateKey!!)
+//                    mqttClientRef.publish("coordinator/inbox", MqttMessage(releaseCommand))
+//                }
+//            }
+//
+//            scope.async(handler) {
+//                val contractInfo = requestContract(botMap.externalName, contract.lockSessionToken!!, contract.serialNumber.toUShort(), mqttClientRef)
+//                if(contractInfo.state == "ABORTED") {
+//                    logger.info("Aborted contract: ${contract.externalContractName}")
+//                    contract.state = ContractState.ABORTED
+//                    contractService.save(contract)
+//                }
+//            }
+//
+//        }
+//    }
 
     @EventListener
     fun handleIssueContractRequest(event: club.subjugated.overlord_exe.bots.bsky_selflock.events.IssueContract) {
@@ -134,31 +135,31 @@ class BSkySelfLockBot(
         mqttClientRef.publish("coordinator/inbox", MqttMessage(wrapper.messageBytes))
     }
 
-    @PostConstruct
-    fun start() {
-        logger.info("Starting BSky Self Lock")
-        val botMap = botMapService.getOrCreateBotMap("bsky_selflock", "BSky Self Lock")
-        this.botMap = botMap
-
-        var executor = createBotApiExecutor(botMap)
-
-        botExecutorWatchdogService.scheduleAtFixedRate({
-            if (botExecutorWatchdogService.isTerminated || botExecutorWatchdogService.isShutdown) {
-                logger.warn("Bot executor stopped unexpectedly, restarting...")
-                executor = createBotApiExecutor(botMap)
-            }
-        }, 1, 5, TimeUnit.SECONDS)
-
-        executor.scheduleAtFixedRate({
-            logger.info("Reviewing live contracts")
-            try {
-                reviewContracts()
-            } catch (ex : Exception ) {
-                println(ex)
-            }
-
-        }, 0, 3, TimeUnit.MINUTES)
-    }
+//    @PostConstruct
+//    fun start() {
+//        logger.info("Starting BSky Self Lock")
+//        val botMap = botMapService.getOrCreateBotMap("bsky_selflock", "BSky Self Lock")
+//        this.botMap = botMap
+//
+//        var executor = createBotApiExecutor(botMap)
+//
+//        botExecutorWatchdogService.scheduleAtFixedRate({
+//            if (botExecutorWatchdogService.isTerminated || botExecutorWatchdogService.isShutdown) {
+//                logger.warn("Bot executor stopped unexpectedly, restarting...")
+//                executor = createBotApiExecutor(botMap)
+//            }
+//        }, 1, 5, TimeUnit.SECONDS)
+//
+//        executor.scheduleAtFixedRate({
+//            logger.info("Reviewing live contracts")
+//            try {
+//                reviewContracts()
+//            } catch (ex : Exception ) {
+//                println(ex)
+//            }
+//
+//        }, 0, 3, TimeUnit.MINUTES)
+//    }
 
     @PreDestroy
     fun stop() {
