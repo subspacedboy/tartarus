@@ -174,3 +174,18 @@ create table info_request (
     bsky_user_id bigint,
     PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+create table simple_proxy (
+    id bigint NOT NULL AUTO_INCREMENT,
+    name varchar(25) NOT NULL,
+    state varchar(25) NOT NULL,
+    contract_serial_number int NOT NULL,
+    contract_id bigint,
+    created_at DATETIME,
+    updated_at DATETIME,
+    accepted_at DATETIME,
+    key_holder_bsky_user_id bigint,
+    bsky_user_id bigint,
+    is_public tinyint,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -21,6 +21,10 @@ class BSkyUserService(
             )
     }
 
+    fun findByHandle(handle : String) : BSkyUser? {
+        return bSkyUserRepository.findByHandle(handle)
+    }
+
     fun findByShareableToken(shareableToken: String) : BSkyUser? {
         return bSkyUserRepository.findByShareableToken(shareableToken)
     }

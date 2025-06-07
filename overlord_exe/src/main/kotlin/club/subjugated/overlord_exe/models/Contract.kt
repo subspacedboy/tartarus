@@ -25,6 +25,8 @@ class Contract(
     // don't need to save them ourselves.
     @Transient var signedMessage : ByteArray? = null,
 
+    @Transient var nextCounter: Int = 0,
+
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
 ) {
