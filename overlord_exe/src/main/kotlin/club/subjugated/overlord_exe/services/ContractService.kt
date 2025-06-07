@@ -28,7 +28,9 @@ import io.ktor.util.moveToByteArray
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.context.annotation.Profile
 import org.springframework.context.event.EventListener
+import org.springframework.core.env.Environment
 import org.springframework.stereotype.Service
 import java.security.KeyFactory
 import java.security.MessageDigest
@@ -45,6 +47,7 @@ class ContractService(
     private var botMapService: BotMapService,
     private var timeSource: TimeSource,
     private val applicationEventPublisher : ApplicationEventPublisher,
+    private val environment: Environment,
     @Value("\${overlord.coordinator}") val coordinator: String = ""
 ) {
 
@@ -115,6 +118,8 @@ class ContractService(
 
     @EventListener
     fun handleIssueRelease(event : IssueRelease) {
+        if (environment.activeProfiles.contains("test")) return
+
         val releaseCommand = makeReleaseCommand(event.botMap.externalName, event.contract.externalContractName!!, event.contract.serialNumber, event.botMap.privateKey!!)
         applicationEventPublisher.publishEvent(SendBotBytes(
             source = this,

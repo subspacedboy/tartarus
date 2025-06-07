@@ -11,10 +11,12 @@ import club.subjugated.overlord_exe.statemachines.bsky_likes.BSkyLikesStateMachi
 import club.subjugated.overlord_exe.statemachines.bsky_likes.BSkyLikesStateMachineContext
 import club.subjugated.overlord_exe.web.InfoRequestWebController
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.annotation.Commit
+import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -22,11 +24,11 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.ui.ExtendedModelMap
-import org.springframework.ui.Model
 import kotlin.test.Test
 
 @SpringBootTest(classes = [OverlordExeApplication::class, IntegrationTestConfig::class])
 @TestPropertySource(locations = ["classpath:application-test.properties"])
+@ActiveProfiles("test")
 @Transactional
 @AutoConfigureMockMvc
 @Commit
@@ -38,6 +40,12 @@ class InfoRequestTest {
     @Autowired lateinit var infoRequestWebController: InfoRequestWebController
 
     @Autowired lateinit var mockMvc: MockMvc
+
+    @BeforeEach
+    fun resetFakes() {
+        val fakeBlueSkyService = blueSkyService as FakeBlueskyService
+        fakeBlueSkyService.reset()
+    }
 
     @Test
     fun testInfoRequest() {
@@ -81,7 +89,6 @@ class InfoRequestTest {
                 .param("name", token)
                 .param("did", "did:plc:abc123")
                 .param("goal", "42")
-//                .with(csrf()) // include if CSRF protection is enabled
         )
             .andExpect(status().isOk)
 

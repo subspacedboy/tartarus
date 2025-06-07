@@ -1,6 +1,5 @@
 package club.subjugated.overlord_exe.statemachines.bsky_crowd_time
 
-import club.subjugated.overlord_exe.bots.bsky_selflock.BSkySelfLockRecordState
 import club.subjugated.overlord_exe.cli.LikeRecord
 import club.subjugated.overlord_exe.cli.RepostRecord
 import club.subjugated.overlord_exe.events.RequestInfo

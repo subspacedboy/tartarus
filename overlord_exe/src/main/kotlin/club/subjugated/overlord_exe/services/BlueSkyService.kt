@@ -106,7 +106,7 @@ class RealBlueSkyService(
             return
         }
 
-        logger.info("Refreshed session")
+        logger.debug("Refreshed session")
 
         val refreshData = BlueskyFactory
             .instance(BSKY_SOCIAL.uri)

@@ -24,6 +24,15 @@
         <label class="form-check-label" for="public">Public?</label>
     </div>
 
+    <!-- Multiselect Field -->
+    <div class="mb-3">
+        <label for="options" class="form-label">Which objective? If multiple, one will be selected at random after you accept the contract.</label>
+        <select multiple class="form-select" id="options" th:field="*{objectives}">
+            <option th:value="bsky_likes">Get likes on Bluesky</option>
+            <option th:value="bsky_crowd_time">Crowd source a timer</option>
+        </select>
+    </div>
+
     <button type="submit" class="btn btn-primary">Submit</button>
 </form>
 

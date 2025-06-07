@@ -97,6 +97,7 @@ create table super_bot_record (
     bsky_user_id bigint,
     did varchar(255) NOT NULL,
     convo_id varchar(255) NOT NULL,
+    configuration json,
     PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

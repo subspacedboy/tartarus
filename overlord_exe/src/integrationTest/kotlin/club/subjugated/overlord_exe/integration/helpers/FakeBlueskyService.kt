@@ -9,6 +9,12 @@ import java.time.OffsetDateTime
 
 class FakeBlueskyService : BlueSkyService {
     val sentMessages = mutableListOf<Pair<String, String>>()
+    val fakeDms = mutableListOf<Pair<String, ConvoDefsMessageView>>()
+
+    fun reset() {
+        fakeDms.clear()
+        sentMessages.clear()
+    }
 
     override fun sendDm(convoId: String, message: String) {
         sentMessages.add(convoId to message)
@@ -46,10 +52,12 @@ class FakeBlueskyService : BlueSkyService {
         from: OffsetDateTime,
         onMessage: (FeedDefsPostView) -> Unit
     ) {
-        TODO("Not yet implemented")
+
     }
 
     override fun getnewDms(onNewMessage: (String, ConvoDefsMessageView) -> Unit) {
-
+        fakeDms.forEach { (convoId, messageView) ->
+            onNewMessage(convoId, messageView)
+        }
     }
 }

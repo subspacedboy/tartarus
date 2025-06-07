@@ -48,6 +48,7 @@ dependencies {
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 	testImplementation("org.springframework.security:spring-security-test")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+	implementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
 
 	implementation("com.google.flatbuffers:flatbuffers-java:24.3.25")
 	implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
@@ -79,6 +80,9 @@ dependencies {
 
 	// https://mvnrepository.com/artifact/org.ocpsoft.prettytime/prettytime
 	implementation("org.ocpsoft.prettytime:prettytime:5.0.9.Final")
+
+	// https://mvnrepository.com/artifact/io.hypersistence/hypersistence-utils-hibernate-63
+	implementation("io.hypersistence:hypersistence-utils-hibernate-63:3.9.10")
 }
 
 // ktor, or something, is somehow importing 1.6.3 of kotlinx-serialization despite

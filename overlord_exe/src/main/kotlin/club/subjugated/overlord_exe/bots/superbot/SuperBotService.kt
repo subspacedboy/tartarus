@@ -11,12 +11,7 @@ import club.subjugated.overlord_exe.models.Contract
 import club.subjugated.overlord_exe.models.StateMachineState
 import club.subjugated.overlord_exe.services.BSkyUserService
 import club.subjugated.overlord_exe.services.BotMapService
-import club.subjugated.overlord_exe.services.ContractService
 import club.subjugated.overlord_exe.services.StateMachineService
-import club.subjugated.overlord_exe.statemachines.bsky_crowd_time.BSkyCrowdTimeForm
-import club.subjugated.overlord_exe.statemachines.bsky_crowd_time.BSkyCrowdTimeStateMachine
-import club.subjugated.overlord_exe.statemachines.bsky_likes.BSkyLikesForm
-import club.subjugated.overlord_exe.statemachines.bsky_likes.BSkyLikesStateMachine
 import club.subjugated.overlord_exe.util.TimeSource
 import jakarta.annotation.PostConstruct
 import org.slf4j.Logger
@@ -63,10 +58,11 @@ class SuperBotService(
     }
 
     fun processContractForm(form : IntakeForm) {
-        val record = getRecord(form.name)
+        val record = findByName(form.name)
 
         record.shareableToken = form.shareableToken
         record.state = SuperBotRecordState.ISSUED
+        record.configuration.objectives = form.objectives
         save(record)
 
         applicationEventPublisher.publishEvent(
@@ -121,26 +117,12 @@ class SuperBotService(
         record.contractId = contract.id
         superBotRecordRepository.save(record)
 
-//        val form = BSkyLikesForm(
-//            did = record.did,
-//            goal = 100
-//        )
-//
-//        val stateMachine = stateMachineService.createNewStateMachine(
-//            ownerName = contract.name,
-//            providerClassName = BSkyLikesStateMachine::class.qualifiedName!!,
-//            form = form,
-//        )
-
-        val form = BSkyCrowdTimeForm(
-            name = "",
-            subjectDid = record.did
-        )
+        val objective = record.chooseObjective()
 
         val stateMachine = stateMachineService.createNewStateMachine(
             ownerName = contract.name,
-            providerClassName = BSkyCrowdTimeStateMachine::class.qualifiedName!!,
-            form = form,
+            form = objective.first,
+            providerClassName = objective.second,
         )
 
         val bskyUser = bSkyUserService.findOrCreateByDid(record.did)
@@ -165,9 +147,7 @@ class SuperBotService(
 
     }
 
-
-
-    fun getRecord(name : String) : SuperBotRecord {
+    fun findByName(name : String) : SuperBotRecord {
         return superBotRecordRepository.findByName(name)
     }
 
@@ -178,6 +158,4 @@ class SuperBotService(
     fun findByContractSerialNumber(serialNumber : Long) : SuperBotRecord {
         return superBotRecordRepository.findByContractSerialNumber(serialNumber)
     }
-
-
 }

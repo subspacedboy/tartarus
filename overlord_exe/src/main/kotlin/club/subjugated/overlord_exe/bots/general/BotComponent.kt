@@ -73,30 +73,38 @@ class BotComponent(
         }, 1, 5, TimeUnit.SECONDS)
 
         botExecutorWatchdogService.scheduleAtFixedRate({
-            logger.info("Reviewing live contracts")
+            transactionTemplate.execute { status ->
+                logger.info("Reviewing live contracts")
 
-            val scope = CoroutineScope(Dispatchers.Default)
-            val exceptionHandler = CoroutineExceptionHandler { _, e ->
-                logger.error("Unhandled exception: $e")
-            }
-
-            handlers.forEach { botMap, handler ->
-                logger.info("Reviewing ${botMap.internalName}")
-
-                val contracts = contractService.getLiveContractsForBot(botMap.externalName)
-                scope.async(exceptionHandler) {
-                    contracts.forEach { c ->
-                        val specificClient = botsToClients[botMap]!!
-                        val contractInfo = requestContract(botMap.externalName, c.lockSessionToken!!, c.serialNumber.toUShort(), specificClient)
-                        if(contractInfo.state == "ABORTED") {
-                            logger.info("Aborted contract: ${c.externalContractName}")
-                            c.state = ContractState.ABORTED
-                            contractService.save(c)
-                        }
-                    }
+                val scope = CoroutineScope(Dispatchers.Default)
+                val exceptionHandler = CoroutineExceptionHandler { _, e ->
+                    logger.error("Unhandled exception: $e")
                 }
 
-                handler.reviewContracts(contracts)
+                handlers.forEach { botMap, handler ->
+                    logger.info("Reviewing ${botMap.internalName}")
+
+                    val contracts = contractService.getLiveContractsForBot(botMap.externalName)
+                    scope.async(exceptionHandler) {
+                        contracts.forEach { c ->
+                            val specificClient = botsToClients[botMap]!!
+                            val contractInfo = requestContract(botMap.externalName, c.lockSessionToken!!, c.serialNumber.toUShort(), specificClient)
+                            if(contractInfo.state == "ABORTED") {
+                                logger.info("Aborted contract: ${c.externalContractName}")
+                                c.state = ContractState.ABORTED
+                                contractService.save(c)
+                            }
+                        }
+                    }
+
+                    try {
+                        handler.reviewContracts(contracts)
+                    } catch (ex : Exception) {
+                        logger.error("Unhandled exception in reviewing contracts: $ex")
+                        ex.printStackTrace()
+                        status.setRollbackOnly()
+                    }
+                }
             }
         }
         , 0, 1, TimeUnit.MINUTES)

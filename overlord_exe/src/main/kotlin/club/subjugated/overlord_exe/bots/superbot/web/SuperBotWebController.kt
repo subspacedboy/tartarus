@@ -3,6 +3,7 @@ package club.subjugated.overlord_exe.bots.superbot.web
 import club.subjugated.overlord_exe.bots.superbot.SuperBotRecordState
 import club.subjugated.overlord_exe.bots.superbot.SuperBotService
 import jakarta.validation.Valid
+import jakarta.validation.constraints.Size
 import jakarta.ws.rs.core.MediaType
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
@@ -16,7 +17,10 @@ import org.springframework.web.bind.annotation.RequestMapping
 data class IntakeForm(
     var name: String,
     var shareableToken: String,
-    var public: Boolean = false
+    var public: Boolean = false,
+
+    @field:Size(min = 1, message = "At least one objective must be selected")
+    var objectives: List<String> = listOf("bsky_likes", "bsky_crowd_time")
 )
 
 @RequestMapping("/superbot")
@@ -26,7 +30,7 @@ class SuperBotWebController(
 ) {
     @GetMapping("/{token}", produces = [MediaType.APPLICATION_JSON])
     fun getPage(@PathVariable token: String, model: Model): String {
-        val record = superBotService.getRecord(token)
+        val record = superBotService.findByName(token)
 
         if(record.state != SuperBotRecordState.CREATED) {
             return "no_more_edits"
