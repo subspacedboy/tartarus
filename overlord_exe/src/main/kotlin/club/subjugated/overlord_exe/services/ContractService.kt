@@ -51,8 +51,7 @@ class ContractService(
     private var botMapService: BotMapService,
     private var timeSource: TimeSource,
     private val applicationEventPublisher : ApplicationEventPublisher,
-    private val environment: Environment,
-    @Value("\${overlord.coordinator}") val coordinator: String = ""
+    private val environment: Environment
 ) {
 
     fun getLiveContractsForBot(botName : String) : List<Contract> {
@@ -254,7 +253,7 @@ class ContractService(
     fun makeUnlockCommand(botName : String, contractName : String, contractSerialNumber: Int, counter: Int, privateKey : ByteArray) : ByteArray {
         val builder = FlatBufferBuilder(1024)
 
-        // --- Build ReleaseCommand ---
+        // --- Build UnlockCommand ---
         val serialNumber = Random.nextInt(0, 1 shl 16)
         UnlockCommand.startUnlockCommand(builder)
         UnlockCommand.addContractSerialNumber(builder, contractSerialNumber.toUShort())
@@ -325,7 +324,7 @@ class ContractService(
     fun makeLockCommand(botName : String, contractName : String, contractSerialNumber: Int, counter: Int, privateKey : ByteArray) : ByteArray {
         val builder = FlatBufferBuilder(1024)
 
-        // --- Build ReleaseCommand ---
+        // --- Build LockCommand ---
         val serialNumber = Random.nextInt(0, 1 shl 16)
         LockCommand.startLockCommand(builder)
         LockCommand.addContractSerialNumber(builder, contractSerialNumber.toUShort())

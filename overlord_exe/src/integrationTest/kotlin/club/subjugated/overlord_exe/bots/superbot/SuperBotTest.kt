@@ -11,6 +11,7 @@ import club.subjugated.overlord_exe.services.BSkyUserService
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.services.ContractService
 import club.subjugated.overlord_exe.services.StateMachineService
+import club.subjugated.overlord_exe.statemachines.bsky_likes.BSkyLikesForm
 import club.subjugated.overlord_exe.statemachines.bsky_likes.BSkyLikesStateMachine
 import club.subjugated.overlord_exe.statemachines.bsky_likes.BSkyLikesStateMachineContext
 import club.subjugated.overlord_exe.util.TimeSource
@@ -30,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional
 import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageView
 import org.mockito.kotlin.whenever
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -101,6 +103,7 @@ class SuperBotTest {
             post("/superbot/submit")
                 .param("name", intakeForm.name)
                 .param("shareableToken", intakeForm.shareableToken)
+                .param("objectives", intakeForm.objectives.joinToString(","))
         )
             .andExpect(status().isOk)
 
@@ -127,13 +130,14 @@ class SuperBotTest {
             .andExpect(status().isOk)
             .andReturn()
 
-        mockMvc.perform(
-            post("/info/submit")
-                .param("name", token2)
-                .param("did", "did:plc:abc123")
-                .param("goal", "42")
+        val bskyLikesForm = BSkyLikesForm(
+            name = token2!!,
+            did = "did:plc:abc123",
+            goal = 42
         )
-            .andExpect(status().isOk)
+        mockMvc.perform(
+            post("/info/submit").withBSkyLikesForm(bskyLikesForm)
+        ).andExpect(status().isOk)
 
         var sm = stateMachineService.findByOwnedBy(contract.name)
         val ctx = sm.first().context as BSkyLikesStateMachineContext
@@ -153,3 +157,13 @@ class SuperBotTest {
         println("DONE")
     }
 }
+
+fun MockHttpServletRequestBuilder.withIntakeForm(form: IntakeForm): MockHttpServletRequestBuilder =
+    this.param("name", form.name)
+        .param("shareableToken", form.shareableToken)
+        .apply { form.objectives.forEach { param("objectives", it) } }
+
+fun MockHttpServletRequestBuilder.withBSkyLikesForm(form: BSkyLikesForm): MockHttpServletRequestBuilder =
+    this.param("name", form.name)
+        .param("did", form.did)
+        .param("goal", form.goal.toString())

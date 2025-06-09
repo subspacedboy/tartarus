@@ -1,6 +1,7 @@
 package club.subjugated.overlord_exe.components
 
 import club.subjugated.overlord_exe.bots.simple_proxy.SimpleProxyService
+import club.subjugated.overlord_exe.bots.simple_proxy.convo.SimpleProxyConvoHandler
 import club.subjugated.overlord_exe.bots.superbot.convo.SuperBotConvoHandler
 import club.subjugated.overlord_exe.bots.timer_bot.convo.TimerBotConvoHandler
 import club.subjugated.overlord_exe.events.SendDmEvent
@@ -25,7 +26,8 @@ class BSkyDmMonitor(
     private val timerBotConversationHandler: TimerBotConvoHandler,
     private val superBotConvoHandler: SuperBotConvoHandler,
     private val bSkyUserService: BSkyUserService,
-    private val simpleProxyService: SimpleProxyService
+    private val simpleProxyService: SimpleProxyService,
+    private val simpleProxyConvoHandler : SimpleProxyConvoHandler
 ) : Job {
     override fun execute(context: JobExecutionContext?) {
         try {
@@ -45,78 +47,38 @@ class BSkyDmMonitor(
             bskyUser.handle = handle
             bSkyUserService.save(bskyUser)
 
-            when(chunks[0]) {
+            val response : String = when(chunks[0]) {
                 "hello" -> {
-                    blueSkyService.sendDm(convoId, "😈")
+                    "Hello 😈"
                 }
                 "token" -> {
-                    bskyUser.shareableToken = chunks[1]
-                    bSkyUserService.save(bskyUser)
+                    simpleProxyConvoHandler.handle(convoId, message)
                 }
                 "own" -> {
-                    val otherUser = bSkyUserService.findByHandle(chunks[1])
-                    val response = if(otherUser == null) {
-                        "User hasn't signed up..."
-                    } else {
-                        // Current user is key holder, second user is sub
-                        simpleProxyService.issueContract(bskyUser, otherUser)
-                        "Issuing contract"
-                    }
-
-                    blueSkyService.sendDm(convoId, response)
+                    simpleProxyConvoHandler.handle(convoId, message)
                 }
                 "submit" -> {
-                    val otherUser = bSkyUserService.findByHandle(chunks[1])
-                    val response = if(otherUser == null) {
-                        "User hasn't signed up..."
-                    } else {
-                        simpleProxyService.issueContract(otherUser, bskyUser)
-                        "Issuing contract"
-                    }
-
-                    blueSkyService.sendDm(convoId, response)
-                }
-                "release" -> {
-                    val otherUser = bSkyUserService.findByHandle(chunks[1])
-                    val response = if(otherUser == null) {
-                        "User hasn't signed up..."
-                    } else {
-                        simpleProxyService.release(otherUser, bskyUser)
-                        "Issuing release"
-                    }
-                    blueSkyService.sendDm(convoId, response)
+                    simpleProxyConvoHandler.handle(convoId, message)
                 }
                 "unlock" -> {
-                    val otherUser = bSkyUserService.findByHandle(chunks[1])
-                    val response = if(otherUser == null) {
-                        "User hasn't signed up..."
-                    } else {
-                        simpleProxyService.unlock(bskyUser, otherUser)
-                        "Unlocking"
-                    }
-                    blueSkyService.sendDm(convoId, response)
+                    simpleProxyConvoHandler.handle(convoId, message)
                 }
                 "lock" -> {
-                    val otherUser = bSkyUserService.findByHandle(chunks[1])
-                    val response = if(otherUser == null) {
-                        "User hasn't signed up..."
-                    } else {
-                        simpleProxyService.lock(bskyUser, otherUser)
-                        "Locking"
-                    }
-                    blueSkyService.sendDm(convoId, response)
+                    simpleProxyConvoHandler.handle(convoId, message)
                 }
-
+                "release" -> {
+                    simpleProxyConvoHandler.handle(convoId, message)
+                }
                 "timer" -> {
-                    val response = timerBotConversationHandler.handle(convoId, message)
-                    blueSkyService.sendDm(convoId, response)
+                    timerBotConversationHandler.handle(convoId, message)
                 }
                 "own_me" -> {
-                    val response = superBotConvoHandler.handle(convoId, message)
-                    blueSkyService.sendDm(convoId, response)
+                    superBotConvoHandler.handle(convoId, message)
                 }
-                else -> {}
+                else -> { "??? ${chunks[0]}" }
             }
+
+            blueSkyService.sendDm(convoId, response)
         }
     }
 

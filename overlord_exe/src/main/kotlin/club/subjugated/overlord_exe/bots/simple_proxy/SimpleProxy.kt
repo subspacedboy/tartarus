@@ -1,6 +1,5 @@
 package club.subjugated.overlord_exe.bots.simple_proxy
 
-import club.subjugated.overlord_exe.bots.superbot.SuperBotRecordState
 import club.subjugated.overlord_exe.models.BSkyUser
 import club.subjugated.overlord_exe.util.generateId
 import com.fasterxml.jackson.annotation.JsonFormat

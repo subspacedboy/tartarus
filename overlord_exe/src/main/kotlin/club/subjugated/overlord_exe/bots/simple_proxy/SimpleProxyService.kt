@@ -2,11 +2,12 @@ package club.subjugated.overlord_exe.bots.simple_proxy
 
 import club.subjugated.overlord_exe.bots.general.BotComponent
 import club.subjugated.overlord_exe.bots.general.MessageHandler
-import club.subjugated.overlord_exe.bots.superbot.SuperBotService
+import club.subjugated.overlord_exe.bots.simple_proxy.web.SimpleProxyIntakeForm
 import club.subjugated.overlord_exe.events.IssueContract
 import club.subjugated.overlord_exe.events.IssueLock
 import club.subjugated.overlord_exe.events.IssueRelease
 import club.subjugated.overlord_exe.events.IssueUnlock
+import club.subjugated.overlord_exe.events.SendDmEvent
 import club.subjugated.overlord_exe.models.BSkyUser
 import club.subjugated.overlord_exe.models.BotMap
 import club.subjugated.overlord_exe.models.Contract
@@ -48,19 +49,32 @@ class SimpleProxyService(
         return simpleProxyRepository.save(simpleProxy)
     }
 
+    fun findByName(name : String) : SimpleProxy {
+        return simpleProxyRepository.findByName(name)
+    }
+
     fun findByContractSerialNumber(serialNumber : Long) : SimpleProxy {
         return simpleProxyRepository.findByContractSerialNumber(serialNumber)
     }
 
-    fun issueContract(keyHolder : BSkyUser, sub : BSkyUser) {
+    fun createInitialRecord(keyHolder : BSkyUser, sub : BSkyUser) : SimpleProxy {
         val record = SimpleProxy(
             contractSerialNumber = 0,
             bskyUser = sub,
             keyHolderBskyUser = keyHolder,
-            state = SimpleProxyState.ISSUED,
+            state = SimpleProxyState.CREATED,
             createdAt = timeSource.nowInUtc(),
             updatedAt = timeSource.nowInUtc()
         )
+        save(record)
+        return record
+    }
+
+    fun processIntakeForm(form : SimpleProxyIntakeForm) {
+        val record = simpleProxyRepository.findByName(form.name)
+        record.isPublic = form.public
+        record.state = SimpleProxyState.ISSUED
+        save(record)
 
         applicationEventPublisher.publishEvent(
             IssueContract(
@@ -70,12 +84,27 @@ class SimpleProxyService(
                     record.contractSerialNumber = serial
                     save(record)
                 },
-                public = false,
-                shareableToken = sub.shareableToken!!,
+                public = form.public,
+                shareableToken = record.bskyUser.shareableToken!!,
                 recordName = record.name,
-                terms = "Proxy for ${keyHolder.handle}"
+                terms = "Proxy for ${record.keyHolderBskyUser.handle}"
             )
         )
+
+        applicationEventPublisher.publishEvent(SendDmEvent(
+            source = this,
+            message = "Contract issued",
+            convoId = record.keyHolderBskyUser.convoId!!,
+            did = record.keyHolderBskyUser.did
+        ))
+
+        applicationEventPublisher.publishEvent(SendDmEvent(
+            source = this,
+            message = "You have been issued a contract by ${record.keyHolderBskyUser.handle}",
+            convoId = record.bskyUser.convoId!!,
+            did = record.bskyUser.did
+        ))
+
     }
 
     override fun reviewContracts(contracts: List<Contract>) {
@@ -87,6 +116,13 @@ class SimpleProxyService(
         record.state = SimpleProxyState.ACCEPTED
         record.contractId = contract.id
         save(record)
+
+        applicationEventPublisher.publishEvent(SendDmEvent(
+            source = this,
+            message = "Contract accepted",
+            convoId = record.keyHolderBskyUser.convoId!!,
+            did = record.keyHolderBskyUser.did
+        ))
     }
 
     override fun handleRelease(contract: Contract) {

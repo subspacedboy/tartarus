@@ -21,7 +21,7 @@ class FakeBlueskyService : BlueSkyService {
     }
 
     override fun resolveDidToHandle(did: String): String {
-        TODO("Not yet implemented")
+        return "@test.user.fake"
     }
 
     override fun resolveHandleToDid(handle: String): String {
