@@ -47,7 +47,7 @@ class BSkyDmMonitor(
             bskyUser.handle = handle
             bSkyUserService.save(bskyUser)
 
-            val response : String = when(chunks[0]) {
+            val response : String = when(chunks[0].lowercase()) {
                 "hello" -> {
                     "Hello 😈"
                 }
@@ -72,9 +72,34 @@ class BSkyDmMonitor(
                 "timer" -> {
                     timerBotConversationHandler.handle(convoId, message)
                 }
-                "own_me" -> {
+                "superbot" -> {
                     superBotConvoHandler.handle(convoId, message)
                 }
+                "add" -> {
+                    try {
+                        val list = chunks.slice(1 until chunks.size).joinToString(" ").lowercase()
+                        val atUri = blueSkyService.listNameToUri(list)
+                        blueSkyService.addToList(message.sender.did, atUri)
+                        "Added"
+                    } catch (e : Exception) {
+                        val list = chunks.slice(1 until chunks.size).joinToString(" ").lowercase()
+                        "Unknown list: $list"
+                    }
+
+                }
+                "remove" -> {
+                    try {
+                        val list = chunks.slice(1 until chunks.size).joinToString(" ").lowercase()
+                        val atUri = blueSkyService.listNameToUri(list)
+                        blueSkyService.removeFromList(message.sender.did, atUri)
+                        "Removed"
+                    } catch (e : Exception) {
+                        val list = chunks.slice(1 until chunks.size).joinToString(" ").lowercase()
+                        "Unknown list: $list"
+                    }
+
+                }
+
                 else -> { "??? ${chunks[0]}" }
             }
 

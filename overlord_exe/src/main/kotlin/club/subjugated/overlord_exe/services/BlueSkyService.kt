@@ -1,5 +1,6 @@
 package club.subjugated.overlord_exe.services
 
+import club.subjugated.overlord_exe.cli.AtUriParts
 import club.subjugated.overlord_exe.storage.BSkyRepostRepository
 import club.subjugated.overlord_exe.storage.BskyLikeRepository
 import club.subjugated.overlord_exe.util.TimeSource
@@ -18,6 +19,12 @@ import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetLikesRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetPostThreadRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetRepostedByRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedPostRequest
+import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphAddUserToListRequest
+import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphCreateListRequest
+import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphGetListRequest
+import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphGetListResponse
+import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphGetListsRequest
+import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphRemoveUserFromListRequest
 import work.socialhub.kbsky.api.entity.chat.bsky.convo.ConvoGetListConvosRequest
 import work.socialhub.kbsky.api.entity.chat.bsky.convo.ConvoSendMessageRequest
 import work.socialhub.kbsky.api.entity.chat.bsky.convo.ConvoUpdateReadRequest
@@ -30,6 +37,8 @@ import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsPostView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsThreadUnion
 import work.socialhub.kbsky.model.app.bsky.feed.FeedGetLikesLike
+import work.socialhub.kbsky.model.app.bsky.graph.GraphDefsListItemView
+import work.socialhub.kbsky.model.app.bsky.graph.GraphDefsListView
 import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageInput
 import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageView
 import work.socialhub.kbsky.util.facet.FacetType
@@ -49,6 +58,41 @@ interface BlueSkyService {
     fun traceThread(uri : String, action:(post : FeedDefsPostView) -> Unit)
     fun getAuthorFeedFromTime(authorDid: String, from: OffsetDateTime, onMessage: (post:  FeedDefsPostView) -> Unit)
     fun getnewDms(onNewMessage: (convoId: String, message :  ConvoDefsMessageView) -> Unit)
+    fun addToList(subjectDid: String, listUri : String)
+    fun createList(name : String)
+    fun removeFromList(subjectDid: String, listUri : String)
+    fun getList(uri : String): GraphGetListResponse
+    fun getMyLists(): List<GraphDefsListView>
+    fun listNameToUri(name : String) : String
+}
+
+fun parseBlueskyUri(input: String): AtUriParts? {
+    val noProto = input.replace("https://", "")
+    val pieces = noProto.split("/")
+
+    val handle = pieces[2]
+    val collection = pieces[3]
+    val rkey = pieces[4]
+
+    val atprotoCollection = when (collection) {
+        "post" -> "app.bsky.feed.post"
+        else -> throw IllegalStateException("Unhandled atProto collection")
+    }
+
+    return AtUriParts(handle, atprotoCollection, rkey)
+}
+
+fun parseAtProto(input: String): AtUriParts? {
+    val noProto = input.removePrefix("at://")
+    val pieces = noProto.split("/")
+
+    if (pieces.size < 3) return null
+
+    val handle = pieces[0]
+    val collection = pieces[1]
+    val rkey = pieces[2]
+
+    return AtUriParts(handle, collection, rkey)
 }
 
 @Service
@@ -70,6 +114,7 @@ class RealBlueSkyService(
     lateinit var feedService: FeedResource
 
     var dmLogCursor: String? = null
+    var listNameToUri = HashMap<String, String>()
 
     @PostConstruct
     fun start() {
@@ -99,6 +144,35 @@ class RealBlueSkyService(
 
         feedService = BlueskyFactory.instance(BSKY_SOCIAL.uri)
             .feed()
+
+        try {
+            setupLists()
+        } catch (e : Exception) {
+            logger.error("Error setting up lists: $e")
+            e.printStackTrace()
+        }
+    }
+
+    private fun setupLists() {
+        val expectedLists = mutableSetOf("Subs", "Doms", "Public Property")
+        val lists = getMyLists()
+
+        lists.forEach {
+            if(expectedLists.remove(it.name)) {
+                // Matched.
+            }
+        }
+
+        // Remainder don't exist yet
+        expectedLists.forEach {
+            createList(it)
+        }
+
+        val secondLists = getMyLists()
+
+        secondLists.forEach {
+            listNameToUri.put(it.name.lowercase(), it.uri)
+        }
     }
 
     private fun refreshJwtIfNeeded() {
@@ -292,5 +366,96 @@ class RealBlueSkyService(
 
         // this will be the at-proto URI.
         return response.data.uri
+    }
+
+    override fun addToList(subjectDid: String, listUri : String) {
+        val response = BlueskyFactory
+            .instance(BSKY_SOCIAL.uri)
+            .graph()
+            .addUserToList(GraphAddUserToListRequest(
+                auth = accessJwt
+            ).also {
+                it.userDid = subjectDid
+                it.listUri = listUri
+            })
+    }
+
+    private fun getListUriForDidMembership(subjectDid: String, listUri : String): List<GraphDefsListItemView> {
+        val response = BlueskyFactory
+            .instance(BSKY_SOCIAL.uri)
+            .graph()
+            .getList(GraphGetListRequest(
+                auth = accessJwt
+            ).also {
+                it.list = listUri
+            })
+
+        val items = response.data.items.filter { it.subject.did == subjectDid }
+        return items
+    }
+
+    override fun removeFromList(subjectDid: String, listUri : String) {
+
+        val uris = getListUriForDidMembership(subjectDid, listUri)
+
+        uris.forEach { toRemove ->
+            val uriParts = parseAtProto(toRemove.uri)
+
+            val response = BlueskyFactory
+                .instance(BSKY_SOCIAL.uri)
+                .graph()
+                .removeUserFromList(GraphRemoveUserFromListRequest(
+                    auth = accessJwt
+                ).also {
+                    it.uri = toRemove.uri
+                    it.rkey = uriParts!!.rkey
+                })
+            print(response)
+        }
+    }
+
+    override fun getMyLists(): List<GraphDefsListView> {
+        val did = resolveHandleToDid(this.bskyUser)
+
+        val response = BlueskyFactory
+            .instance(BSKY_SOCIAL.uri)
+            .graph()
+            .getLists(GraphGetListsRequest(
+                auth = accessJwt
+            ).also {
+                it.actor = did
+            })
+
+        return response.data.lists
+    }
+
+    override fun getList(uri : String): GraphGetListResponse {
+        val response = BlueskyFactory
+            .instance(BSKY_SOCIAL.uri)
+            .graph()
+            .getList(GraphGetListRequest(
+                auth = accessJwt
+            ).also {
+                it.list = uri
+            })
+
+//        val subjectDid = response.data.items[0].subject.did
+
+        return response.data
+    }
+
+    override fun createList(name : String) {
+        val response = BlueskyFactory
+            .instance(BSKY_SOCIAL.uri)
+            .graph()
+            .createList(GraphCreateListRequest(
+                auth = accessJwt,
+                name = name,
+                description = ""
+            ))
+    }
+
+    override fun listNameToUri(name : String) : String {
+        return listNameToUri.get(name)!!
     }
 }
