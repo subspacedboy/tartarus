@@ -86,4 +86,12 @@ class FakeBlueskyService : BlueSkyService {
     override fun listNameToUri(name: String): String {
         TODO("Not yet implemented")
     }
+
+    override fun getLastDmForConvo(
+        convoId: String,
+        subjectDid: String,
+        onNewMessage: (String, ConvoDefsMessageView) -> Unit
+    ) {
+        TODO("Not yet implemented")
+    }
 }

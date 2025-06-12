@@ -25,12 +25,16 @@ import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphGetListRequest
 import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphGetListResponse
 import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphGetListsRequest
 import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphRemoveUserFromListRequest
+import work.socialhub.kbsky.api.entity.chat.bsky.convo.ConvoGetConvoRequest
+import work.socialhub.kbsky.api.entity.chat.bsky.convo.ConvoGetConvoResponse
 import work.socialhub.kbsky.api.entity.chat.bsky.convo.ConvoGetListConvosRequest
+import work.socialhub.kbsky.api.entity.chat.bsky.convo.ConvoGetMessagesRequest
 import work.socialhub.kbsky.api.entity.chat.bsky.convo.ConvoSendMessageRequest
 import work.socialhub.kbsky.api.entity.chat.bsky.convo.ConvoUpdateReadRequest
 import work.socialhub.kbsky.api.entity.com.atproto.identity.IdentityResolveHandleRequest
 import work.socialhub.kbsky.api.entity.com.atproto.server.ServerCreateSessionRequest
 import work.socialhub.kbsky.api.entity.share.AuthRequest
+import work.socialhub.kbsky.api.entity.share.Response
 import work.socialhub.kbsky.auth.BearerTokenAuthProvider
 import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
@@ -58,6 +62,7 @@ interface BlueSkyService {
     fun traceThread(uri : String, action:(post : FeedDefsPostView) -> Unit)
     fun getAuthorFeedFromTime(authorDid: String, from: OffsetDateTime, onMessage: (post:  FeedDefsPostView) -> Unit)
     fun getnewDms(onNewMessage: (convoId: String, message :  ConvoDefsMessageView) -> Unit)
+    fun getLastDmForConvo(convoId: String, subjectDid: String, onNewMessage: (convoId: String, message :  ConvoDefsMessageView) -> Unit)
     fun addToList(subjectDid: String, listUri : String)
     fun createList(name : String)
     fun removeFromList(subjectDid: String, listUri : String)
@@ -256,6 +261,26 @@ class RealBlueSkyService(
                     it.convoId = c.id
                 })
             }
+        }
+    }
+
+    override fun getLastDmForConvo(
+        convoId: String,
+        subjectDid: String,
+        onNewMessage: (String, ConvoDefsMessageView) -> Unit
+    ) {
+        refreshJwtIfNeeded()
+
+        val messages = chatService.getMessages(ConvoGetMessagesRequest(accessJwt).also {
+            it.convoId = convoId
+            it.limit = 5
+        }).data
+
+        val lastMessage = messages.messages.firstOrNull { it.asMessageView!!.sender.did == subjectDid }
+
+        lastMessage?.let {
+            logger.info("Replaying: ${it.asMessageView}")
+            onNewMessage(convoId, it.asMessageView!!)
         }
     }
 

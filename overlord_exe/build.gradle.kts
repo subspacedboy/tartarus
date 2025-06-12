@@ -83,6 +83,9 @@ dependencies {
 
 	// https://mvnrepository.com/artifact/io.hypersistence/hypersistence-utils-hibernate-63
 	implementation("io.hypersistence:hypersistence-utils-hibernate-63:3.9.10")
+
+	implementation("aws.sdk.kotlin:bedrock:1.4.101")
+	implementation("aws.sdk.kotlin:bedrockruntime:1.4.101")
 }
 
 // ktor, or something, is somehow importing 1.6.3 of kotlinx-serialization despite

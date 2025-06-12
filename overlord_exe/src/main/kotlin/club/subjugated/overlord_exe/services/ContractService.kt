@@ -13,6 +13,7 @@ import club.subjugated.fb.message.Permission
 import club.subjugated.fb.message.ReleaseCommand
 import club.subjugated.fb.message.SignedMessage
 import club.subjugated.fb.message.UnlockCommand
+import club.subjugated.overlord_exe.components.BSkyDmMonitor
 import club.subjugated.overlord_exe.events.AddMessageToContract
 import club.subjugated.overlord_exe.events.IssueContract
 import club.subjugated.overlord_exe.events.IssueLock
@@ -30,6 +31,8 @@ import club.subjugated.overlord_exe.util.loadECPublicKeyFromPkcs8
 import com.google.flatbuffers.FlatBufferBuilder
 import io.ktor.util.moveToByteArray
 import org.eclipse.paho.client.mqttv3.MqttMessage
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.annotation.Profile
@@ -51,7 +54,8 @@ class ContractService(
     private var botMapService: BotMapService,
     private var timeSource: TimeSource,
     private val applicationEventPublisher : ApplicationEventPublisher,
-    private val environment: Environment
+    private val environment: Environment,
+    private val logger: Logger = LoggerFactory.getLogger(ContractService::class.java),
 ) {
 
     fun getLiveContractsForBot(botName : String) : List<Contract> {
@@ -121,7 +125,11 @@ class ContractService(
 
     @EventListener
     fun handleIssueRelease(event : IssueRelease) {
-        if (environment.activeProfiles.contains("test")) return
+        logger.info("Issuing Release")
+        if (environment.activeProfiles.contains("test")) {
+            logger.info("Test environment. Early escape from issue.")
+            return
+        }
 
         val releaseCommand = makeReleaseCommand(event.botMap.externalName, event.contract.externalContractName!!, event.contract.serialNumber, event.botMap.privateKey!!)
         applicationEventPublisher.publishEvent(SendBotBytes(

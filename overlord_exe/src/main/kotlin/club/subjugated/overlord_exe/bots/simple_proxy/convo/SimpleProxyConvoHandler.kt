@@ -1,12 +1,17 @@
 package club.subjugated.overlord_exe.bots.simple_proxy.convo
 
 import club.subjugated.overlord_exe.bots.simple_proxy.SimpleProxyService
+import club.subjugated.overlord_exe.bots.simple_proxy.web.SimpleProxyIntakeForm
+import club.subjugated.overlord_exe.convo.ConversationContext
 import club.subjugated.overlord_exe.convo.ConversationHandler
+import club.subjugated.overlord_exe.convo.ConversationResponse
 import club.subjugated.overlord_exe.services.BSkyUserService
 import club.subjugated.overlord_exe.services.BlueSkyService
+import club.subjugated.overlord_exe.services.Intent
 import club.subjugated.overlord_exe.services.UrlService
 import org.springframework.stereotype.Component
 import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageView
+import kotlin.reflect.KClass
 
 @Component
 class SimpleProxyConvoHandler(
@@ -37,12 +42,12 @@ class SimpleProxyConvoHandler(
                 return "Token recorded - ${bskyUser.shareableToken}"
             }
             "own" -> {
-                val otherUser = bSkyUserService.findByHandle(chunks[1])
-                val response = if(otherUser == null) {
+                val subUser = bSkyUserService.findByHandle(chunks[1])
+                val response = if(subUser == null) {
                     "User (${chunks[1]}) hasn't signed up... Have them message me."
                 } else {
                     // Current user is key holder, second user is sub
-                    val record = simpleProxyService.createInitialRecord(bskyUser, otherUser)
+                    val record = simpleProxyService.createInitialRecord(bskyUser, subUser)
                     val url = urlService.generateUrl("simpleproxy/${record.name}")
                     return url
                 }
@@ -59,31 +64,31 @@ class SimpleProxyConvoHandler(
                 return response
             }
             "release" -> {
-                val otherUser = bSkyUserService.findByHandle(chunks[1])
-                val response = if(otherUser == null) {
+                val subUser = bSkyUserService.findByHandle(chunks[1])
+                val response = if(subUser == null) {
                     "User hasn't signed up..."
                 } else {
-                    simpleProxyService.release(otherUser, bskyUser)
+                    simpleProxyService.release(bskyUser, subUser)
                     "Issuing release"
                 }
                 return response
             }
             "unlock" -> {
-                val otherUser = bSkyUserService.findByHandle(chunks[1])
-                val response = if(otherUser == null) {
+                val subUser = bSkyUserService.findByHandle(chunks[1])
+                val response = if(subUser == null) {
                     "User hasn't signed up..."
                 } else {
-                    simpleProxyService.unlock(bskyUser, otherUser)
+                    simpleProxyService.unlock(bskyUser, subUser)
                     "Unlocking"
                 }
                 return response
             }
             "lock" -> {
-                val otherUser = bSkyUserService.findByHandle(chunks[1])
-                val response = if(otherUser == null) {
+                val subUser = bSkyUserService.findByHandle(chunks[1])
+                val response = if(subUser == null) {
                     "User hasn't signed up..."
                 } else {
-                    simpleProxyService.lock(bskyUser, otherUser)
+                    simpleProxyService.lock(bskyUser, subUser)
                     "Locking"
                 }
                 return response
@@ -92,5 +97,37 @@ class SimpleProxyConvoHandler(
                 return "Unknown command"
             }
         }
+    }
+
+    override fun getIntents(): List<KClass<out Intent>> {
+        return listOf(ProxyContractIntent::class)
+    }
+
+    override fun handleIntent(ctx : ConversationContext, intent: Intent) : ConversationResponse {
+        val response = when(intent) {
+            is ProxyContractIntent -> {
+                val subUser = bSkyUserService.findByHandle(intent.proxyIntakeData.otherUser!!)
+                if(subUser == null) {
+                    ConversationResponse(
+                        text = "User (${intent.proxyIntakeData.otherUser}) hasn't signed up... Have them message me."
+                    )
+                } else {
+                    // Current user is key holder, second user is sub
+                    val record = simpleProxyService.createInitialRecord(ctx.bskyUser!!, subUser)
+                    val fakeForm = SimpleProxyIntakeForm(
+                        name = record.name,
+                        public = intent.proxyIntakeData.public!!
+                    )
+                    simpleProxyService.processIntakeForm(fakeForm)
+                    ConversationResponse(
+                        text = "Done!"
+                    )
+                }
+            }
+            else -> {
+                throw IllegalStateException("Unknown type")
+            }
+        }
+        return response
     }
 }
