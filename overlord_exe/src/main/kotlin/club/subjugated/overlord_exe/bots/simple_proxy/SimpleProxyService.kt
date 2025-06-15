@@ -87,7 +87,7 @@ class SimpleProxyService(
                 public = form.public,
                 shareableToken = record.bskyUser.shareableToken!!,
                 recordName = record.name,
-                terms = "Proxy for ${record.keyHolderBskyUser.handle}"
+                terms = "Proxy for ${record.keyHolderBskyUser.handle}. Public: ${record.isPublic}"
             )
         )
 
@@ -139,9 +139,13 @@ class SimpleProxyService(
         // No op
     }
 
-    fun release(keyHolder : BSkyUser, sub : BSkyUser) {
+    fun release(keyHolder : BSkyUser, sub : BSkyUser) : Result<Unit> = runCatching {
         val proxies = simpleProxyRepository.findByBskyUserAndKeyHolderBskyUserAndStateIn(sub, keyHolder, listOf(
             SimpleProxyState.ACCEPTED))
+
+        if(proxies.isEmpty()) {
+            throw IllegalStateException("${keyHolder.handle} does not have any active contract for ${sub.handle}")
+        }
 
         val botMap = getBotMap()
         proxies.forEach { p ->
@@ -155,9 +159,13 @@ class SimpleProxyService(
         }
     }
 
-    fun unlock(keyHolder : BSkyUser, sub : BSkyUser) {
+    fun unlock(keyHolder : BSkyUser, sub : BSkyUser) : Result<Unit> = runCatching {
         val proxies = simpleProxyRepository.findByBskyUserAndKeyHolderBskyUserAndStateIn(sub, keyHolder, listOf(
             SimpleProxyState.ACCEPTED))
+
+        if(proxies.isEmpty()) {
+            throw IllegalStateException("${keyHolder.handle} does not have any active contract for ${sub.handle}")
+        }
 
         val botMap = getBotMap()
         proxies.forEach { p ->
@@ -181,9 +189,13 @@ class SimpleProxyService(
         }
     }
 
-    fun lock(keyHolder : BSkyUser, sub : BSkyUser) {
+    fun lock(keyHolder : BSkyUser, sub : BSkyUser) : Result<Unit> = runCatching {
         val proxies = simpleProxyRepository.findByBskyUserAndKeyHolderBskyUserAndStateIn(sub, keyHolder, listOf(
             SimpleProxyState.ACCEPTED))
+
+        if(proxies.isEmpty()) {
+            throw IllegalStateException("${keyHolder.handle} does not have any active contract for ${sub.handle}")
+        }
 
         val botMap = getBotMap()
         proxies.forEach { p ->

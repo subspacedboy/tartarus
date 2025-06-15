@@ -32,6 +32,19 @@ class TimerBotConvoHandler(
         ctx: ConversationContext,
         intent: Intent
     ): ConversationResponse {
-        TODO("Not yet implemented")
+        val response = when(intent) {
+            is Timer -> {
+                val authorDid = ctx.bskyUser!!.did
+                val record = timerBotRecordService.createInitialPlaceholderRecord(authorDid, ctx.convoId)
+                val url = urlService.generateUrl("timer/${record.name}")
+                ConversationResponse(
+                    text = url
+                )
+            }
+            else -> {
+                throw IllegalStateException("Unknown type")
+            }
+        }
+        return response
     }
 }

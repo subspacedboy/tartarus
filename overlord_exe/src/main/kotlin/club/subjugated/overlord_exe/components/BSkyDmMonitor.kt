@@ -66,7 +66,7 @@ class BSkyDmMonitor(
     }
 
     fun handleDm(convoId: String, message :  ConvoDefsMessageView, ignoreSend : Boolean = false) {
-        val chunks = message.text.trim().split("\\s+".toRegex())
+
 
         val bskyUser = bSkyUserService.findOrCreateByDid(message.sender.did)
         val handle = blueSkyService.resolveDidToHandle(bskyUser.did)
@@ -74,75 +74,78 @@ class BSkyDmMonitor(
         bskyUser.handle = handle
         bSkyUserService.save(bskyUser)
 
-        var tryUnstructured = false
+        // If the message starts with "!" we treat it as a literal command
+        var interpretAsCommand = message.text.startsWith("!")
 
-        val response : String = when(chunks[0].lowercase()) {
-            "hello" -> {
-                "Hello 😈"
-            }
-            "token" -> {
-                simpleProxyConvoHandler.handle(convoId, message)
-            }
-            "own" -> {
-                simpleProxyConvoHandler.handle(convoId, message)
-            }
-            "submit" -> {
-                simpleProxyConvoHandler.handle(convoId, message)
-            }
-            "unlock" -> {
-                simpleProxyConvoHandler.handle(convoId, message)
-            }
-            "lock" -> {
-                simpleProxyConvoHandler.handle(convoId, message)
-            }
-            "release" -> {
-                simpleProxyConvoHandler.handle(convoId, message)
-            }
-//            "timer" -> {
-//                timerBotConversationHandler.handle(convoId, message)
-//            }
-            "superbot" -> {
-                superBotConvoHandler.handle(convoId, message)
-            }
-            "add" -> {
-                try {
-                    val list = chunks.slice(1 until chunks.size).joinToString(" ").lowercase()
-                    val atUri = blueSkyService.listNameToUri(list)
-                    blueSkyService.addToList(message.sender.did, atUri)
-                    "Added"
-                } catch (e : Exception) {
-                    val list = chunks.slice(1 until chunks.size).joinToString(" ").lowercase()
-                    "Unknown list: $list"
+        if(interpretAsCommand) {
+            val chunks = message.text.replaceFirst("!","").trim().split("\\s+".toRegex())
+            val response : String = when(chunks[0].lowercase()) {
+                "hello" -> {
+                    "Hello 😈"
                 }
-
-            }
-            "remove" -> {
-                try {
-                    val list = chunks.slice(1 until chunks.size).joinToString(" ").lowercase()
-                    val atUri = blueSkyService.listNameToUri(list)
-                    blueSkyService.removeFromList(message.sender.did, atUri)
-                    "Removed"
-                } catch (e : Exception) {
-                    val list = chunks.slice(1 until chunks.size).joinToString(" ").lowercase()
-                    "Unknown list: $list"
+                "token" -> {
+                    simpleProxyConvoHandler.handle(convoId, message)
                 }
+                "own" -> {
+                    simpleProxyConvoHandler.handle(convoId, message)
+                }
+                "submit" -> {
+                    simpleProxyConvoHandler.handle(convoId, message)
+                }
+                "unlock" -> {
+                    simpleProxyConvoHandler.handle(convoId, message)
+                }
+                "lock" -> {
+                    simpleProxyConvoHandler.handle(convoId, message)
+                }
+                "release" -> {
+                    simpleProxyConvoHandler.handle(convoId, message)
+                }
+                "timer" -> {
+                    timerBotConversationHandler.handle(convoId, message)
+                }
+                "superbot" -> {
+                    superBotConvoHandler.handle(convoId, message)
+                }
+                "add" -> {
+                    try {
+                        val list = chunks.slice(1 until chunks.size).joinToString(" ").lowercase()
+                        val atUri = blueSkyService.listNameToUri(list)
+                        blueSkyService.addToList(message.sender.did, atUri)
+                        "Added"
+                    } catch (e : Exception) {
+                        val list = chunks.slice(1 until chunks.size).joinToString(" ").lowercase()
+                        "Unknown list: $list"
+                    }
+                }
+                "remove" -> {
+                    try {
+                        val list = chunks.slice(1 until chunks.size).joinToString(" ").lowercase()
+                        val atUri = blueSkyService.listNameToUri(list)
+                        blueSkyService.removeFromList(message.sender.did, atUri)
+                        "Removed"
+                    } catch (e : Exception) {
+                        val list = chunks.slice(1 until chunks.size).joinToString(" ").lowercase()
+                        "Unknown list: $list"
+                    }
 
+                }
+//                "replay" -> {
+//                    val oldConvoId = chunks[1]
+//                    val subjectDid = chunks[2]
+//                    blueSkyService.getLastDmForConvo(oldConvoId, subjectDid, { convoId, message ->
+//                        handleDm(convoId, message, true)
+//                    })
+//                    "Done"
+//                }
+                else -> {
+                    ""
+                }
             }
-            "replay" -> {
-                val oldConvoId = chunks[1]
-                val subjectDid = chunks[2]
-                blueSkyService.getLastDmForConvo(oldConvoId, subjectDid, { convoId, message ->
-                    handleDm(convoId, message, true)
-                })
-                "Done"
+            if(!ignoreSend) {
+                blueSkyService.sendDm(convoId, response)
             }
-            else -> {
-                tryUnstructured = true
-                ""
-            }
-        }
-
-        if(tryUnstructured) {
+        } else {
             withConversationLockIfAvailable(convoId) {
                 val response = intentService.resolve(convoId, message.text)
 
@@ -155,16 +158,12 @@ class BSkyDmMonitor(
                     val r = intentService.dispatch(ctx, response.intent)
                     r.text
                 } else {
-                    "I need more info: ${response.chat}"
+                    response.chat!!
                 }
 
                 if(!ignoreSend) {
                     blueSkyService.sendDm(convoId, responseText)
                 }
-            }
-        } else {
-            if(!ignoreSend) {
-                blueSkyService.sendDm(convoId, response)
             }
         }
     }

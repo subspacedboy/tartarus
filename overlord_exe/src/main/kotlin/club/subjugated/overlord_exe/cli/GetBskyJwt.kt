@@ -60,7 +60,8 @@ class GetBskyJwt(
 //
 //        realBsky.getMyLists()
 
-//        intentService.promptTest()
+        val prompt = intentService.makeSystemPrompt()
+        println(prompt)
 //
 //        val json = """{"otherUser": "bob", "public": true}"""
 //        val result = intentService.makeTest("proxy_contract", json)

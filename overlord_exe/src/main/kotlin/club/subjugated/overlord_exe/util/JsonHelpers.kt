@@ -3,8 +3,6 @@ package club.subjugated.overlord_exe.util
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlin.reflect.KClass
-import kotlin.reflect.KType
-import kotlin.reflect.full.createType
 import kotlin.reflect.full.memberProperties
 
 fun explainFields(clazz: KClass<*>): Map<String, String> {

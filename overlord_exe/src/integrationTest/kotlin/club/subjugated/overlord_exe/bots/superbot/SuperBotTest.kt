@@ -73,7 +73,7 @@ class SuperBotTest {
         }
 
         val fakeMsg = mock<ConvoDefsMessageView> {
-            on { text } doReturn "superbot"
+            on { text } doReturn "! superbot"
             on { sender } doReturn fakeSender
             on { sentAt } doReturn timeSource.nowInUtc().toString()
         }

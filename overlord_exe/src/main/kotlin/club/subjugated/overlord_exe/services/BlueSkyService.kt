@@ -176,7 +176,7 @@ class RealBlueSkyService(
         val secondLists = getMyLists()
 
         secondLists.forEach {
-            listNameToUri.put(it.name.lowercase(), it.uri)
+            listNameToUri.put(it?.name!!.lowercase(), it.uri!!)
         }
     }
 
@@ -223,8 +223,8 @@ class RealBlueSkyService(
                 it.uri = uri
             })
 
-        val asViewPost = thread.data.thread.asViewPost
-        val post = asViewPost!!.post
+        val asViewPost = thread.data.thread?.asViewPost
+        val post = asViewPost!!.post!!
 
         action(post)
 
@@ -240,7 +240,7 @@ class RealBlueSkyService(
                 repliesToProcess.addAll(moreReplies)
             }
 
-            val asPost = someResponse.asViewPost!!.post
+            val asPost = someResponse.asViewPost!!.post!!
             action(asPost)
         }
     }
@@ -415,7 +415,7 @@ class RealBlueSkyService(
                 it.list = listUri
             })
 
-        val items = response.data.items.filter { it.subject.did == subjectDid }
+        val items = response.data.items.filter { it.subject?.did == subjectDid }
         return items
     }
 
@@ -424,7 +424,7 @@ class RealBlueSkyService(
         val uris = getListUriForDidMembership(subjectDid, listUri)
 
         uris.forEach { toRemove ->
-            val uriParts = parseAtProto(toRemove.uri)
+            val uriParts = parseAtProto(toRemove.uri!!)
 
             val response = BlueskyFactory
                 .instance(BSKY_SOCIAL.uri)
@@ -481,6 +481,6 @@ class RealBlueSkyService(
     }
 
     override fun listNameToUri(name : String) : String {
-        return listNameToUri.get(name)!!
+        return listNameToUri.get(name.lowercase())!!
     }
 }

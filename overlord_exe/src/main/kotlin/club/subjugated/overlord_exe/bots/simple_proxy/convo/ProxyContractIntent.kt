@@ -16,17 +16,26 @@ data class ProxyIntakeData(
 class ProxyContractIntent(
     val proxyIntakeData: ProxyIntakeData
 ) : Intent {
-
     companion object : ExplainsIntent<ProxyContractIntent, ProxyIntakeData> {
         override val dataClass = ProxyIntakeData::class
 
         val explanation = explainFields(ProxyIntakeData::class)
         val json = Json.encodeToString(explanation)
 
+        val examples : List<String> = listOf(
+            "Input: I want to lock another user. Output: Need to know user and whether public or not.",
+            "Input: I want to lock @subspacedboy.subjugated.club. Output: Need to know whether public or not.",
+            "Input: I want to publicly lock @subspacedboy.subjugated.club. Output: ${Json.encodeToString(ProxyIntakeData(
+                otherUser = "@subspacedboy.subjugated.club",
+                public = true
+            ))}.",
+        )
+
         override fun getExplanation() = IntentExplanation(
             intentName = "proxy_contract",
             explanation = "The user is trying to own, lock, or put another user under contract.",
-            requiredInfo = json
+            requiredInfo = json,
+            examples = examples
         )
 
         override fun instantiate(data: ProxyIntakeData) = ProxyContractIntent(data)
