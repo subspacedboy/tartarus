@@ -86,6 +86,8 @@ dependencies {
 
 	implementation("aws.sdk.kotlin:bedrock:1.4.101")
 	implementation("aws.sdk.kotlin:bedrockruntime:1.4.101")
+
+	implementation("com.github.ben-manes.caffeine:caffeine:3.2.1")
 }
 
 // ktor, or something, is somehow importing 1.6.3 of kotlinx-serialization despite

@@ -1,6 +1,5 @@
 package club.subjugated.overlord_exe.components
 
-import club.subjugated.overlord_exe.bots.simple_proxy.SimpleProxyService
 import club.subjugated.overlord_exe.bots.simple_proxy.convo.SimpleProxyConvoHandler
 import club.subjugated.overlord_exe.bots.superbot.convo.SuperBotConvoHandler
 import club.subjugated.overlord_exe.bots.timer_bot.convo.TimerBotConvoHandler
@@ -9,31 +8,25 @@ import club.subjugated.overlord_exe.events.SendDmEvent
 import club.subjugated.overlord_exe.services.BSkyUserService
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.services.IntentService
-import club.subjugated.overlord_exe.util.TimeSource
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import com.github.benmanes.caffeine.cache.Caffeine
 import org.quartz.Job
 import org.quartz.JobExecutionContext
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
 import work.socialhub.kbsky.ATProtocolException
 import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageView
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
 
 @Component
 class BSkyDmMonitor(
     private val blueSkyService: BlueSkyService,
-    private val applicationEventPublisher: ApplicationEventPublisher,
-    private val timeSource: TimeSource,
     private val logger: Logger = LoggerFactory.getLogger(BSkyDmMonitor::class.java),
     private val timerBotConversationHandler: TimerBotConvoHandler,
     private val superBotConvoHandler: SuperBotConvoHandler,
     private val bSkyUserService: BSkyUserService,
-    private val simpleProxyService: SimpleProxyService,
     private val simpleProxyConvoHandler : SimpleProxyConvoHandler,
     private val intentService: IntentService,
 ) : Job {
@@ -49,10 +42,12 @@ class BSkyDmMonitor(
         blueSkyService.getnewDms(::handleDm)
     }
 
-    val lockMap = ConcurrentHashMap<String, ReentrantLock>()
+    val lockMap = Caffeine.newBuilder()
+        .expireAfterAccess(10, TimeUnit.MINUTES)
+        .build<String, ReentrantLock>()
 
     fun <T> withConversationLockIfAvailable(convoId: String, block: () -> T?): T? {
-        val lock = lockMap.computeIfAbsent(convoId) { ReentrantLock() }
+        val lock = lockMap.get(convoId) { ReentrantLock() }
         return if (lock.tryLock()) {
             try {
                 block()
@@ -60,14 +55,12 @@ class BSkyDmMonitor(
                 lock.unlock()
             }
         } else {
-            logger.info("Unable to get lock, skipping convo")
+            logger.debug("Unable to get lock, skipping convo")
             null // lock was already held, skip
         }
     }
 
     fun handleDm(convoId: String, message :  ConvoDefsMessageView, ignoreSend : Boolean = false) {
-
-
         val bskyUser = bSkyUserService.findOrCreateByDid(message.sender.did)
         val handle = blueSkyService.resolveDidToHandle(bskyUser.did)
         bskyUser.convoId = convoId

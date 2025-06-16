@@ -1,20 +1,16 @@
 package club.subjugated.overlord_exe.services
 
 import aws.sdk.kotlin.services.bedrockruntime.BedrockRuntimeClient
-import aws.sdk.kotlin.services.bedrockruntime.model.CachePointBlock
-import aws.sdk.kotlin.services.bedrockruntime.model.CachePointType
 import aws.sdk.kotlin.services.bedrockruntime.model.ContentBlock
 import aws.sdk.kotlin.services.bedrockruntime.model.ConversationRole
 import aws.sdk.kotlin.services.bedrockruntime.model.ConverseRequest
 import aws.sdk.kotlin.services.bedrockruntime.model.Message
 import aws.sdk.kotlin.services.bedrockruntime.model.SystemContentBlock
-import club.subjugated.overlord_exe.bots.simple_proxy.convo.ProxyContractIntent
-import club.subjugated.overlord_exe.bots.simple_proxy.convo.ProxyIntakeData
-import club.subjugated.overlord_exe.bots.timer_bot.convo.Timer
 import club.subjugated.overlord_exe.convo.ConversationContext
 import club.subjugated.overlord_exe.convo.ConversationHandler
 import club.subjugated.overlord_exe.convo.ConversationResponse
 import club.subjugated.overlord_exe.util.decodeJsonToType
+import com.github.benmanes.caffeine.cache.Caffeine
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,9 +24,9 @@ import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.serializer
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import kotlin.reflect.KClass
 import kotlin.reflect.full.companionObjectInstance
 
@@ -81,21 +77,21 @@ class IntentService(
     val intentProviders: List<ConversationHandler>
 ) {
 
-    val conversationContext = HashMap<String, MutableList<Message>>()
+    val conversationContext = Caffeine.newBuilder()
+        .expireAfterWrite(10, TimeUnit.MINUTES)
+        .build<String, MutableList<Message>>()
 
     private fun addMessageToContext(convoId: String, message: Message) {
-        if (!conversationContext.contains(convoId)) {
-            conversationContext[convoId] = mutableListOf()
-        }
-        conversationContext[convoId]!!.add(message)
+        val messages = conversationContext.get(convoId) { mutableListOf() }
+        messages.add(message)
     }
 
     private fun getContext(convoId: String): MutableList<Message> {
-        return conversationContext[convoId]!!
+        return conversationContext.get(convoId) { mutableListOf() }
     }
 
     private fun clearContext(convoId: String) {
-        conversationContext[convoId] = mutableListOf()
+        conversationContext.put(convoId, mutableListOf())
     }
 
     val intentNameToClass = ConcurrentHashMap<String, KClass<out Intent>>()
@@ -159,7 +155,7 @@ class IntentService(
         return cleaned
     }
 
-    fun makeTest(intentName: String, json: String): Intent {
+    fun reifyIntent(intentName: String, json: String): Intent {
         val clazz = intentNameToClass[intentName]
             ?: error("No intent class registered for: $intentName")
 
@@ -234,7 +230,7 @@ class IntentService(
         val intent: Intent? = if (result.chat!!.isEmpty()) {
             clearContext(convoId)
 
-            makeTest(result.intent!!, result.data!!)
+            reifyIntent(result.intent!!, result.data!!)
         } else {
             null
         }
