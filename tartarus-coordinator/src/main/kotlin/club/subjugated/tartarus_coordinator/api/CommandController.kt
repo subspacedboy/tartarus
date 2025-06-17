@@ -14,6 +14,7 @@ import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.bind.annotation.RestController
@@ -57,6 +58,25 @@ class CommandController {
         assert(lockSessionUser.lockSession == contract.lockSession)
 
         val commands = this.commandQueueService.getByContract(contract)
+
+        return ResponseEntity.ok(commands.map { CommandMessage.fromCommand(it) })
+    }
+
+    @PostMapping("/forLockUser/command/{commandName}/acknowledge", produces = [MediaType.APPLICATION_JSON])
+    @ResponseBody
+    fun manuallyAcknowledgeCommand(
+        @AuthenticationPrincipal lockUser: UserDetails,
+        @PathVariable contractName: String,
+        @PathVariable commandName: String,
+    ): ResponseEntity<List<CommandMessage>> {
+        val lockSessionUser = lockUserSessionService.findByName(lockUser.username)
+        val contract = this.contractService.getByNameForAuthor(contractName)
+        assert(lockSessionUser.lockSession == contract.lockSession)
+
+        val commands = this.commandQueueService.getByContract(contract)
+
+        val command = commands.first { it.name == commandName }
+        this.commandQueueService.manuallyAcknowledgeCommand(command)
 
         return ResponseEntity.ok(commands.map { CommandMessage.fromCommand(it) })
     }

@@ -20,6 +20,7 @@ import org.bouncycastle.openssl.PEMParser
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter
 import java.io.File
 import java.io.StringReader
+import java.security.interfaces.ECPrivateKey
 
 fun getPemEncoding(ecPublicKey: ECPublicKey): String {
     val stringWriter = StringWriter()
@@ -217,4 +218,16 @@ fun generateSalt(): ByteArray {
 
 fun runSCryptWithCommonParams(input : ByteArray, salt : ByteArray) : ByteArray {
     return SCrypt.generate(input, salt, 16384, 8, 1, 32)
+}
+
+fun signEcdsaSha256(privateKey: PrivateKey, data: ByteArray): ByteArray {
+    // Compute hash
+    val digest = MessageDigest.getInstance("SHA-256")
+    val hash = digest.digest(data)
+
+    // Sign the hash
+    val signer = Signature.getInstance("SHA256withECDSA", "BC")
+    signer.initSign(privateKey)
+    signer.update(hash)
+    return signer.sign()
 }

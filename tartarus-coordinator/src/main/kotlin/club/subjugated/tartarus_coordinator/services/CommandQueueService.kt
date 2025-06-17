@@ -57,6 +57,16 @@ class CommandQueueService {
         saveCommand(command)
     }
 
+    fun manuallyAcknowledgeCommand(command: Command) {
+        command.state = CommandState.ACKNOWLEDGED
+
+        if(command.type == CommandType.RELEASE) {
+            command.commandQueue.lockSession.availableForContract = true
+        }
+
+        saveCommand(command)
+    }
+
     fun errorCommand(command: Command, message: String?) {
         command.state = CommandState.ERROR
         command.message = message
