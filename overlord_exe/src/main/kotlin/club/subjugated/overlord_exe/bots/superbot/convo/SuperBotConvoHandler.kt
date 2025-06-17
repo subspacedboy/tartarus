@@ -22,13 +22,26 @@ class SuperBotConvoHandler(
     }
 
     override fun getIntents(): List<KClass<out Intent>> {
-        return listOf()
+        return listOf(SuperbotIntent::class)
     }
 
     override fun handleIntent(
         ctx: ConversationContext,
         intent: Intent
     ): ConversationResponse {
-        TODO("Not yet implemented")
+        val response = when(intent) {
+            is SuperbotIntent -> {
+                val authorDid = ctx.bskyUser!!.did
+                val name = superBotService.createPlaceholder(authorDid, ctx.convoId)
+                ConversationResponse(
+                    text = urlService.generateUrl("superbot/$name")
+                )
+            }
+            else -> {
+                throw IllegalStateException("Unknown intent")
+            }
+        }
+
+        return response
     }
 }

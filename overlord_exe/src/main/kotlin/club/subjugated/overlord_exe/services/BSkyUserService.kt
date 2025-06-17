@@ -22,7 +22,8 @@ class BSkyUserService(
     }
 
     fun findByHandle(handle : String) : BSkyUser? {
-        return bSkyUserRepository.findByHandle(handle)
+        val cleanHandle = if (handle.startsWith("@")) handle else "@$handle"
+        return bSkyUserRepository.findByHandle(cleanHandle)
     }
 
     fun findByShareableToken(shareableToken: String) : BSkyUser? {
