@@ -2,7 +2,7 @@ use crate::lock_ctx::LockCtx;
 use crate::prelude::MySPI;
 use crate::screen_ids::ScreenId;
 use crate::screen_state::ScreenState;
-use crate::verifier::VerifiedType;
+use crate::verifier::{SignedMessageVerifier, VerificationError, VerifiedType};
 use embedded_graphics::mono_font::ascii::FONT_10X20;
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::text::{Alignment, Text};
@@ -33,37 +33,71 @@ impl ScreenState for LockstateScreen {
     type DC = AnyOutputPin;
 
     fn on_update(&mut self, lock_ctx: &mut LockCtx) -> Option<usize> {
-        let contract_option = lock_ctx.contract.as_ref();
-
         let update = lock_ctx.this_update.as_ref().unwrap();
-        if let Some(contract) = contract_option {
-            // We have a contract
-            if update.d1_pressed && contract.temporary_unlock_allowed {
-                if lock_ctx.is_locked() {
-                    lock_ctx.local_unlock();
-                    self.needs_redraw = true;
-                } else {
-                    lock_ctx.local_lock();
+
+        // Clone what you need from `update` so you can drop the borrow
+        let d1_pressed = update.d1_pressed;
+        let qr_data = update.qr_data.clone(); // assumes Option<String> or similar
+
+        // Clone what you need from `contract`
+        let (temporary_unlock_allowed, command_counter, serial_number) = match lock_ctx.contract.as_ref() {
+            Some(c) => (c.temporary_unlock_allowed, c.command_counter, c.serial_number.clone()),
+            None => {
+                // No contract, just toggle local lock
+                if d1_pressed {
+                    if lock_ctx.is_locked() {
+                        lock_ctx.local_unlock();
+                    } else {
+                        lock_ctx.local_lock();
+                    }
                     self.needs_redraw = true;
                 }
+                return None;
             }
-        } else {
-            // We do not have a contract and just cycling the lock.
-            if update.d1_pressed {
-                if lock_ctx.is_locked() {
-                    lock_ctx.local_unlock();
-                    self.needs_redraw = true;
-                } else {
-                    lock_ctx.local_lock();
-                    self.needs_redraw = true;
-                }
+        };
+
+        if d1_pressed && temporary_unlock_allowed {
+            if lock_ctx.is_locked() {
+                lock_ctx.local_unlock();
+            } else {
+                lock_ctx.local_lock();
+            }
+            self.needs_redraw = true;
+        }
+
+        if let Some(qr_data) = qr_data {
+            let verifier = SignedMessageVerifier::new();
+            let keys = lock_ctx.get_keyring();
+
+            if let Ok(command) = verifier.verify(qr_data, &keys, command_counter, serial_number) {
+                return match command {
+                    VerifiedType::UnlockCommand(_) => {
+                        lock_ctx.unlock();
+                        lock_ctx.increment_command_counter();
+                        Some(1)
+                    }
+                    VerifiedType::LockCommand(_) => {
+                        lock_ctx.lock();
+                        lock_ctx.increment_command_counter();
+                        Some(1)
+                    }
+                    VerifiedType::ReleaseCommand(_) |
+                    VerifiedType::AbortCommand(_) => {
+                        lock_ctx.end_contract();
+                        Some(0)
+                    }
+                    VerifiedType::ResetCommand(reset) => {
+                        lock_ctx.full_reset(&reset);
+                        Some(0)
+                    }
+                    _ => None,
+                };
             }
         }
 
-        // TODO Add processing the commands via QR code.
-
         None
     }
+
 
     fn process_command(
         &mut self,

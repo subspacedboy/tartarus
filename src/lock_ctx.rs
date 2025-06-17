@@ -688,7 +688,7 @@ impl LockCtx {
         Err("Failed to get SSID from NVS".to_owned())
     }
 
-    fn increment_command_counter(&mut self) {
+    pub(crate) fn increment_command_counter(&mut self) {
         let contract = self.contract.take();
         if let Some(mut internal_contract) = contract {
             internal_contract.command_counter += 1;
