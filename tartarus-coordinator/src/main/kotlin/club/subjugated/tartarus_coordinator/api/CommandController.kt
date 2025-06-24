@@ -77,6 +77,8 @@ class CommandController {
 
         val command = commands.first { it.name == commandName }
         this.commandQueueService.manuallyAcknowledgeCommand(command)
+        contract.nextCounter = command.counter!! + 1
+        this.contractService.save(contract)
 
         return ResponseEntity.ok(commands.map { CommandMessage.fromCommand(it) })
     }

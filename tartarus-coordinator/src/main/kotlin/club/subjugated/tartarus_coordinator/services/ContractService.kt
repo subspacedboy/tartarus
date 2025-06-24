@@ -428,6 +428,10 @@ class ContractService {
         return contract
     }
 
+    internal fun save(contract : Contract) : Contract {
+        return contractRepository.save(contract)
+    }
+
     @EventListener
     fun handleMessageEvent(event: AcknowledgedCommandEvent) {
         val command = event.command
