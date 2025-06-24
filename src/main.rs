@@ -212,11 +212,18 @@ fn main() {
             if let Some(actual_pass) = pass {
                 let ssid = String::from_utf8(actual_ssid.to_vec()).ok().unwrap();
                 let password = String::from_utf8(actual_pass.to_vec()).ok().unwrap();
-                if connect_wifi(&mut wifi, &ssid, &password).is_ok() {
-                    log::info!("Was able to join wifi from stored credentials :-)");
-                } else {
-                    log::info!("Was NOT able to join wifi :-( ");
+
+                if !d2_button.is_high() {
+                    if connect_wifi(&mut wifi, &ssid, &password).is_ok() {
+                        log::info!("Was able to join wifi from stored credentials :-)");
+                    } else {
+                        log::info!("Was NOT able to join wifi :-( ");
+                    }
                 }
+                else {
+                    log::info!("D2 was held down. Skipping Wi-Fi connect.");
+                }
+
             }
         }
     } else {
@@ -283,7 +290,7 @@ fn main() {
             let size: usize = rx_buf[0] as usize;
             if size > 0 {
                 // See rx_buf for 2 and +2 info.
-                data = Some(rx_buf[2..size + 2].to_vec())
+                data = Some(rx_buf[2..size + 2].to_vec());
             }
         }
 

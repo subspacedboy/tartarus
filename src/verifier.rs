@@ -26,6 +26,19 @@ pub enum VerifiedType {
     ResetCommand(InternalResetCommand),
 }
 
+impl VerifiedType {
+    pub fn get_counter(&self) -> u16 {
+        match self {
+            VerifiedType::Contract(v) => v.command_counter,
+            VerifiedType::UnlockCommand(v) => v.counter,
+            VerifiedType::LockCommand(v) => v.counter,
+            VerifiedType::ReleaseCommand(v) => v.counter,
+            VerifiedType::AbortCommand(v) => v.counter,
+            VerifiedType::ResetCommand(v) => 0u16,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct VerificationError {
     pub serial_number: u16,

@@ -414,7 +414,7 @@ impl LockCtx {
             ) {
                 Ok(verified_message) => {
                     let for_acknowledgement = verified_message.clone();
-                    self.increment_command_counter();
+                    self.increment_command_counter(verified_message.get_counter());
 
                     match self.process_command(verified_message) {
                         Ok(_) => {
@@ -574,6 +574,8 @@ impl LockCtx {
         {
             panic!("One of the screens was taken and not replaced");
         }
+
+        self.save_state_if_dirty()
     } // end tick
 
     /// Process updates for the current screen. This is different from process_commands
@@ -688,10 +690,13 @@ impl LockCtx {
         Err("Failed to get SSID from NVS".to_owned())
     }
 
-    pub(crate) fn increment_command_counter(&mut self) {
+    pub(crate) fn increment_command_counter(&mut self, value: u16) {
         let contract = self.contract.take();
         if let Some(mut internal_contract) = contract {
-            internal_contract.command_counter += 1;
+            if internal_contract.command_counter >= value {
+                log::warn!("!!! The command counter is being set to a value lower than it should have.");
+            }
+            internal_contract.command_counter = value;
             self.dirty = true;
             self.contract = Some(internal_contract);
         }
