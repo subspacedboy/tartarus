@@ -298,7 +298,7 @@ export class TartarusCoordinatorService {
   }
 
   public manuallyAcknowledgeCommand(contractName: string, commandName: string) : Observable<Command> {
-    const acknowledge_uri = `${this.baseUrl}/contracts/${contractName}/forLockUser/commands/${commandName}/acknowledge`;
+    const acknowledge_uri = `${this.baseUrl}/contracts/${contractName}/commands/forLockUser/command/${commandName}/acknowledge`;
     const body = JSON.stringify({
     });
     const headers = new HttpHeaders({ 'Content-Type': 'application/json', 'X-Require-LockUser': 'requires authorization tokens' });

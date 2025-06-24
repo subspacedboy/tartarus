@@ -1,6 +1,6 @@
 {
-  "webUri": "http://localhost:4200",
-  "wsUri": "ws://localhost:5002/ws/events",
-  "apiUri": "http://localhost:5002",
-  "mqttUri" : "ws://localhost:8080/mqtt"
+  "webUri": "https://tartarus.subjugated.club",
+  "wsUri": "wss://tartarus-api.subjugated.club:4446/ws/events",
+  "apiUri": "https://tartarus-api.subjugated.club:4446",
+  "mqttUri" : "wss://tartarus-mqtt.subjugated.club:4447/mqtt"
 }

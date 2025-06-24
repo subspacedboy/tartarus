@@ -6,6 +6,9 @@ import {RouterLink} from '@angular/router';
 import * as QRCode from 'qrcode';
 import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
 import {UserDataService} from '../user-data.service';
+import {SignedMessage} from '../club/subjugated/fb/message/signed-message';
+
+import * as flatbuffers from 'flatbuffers';
 
 @Component({
   selector: 'app-command-card',
@@ -22,7 +25,7 @@ export class CommandCardComponent {
 
   @Input() basePath: string = '';
 
-  showQrCodeCommands = true;
+  showQrCodeCommands = false;
 
   @ViewChild('ackBtn') ackBtn!: ElementRef<HTMLButtonElement>;
 
@@ -30,20 +33,16 @@ export class CommandCardComponent {
     private tartarusCoordinatorService: TartarusCoordinatorService,
     private userDataService: UserDataService
   ) {
-    // this.showQrCodeCommands = this.userDataService.hasLockUserSession()
+    this.showQrCodeCommands = this.userDataService.hasLockUserSession()
   }
 
   drawQrCode(event: Event): void {
-    const binary = atob(this.command!.body!);
-    const uint8Array = new Uint8Array([...binary].map(c => c.charCodeAt(0)));
-    console.log("Size of QR bytes " + uint8Array.length);
-    const text = new TextDecoder().decode(uint8Array);
-
     const button = event.currentTarget as HTMLElement;
     const container = button.parentElement;
     if (!container) return;
 
-    QRCode.toCanvas(text, { errorCorrectionLevel: 'H' }, (err, canvas) => {
+    // const text = new TextDecoder().decode(uint8Array);
+    QRCode.toCanvas(this.command!.body!, { errorCorrectionLevel: 'L' }, (err, canvas) => {
       if (err) throw err;
       container.appendChild(canvas);
       button.remove();

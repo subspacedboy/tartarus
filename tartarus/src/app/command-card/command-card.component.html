@@ -5,6 +5,10 @@
         <div class="card-header">{{ command.type }}</div>
         <div class="card-body">
           <h4 class="card-title">⏳Pending</h4>
+          @if(showQrCodeCommands) {
+            <p class="card-text"><button type="button" class="btn btn-info" (click)="drawQrCode($event)">Show QR Code</button></p>
+            <p class="card-text"><button #ackBtn id="hidden" type="button" class="btn btn-warning" [hidden]="true" (click)="manuallyAcknowledge($event)">Manually Acknowledge</button></p>
+          }
 <!--          <p class="card-text"><a routerLink="{{basePath}}contract/{{contract.name}}">Details</a></p>-->
         </div>
       </div>
@@ -15,10 +19,6 @@
         <div class="card-body">
           <h4 class="card-title">✅ Acknowledged</h4>
           <p class="card-text">Confirmed at {{command.updatedAt | date : 'short' }}</p>
-          @if(showQrCodeCommands) {
-            <p class="card-text"><button type="button" class="btn btn-info" (click)="drawQrCode($event)">Show QR Code</button></p>
-            <p class="card-text"><button #ackBtn id="hidden" type="button" class="btn btn-warning" [hidden]="true" (click)="manuallyAcknowledge($event)">Manually Acknowledge</button></p>
-          }
         </div>
       </div>
     }
