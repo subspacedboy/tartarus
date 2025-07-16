@@ -277,11 +277,11 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
             println("☣️ More than one command matched.")
         }
 
+        println("🥕 Received ack: $ack")
         for(command in commands) {
+            println("🥕 Processing ack: ${command.name}")
             this.commandQueueService.acknowledgeCommand(command, ack)
         }
-
-        println("🥕 Received ack: $ack")
     }
 
     private fun handleErrorPayload(signedMessage: ValidatedPayload.ErrorPayload) {

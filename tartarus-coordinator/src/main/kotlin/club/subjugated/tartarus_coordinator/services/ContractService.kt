@@ -3,7 +3,6 @@ package club.subjugated.tartarus_coordinator.services
 import club.subjugated.fb.message.AbortCommand
 import club.subjugated.fb.message.ResetCommand
 import club.subjugated.fb.message.SignedMessage
-import club.subjugated.fb.message.firmware.MessagePayload
 import club.subjugated.tartarus_coordinator.api.messages.NewContractMessage
 import club.subjugated.tartarus_coordinator.events.AcknowledgedCommandEvent
 import club.subjugated.tartarus_coordinator.events.ContractChangeEvent
@@ -28,7 +27,6 @@ import club.subjugated.tartarus_coordinator.util.loadECPublicKeyFromPkcs8
 import club.subjugated.tartarus_coordinator.util.signedMessageBytesValidator
 import club.subjugated.tartarus_coordinator.util.signedMessageBytesValidatorWithExternalKey
 import com.google.flatbuffers.FlatBufferBuilder
-import org.jsoup.Connection.Base
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.event.EventListener
@@ -36,9 +34,7 @@ import org.springframework.stereotype.Service
 import java.nio.ByteBuffer
 import java.security.KeyFactory
 import java.security.MessageDigest
-import java.security.PublicKey
 import java.security.Signature
-import java.security.interfaces.ECPublicKey
 import java.security.spec.PKCS8EncodedKeySpec
 import java.util.*
 
@@ -269,11 +265,16 @@ class ContractService {
     }
 
     fun getByStateAdminOnly(states : List<ContractState>) : List<Contract> {
-        return contractRepository.findByStateIn(states)
+        return contractRepository.findByStateInOrderByUpdatedAtDesc(states)
     }
 
     fun getByNameAdminOnly(name : String) : Contract {
-        return contractRepository.findByName(name)
+        val contract = contractRepository.findByName(name)
+        if(contract.state == ContractState.CONFIRMED) {
+            contract.lockState = contract.lockSession.isLocked
+            contract.lockLastUpdate = contract.lockSession.updatedAt
+        }
+        return contract
     }
 
     fun abortContractWithSafetyKey(contract: Contract, safetyKey : SafetyKey) : Contract {
