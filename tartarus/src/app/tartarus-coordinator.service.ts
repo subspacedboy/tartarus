@@ -422,6 +422,24 @@ export class TartarusCoordinatorService {
     }));
   }
 
+  public getLockSessionsForAdmin() : Observable<LockSession[]> {
+    const queryParams = {  };
+
+    const get_lock_sessions_uri = `${this.baseUrl}/admin/lock_sessions/`;
+    return this.http.get(get_lock_sessions_uri, {
+      headers: new HttpHeaders({ 'X-Require-Admin': 'requires authorization tokens' }),
+      params: queryParams,
+    }).pipe(map((res:any) => {
+      const lockSessions : LockSession[] = res.map((datum: any) => {
+        return new LockSession(datum);
+      });
+
+      return lockSessions;
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
   // Admin firmware
 
   public addFirmware(firmwareBytes : string) : Observable<boolean> {

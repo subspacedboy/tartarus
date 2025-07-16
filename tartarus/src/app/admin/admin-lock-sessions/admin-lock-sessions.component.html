@@ -1,0 +1,35 @@
+<table class="table table-striped">
+  <thead>
+
+  <tr>
+    <th scope="col">#</th>
+    <th scope="col">Name</th>
+    <th scope="col">Session Token</th>
+    <th scope="col">Share Token</th>
+    <th scope="col">TC Token</th>
+    <th scope="col">Is Locked?</th>
+    <th scope="col">Available?</th>
+    <th scope="col">Last Update</th>
+  </tr>
+  </thead>
+  <tbody>
+    @for (l of lockSessions | async; track l.name) {
+      <tr>
+        <th scope="row">{{ l.name }}</th>
+        <td>
+          {{l.name}}
+        </td>
+        <td>{{l.sessionToken}}</td>
+        <td>{{l.shareToken}}</td>
+        <td>{{l.totalControlToken}}</td>
+        <td>{{l.lockState?.isLocked}}</td>
+        <td>{{l.availableForContract}}</td>
+        <td>{{l.updatedAt | date: 'short'}}</td>
+      </tr>
+    } @empty {
+      <tr>
+        <td colspan="4" style="text-align: center">No lock sessions</td>
+      </tr>
+    }
+  </tbody>
+</table>

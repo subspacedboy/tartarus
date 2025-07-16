@@ -5,6 +5,7 @@ import {LockState} from './lock-state';
 export class LockSession {
   // public_key is secp1 compressed, web crypto can't use it.
   name?: string;
+  sessionToken?: string;
   publicKey?: string;
   publicPem?: string;
   shareToken?: string;

@@ -21,6 +21,7 @@ import {AdminAddFirmwareComponent} from "./admin/admin-add-firmware/admin-add-fi
 import {adminGuard} from "./admin.guard";
 import {LogoutLockUserComponent} from "./logout-lock-user/logout-lock-user.component";
 import {AdminLandingPageComponent} from './admin/admin-landing-page/admin-landing-page.component';
+import {AdminLockSessionsComponent} from './admin/admin-lock-sessions/admin-lock-sessions.component';
 
 export const routes: Routes = [
   {
@@ -99,6 +100,11 @@ export const routes: Routes = [
     path: 'admin/contracts',
     canActivate: [adminGuard],
     component: AdminContractsComponent
+  },
+  {
+    path: 'admin/lock_sessions',
+    canActivate: [adminGuard],
+    component: AdminLockSessionsComponent
   },
   {
     path: 'admin/contract/:contractName',
