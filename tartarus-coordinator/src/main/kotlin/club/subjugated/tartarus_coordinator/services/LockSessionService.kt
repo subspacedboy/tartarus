@@ -79,6 +79,10 @@ class LockSessionService {
         return maybeSession
     }
 
+    fun findAllForAdmin() : List<LockSession> {
+        return lockSessionRepository.findAll()
+    }
+
     fun saveLockSession(lockSession: LockSession) {
         lockSession.updatedAt = timeSource.nowInUtc()
         this.lockSessionRepository.save(lockSession)

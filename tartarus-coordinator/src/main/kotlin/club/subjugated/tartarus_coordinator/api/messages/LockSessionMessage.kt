@@ -11,6 +11,7 @@ import java.util.Base64
 
 data class LockSessionMessage(
     var name: String = "",
+    var sessionToken: String? = "",
     var publicKey: String = "",
     var publicPem: String = "",
     var shareToken: String = "",
@@ -36,6 +37,7 @@ data class LockSessionMessage(
             val pemKey = getPemEncoding(ecKey)
             return LockSessionMessage(
                 name = lockSession.name,
+                sessionToken = if(lockSessionArgs.contains(LockSessionArgs.INCLUDE_SESSION_TOKEN)) lockSession.sessionToken!! else null,
                 publicKey = lockSession.publicKey,
                 publicPem = pemKey,
                 shareToken = lockSession.shareToken!!,
