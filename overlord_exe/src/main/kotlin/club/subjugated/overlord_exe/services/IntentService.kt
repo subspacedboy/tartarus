@@ -209,7 +209,7 @@ class IntentService(
                         )
                         messages = getContext(convoId)
                         inferenceConfig {
-                            maxTokens = 100
+                            maxTokens = 300
                             temperature = 1.0F
                             topP = 0.9F
                         }

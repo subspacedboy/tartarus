@@ -113,6 +113,10 @@ class SimpleProxyService(
 
     override fun handleAccept(contract: Contract) {
         val record = findByContractSerialNumber(contract.serialNumber.toLong())
+        if(record.state != SimpleProxyState.ISSUED) {
+            // Reprocessed.
+            return
+        }
         record.state = SimpleProxyState.ACCEPTED
         record.contractId = contract.id
         save(record)

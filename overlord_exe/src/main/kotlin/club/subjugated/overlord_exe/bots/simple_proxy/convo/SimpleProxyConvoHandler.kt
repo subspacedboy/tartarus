@@ -26,7 +26,8 @@ class SimpleProxyConvoHandler(
         convoId: String,
         message: ConvoDefsMessageView
     ): String {
-        val chunks = message.text.trim().split("\\s+".toRegex())
+        val messageMinusBang = message.text.replaceFirst("!","").trim()
+        val chunks = messageMinusBang.split("\\s+".toRegex())
 
         val bskyUser = bSkyUserService.findOrCreateByDid(message.sender.did)
         val handle = blueSkyService.resolveDidToHandle(bskyUser.did)

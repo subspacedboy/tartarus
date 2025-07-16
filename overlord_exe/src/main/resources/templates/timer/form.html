@@ -26,6 +26,8 @@
     <!-- Hidden name field -->
     <input type="hidden" th:field="*{name}">
 
+    <div class="text-danger" th:if="${#fields.hasErrors('validDuration')}" th:errors="*{validDuration}"></div>
+
     <!-- Shareable Token -->
     <div class="mb-3">
         <label for="shareableToken" class="form-label">Shareable Token</label>

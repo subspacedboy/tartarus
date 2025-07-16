@@ -5,6 +5,7 @@ import club.subjugated.overlord_exe.bots.superbot.convo.SuperBotConvoHandler
 import club.subjugated.overlord_exe.bots.timer_bot.convo.TimerBotConvoHandler
 import club.subjugated.overlord_exe.convo.ConversationContext
 import club.subjugated.overlord_exe.events.SendDmEvent
+import club.subjugated.overlord_exe.intents.OverlordConversationHandler
 import club.subjugated.overlord_exe.services.BSkyUserService
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.services.IntentService
@@ -28,6 +29,7 @@ class BSkyDmMonitor(
     private val superBotConvoHandler: SuperBotConvoHandler,
     private val bSkyUserService: BSkyUserService,
     private val simpleProxyConvoHandler : SimpleProxyConvoHandler,
+    private val overlordConversationHandler: OverlordConversationHandler,
     private val intentService: IntentService,
 ) : Job {
     override fun execute(context: JobExecutionContext?) {
@@ -71,10 +73,17 @@ class BSkyDmMonitor(
         var interpretAsCommand = message.text.startsWith("!")
 
         if(interpretAsCommand) {
-            val chunks = message.text.replaceFirst("!","").trim().split("\\s+".toRegex())
+            val messageMinusBang = message.text.replaceFirst("!","").trim()
+            val chunks = messageMinusBang.split("\\s+".toRegex())
             val response : String = when(chunks[0].lowercase()) {
                 "hello" -> {
                     "Hello 😈"
+                }
+                "contract" -> {
+                    overlordConversationHandler.handle(convoId, message)
+                }
+                "accept" -> {
+                    overlordConversationHandler.handle(convoId, message)
                 }
                 "token" -> {
                     simpleProxyConvoHandler.handle(convoId, message)

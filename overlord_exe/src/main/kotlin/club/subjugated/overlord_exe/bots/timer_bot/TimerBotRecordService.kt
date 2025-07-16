@@ -99,14 +99,13 @@ class TimerBotRecordService(
             val minimumDuration = Duration.of(durationAmount!!.toLong(), durationUnit)
             record.minDuration = durationAmount
             record.minDurationUnit = form.minUnit
-
         }
 
         val maxDurationAmount = form.maxDuration
         val maxDurationUnit = ChronoUnit.valueOf(form.maxUnit)
         val maximumDuration = Duration.of(maxDurationAmount!!.toLong(), maxDurationUnit)
         record.maxDuration = maxDurationAmount
-        record.minDurationUnit = form.maxUnit
+        record.maxDurationUnit = form.maxUnit
 
         record.state = TimerBotRecordState.ISSUED
         save(record)

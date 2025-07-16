@@ -199,7 +199,11 @@ class BotComponent(
     }
 
     suspend fun requestContract(botName : String, lockSession: String, serial : UShort, client : MqttClient) : GetContractResponse {
-        return withContext(Dispatchers.IO) {
+        val handler = CoroutineExceptionHandler { _, exception ->
+            logger.error("Request contract coroutine failed", exception)
+        }
+
+        return withContext(Dispatchers.IO + handler) {
             responseFuture = CompletableDeferred()
             val requestBody = contractService.makeContractRequest(
                 botName,
