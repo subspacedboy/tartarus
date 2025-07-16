@@ -20,6 +20,7 @@ import {AdminContractDetailComponent} from './admin/admin-contract-detail/admin-
 import {AdminAddFirmwareComponent} from "./admin/admin-add-firmware/admin-add-firmware.component";
 import {adminGuard} from "./admin.guard";
 import {LogoutLockUserComponent} from "./logout-lock-user/logout-lock-user.component";
+import {AdminLandingPageComponent} from './admin/admin-landing-page/admin-landing-page.component';
 
 export const routes: Routes = [
   {
@@ -84,6 +85,11 @@ export const routes: Routes = [
   {
     path: 'key-helper',
     component: KeyHelperComponent
+  },
+  {
+    path: 'admin',
+    component: AdminLandingPageComponent,
+    canActivate: [adminGuard],
   },
   {
     path: 'admin/login',

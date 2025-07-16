@@ -1,11 +1,50 @@
-@if(liveContracts.length > 0) {
-  <div class="row">
-    <div class="col-lg-4">
-      <div class="bs-component">
-        @for (c of liveContracts; track c.name){
-          <app-contract-card [contract]="c" basePath="/admin/"></app-contract-card>
-        }
-      </div>
-    </div>
-  </div>
-}
+<div class="btn-group" role="group" aria-label="Contract state toggles">
+  <input type="checkbox" class="btn-check" id="confirmed" [(ngModel)]="selectedStatesMap['CONFIRMED']">
+  <label class="btn btn-outline-primary" for="confirmed">Confirmed</label>
+
+  <input type="checkbox" class="btn-check" id="released" [(ngModel)]="selectedStatesMap['RELEASED']">
+  <label class="btn btn-outline-primary" for="released">Released</label>
+
+  <input type="checkbox" class="btn-check" id="aborted" [(ngModel)]="selectedStatesMap['ABORTED']">
+  <label class="btn btn-outline-danger" for="aborted">Aborted</label>
+</div>
+
+<button class="btn btn-secondary mt-2" (click)="fetchContracts()">Fetch Contracts</button>
+
+  <table class="table table-striped">
+    <thead>
+
+    <tr>
+      <th scope="col">#</th>
+      <th scope="col" sortable="name" (sort)="onSort($event)">Name</th>
+      <th scope="col" sortable="serialNumber" (sort)="onSort($event)">Serial Number</th>
+      <th scope="col" sortable="state" (sort)="onSort($event)">State</th>
+      <th scope="col" sortable="authorSessionName" (sort)="onSort($event)">Author</th>
+      <th scope="col" sortable="updatedAt" (sort)="onSort($event)">Updated At</th>
+    </tr>
+    </thead>
+    <tbody>
+      @for (c of contracts | async; track c.name) {
+        <tr>
+          <th scope="row">{{ c.name }}</th>
+          <td>
+            <a routerLink="/admin/contract/{{c.name}}">{{c.name}}</a>
+          </td>
+          <td>{{c.serialNumber}}</td>
+          <td>
+            {{c.state}}
+          </td>
+          <td>
+            {{c.authorSessionName}}
+          </td>
+          <td>
+            {{c.updatedAt | date: 'short'}}
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="4" style="text-align: center">No contracts</td>
+        </tr>
+      }
+    </tbody>
+  </table>

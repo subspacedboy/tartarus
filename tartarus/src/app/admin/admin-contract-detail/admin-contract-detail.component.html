@@ -10,6 +10,28 @@
           State: {{contract.state}}
         </p>
 
+        <p>
+          Serial Number: {{contract.serialNumber}}
+        </p>
+
+        @if(contractDescription) {
+          <h3>Terms</h3>
+          <p>
+            Temporary unlock allowed: {{contractDescription.isTemporaryUnlockAllowed}}
+          </p>
+          <p>
+            Terms: {{contractDescription.terms}}
+          </p>
+
+          <h3>Bots</h3>
+            @for (b of contractDescription.bots; track b.name) {
+              <p>
+              Name: {{b.name}}<br/>
+                Permissions: {{JSON.stringify(b.permissions)}}
+              </p>
+            }
+        }
+
         @switch (contract.state) {
           @case('CREATED') {
             Contract has been created and is waiting for acceptance.
@@ -53,6 +75,18 @@
         }
 
       </div>
+
+      @if(contract.messages?.length! > 0) {
+        <hr>
+        <div class="bs-component">
+          <h3>Bot Messages</h3>
+          <ul class="list-group">
+            @for(m of contract.messages; track m.name) {
+              <li class="list-group-item">{{m.body}}</li>
+            }
+          </ul>
+        </div>
+      }
 
       @if(commands.length > 0) {
         <hr>

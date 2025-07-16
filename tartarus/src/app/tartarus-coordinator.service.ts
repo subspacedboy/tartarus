@@ -354,10 +354,13 @@ export class TartarusCoordinatorService {
   }
 
   // Admin functions
-  public getLiveContractsForAdmin() : Observable<Contract[]> {
+  public getLiveContractsForAdmin(states : string[]) : Observable<Contract[]> {
+    const queryParams = { states: states.join(',') };
+
     const get_contracts_uri = `${this.baseUrl}/admin/contracts/`;
     return this.http.get(get_contracts_uri, {
       headers: new HttpHeaders({ 'X-Require-Admin': 'requires authorization tokens' }),
+      params: queryParams,
     }).pipe(map((res:any) => {
       const contracts : Contract[] = res.map((datum: any) => {
         return new Contract(datum);
