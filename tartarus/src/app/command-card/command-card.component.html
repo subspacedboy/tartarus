@@ -19,6 +19,9 @@
         <div class="card-body">
           <h4 class="card-title">✅ Acknowledged</h4>
           <p class="card-text">Confirmed at {{command.updatedAt | date : 'short' }}</p>
+          @if(command.isManuallyAcknowledged) {
+            <p class="card-text">🎚️</p>
+          }
         </div>
       </div>
     }

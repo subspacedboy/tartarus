@@ -46,8 +46,18 @@ export class CommandCardComponent {
       if (err) throw err;
       container.appendChild(canvas);
       button.remove();
-      this.ackBtn.nativeElement.hidden = false;
+      this.maybeShowAcknowledge();
     });
+  }
+
+  maybeShowAcknowledge() {
+    if(this.command?.type === 'ACCEPT_CONTRACT') {
+      // There's no way to manually accept a contract.
+      // The lock just has to be online.
+      return;
+    }
+
+    this.ackBtn.nativeElement.hidden = false;
   }
 
   manuallyAcknowledge(event: Event): void {

@@ -7,6 +7,7 @@ export class Command {
   message? : string;
   body? : string;
   counter?: number;
+  isManuallyAcknowledged?: boolean;
   serialNumber?: number;
   createdAt?: string;
   updatedAt?: string;
