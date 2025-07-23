@@ -1,9 +1,7 @@
 package club.subjugated.tartarus_coordinator.api.admin
 
-import club.subjugated.tartarus_coordinator.api.messages.ContractMessage
 import club.subjugated.tartarus_coordinator.api.messages.LockSessionArgs
 import club.subjugated.tartarus_coordinator.api.messages.LockSessionMessage
-import club.subjugated.tartarus_coordinator.models.ContractState
 import club.subjugated.tartarus_coordinator.services.LockSessionService
 import jakarta.ws.rs.core.MediaType
 import org.springframework.http.ResponseEntity

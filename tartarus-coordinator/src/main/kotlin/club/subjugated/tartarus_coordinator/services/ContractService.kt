@@ -249,6 +249,12 @@ class ContractService {
             updatedAt = timeSource.nowInUtc()
         )
 
+        val lastMessage = contract.messages.lastOrNull()
+        if (lastMessage?.body == message && lastMessage.bot?.name == bot.name) {
+            // Dupe. Ignore it.
+            return
+        }
+
         contract.messages.add(contractMessage)
         contractRepository.save(contract)
     }
