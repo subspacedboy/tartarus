@@ -26,9 +26,12 @@ export class AdminContractsComponent implements OnInit {
   contracts : Observable<Contract[]> | undefined;
 
   selectedStatesMap: Record<string, boolean> = {
+    CREATED: false,
+    ACCEPTED: false,
+    REJECTED: false,
     CONFIRMED: true,
+    RELEASED: false,
     ABORTED: false,
-    RELEASED: false
   };
 
   @ViewChildren(NgbdSortableHeader) headers: QueryList<NgbdSortableHeader> | undefined;

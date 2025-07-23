@@ -2,7 +2,6 @@
   <thead>
 
   <tr>
-    <th scope="col">#</th>
     <th scope="col">Name</th>
     <th scope="col">Session Token</th>
     <th scope="col">Share Token</th>
@@ -16,9 +15,6 @@
     @for (l of lockSessions | async; track l.name) {
       <tr>
         <th scope="row">{{ l.name }}</th>
-        <td>
-          {{l.name}}
-        </td>
         <td>{{l.sessionToken}}</td>
         <td>{{l.shareToken}}</td>
         <td>{{l.totalControlToken}}</td>

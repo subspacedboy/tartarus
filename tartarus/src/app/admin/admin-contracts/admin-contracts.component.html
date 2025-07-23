@@ -1,4 +1,13 @@
 <div class="btn-group" role="group" aria-label="Contract state toggles">
+  <input type="checkbox" class="btn-check" id="created" [(ngModel)]="selectedStatesMap['CREATED']">
+  <label class="btn btn-outline-secondary" for="created">Created</label>
+
+  <input type="checkbox" class="btn-check" id="accepted" [(ngModel)]="selectedStatesMap['ACCEPTED']">
+  <label class="btn btn-outline-secondary" for="accepted">Accepted</label>
+
+  <input type="checkbox" class="btn-check" id="rejected" [(ngModel)]="selectedStatesMap['REJECTED']">
+  <label class="btn btn-outline-secondary" for="rejected">Rejected</label>
+
   <input type="checkbox" class="btn-check" id="confirmed" [(ngModel)]="selectedStatesMap['CONFIRMED']">
   <label class="btn btn-outline-primary" for="confirmed">Confirmed</label>
 
@@ -18,6 +27,7 @@
       <th scope="col">#</th>
       <th scope="col" sortable="name" (sort)="onSort($event)">Name</th>
       <th scope="col" sortable="serialNumber" (sort)="onSort($event)">Serial Number</th>
+      <th scope="col" sortable="shareableToken" (sort)="onSort($event)">Shareable Token</th>
       <th scope="col" sortable="state" (sort)="onSort($event)">State</th>
       <th scope="col" sortable="authorSessionName" (sort)="onSort($event)">Author</th>
       <th scope="col" sortable="updatedAt" (sort)="onSort($event)">Updated At</th>
@@ -31,6 +41,7 @@
             <a routerLink="/admin/contract/{{c.name}}">{{c.name}}</a>
           </td>
           <td>{{c.serialNumber}}</td>
+          <td>{{c.shareableToken}}</td>
           <td>
             {{c.state}}
           </td>
