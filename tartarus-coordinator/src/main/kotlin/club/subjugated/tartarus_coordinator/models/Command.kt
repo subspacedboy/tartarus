@@ -14,6 +14,7 @@ class Command(
     var message: String? = null,
     var serialNumber: Int? = null,
     var counter: Int? = null,
+    var isManuallyAcknowledged: Boolean = false,
     @ManyToOne @JoinColumn(name = "author_id") var authorSession: AuthorSession,
     @ManyToOne @JoinColumn(name = "command_queue_id") var commandQueue: CommandQueue,
     @ManyToOne @JoinColumn(name = "contract_id") var contract: Contract,

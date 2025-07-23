@@ -14,6 +14,7 @@ data class CommandMessage(
     val message : String?,
     val body : String,
     val counter: Int? = null,
+    val isManuallyAcknowledged: Boolean? = false,
     val serialNumber: Int? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
@@ -29,6 +30,7 @@ data class CommandMessage(
                 message = command.message,
                 body = Base64.getEncoder().encodeToString(command.body),
                 counter = command.counter,
+                isManuallyAcknowledged = command.isManuallyAcknowledged,
                 serialNumber = command.serialNumber,
                 createdAt = command.createdAt,
                 updatedAt = command.updatedAt

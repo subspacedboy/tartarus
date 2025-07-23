@@ -64,6 +64,8 @@ class CommandQueueService {
             command.commandQueue.lockSession.availableForContract = true
         }
 
+        command.isManuallyAcknowledged = true
+
         saveCommand(command)
     }
 

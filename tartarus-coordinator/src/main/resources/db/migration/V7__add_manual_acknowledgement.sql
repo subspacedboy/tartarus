@@ -1,0 +1,1 @@
+ALTER TABLE command ADD COLUMN is_manually_acknowledged tinyint DEFAULT 0 AFTER counter;

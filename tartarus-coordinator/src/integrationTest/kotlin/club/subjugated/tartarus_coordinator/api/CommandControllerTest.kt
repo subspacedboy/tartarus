@@ -114,5 +114,6 @@ class CommandControllerTest {
 
         val commandsPart2 = commandController.getCommandsForContractForLockUser(lockUser, contractResponse.body!!.name)
         assertThat(commandsPart2.body!!.first().state).isEqualTo("ACKNOWLEDGED")
+        assertThat(commandsPart2.body!!.first().isManuallyAcknowledged).isTrue()
     }
 }
