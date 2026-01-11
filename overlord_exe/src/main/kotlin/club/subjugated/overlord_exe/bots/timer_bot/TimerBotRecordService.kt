@@ -89,6 +89,11 @@ class TimerBotRecordService(
     fun processContractForm(form : TimeForm) : TimerBotRecord {
         val record = getRecordByName(form.name)
 
+        if(record.state == TimerBotRecordState.ISSUED) {
+            logger.warn("Attempted reprocessing ${form.name}")
+            return record
+        }
+
         val token = extractShareableToken(form.shareableToken)
         record.shareableToken = token
         record.isRandom = form.random

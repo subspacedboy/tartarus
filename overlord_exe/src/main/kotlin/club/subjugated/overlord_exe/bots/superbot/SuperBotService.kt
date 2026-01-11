@@ -3,6 +3,7 @@ package club.subjugated.overlord_exe.bots.superbot
 import club.subjugated.overlord_exe.bots.general.BotComponent
 import club.subjugated.overlord_exe.bots.general.MessageHandler
 import club.subjugated.overlord_exe.bots.superbot.web.IntakeForm
+import club.subjugated.overlord_exe.bots.timer_bot.TimerBotRecordState
 import club.subjugated.overlord_exe.events.IssueContract
 import club.subjugated.overlord_exe.events.IssueRelease
 import club.subjugated.overlord_exe.events.SendDmEvent
@@ -59,6 +60,11 @@ class SuperBotService(
 
     fun processContractForm(form : IntakeForm) {
         val record = findByName(form.name)
+
+        if(record.state == SuperBotRecordState.ISSUED) {
+            logger.warn("Attempted reprocessing ${form.name}")
+            return
+        }
 
         record.shareableToken = form.shareableToken
         record.state = SuperBotRecordState.ISSUED
