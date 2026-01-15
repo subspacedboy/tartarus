@@ -27,7 +27,12 @@ mod wifi_util;
 mod firmware_screen;
 mod generated;
 mod wifi_info_screen;
+mod wifi_manager;
 
+use crate::wifi_manager::WifiManager;
+use std::sync::Mutex;
+use crate::wifi_manager::WIFI_MANAGER;
+use esp_idf_hal::sys;
 use crate::servo::Servo;
 use esp_idf_hal::ledc::LedcDriver;
 use esp_idf_svc::hal::ledc::config::TimerConfig;
@@ -56,7 +61,6 @@ use esp_idf_svc::sys::{esp_efuse_desc_t, esp_efuse_read_field_bit, esp_random};
 
 use crate::lock_ctx::{LockCtx, TickUpdate};
 
-use crate::wifi_util::connect_wifi;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::mono_font::ascii::FONT_10X20;
@@ -138,6 +142,17 @@ fn main() {
     d1_button.set_pull(Pull::Down).unwrap();
     d2_button.set_pull(Pull::Down).unwrap();
 
+    // Make sure to configure WiFi before enabling the TFT backlight.
+    // Warming up wifi
+    log::info!("Putting wifi on standby");
+
+    // Warm up NVS (non-volatile storage)
+    let nvs_partition =
+        EspDefaultNvsPartition::take().expect("EspDefaultNvsPartition to be available");
+    let nvs: EspNvs<NvsDefault> = EspNvs::new(nvs_partition.clone(), "storage", true).unwrap();
+
+    let sys_loop = EspSystemEventLoop::take().expect("EspSystemEventLoop to be available");
+
     // Warm up display
     tft_power.set_high().expect("tft power to be high");
     tft_rst.set_low().expect("Reset to be low");
@@ -183,52 +198,23 @@ fn main() {
     );
     text.draw(&mut display).expect("Should have drawn");
 
-    // Warm up NVS (non-volatile storage)
-    let nvs_partition =
-        EspDefaultNvsPartition::take().expect("EspDefaultNvsPartition to be available");
-    let nvs: EspNvs<NvsDefault> = EspNvs::new(nvs_partition.clone(), "storage", true).unwrap();
+    let mutex = WIFI_MANAGER.get_or_init(|| {
+        log::info!("Initializing wifi manager");
+        let manager = WifiManager::new(nvs_partition.clone(), peripherals.modem, sys_loop);
+        Mutex::new(manager)
+    });
 
-    // Warming up wifi
-    log::info!("Putting wifi on standby");
-
-    let sys_loop = EspSystemEventLoop::take().expect("EspSystemEventLoop to be available");
-    let mut wifi: BlockingWifi<EspWifi> = BlockingWifi::wrap(
-        EspWifi::new(peripherals.modem, sys_loop.clone(), Some(nvs_partition))
-            .expect("EspWifi to work"),
-        sys_loop,
-    )
-    .expect("Wifi to start");
-    wifi.start().expect("Wifi should have started");
-
-    // See if we have pre-existing creds
-    let mut buffer: [u8; 256] = [0; 256];
-    if let Ok(blob) = nvs.get_blob("ssid", &mut buffer) {
-        if let Some(actual_ssid) = blob {
-            // Ok, we have an SSID. Let's assume we have a matching password.
-            let mut pass_buffer: [u8; 256] = [0; 256];
-            let pass = nvs
-                .get_blob("password", &mut pass_buffer)
-                .expect("NVS to work");
-            if let Some(actual_pass) = pass {
-                let ssid = String::from_utf8(actual_ssid.to_vec()).ok().unwrap();
-                let password = String::from_utf8(actual_pass.to_vec()).ok().unwrap();
-
-                if !d2_button.is_high() {
-                    if connect_wifi(&mut wifi, &ssid, &password).is_ok() {
-                        log::info!("Was able to join wifi from stored credentials :-)");
-                    } else {
-                        log::info!("Was NOT able to join wifi :-( ");
-                    }
-                }
-                else {
-                    log::info!("D2 was held down. Skipping Wi-Fi connect.");
-                }
-
-            }
+    let mut manager = mutex.lock().unwrap();
+    let init_result = manager.process_initial_state(d2_button.is_high());
+    match init_result {
+        Ok(state) => {
+            log::info!("Wifi manager initialized -> {:?}", state);
         }
-    } else {
-        log::info!("No stored wifi credentials. Deferring wifi");
+        Err(e) => {
+            log::info!("Wifi manager errored on initialize: {:?}", e);
+        }
     }
+    drop(manager);
 
     log::info!("Initializing servo");
     let timer_driver = LedcTimerDriver::new(
@@ -264,7 +250,7 @@ fn main() {
     log::info!("Ready :-)");
     const SLEEP_DURATION: Duration = Duration::from_millis(150);
 
-    let mut lock_ctx = LockCtx::new(display, nvs, wifi, servo);
+    let mut lock_ctx = LockCtx::new(display, nvs, servo);
 
     loop {
         let mut rx_buf: [u8; 254] = [0; 254];

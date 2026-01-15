@@ -12,6 +12,7 @@ use embedded_graphics_core::pixelcolor::Rgb565;
 use embedded_graphics_core::prelude::{DrawTarget, RgbColor};
 use embedded_graphics_core::Drawable;
 use esp_idf_hal::gpio::{AnyOutputPin, GpioError};
+use crate::wifi_manager::WIFI_MANAGER;
 
 pub struct WifiInfoScreen {
     needs_redraw: bool,
@@ -32,8 +33,8 @@ impl WifiInfoScreen {
 impl ScreenState for WifiInfoScreen {
     type SPI = MySPI<'static>;
     type PinE = GpioError;
-    type DC = AnyOutputPin;
     type RST = AnyOutputPin;
+    type DC = AnyOutputPin;
 
     fn on_update(&mut self, lock_ctx: &mut LockCtx) -> Option<usize> {
         if let Some(update) = &lock_ctx.this_update {
@@ -43,10 +44,18 @@ impl ScreenState for WifiInfoScreen {
                         let maybe_creds = parse_wifi_qr(maybe_string);
 
                         if let Some((ssid, password)) = maybe_creds {
-                            if lock_ctx.connect_wifi(&ssid, &password).is_ok() {
-                                self.text = ssid;
-                            } else {
-                                self.text = "Couldn't connect".to_string()
+
+                            let mut manager = WIFI_MANAGER.get().unwrap().lock().unwrap();
+                            manager.ssid = Some(ssid.clone());
+                            manager.password = Some(password);
+
+                            match manager.robust_connect() {
+                                Ok(_) => {
+                                    self.text = ssid;
+                                }
+                                Err(e) => {
+                                    self.error_string = Some(format!("{:?}", e));
+                                }
                             }
                             self.needs_redraw = true;
                         }
@@ -83,7 +92,12 @@ impl ScreenState for WifiInfoScreen {
             .expect("Should have drawn");
 
         let currently_connected_position = Point::new(60, 40);
-        let currently_connected_text = if lock_ctx.wifi_connected {
+
+        let manager = WIFI_MANAGER.get().unwrap().lock().unwrap();
+        let wifi_connected = manager.is_connected();
+        drop(manager);
+
+        let currently_connected_text = if wifi_connected {
             let ssid = lock_ctx.get_wifi_ssid().unwrap();
             let ssid_text = format!("SSID: {}", ssid);
 
@@ -127,10 +141,6 @@ impl ScreenState for WifiInfoScreen {
 
         self.needs_redraw = false;
     }
-
-    // fn get_id(&self) -> ScreenId {
-    //     ScreenId::WifiInfo
-    // }
 
     fn needs_redraw(&self) -> bool {
         self.needs_redraw

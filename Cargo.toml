@@ -28,7 +28,7 @@ generated = []
 
 [dependencies]
 log = { version = "0.4", default-features = false }
-esp-idf-svc = { version = "0.51", features = ["critical-section", "embassy-time-driver", "embassy-sync"] }
+esp-idf-svc = { version = "0.51", features = ["critical-section"] }
 esp-idf-hal = "0.45.2"
 embedded-graphics = "0.8.1"
 embedded-graphics-core = "0.4.0"
@@ -47,4 +47,4 @@ hkdf = "0.12.4"
 aes-gcm = "0.10.3"
 
 [build-dependencies]
-embuild = { features = ["espidf"], version = "0.33.0" }
+embuild = { features = ["espidf"], version = "0.33.1" }

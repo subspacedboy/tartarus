@@ -1,0 +1,18 @@
+# ============================================================================
+# COMPLETE EXAMPLE: Multipart Binary for ESP32
+# ============================================================================
+esp_toml_version = 1.0
+multipart = true
+chip = "esp32-s3"
+supported_apps = ["TartarusLock"]
+
+[TartarusLock]
+# icon = "https://example.com/firmware-icon.png"
+# readme.text = "https://example.com/docs/README.md"
+image.esp32-s3.parts = [
+    "https://tartarus.subjugated.club/firmware/bootloader_4mb.bin",
+    "https://tartarus.subjugated.club/firmware/partitions.bin",
+    "https://tartarus.subjugated.club/firmware/app.bin"
+]
+image.esp32-s3.addresses = ["0x0000", "0x8000", "0x10000"]
+console_baudrate = 115200

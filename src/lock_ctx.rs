@@ -8,19 +8,12 @@ use crate::event_generated::club::subjugated::fb::event::{
     CommonMetadata, CommonMetadataArgs, Event, EventArgs, EventType, SignedEvent, SignedEventArgs,
 };
 use crate::fb_helper::calculate_signature;
-use crate::firmware_generated::club;
-use crate::firmware_generated::club::subjugated::fb::message::firmware::{
-    FirmwareMessage, FirmwareMessageArgs, GetLatestFirmwareRequest, GetLatestFirmwareRequestArgs,
-    Version, VersionArgs,
-};
 use crate::firmware_screen::FirmwareScreen;
-use crate::firmware_updater::{read_as_firmware_message, FirmwareManager};
+use crate::firmware_updater::{FirmwareManager};
 use crate::internal_config::InternalConfig;
 use crate::internal_contract::{InternalContract, InternalResetCommand, SaveState};
-use crate::internal_firmware::FirmwareMessageType;
 use crate::lock_ctx::TopicType::{Acknowledgments, ConfigurationData, SignedMessages};
 use crate::lock_state_screen::LockstateScreen;
-use crate::mqtt_service::TopicType::FirmwareMessage as TopicFirmwareMessage;
 use crate::mqtt_service::{MqttService, SignedMessageTransport, TopicType};
 use crate::overlays::{ButtonPressOverlay, WifiOverlay};
 use crate::prelude::{DynOverlay, MyDisplay, MySPI};
@@ -30,10 +23,8 @@ use crate::screen_state::ScreenState;
 use crate::servo::Servo;
 use crate::verifier::{SignedMessageVerifier, VerifiedType};
 use crate::wifi_info_screen::WifiInfoScreen;
-use crate::wifi_util::connect_wifi;
 use crate::Esp32Rng;
-use aes_gcm::aead::generic_array::GenericArray;
-use aes_gcm::aead::{Aead, Nonce};
+use aes_gcm::aead::{Aead};
 use aes_gcm::KeyInit;
 use aes_gcm::{AeadCore, Aes256Gcm, Key};
 use data_encoding::{BASE32_NOPAD, BASE64, BASE64URL};
@@ -42,7 +33,6 @@ use embedded_graphics_core::prelude::{DrawTarget, RgbColor};
 use esp_idf_hal::gpio::{AnyOutputPin, GpioError};
 use esp_idf_svc::nvs::{EspNvs, NvsDefault};
 use esp_idf_svc::sys::{nvs_flash_deinit, nvs_flash_erase, nvs_flash_init};
-use esp_idf_svc::wifi::{BlockingWifi, EspWifi};
 use flatbuffers::FlatBufferBuilder;
 use hkdf::Hkdf;
 use p256::ecdh::diffie_hellman;
@@ -54,8 +44,8 @@ use sha2::{Digest, Sha256};
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use crate::wifi_manager::WIFI_MANAGER;
 
 #[derive(Debug, Clone)]
 pub struct TickUpdate {
@@ -70,8 +60,6 @@ pub struct LockCtx {
     pub(crate) display: MyDisplay<'static>,
     nvs: EspNvs<NvsDefault>,
     overlays: Vec<Box<DynOverlay<'static>>>,
-    pub(crate) wifi: BlockingWifi<EspWifi<'static>>,
-    pub(crate) wifi_connected: bool,
     pub(crate) lock_secret_key: Option<SecretKey>,
     pub(crate) lock_public_key: Option<PublicKey>,
     pub(crate) this_update: Option<TickUpdate>,
@@ -103,14 +91,11 @@ impl LockCtx {
     pub fn new(
         display: MyDisplay<'static>,
         nvs: EspNvs<NvsDefault>,
-        wifi: BlockingWifi<EspWifi<'static>>,
         servo: Servo<'static>,
     ) -> Self {
         let mut lck = LockCtx {
             display,
             nvs,
-            wifi,
-            wifi_connected: false,
             overlays: Vec::new(),
             qr_code_screen: None,
             lock_secret_key: None,
@@ -153,9 +138,8 @@ impl LockCtx {
 
         // This must come after key loading because we're announcing to the coordinator with our
         // public key.
-        if lck.wifi.is_connected().unwrap() && lck.wifi.is_up().unwrap() {
-            lck.wifi_connected = true;
-
+        let manager = WIFI_MANAGER.get().unwrap().lock().unwrap();
+        if manager.is_connected() {
             // Start MQTT service
             let mqtt_service = MqttService::new(
                 lck.configuration.clone(),
@@ -174,6 +158,7 @@ impl LockCtx {
             }
             lck.firmware_manager.enqueue_get_latest_firmware();
         }
+        drop(manager);
 
         log::info!("Seeing if we have previous state...");
 
@@ -622,39 +607,6 @@ impl LockCtx {
                 }
             }
             _ => {}
-        }
-    }
-
-    pub fn connect_wifi(&mut self, ssid: &String, password: &String) -> Result<bool, String> {
-        log::info!(
-            "Trying to connect to wifi -> SSID[{}] Password[{}]",
-            ssid,
-            password
-        );
-
-        let mut tries = 2;
-        let mut connected = false;
-        while tries > 0 && !connected {
-            if connect_wifi(&mut self.wifi, ssid, password).is_ok() {
-                log::info!("Connected!");
-                self.wifi_connected = true;
-                connected = true;
-
-                // TODO start mqtt or just reset?
-
-                self.nvs.set_blob("ssid", ssid.as_bytes()).unwrap();
-                self.nvs.set_blob("password", password.as_bytes()).unwrap();
-            } else {
-                log::info!("Failed to connect");
-                tries -= 1;
-            }
-        }
-
-        if !connected {
-            log::info!("Failed to connect and ran out of tries :-(");
-            Err("Unable to connect".to_string())
-        } else {
-            Ok(true)
         }
     }
 
