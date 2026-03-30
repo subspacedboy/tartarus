@@ -779,7 +779,9 @@ impl LockCtx {
                 let mut bytes = Vec::new();
                 if into_writer(&save_state, &mut bytes).is_ok() {
                     if self.nvs.set_blob("contract", &bytes).is_ok() {
-                        log::info!("Contract saved to NVS");
+                        log::info!("Contract saved to NVS [{}]", bytes.len());
+                    } else {
+                        log::error!("Failed to save NVS [{}]", bytes.len());
                     }
                 }
             } else {
@@ -816,7 +818,7 @@ impl LockCtx {
         use ciborium::de::from_reader;
 
         let key_name = "contract";
-        let mut buffer: [u8; 1024] = [0; 1024];
+        let mut buffer = vec![0u8; 4096];
         match self.nvs.get_blob(key_name, &mut buffer) {
             Ok(Some(bytes)) => {
                 let len = bytes.len();
@@ -832,8 +834,8 @@ impl LockCtx {
                 log::info!("No contract data was present");
                 None
             }
-            Err(_) => {
-                log::info!("No contract key was set");
+            Err(e) => {
+                log::error!("Contract was set but failed to read save state: {}", e);
                 None
             }
         }
