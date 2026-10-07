@@ -401,10 +401,26 @@ impl LockCtx {
             ) {
                 Ok(verified_message) => {
                     let for_acknowledgement = verified_message.clone();
-                    self.increment_command_counter(verified_message.get_counter());
 
                     match self.process_command(verified_message) {
                         Ok(_) => {
+                            match &for_acknowledgement {
+                                VerifiedType::UnlockCommand(c) => {
+                                    self.increment_command_counter(c.counter);
+                                }
+                                VerifiedType::LockCommand(c) => {
+                                    self.increment_command_counter(c.counter);
+                                }
+                                VerifiedType::ReleaseCommand(c) => {
+                                    self.increment_command_counter(c.counter);
+                                }
+                                VerifiedType::AbortCommand(c) => {
+                                    self.increment_command_counter(c.counter);
+                                }
+                                _ => {}
+                            }
+                            self.save_state_if_dirty();
+
                             let acknowledger = Acknowledger::new();
                             let signing_key = self.get_signing_key();
                             let ack_buffer = acknowledger.build_acknowledgement(
@@ -615,13 +631,14 @@ impl LockCtx {
     pub fn process_command(&mut self, command: VerifiedType) -> Result<bool, String> {
         // Update: Thanks to refactoring, all commands are handled by lock screen.
         if let Some(mut lock_screen) = self.lock_state_screen.take() {
-            match lock_screen.process_command(self, command) {
+            let res = lock_screen.process_command(self, command);
+            self.lock_state_screen = Some(lock_screen);
+            match res {
                 Ok(succeeded) => {
                     if let Some(new_screen) = succeeded {
                         self.active_screen_idx = new_screen.into();
                     }
 
-                    self.lock_state_screen = Some(lock_screen);
                     self.save_state_if_dirty();
                     Ok(true)
                 }
@@ -648,7 +665,13 @@ impl LockCtx {
         let contract = self.contract.take();
         if let Some(mut internal_contract) = contract {
             if internal_contract.command_counter >= value {
-                log::warn!("!!! The command counter is being set to a value lower than it should have.");
+                log::warn!(
+                    "!!! Refusing to set command counter to {} which is not greater than current counter {}",
+                    value,
+                    internal_contract.command_counter
+                );
+                self.contract = Some(internal_contract);
+                return;
             }
             internal_contract.command_counter = value;
             self.dirty = true;

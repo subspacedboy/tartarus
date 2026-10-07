@@ -205,6 +205,14 @@ impl SignedMessageVerifier {
                     MessagePayload::Contract => {
                         log::debug!("Proceeding as contract");
                         let contract = signed_msg.payload_as_contract().unwrap();
+                        if verifying_keys.contains_key("contract") {
+                            log::warn!("Rejected contract message because lock is already under contract");
+                            return Err(VerificationError {
+                                serial_number: contract.serial_number(),
+                                counter: 0,
+                                message: "Lock already under contract".to_string(),
+                            });
+                        }
                         log::debug!("Contract Public Key: {:?}", contract.public_key().unwrap());
                         let verifying_key = match VerifyingKey::from_sec1_bytes(
                             contract.public_key().unwrap().bytes(),
