@@ -269,14 +269,23 @@ fn main() {
         }
 
         let mut data: Option<Vec<u8>> = None;
-        if i2c_driver
-            .read(READER_ADDRESS, &mut rx_buf, NON_BLOCK)
-            .is_ok()
-        {
-            let size: usize = rx_buf[0] as usize;
-            if size > 0 {
-                // See rx_buf for 2 and +2 info.
-                data = Some(rx_buf[2..size + 2].to_vec());
+
+        if i2c_driver.read(READER_ADDRESS, &mut rx_buf, NON_BLOCK).is_ok() {
+            // 1. Read the 16-bit little-endian length properly
+            let size = u16::from_le_bytes([rx_buf[0], rx_buf[1]]) as usize;
+
+            // 2. Sanity check the size (TCR max payload is 254 bytes)
+            if size > 0 && size <= 254 {
+                let payload = &rx_buf[2..size + 2];
+
+                // 3. Strip any null bytes caused by torn reads or misaligned buffers
+                let clean_payload: Vec<u8> = payload
+                    .iter()
+                    .copied()
+                    .take_while(|&b| b != 0) // Stop at the first null terminator
+                    .collect();
+
+                data = Some(clean_payload);
             }
         }
 

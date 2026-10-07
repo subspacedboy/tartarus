@@ -12,6 +12,7 @@ use embedded_graphics_core::pixelcolor::Rgb565;
 use embedded_graphics_core::prelude::{DrawTarget, RgbColor};
 use embedded_graphics_core::Drawable;
 use esp_idf_hal::gpio::{AnyOutputPin, GpioError};
+use log::error;
 
 pub struct LockstateScreen {
     needs_redraw: bool,
@@ -70,34 +71,41 @@ impl ScreenState for LockstateScreen {
             let verifier = SignedMessageVerifier::new();
             let keys = lock_ctx.get_keyring();
 
-            let decoded = BASE64.decode(&*qr_data).expect("Valid base64");
-            match verifier.verify(decoded, &keys, command_counter, serial_number) {
-                Ok(command) => {
-                    return match command {
-                        VerifiedType::UnlockCommand(c) => {
-                            lock_ctx.unlock();
-                            lock_ctx.increment_command_counter(c.counter);
-                            Some(1)
+            match BASE64.decode(&qr_data) {
+                Ok(decoded) => {
+                    match verifier.verify(decoded, &keys, command_counter, serial_number) {
+                        Ok(command) => {
+                            return match command {
+                                VerifiedType::UnlockCommand(c) => {
+                                    lock_ctx.unlock();
+                                    lock_ctx.increment_command_counter(c.counter);
+                                    Some(1)
+                                }
+                                VerifiedType::LockCommand(c) => {
+                                    lock_ctx.lock();
+                                    lock_ctx.increment_command_counter(c.counter);
+                                    Some(1)
+                                }
+                                VerifiedType::ReleaseCommand(_) |
+                                VerifiedType::AbortCommand(_) => {
+                                    lock_ctx.end_contract();
+                                    Some(0)
+                                }
+                                VerifiedType::ResetCommand(reset) => {
+                                    lock_ctx.full_reset(&reset);
+                                    Some(0)
+                                }
+                                _ => None,
+                            };
                         }
-                        VerifiedType::LockCommand(c) => {
-                            lock_ctx.lock();
-                            lock_ctx.increment_command_counter(c.counter);
-                            Some(1)
+                        Err(e) => {
+                            log::error!("Failed to verify QR code {:?}", e);
                         }
-                        VerifiedType::ReleaseCommand(_) |
-                        VerifiedType::AbortCommand(_) => {
-                            lock_ctx.end_contract();
-                            Some(0)
-                        }
-                        VerifiedType::ResetCommand(reset) => {
-                            lock_ctx.full_reset(&reset);
-                            Some(0)
-                        }
-                        _ => None,
-                    };
+                    }
                 }
                 Err(e) => {
-                    log::error!("Failed to verify QR code {:?}", e);
+                    // Log the error and let the polling loop try again
+                    error!("Discarding invalid scan data: {e}");
                 }
             }
             self.needs_redraw = true;

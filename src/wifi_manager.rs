@@ -204,7 +204,11 @@ impl WifiManager {
 
         wifi.connect()?;
         info!("Wifi connected");
-        wifi.wait_netif_up()?;
+        wifi.wait_netif_up().or_else(|_| {
+            // Give it 500ms before trying again
+            esp_idf_hal::delay::FreeRtos::delay_ms(500);
+            wifi.wait_netif_up()
+        })?;
         info!("Wifi netif up");
 
         self.state = WifiState::Connected(ssid);

@@ -30,12 +30,12 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-pub struct FirmwareAssembler {
+pub struct MessageAssembler {
     pub current_message: Vec<u8>,
     pub started: bool,
 }
 
-impl FirmwareAssembler {
+impl MessageAssembler {
     pub fn new() -> Self {
         Self {
             current_message: vec![],

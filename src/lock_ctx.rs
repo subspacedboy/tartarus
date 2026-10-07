@@ -43,8 +43,10 @@ use rand_core::RngCore;
 use sha2::{Digest, Sha256};
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
+use std::io::Error;
 use std::rc::Rc;
 use std::time::Duration;
+use anyhow::anyhow;
 use crate::wifi_manager::WIFI_MANAGER;
 
 #[derive(Debug, Clone)]
@@ -163,7 +165,7 @@ impl LockCtx {
         log::info!("Seeing if we have previous state...");
 
         let maybe_state = lck.read_contract();
-        if let Some(state) = maybe_state {
+        if let Ok(Some(state)) = maybe_state {
             log::info!("Restoring contract state.");
             lck.contract = Some(state.internal_contract);
             log::info!("Contract {:?}", lck.contract);
@@ -814,29 +816,36 @@ impl LockCtx {
         }
     }
 
-    pub fn read_contract(&mut self) -> Option<SaveState> {
+    pub fn read_contract(&mut self) -> anyhow::Result<Option<SaveState>> {
         use ciborium::de::from_reader;
-
         let key_name = "contract";
-        let mut buffer = vec![0u8; 4096];
+
+        let required_size = match  self.nvs.blob_len(key_name)? {
+            Some(len) => len,
+            None => {
+                log::info!("No contract data was present");
+                return Ok(None);
+            }
+        };
+        let mut buffer = vec![0u8; required_size];
+
         match self.nvs.get_blob(key_name, &mut buffer) {
             Ok(Some(bytes)) => {
                 let len = bytes.len();
                 match from_reader(&buffer[..len]) {
-                    Ok(state) => Some(state),
-                    Err(e) => {
-                        log::error!("Failed to deserialize save state: {}", e);
-                        None
+                    Ok(state) => Ok(Some(state)),
+                    _ => {
+                        Err(anyhow!("Contract bytes were set but we couldn't deserialize them"))
                     }
                 }
             }
             Ok(None) => {
                 log::info!("No contract data was present");
-                None
+                Ok(None)
             }
             Err(e) => {
                 log::error!("Contract was set but failed to read save state: {}", e);
-                None
+                Err(anyhow!("Contract was set but failed to read save state: {}", e))
             }
         }
     }

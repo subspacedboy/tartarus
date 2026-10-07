@@ -1,4 +1,4 @@
-use crate::firmware_updater::FirmwareAssembler;
+use crate::firmware_updater::MessageAssembler;
 use crate::internal_config::InternalConfig;
 use embedded_svc::mqtt::client::EventPayload::Received;
 use embedded_svc::mqtt::client::{Details, EventPayload, QoS};
@@ -192,7 +192,7 @@ impl MqttService {
                 let configuration_queue_name = format!("configuration/{session_token_2}");
                 let firmware_queue_name = format!("firmware/{session_token_2}");
 
-                let mut current_firmware_message : Option<FirmwareAssembler> = None;
+                let mut current_chunked_message: Option<(TopicType, MessageAssembler)> = None;
 
                 while let Ok(event) = connection.next() {
                     match event.payload() {
@@ -227,24 +227,40 @@ impl MqttService {
                                 }
                                 Details::InitialChunk(initial_chunk_data) => {
                                     //Received MQTT message (0): 1004 bytes on Some("firmware/HRWS2V"). [Details -> InitialChunk(InitialChunkData { total_data_size: 16152 })]
-                                    if firmware_queue_name.as_str() == topic.unwrap() {
-                                        let mut assembler = FirmwareAssembler::new_with_size(initial_chunk_data.total_data_size);
-                                        assembler.add_to_current_message(data.to_vec());
-                                        current_firmware_message = Some(assembler);
+                                    if let Some(topic_str) = topic {
+                                        // Determine the destination based on the topic
+                                        let topic_type = if topic_str == firmware_queue_name.as_str() {
+                                            Some(TopicType::FirmwareMessage)
+                                        } else if topic_str == inbound_queue_name.as_str() {
+                                            Some(TopicType::SignedMessages)
+                                        } else {
+                                            None
+                                        };
+
+                                        // If it's a topic we care about, start assembling
+                                        if let Some(t_type) = topic_type {
+                                            let mut assembler = MessageAssembler::new_with_size(initial_chunk_data.total_data_size);
+                                            assembler.add_to_current_message(data.to_vec());
+
+                                            // Store both the type and the assembler
+                                            current_chunked_message = Some((t_type, assembler));
+                                        }
                                     }
                                 }
                                 Details::SubsequentChunk(subsequent) => {
-                                    // We won't have topic here.
-                                    if let Some(current_message) = current_firmware_message.as_mut() {
+                                    if let Some((_, current_message)) = current_chunked_message.as_mut() {
                                         current_message.add_to_current_message(data.to_vec());
 
                                         if subsequent.total_data_size == current_message.current_size() {
-                                            log::info!("Finished firmware message. Adding to SignedMessageTransport queue");
+                                            log::info!("Finished chunked message. Adding to SignedMessageTransport queue");
+
+                                            // Take ownership of the tuple, leaving 'None' in current_chunked_message
+                                            let (topic_type, finished_message) = current_chunked_message.take().unwrap();
+
                                             message = Some(SignedMessageTransport::new(
-                                                current_message.current_message.to_vec(),
-                                                TopicType::FirmwareMessage,
+                                                finished_message.current_message.to_vec(),
+                                                topic_type, // Safely use the exact TopicType we saved in InitialChunk
                                             ));
-                                            current_firmware_message = None;
                                         }
                                     }
                                 }
