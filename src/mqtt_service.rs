@@ -54,6 +54,7 @@ impl SignedMessageTransport {
         self.topic.clone()
     }
 
+    #[allow(dead_code)]
     pub fn bot_name(&self) -> Option<String> {
         self.bot_name.clone()
     }
@@ -159,7 +160,7 @@ impl MqttService {
         };
 
         log::info!("Attempting to connect to MQTT");
-        let (mut client, mut connection): (EspMqttClient, EspMqttConnection) =
+        let (client, connection): (EspMqttClient, EspMqttConnection) =
             EspMqttClient::new(broker_url, &config).expect("Failed to connect to MQTT broker");
 
         // Need to immediately start pumping the connection for messages, or else subscribe() and publish() below will not work

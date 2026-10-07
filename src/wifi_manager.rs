@@ -42,11 +42,11 @@ impl WifiManager {
             state: WifiState::DisconnectedNoCreds
         };
 
-        manager.load_saved_creds(false);
+        manager.load_saved_creds();
         manager
     }
 
-    fn load_saved_creds(&mut self, suppress_connect : bool) {
+    fn load_saved_creds(&mut self) {
         let nvs: EspNvs<NvsDefault> = EspNvs::new(self.nvs_default.clone(), "storage", true).unwrap();
 
         let mut buffer: [u8; 256] = [0; 256];
@@ -130,7 +130,7 @@ impl WifiManager {
             self.load_wifi_driver();
         }
 
-        if let Ok(worked) = self.connect_wifi() {
+        if self.connect_wifi().is_ok() {
             self.save_credentials();
         } else {
             // Something errored out. Try to recover but completely deinitialize driver

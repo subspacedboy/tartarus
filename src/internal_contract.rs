@@ -39,6 +39,7 @@ pub struct InternalPermission {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct InternalUnlockCommand {
     pub contract_serial_number: u16,
     pub serial_number: u16,
@@ -54,6 +55,7 @@ impl InternalUnlockCommand {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct InternalLockCommand {
     pub contract_serial_number: u16,
     pub serial_number: u16,
@@ -69,6 +71,7 @@ impl InternalLockCommand {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct InternalReleaseCommand {
     pub contract_serial_number: u16,
     pub serial_number: u16,
@@ -84,6 +87,7 @@ impl InternalReleaseCommand {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct InternalAbortCommand {
     pub contract_serial_number: u16,
     pub serial_number: u16,
@@ -233,7 +237,7 @@ impl From<ResetCommand<'_>> for InternalResetCommand {
 pub mod verifying_key_serde {
     use p256::ecdsa::VerifyingKey;
     use serde::de::Error;
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use serde::{Deserialize, Deserializer, Serializer};
 
     pub fn serialize<S>(key: &Option<VerifyingKey>, serializer: S) -> Result<S::Ok, S::Error>
     where

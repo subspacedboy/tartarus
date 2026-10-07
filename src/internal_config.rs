@@ -1,6 +1,6 @@
 use crate::configuration_generated::club::subjugated::fb::message::configuration::CoordinatorConfiguration;
 use crate::internal_contract::verifying_key_serde;
-use p256::ecdsa::{SigningKey, VerifyingKey};
+use p256::ecdsa::VerifyingKey;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

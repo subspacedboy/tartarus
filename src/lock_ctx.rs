@@ -43,7 +43,6 @@ use rand_core::RngCore;
 use sha2::{Digest, Sha256};
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
-use std::io::Error;
 use std::rc::Rc;
 use std::time::Duration;
 use anyhow::anyhow;
@@ -1210,7 +1209,7 @@ impl LockCtx {
     }
 
     pub(crate) fn enqueue_message(&self, message: SignedMessageTransport) {
-        if let Some(mut mqtt_service) = self.mqtt_service.as_ref().map(|m| m.borrow_mut()) {
+        if let Some(mqtt_service) = self.mqtt_service.as_ref().map(|m| m.borrow_mut()) {
             mqtt_service.enqueue_message(message);
         }
     }

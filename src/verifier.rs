@@ -26,6 +26,7 @@ pub enum VerifiedType {
     ResetCommand(InternalResetCommand),
 }
 
+#[allow(dead_code)]
 impl VerifiedType {
     pub fn get_counter(&self) -> u16 {
         match self {
@@ -34,7 +35,7 @@ impl VerifiedType {
             VerifiedType::LockCommand(v) => v.counter,
             VerifiedType::ReleaseCommand(v) => v.counter,
             VerifiedType::AbortCommand(v) => v.counter,
-            VerifiedType::ResetCommand(v) => 0u16,
+            VerifiedType::ResetCommand(_) => 0u16,
         }
     }
 
@@ -126,14 +127,14 @@ impl SignedMessageVerifier {
             Ok(signed_msg) => {
                 log::info!("Signed message: {:?}", signed_msg);
 
-                /// There are two situations here.
-                /// 1) The message has an indicated authority, in which case that trumps everything.
-                /// The only situation that applies to as of writing this is an Abort or a Reset command
-                /// because it has to refer to a safety key.
-                ///
-                /// 2) A Contract command and the key we need to use is embedded in the first message.
-                /// Otherwise, it's a command that has to be signed by the key in the Contract we're
-                /// already under.
+                // There are two situations here.
+                // 1) The message has an indicated authority, in which case that trumps everything.
+                // The only situation that applies to as of writing this is an Abort or a Reset command
+                // because it has to refer to a safety key.
+                //
+                // 2) A Contract command and the key we need to use is embedded in the first message.
+                // Otherwise, it's a command that has to be signed by the key in the Contract we're
+                // already under.
                 let authority_id = signed_msg.authority_identifier().map(|s| s.to_string());
                 let verifying_key: Option<_> = if let Some(authority) =
                     signed_msg.authority_identifier()

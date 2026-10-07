@@ -2,10 +2,14 @@ extern crate core;
 
 mod acknowledger;
 mod config_verifier;
+#[allow(unused_imports, mismatched_lifetime_syntaxes)]
 mod configuration_generated;
+#[allow(unused_imports, mismatched_lifetime_syntaxes)]
 mod contract_generated;
+#[allow(unused_imports, mismatched_lifetime_syntaxes)]
 mod event_generated;
 mod fb_helper;
+#[allow(unused_imports, mismatched_lifetime_syntaxes)]
 mod firmware_generated;
 mod firmware_updater;
 mod internal_config;
@@ -32,14 +36,11 @@ mod wifi_manager;
 use crate::wifi_manager::WifiManager;
 use std::sync::Mutex;
 use crate::wifi_manager::WIFI_MANAGER;
-use esp_idf_hal::sys;
 use crate::servo::Servo;
 use esp_idf_hal::ledc::LedcDriver;
 use esp_idf_svc::hal::ledc::config::TimerConfig;
 use esp_idf_svc::hal::ledc::LedcTimerDriver;
 use esp_idf_svc::hal::ledc::Resolution;
-use esp_idf_svc::wifi::BlockingWifi;
-use esp_idf_svc::wifi::EspWifi;
 use mipidsi::models::ST7789;
 use mipidsi::options::{ColorInversion, Orientation, Rotation};
 use mipidsi::{Builder, Display};
@@ -57,7 +58,7 @@ use esp_idf_hal::units::KiloHertz;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::hal::delay;
 use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs, NvsDefault};
-use esp_idf_svc::sys::{esp_efuse_desc_t, esp_efuse_read_field_bit, esp_random};
+use esp_idf_svc::sys::esp_random;
 
 use crate::lock_ctx::{LockCtx, TickUpdate};
 

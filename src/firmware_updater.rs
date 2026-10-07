@@ -11,7 +11,6 @@ use crate::internal_firmware::{
 use std::borrow::BorrowMut;
 use std::cell::RefCell;
 
-use crate::lock_ctx::LockCtx;
 use crate::mqtt_service::{MqttService, SignedMessageTransport, TopicType};
 use crate::Esp32Rng;
 use anyhow::anyhow;
@@ -36,6 +35,7 @@ pub struct MessageAssembler {
 }
 
 impl MessageAssembler {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             current_message: vec![],
@@ -154,7 +154,7 @@ impl FirmwareManager {
         self.mqtt_service = Some(mqtt_service);
     }
 
-    pub fn process_message(&mut self, firmware_data: Vec<u8>, under_contract: bool) {
+    pub fn process_message(&mut self, firmware_data: Vec<u8>, _under_contract: bool) {
         if let Ok(msg) = read_as_firmware_message(firmware_data.as_slice()) {
             match msg {
                 FirmwareMessageType::Challenge(challenge) => {
@@ -589,6 +589,7 @@ impl FirmwareUpdater {
         updater
     }
 
+    #[allow(dead_code)]
     pub fn queue_bytes(&self, bytes: Vec<u8>) {
         if let Ok(mut incoming_bytes) = self.incoming_bytes.lock() {
             incoming_bytes.push_back(bytes);

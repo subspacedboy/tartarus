@@ -3,7 +3,7 @@ use crate::lock_ctx::LockCtx;
 use crate::prelude::MySPI;
 use crate::screen_ids::ScreenId;
 use crate::screen_state::ScreenState;
-use crate::verifier::{SignedMessageVerifier, VerificationError, VerifiedType};
+use crate::verifier::{SignedMessageVerifier, VerifiedType};
 use embedded_graphics::mono_font::ascii::FONT_10X20;
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::text::{Alignment, Text};
