@@ -43,11 +43,11 @@ class WebUserAuthenticationFilter(
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             val token = authHeader.substring(7)
 
-            val signedJWT = SignedJWT.parse(token)
-            val claimsSet = signedJWT.jwtClaimsSet
-
-            val sessionTokenName = claimsSet.subject
             try {
+                val signedJWT = SignedJWT.parse(token)
+                val claimsSet = signedJWT.jwtClaimsSet
+
+                val sessionTokenName = claimsSet.subject
                 val (publicKey, authorities: List<GrantedAuthority>) = when {
                     sessionTokenName.startsWith("as-") -> {
                         val authorSession = authorSessionService.findByName(sessionTokenName)
@@ -86,9 +86,12 @@ class WebUserAuthenticationFilter(
 
                     SecurityContextHolder.getContext().authentication = authentication
                 }
+            } catch (ex: java.text.ParseException) {
+                this.filterLogger.warn("Malformed JWT token in Authorization header: ${ex.message}")
             } catch (ex: PersistenceException) {
                 this.filterLogger.warn("We got a token but no backing session. $ex")
-                filterChain.doFilter(request, response)
+            } catch (ex: Exception) {
+                this.filterLogger.warn("Error processing authentication token: ${ex.message}")
             }
         }
 

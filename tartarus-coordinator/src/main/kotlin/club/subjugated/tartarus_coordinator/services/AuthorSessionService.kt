@@ -92,7 +92,7 @@ class AuthorSessionService {
     fun updateKnownToken(authorSessionName: String, updateKnownTokenMessage: UpdateKnownTokenMessage) : KnownToken {
         val authorSession = findByName(authorSessionName)
         val knownToken = knownTokenRepository.findByAuthorSessionIdAndName(authorSession.id, updateKnownTokenMessage.name)
-        assert(authorSession == knownToken.authorSession)
+        require(authorSession == knownToken.authorSession) { "Token does not belong to this author" }
 
         knownToken.notes = updateKnownTokenMessage.notes
         knownTokenRepository.save(knownToken)

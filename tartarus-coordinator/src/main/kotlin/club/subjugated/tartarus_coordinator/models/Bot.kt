@@ -28,7 +28,7 @@ class Bot (
     var password: String? = "",
     var salt: String? = "",
     var description: String,
-    @OneToMany(mappedBy = "id", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "bot", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     var messages: MutableList<Message> = mutableListOf(),
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,

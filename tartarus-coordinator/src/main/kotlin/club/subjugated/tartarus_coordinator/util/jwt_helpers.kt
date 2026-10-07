@@ -14,11 +14,11 @@ sealed class JwtValidationResult {
 }
 
 fun verifyJwt(authorSessionService: AuthorSessionService, lockUserSessionService: LockUserSessionService, jwt: String) : JwtValidationResult {
-    val signedJWT = SignedJWT.parse(jwt)
-    val claimsSet = signedJWT.jwtClaimsSet
-
-    val sessionTokenName = claimsSet.subject
     try {
+        val signedJWT = SignedJWT.parse(jwt)
+        val claimsSet = signedJWT.jwtClaimsSet
+
+        val sessionTokenName = claimsSet.subject ?: return JwtValidationResult.Invalid
         val publicKey = if (sessionTokenName.startsWith("as-")) {
             val authorSession = authorSessionService.findByName(sessionTokenName)
             Base64.getDecoder().decode(authorSession.publicKey)
@@ -43,7 +43,7 @@ fun verifyJwt(authorSessionService: AuthorSessionService, lockUserSessionService
                 return JwtValidationResult.LockUserSession(sessionTokenName)
             }
         }
-    } catch (ex: CryptoException) {
+    } catch (ex: Exception) {
         return JwtValidationResult.Invalid
     }
 

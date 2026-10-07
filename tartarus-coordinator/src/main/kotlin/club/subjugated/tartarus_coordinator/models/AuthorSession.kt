@@ -12,11 +12,11 @@ class AuthorSession(
     var publicKey: String,
     //    var sessionToken : String?,
 
-    @OneToMany(mappedBy = "id", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "authorSession", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     var contracts: MutableList<Contract> = mutableListOf(),
-    @OneToMany(mappedBy = "id", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "authorSession", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     var knownTokens: MutableList<KnownToken> = mutableListOf(),
-    @OneToMany(mappedBy = "id", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "authorSession", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     var commands: MutableList<Command> = mutableListOf(),
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,

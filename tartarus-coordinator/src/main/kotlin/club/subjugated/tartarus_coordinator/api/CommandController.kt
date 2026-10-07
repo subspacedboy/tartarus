@@ -8,6 +8,7 @@ import club.subjugated.tartarus_coordinator.services.LockSessionService
 import club.subjugated.tartarus_coordinator.services.LockUserSessionService
 import jakarta.ws.rs.core.MediaType
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ResponseStatusException
 
 @RestController
 @RequestMapping("/contracts/{contractName}/commands")
@@ -55,7 +57,9 @@ class CommandController {
     ): ResponseEntity<List<CommandMessage>> {
         val lockSessionUser = lockUserSessionService.findByName(lockUser.username)
         val contract = this.contractService.getByNameForAuthor(contractName)
-        assert(lockSessionUser.lockSession == contract.lockSession)
+        if (lockSessionUser.lockSession != contract.lockSession) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "Lock session does not match contract")
+        }
 
         val commands = this.commandQueueService.getByContract(contract)
 
@@ -71,11 +75,14 @@ class CommandController {
     ): ResponseEntity<List<CommandMessage>> {
         val lockSessionUser = lockUserSessionService.findByName(lockUser.username)
         val contract = this.contractService.getByNameForAuthor(contractName)
-        assert(lockSessionUser.lockSession == contract.lockSession)
+        if (lockSessionUser.lockSession != contract.lockSession) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "Lock session does not match contract")
+        }
 
         val commands = this.commandQueueService.getByContract(contract)
 
-        val command = commands.first { it.name == commandName }
+        val command = commands.firstOrNull { it.name == commandName }
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Command not found")
         this.commandQueueService.manuallyAcknowledgeCommand(command)
         contract.nextCounter = command.counter!! + 1
         this.contractService.save(contract)

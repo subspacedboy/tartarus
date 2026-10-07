@@ -104,7 +104,7 @@ class ContractService {
 
     fun approveContract(lockSession: LockSession, contractName: String) : Contract {
         val contract = contractRepository.findByName(contractName)
-        assert(lockSession == contract.lockSession)
+        require(lockSession == contract.lockSession) { "Contract does not belong to this lock session" }
 
         contract.state = ContractState.ACCEPTED
         val command =
@@ -129,7 +129,7 @@ class ContractService {
 
     fun rejectContract(lockSession: LockSession, contractName: String) : Contract {
         val contract = contractRepository.findByName(contractName)
-        assert(lockSession == contract.lockSession)
+        require(lockSession == contract.lockSession) { "Contract does not belong to this lock session" }
         contract.state = ContractState.REJECTED
         contractRepository.save(contract)
 
@@ -157,7 +157,7 @@ class ContractService {
 
         when (val incomingCommand = signedMessageBytesValidatorWithExternalKey(buf, authorPubKey)) {
             is ValidatedPayload.UnlockCommandPayload -> {
-                assert(incomingCommand.unlockCommand.serialNumber.toInt() != 0)
+                require(incomingCommand.unlockCommand.serialNumber.toInt() != 0) { "Serial number must not be zero" }
 
                 val command =
                     Command(
@@ -176,7 +176,7 @@ class ContractService {
                 publisher.publishEvent(NewCommandEvent(this, lockSession.sessionToken!!))
             }
             is ValidatedPayload.LockCommandPayload -> {
-                assert(incomingCommand.lockCommand.serialNumber.toInt() != 0)
+                require(incomingCommand.lockCommand.serialNumber.toInt() != 0) { "Serial number must not be zero" }
                 val command =
                     Command(
                         commandQueue = lockSession.commandQueue.first(),
@@ -194,7 +194,7 @@ class ContractService {
                 publisher.publishEvent(NewCommandEvent(this, lockSession.sessionToken!!))
             }
             is ValidatedPayload.ReleaseCommandPayload -> {
-                assert(incomingCommand.releaseCommand.serialNumber.toInt() != 0)
+                require(incomingCommand.releaseCommand.serialNumber.toInt() != 0) { "Serial number must not be zero" }
                 val command =
                     Command(
                         commandQueue = lockSession.commandQueue.first(),
@@ -235,7 +235,7 @@ class ContractService {
 
     fun getByNameForBot(name : String, botName : String) : Contract {
         val contract = this.contractRepository.findByName(name)
-        assert(contract.getEmbeddedBots().filter { it.name == botName }.isNotEmpty())
+        require(contract.getEmbeddedBots().any { it.name == botName }) { "Bot is not listed in the contract" }
         return contract
     }
 
@@ -368,7 +368,7 @@ class ContractService {
         ResetCommand.startResetCommand(builder)
         ResetCommand.addSession(builder, sessionTokenOffset)
         val serialNumber = 55
-        AbortCommand.addSerialNumber(builder, serialNumber.toUShort())
+        ResetCommand.addSerialNumber(builder, serialNumber.toUShort())
         val resetOffset = ResetCommand.endResetCommand(builder)
 
         builder.finish(resetOffset)

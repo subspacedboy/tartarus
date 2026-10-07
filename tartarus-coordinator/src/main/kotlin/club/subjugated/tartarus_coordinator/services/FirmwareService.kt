@@ -37,7 +37,7 @@ class FirmwareService(
     var challengeKey : String = ""
 
     private val nonceChallenges: Cache<Long, ByteArray> =
-        Caffeine.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(10).build()
+        Caffeine.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(10_000).build()
 
     private val firmwareImages: Cache<String, ByteArray> =
         Caffeine.newBuilder().maximumSize(2).build()
@@ -125,7 +125,17 @@ class FirmwareService(
     fun validateChallengeSignature(requestId: Long, sessionToken: String, data : ByteArray) : Boolean {
         val challengeKey = getECPublicKeyFromCompressedKeyByteArray(Base64.getDecoder().decode(challengeKey))
 
-        val nonce = nonceChallenges.getIfPresent(requestId)!!
+        val nonce = nonceChallenges.getIfPresent(requestId) ?: run {
+            println("⚠️ Challenge nonce for requestId $requestId expired or not found")
+            val event = FirmwareValidationEvent(
+                this,
+                sessionToken = sessionToken,
+                validated = false
+            )
+            publisher.publishEvent(event)
+            return false
+        }
+        nonceChallenges.invalidate(requestId)
 
         val verifier = Signature.getInstance("NonewithECDSA", "BC").apply {
             initVerify(challengeKey)

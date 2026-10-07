@@ -22,7 +22,7 @@ class AdminSessionService {
         val publicKey = getECPublicKeyFromCompressedKeyByteArray(Base64.getDecoder().decode(keyInBase64))
         val encoded = Base64.getEncoder().encodeToString(encodePublicKeySecp1(publicKey))
 
-        assert(keyInBase64 == encoded)
+        check(keyInBase64 == encoded) { "Key base64 representation mismatch: $keyInBase64 != $encoded" }
 
         val adminSession = findByPublicKey(keyInBase64) ?: run {
             val adminSession = AdminSession(
