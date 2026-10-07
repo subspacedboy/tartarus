@@ -27,48 +27,82 @@ pub struct InternalBot {
     pub(crate) name: String,
     #[serde(with = "verifying_key_serde")]
     pub public_key: Option<VerifyingKey>,
-    permission: InternalPermission,
+    pub permission: InternalPermission,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InternalPermission {
-    receive_events: bool,
-    can_unlock: bool,
-    can_release: bool,
+    pub receive_events: bool,
+    pub can_unlock: bool,
+    pub can_lock: bool,
+    pub can_release: bool,
 }
 
 #[derive(Debug, Clone)]
 pub struct InternalUnlockCommand {
-    contract_serial_number: u16,
+    pub contract_serial_number: u16,
     pub serial_number: u16,
     pub counter: u16,
+    pub authority: Option<String>,
+}
+
+impl InternalUnlockCommand {
+    pub fn with_authority(mut self, authority: Option<String>) -> Self {
+        self.authority = authority;
+        self
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct InternalLockCommand {
-    contract_serial_number: u16,
+    pub contract_serial_number: u16,
     pub serial_number: u16,
     pub counter: u16,
+    pub authority: Option<String>,
+}
+
+impl InternalLockCommand {
+    pub fn with_authority(mut self, authority: Option<String>) -> Self {
+        self.authority = authority;
+        self
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct InternalReleaseCommand {
-    contract_serial_number: u16,
+    pub contract_serial_number: u16,
     pub serial_number: u16,
     pub counter: u16,
+    pub authority: Option<String>,
+}
+
+impl InternalReleaseCommand {
+    pub fn with_authority(mut self, authority: Option<String>) -> Self {
+        self.authority = authority;
+        self
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct InternalAbortCommand {
-    contract_serial_number: u16,
+    pub contract_serial_number: u16,
     pub serial_number: u16,
     pub counter: u16,
+    pub authority: Option<String>,
+}
+
+impl InternalAbortCommand {
+    pub fn with_authority(mut self, authority: Option<String>) -> Self {
+        self.authority = authority;
+        self
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct InternalResetCommand {
     session: String,
     serial_number: u16,
+    pub authority: Option<String>,
 }
 
 impl InternalResetCommand {
@@ -77,6 +111,10 @@ impl InternalResetCommand {
     }
     pub fn serial_number(&self) -> u16 {
         self.serial_number
+    }
+    pub fn with_authority(mut self, authority: Option<String>) -> Self {
+        self.authority = authority;
+        self
     }
 }
 
@@ -114,6 +152,7 @@ impl From<UnlockCommand<'_>> for InternalUnlockCommand {
             contract_serial_number: unlock_command.contract_serial_number(),
             serial_number: unlock_command.serial_number(),
             counter: unlock_command.counter(),
+            authority: None,
         }
     }
 }
@@ -124,6 +163,7 @@ impl From<LockCommand<'_>> for InternalLockCommand {
             contract_serial_number: lock_command.contract_serial_number(),
             serial_number: lock_command.serial_number(),
             counter: lock_command.counter(),
+            authority: None,
         }
     }
 }
@@ -134,6 +174,7 @@ impl From<ReleaseCommand<'_>> for InternalReleaseCommand {
             contract_serial_number: release_command.contract_serial_number(),
             serial_number: release_command.serial_number(),
             counter: release_command.counter(),
+            authority: None,
         }
     }
 }
@@ -144,6 +185,7 @@ impl From<AbortCommand<'_>> for InternalAbortCommand {
             contract_serial_number: abort_command.contract_serial_number(),
             serial_number: abort_command.serial_number(),
             counter: abort_command.counter(),
+            authority: None,
         }
     }
 }
@@ -172,6 +214,7 @@ impl From<Permission<'_>> for InternalPermission {
         Self {
             receive_events: permission.receive_events(),
             can_unlock: permission.can_unlock(),
+            can_lock: permission.can_lock(),
             can_release: permission.can_release(),
         }
     }
@@ -182,6 +225,7 @@ impl From<ResetCommand<'_>> for InternalResetCommand {
         Self {
             session: reset.session().unwrap().to_string(),
             serial_number: reset.serial_number(),
+            authority: None,
         }
     }
 }

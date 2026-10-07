@@ -37,6 +37,17 @@ impl VerifiedType {
             VerifiedType::ResetCommand(v) => 0u16,
         }
     }
+
+    pub fn authority(&self) -> Option<&str> {
+        match self {
+            VerifiedType::Contract(_) => None,
+            VerifiedType::UnlockCommand(v) => v.authority.as_deref(),
+            VerifiedType::LockCommand(v) => v.authority.as_deref(),
+            VerifiedType::ReleaseCommand(v) => v.authority.as_deref(),
+            VerifiedType::AbortCommand(v) => v.authority.as_deref(),
+            VerifiedType::ResetCommand(v) => v.authority.as_deref(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -123,6 +134,7 @@ impl SignedMessageVerifier {
                 /// 2) A Contract command and the key we need to use is embedded in the first message.
                 /// Otherwise, it's a command that has to be signed by the key in the Contract we're
                 /// already under.
+                let authority_id = signed_msg.authority_identifier().map(|s| s.to_string());
                 let verifying_key: Option<_> = if let Some(authority) =
                     signed_msg.authority_identifier()
                 {
@@ -257,7 +269,8 @@ impl SignedMessageVerifier {
                                 }
 
                                 if unlock.counter() > minimum_counter {
-                                    Ok(VerifiedType::UnlockCommand(unlock.into()))
+                                    let internal: InternalUnlockCommand = unlock.into();
+                                    Ok(VerifiedType::UnlockCommand(internal.with_authority(authority_id)))
                                 } else {
                                     Err(VerificationError {
                                         serial_number: unlock.serial_number(),
@@ -294,7 +307,8 @@ impl SignedMessageVerifier {
                                 }
 
                                 if lock.counter() > minimum_counter {
-                                    Ok(VerifiedType::LockCommand(lock.into()))
+                                    let internal: InternalLockCommand = lock.into();
+                                    Ok(VerifiedType::LockCommand(internal.with_authority(authority_id)))
                                 } else {
                                     Err(VerificationError {
                                         serial_number: lock.serial_number(),
@@ -331,7 +345,8 @@ impl SignedMessageVerifier {
                                 }
 
                                 if release.counter() > minimum_counter {
-                                    Ok(VerifiedType::ReleaseCommand(release.into()))
+                                    let internal: InternalReleaseCommand = release.into();
+                                    Ok(VerifiedType::ReleaseCommand(internal.with_authority(authority_id)))
                                 } else {
                                     Err(VerificationError {
                                         serial_number: release.serial_number(),
@@ -368,7 +383,8 @@ impl SignedMessageVerifier {
                                 }
 
                                 if abort.counter() > minimum_counter {
-                                    Ok(VerifiedType::AbortCommand(abort.into()))
+                                    let internal: InternalAbortCommand = abort.into();
+                                    Ok(VerifiedType::AbortCommand(internal.with_authority(authority_id)))
                                 } else {
                                     Err(VerificationError {
                                         serial_number: abort.serial_number(),
@@ -394,7 +410,10 @@ impl SignedMessageVerifier {
 
                         let hash = reset.calculate_hash(&incoming_data);
                         match verifying_key.unwrap().verify(&hash, &signature) {
-                            Ok(_) => Ok(VerifiedType::ResetCommand(reset.into())),
+                            Ok(_) => {
+                                let internal: InternalResetCommand = reset.into();
+                                Ok(VerifiedType::ResetCommand(internal.with_authority(authority_id)))
+                            }
                             Err(_) => Err(VerificationError {
                                 serial_number: reset.serial_number(),
                                 counter: 0,

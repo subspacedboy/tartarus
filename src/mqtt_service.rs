@@ -5,7 +5,7 @@ use embedded_svc::mqtt::client::{Details, EventPayload, QoS};
 use esp_idf_svc::mqtt::client::{
     EspMqttClient, EspMqttConnection, EspMqttEvent, LwtConfiguration, MqttClientConfiguration,
 };
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
@@ -232,7 +232,8 @@ fn run_mqtt_connection_worker(
     let configuration_queue_name = format!("configuration/{session_token}");
     let firmware_queue_name = format!("firmware/{session_token}");
 
-    let mut current_chunked_message: Option<(TopicType, MessageAssembler)> = None;
+    let mut current_chunked_messages: HashMap<String, (TopicType, MessageAssembler)> = HashMap::new();
+    let mut last_chunked_topic: Option<String> = None;
 
     while let Ok(event) = connection.next() {
         if handle_mqtt_event(
@@ -240,7 +241,8 @@ fn run_mqtt_connection_worker(
             &inbound_queue_name,
             &configuration_queue_name,
             &firmware_queue_name,
-            &mut current_chunked_message,
+            &mut current_chunked_messages,
+            &mut last_chunked_topic,
             &queue_ref,
             &state_machine_ref,
         ) {
@@ -257,7 +259,8 @@ fn handle_mqtt_event(
     inbound_queue_name: &str,
     configuration_queue_name: &str,
     firmware_queue_name: &str,
-    current_chunked_message: &mut Option<(TopicType, MessageAssembler)>,
+    current_chunked_messages: &mut HashMap<String, (TopicType, MessageAssembler)>,
+    last_chunked_topic: &mut Option<String>,
     queue_ref: &Arc<Mutex<VecDeque<SignedMessageTransport>>>,
     state_machine_ref: &Arc<Mutex<MqttStateMachine>>,
 ) -> bool {
@@ -315,28 +318,36 @@ fn handle_mqtt_event(
                                 MessageAssembler::new_with_size(initial_chunk_data.total_data_size);
                             assembler.add_to_current_message(data.to_vec());
 
-                            // Store both the type and the assembler
-                            *current_chunked_message = Some((t_type, assembler));
+                            *last_chunked_topic = Some(topic_str.to_string());
+                            current_chunked_messages.insert(topic_str.to_string(), (t_type, assembler));
                         }
                     }
                 }
                 Details::SubsequentChunk(subsequent) => {
-                    if let Some((_, current_message)) = current_chunked_message.as_mut() {
-                        current_message.add_to_current_message(data.to_vec());
+                    let target_topic = topic.map(|s| s.to_string()).or_else(|| last_chunked_topic.clone());
+                    if let Some(target) = target_topic {
+                        if let Some((_, current_message)) = current_chunked_messages.get_mut(&target) {
+                            current_message.add_to_current_message(data.to_vec());
 
-                        if subsequent.total_data_size == current_message.current_size() {
-                            log::info!(
-                                "Finished chunked message. Adding to SignedMessageTransport queue"
-                            );
+                            if current_message.current_size() >= subsequent.total_data_size {
+                                log::info!(
+                                    "Finished chunked message on {}. Adding to SignedMessageTransport queue",
+                                    target
+                                );
 
-                            // Take ownership of the tuple, leaving 'None' in current_chunked_message
-                            let (topic_type, finished_message) =
-                                current_chunked_message.take().unwrap();
+                                if let Some((topic_type, finished_message)) =
+                                    current_chunked_messages.remove(&target)
+                                {
+                                    if last_chunked_topic.as_deref() == Some(&target) {
+                                        *last_chunked_topic = None;
+                                    }
 
-                            message = Some(SignedMessageTransport::new(
-                                finished_message.current_message.to_vec(),
-                                topic_type, // Safely use the exact TopicType we saved in InitialChunk
-                            ));
+                                    message = Some(SignedMessageTransport::new(
+                                        finished_message.current_message,
+                                        topic_type,
+                                    ));
+                                }
+                            }
                         }
                     }
                 }
@@ -418,10 +429,8 @@ fn run_mqtt_publisher_worker(
                     break 'outer;
                 }
             }
-            // We use publish and not enqueue because this is already an independent thread.
-            // Enqueue will "wait" for its own (internal) thread while publish will go ahead and use ours.
-            let sleep_secs = 2;
-            std::thread::sleep(Duration::from_secs(sleep_secs));
+            // Responsive polling interval to publish outgoing messages promptly
+            std::thread::sleep(Duration::from_millis(50));
         }
     }
 }

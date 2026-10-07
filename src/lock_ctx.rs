@@ -138,30 +138,6 @@ impl LockCtx {
 
         log::info!("Loaded configuration {:?}", lck.configuration);
 
-        // This must come after key loading because we're announcing to the coordinator with our
-        // public key.
-        let manager = WIFI_MANAGER.get().unwrap().lock().unwrap();
-        if manager.is_connected() {
-            // Start MQTT service
-            let mqtt_service = MqttService::new(
-                lck.configuration.clone(),
-                lck.session_token.clone(),
-                lck.mqtt_password.clone(),
-            );
-            lck.mqtt_service = Some(Rc::new(RefCell::new(mqtt_service)));
-
-            if let Some(mut mqtt_service) = lck.mqtt_service.as_ref().map(|m| m.borrow_mut()) {
-                mqtt_service.start_mqtt();
-            }
-
-            lck.enqueue_announce_message();
-            if let Some(mqtt_service) = lck.mqtt_service.as_ref() {
-                lck.firmware_manager.set_mqtt_service(mqtt_service.clone());
-            }
-            lck.firmware_manager.enqueue_get_latest_firmware();
-        }
-        drop(manager);
-
         log::info!("Seeing if we have previous state...");
 
         let maybe_state = lck.read_contract();
@@ -183,6 +159,30 @@ impl LockCtx {
             // Use normal qr screen since we don't have state.
             lck.active_screen_idx = 0;
         }
+
+        // This must come after key loading and contract state restoration
+        // because we're announcing to the coordinator with our public key and current contract.
+        let manager = WIFI_MANAGER.get().unwrap().lock().unwrap();
+        if manager.is_connected() {
+            // Start MQTT service
+            let mqtt_service = MqttService::new(
+                lck.configuration.clone(),
+                lck.session_token.clone(),
+                lck.mqtt_password.clone(),
+            );
+            lck.mqtt_service = Some(Rc::new(RefCell::new(mqtt_service)));
+
+            if let Some(mut mqtt_service) = lck.mqtt_service.as_ref().map(|m| m.borrow_mut()) {
+                mqtt_service.start_mqtt();
+            }
+
+            lck.enqueue_announce_message();
+            if let Some(mqtt_service) = lck.mqtt_service.as_ref() {
+                lck.firmware_manager.set_mqtt_service(mqtt_service.clone());
+            }
+            lck.firmware_manager.enqueue_get_latest_firmware();
+        }
+        drop(manager);
 
         let qr_code_screen: Box<QrCodeScreen> = Box::new(QrCodeScreen::new());
         lck.qr_code_screen = Some(qr_code_screen);
@@ -649,6 +649,92 @@ impl LockCtx {
         }
     }
 
+    pub fn check_permission(&self, command: &VerifiedType) -> Result<(), String> {
+        match command {
+            VerifiedType::Contract(_) => Ok(()),
+            VerifiedType::UnlockCommand(c) => {
+                self.validate_routine_authority(c.authority.as_deref(), |bot| bot.permission.can_unlock)
+            }
+            VerifiedType::LockCommand(c) => {
+                self.validate_routine_authority(c.authority.as_deref(), |bot| bot.permission.can_lock)
+            }
+            VerifiedType::ReleaseCommand(c) => {
+                self.validate_routine_authority(c.authority.as_deref(), |bot| bot.permission.can_release)
+            }
+            VerifiedType::AbortCommand(c) => self.validate_abort_authority(c.authority.as_deref()),
+            VerifiedType::ResetCommand(c) => self.validate_reset_authority(c.authority.as_deref()),
+        }
+    }
+
+    fn validate_routine_authority<F>(&self, authority: Option<&str>, bot_permission_check: F) -> Result<(), String>
+    where
+        F: FnOnce(&crate::internal_contract::InternalBot) -> bool,
+    {
+        match authority {
+            None => Ok(()), // Signed by default contract key
+            Some(auth_name) => {
+                // If it's a safety key, it's not authorized for routine commands
+                if let Some(safety_keys) = &self.configuration.safety_keys {
+                    if safety_keys.iter().any(|k| k.name == auth_name) {
+                        return Err(format!("Safety key '{}' cannot execute routine commands", auth_name));
+                    }
+                }
+                // Check if it's a bot in contract
+                if let Some(contract) = &self.contract {
+                    if let Some(bot) = contract.bots.iter().find(|b| b.name == auth_name) {
+                        if bot_permission_check(bot) {
+                            return Ok(());
+                        } else {
+                            return Err(format!("Bot '{}' lacks permission for this command", auth_name));
+                        }
+                    }
+                }
+                Err(format!("Unknown authority '{}'", auth_name))
+            }
+        }
+    }
+
+    fn validate_abort_authority(&self, authority: Option<&str>) -> Result<(), String> {
+        match authority {
+            None => Ok(()), // Contract holder can abort
+            Some(auth_name) => {
+                // Safety keys can abort
+                if let Some(safety_keys) = &self.configuration.safety_keys {
+                    if safety_keys.iter().any(|k| k.name == auth_name) {
+                        return Ok(());
+                    }
+                }
+                // Bots cannot abort
+                if let Some(contract) = &self.contract {
+                    if contract.bots.iter().any(|b| b.name == auth_name) {
+                        return Err(format!("Bot '{}' is not permitted to abort contract", auth_name));
+                    }
+                }
+                Err(format!("Authority '{}' is not recognized to abort contract", auth_name))
+            }
+        }
+    }
+
+    fn validate_reset_authority(&self, authority: Option<&str>) -> Result<(), String> {
+        match authority {
+            Some(auth_name) => {
+                // Safety keys can reset
+                if let Some(safety_keys) = &self.configuration.safety_keys {
+                    if safety_keys.iter().any(|k| k.name == auth_name) {
+                        return Ok(());
+                    }
+                }
+                if let Some(contract) = &self.contract {
+                    if contract.bots.iter().any(|b| b.name == auth_name) {
+                        return Err(format!("Bot '{}' is not permitted to reset device", auth_name));
+                    }
+                }
+                Err(format!("Authority '{}' is not recognized to reset device", auth_name))
+            }
+            None => Err("ResetCommand requires a recognized safety key authority".to_string()),
+        }
+    }
+
     pub fn get_wifi_ssid(&mut self) -> Result<String, String> {
         let mut buffer: [u8; 1024] = [0; 1024];
         if let Ok(maybe_byte_buffer) = self.nvs.get_blob("ssid", &mut buffer) {
@@ -708,7 +794,7 @@ impl LockCtx {
         log::info!("Unlocking");
         self.is_locked = false;
         self.servo.open_position();
-        self.enqueue_periodic_update_message(false, false);
+        self.enqueue_periodic_update_message(true, false);
         self.enqueue_bot_event(EventType::LocalUnlock);
         self.dirty = true;
     }
@@ -791,7 +877,7 @@ impl LockCtx {
         self.dirty = true;
     }
 
-    fn save_state_if_dirty(&mut self) {
+    pub(crate) fn save_state_if_dirty(&mut self) {
         use ciborium::ser::into_writer;
 
         if self.dirty {
@@ -891,6 +977,9 @@ impl LockCtx {
     }
 
     fn enqueue_announce_message(&self) {
+        let current_contract_serial = self.contract.as_ref().map(|c| c.serial_number).unwrap_or(0);
+        let started_with_local_contract = self.contract.is_some();
+
         let mut builder = FlatBufferBuilder::with_capacity(1024);
         let public_key: Vec<u8> = self
             .lock_public_key
@@ -906,9 +995,9 @@ impl LockCtx {
             &StartedUpdateArgs {
                 public_key: Some(pub_key_holder),
                 session: Some(session),
-                started_with_local_contract: false,
+                started_with_local_contract,
                 is_locked: self.is_locked,
-                current_contract_serial: 0,
+                current_contract_serial,
             },
         );
 
@@ -941,9 +1030,9 @@ impl LockCtx {
             &StartedUpdateArgs {
                 public_key: Some(pub_key_holder),
                 session: Some(session),
-                started_with_local_contract: false,
+                started_with_local_contract,
                 is_locked: self.is_locked,
-                current_contract_serial: 0,
+                current_contract_serial,
             },
         );
 
@@ -1112,8 +1201,10 @@ impl LockCtx {
 
         if let Some(contract) = &self.contract {
             for b in &contract.bots {
-                let t = SignedMessageTransport::new_for_bot(data.clone(), b.name.clone());
-                self.enqueue_message(t);
+                if b.permission.receive_events {
+                    let t = SignedMessageTransport::new_for_bot(data.clone(), b.name.clone());
+                    self.enqueue_message(t);
+                }
             }
         }
     }

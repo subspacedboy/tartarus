@@ -75,28 +75,26 @@ impl ScreenState for LockstateScreen {
                 Ok(decoded) => {
                     match verifier.verify(decoded, &keys, command_counter, serial_number) {
                         Ok(command) => {
-                            return match command {
-                                VerifiedType::UnlockCommand(c) => {
-                                    lock_ctx.unlock();
-                                    lock_ctx.increment_command_counter(c.counter);
-                                    Some(1)
-                                }
-                                VerifiedType::LockCommand(c) => {
-                                    lock_ctx.lock();
-                                    lock_ctx.increment_command_counter(c.counter);
-                                    Some(1)
-                                }
-                                VerifiedType::ReleaseCommand(_) |
-                                VerifiedType::AbortCommand(_) => {
-                                    lock_ctx.end_contract();
-                                    Some(0)
-                                }
-                                VerifiedType::ResetCommand(reset) => {
-                                    lock_ctx.full_reset(&reset);
-                                    Some(0)
-                                }
+                            let counter_to_update = match &command {
+                                VerifiedType::UnlockCommand(c) => Some(c.counter),
+                                VerifiedType::LockCommand(c) => Some(c.counter),
                                 _ => None,
                             };
+
+                            match self.process_command(lock_ctx, command) {
+                                Ok(new_screen) => {
+                                    if let Some(counter) = counter_to_update {
+                                        lock_ctx.increment_command_counter(counter);
+                                    }
+                                    lock_ctx.save_state_if_dirty();
+                                    if let Some(screen_id) = new_screen {
+                                        return Some(screen_id.into());
+                                    }
+                                }
+                                Err(e) => {
+                                    log::error!("QR command rejected: {}", e);
+                                }
+                            }
                         }
                         Err(e) => {
                             log::error!("Failed to verify QR code {:?}", e);
@@ -122,6 +120,9 @@ impl ScreenState for LockstateScreen {
     ) -> Result<Option<ScreenId>, String> {
         log::info!("process_command: {:?}", command);
         self.needs_redraw = true;
+
+        lock_ctx.check_permission(&command)?;
+
         match command {
             VerifiedType::Contract(contract) => {
                 if lock_ctx.contract.is_some() {
