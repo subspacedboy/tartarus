@@ -1,16 +1,14 @@
 import {Component, TemplateRef} from '@angular/core';
 import {ToastService} from '../toast.service';
 import {NgbToast} from '@ng-bootstrap/ng-bootstrap';
-import {NgForOf, NgIf, NgTemplateOutlet} from '@angular/common';
+import { NgTemplateOutlet } from '@angular/common';
 
 @Component({
   selector: 'app-toast-container',
   imports: [
     NgbToast,
-    NgIf,
-    NgTemplateOutlet,
-    NgForOf
-  ],
+    NgTemplateOutlet
+],
   templateUrl: './toast-container.component.html',
   styleUrl: './toast-container.component.scss'
 })
