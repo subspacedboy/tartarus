@@ -1,7 +1,6 @@
 import {Component, OnInit, QueryList, ViewChildren, ChangeDetectionStrategy} from '@angular/core';
 import {TartarusCoordinatorService} from '../../tartarus-coordinator.service';
 import {Contract} from '../../models/contract';
-import {ContractCardComponent} from '../../contract-card/contract-card.component';
 import {NgbdSortableHeader, SortEvent} from '../../sortable.directive';
 import {AsyncPipe, DatePipe} from '@angular/common';
 import {Observable} from 'rxjs';
@@ -12,7 +11,6 @@ import {FormsModule} from '@angular/forms';
 @Component({
   selector: 'app-admin-contracts',
   imports: [
-    ContractCardComponent,
     NgbdSortableHeader,
     AsyncPipe,
     RouterLink,

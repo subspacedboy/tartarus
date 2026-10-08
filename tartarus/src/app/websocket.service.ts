@@ -20,9 +20,11 @@ export class WebsocketService {
               private configService: ConfigService,) {
 
     const appConfig = this.configService.getConfig();
-    this.connect(appConfig.wsUri!).then(r => {
+    if (appConfig?.wsUri) {
+      this.connect(appConfig.wsUri).then(r => {
 
-    });
+      });
+    }
   }
 
   async connect(url: string): Promise<void> {

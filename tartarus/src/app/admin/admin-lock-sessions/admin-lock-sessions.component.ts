@@ -4,16 +4,12 @@ import {LockSession} from '../../models/lock-session';
 import {TartarusCoordinatorService} from '../../tartarus-coordinator.service';
 import {AsyncPipe, DatePipe} from '@angular/common';
 import {NgbdSortableHeader} from '../../sortable.directive';
-import {ReactiveFormsModule} from '@angular/forms';
-import {RouterLink} from '@angular/router';
 
 @Component({
   selector: 'app-admin-lock-sessions',
   imports: [
     AsyncPipe,
-    DatePipe,
-    ReactiveFormsModule,
-    RouterLink
+    DatePipe
   ],
   templateUrl: './admin-lock-sessions.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

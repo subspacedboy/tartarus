@@ -35,7 +35,12 @@
             "styles": [
               "src/styles.scss"
             ],
-            "scripts": []
+            "scripts": [],
+            "allowedCommonJsDependencies": [
+              "qrcode",
+              "jsqr",
+              "hi-base32"
+            ]
           },
           "configurations": {
             "production": {
@@ -106,7 +111,8 @@
           "options": {
             "tsConfig": "tsconfig.spec.json",
             "buildTarget": ":build:testing",
-            "runner": "vitest"
+            "runner": "vitest",
+            "providersFile": "src/test-providers.ts"
           }
         }
       }

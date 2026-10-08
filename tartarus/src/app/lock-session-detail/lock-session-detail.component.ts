@@ -1,5 +1,5 @@
 import {Component, OnInit, ChangeDetectionStrategy} from '@angular/core';
-import {ActivatedRoute, Router, RouterLink} from '@angular/router';
+import {ActivatedRoute, Router} from '@angular/router';
 import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
 import {UserDataService} from '../user-data.service';
 import {LockSession} from '../models/lock-session';
@@ -12,7 +12,6 @@ import {DateAgoPipe} from "../date-ago.pipe";
 @Component({
   selector: 'app-lock-session-detail',
     imports: [
-        RouterLink,
         ContractCardComponent,
         ReactiveFormsModule,
         DateAgoPipe

@@ -23,7 +23,7 @@ export class ConfigService {
   }
 
   getConfig(): AppConfig {
-    return this.config!
+    return this.config ?? new AppConfig();
   }
 
   setOverride(apiUri: string, wsUri: string): void {

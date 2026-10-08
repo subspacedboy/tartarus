@@ -53,7 +53,7 @@ export class CryptoService {
   }
 
   async sha256(data: Uint8Array): Promise<ArrayBuffer> {
-    return await crypto.subtle.digest("SHA-256", data);
+    return await crypto.subtle.digest("SHA-256", data as BufferSource);
   }
 
   async hashAndSignFb(privateKey: CryptoKey, data: Uint8Array): Promise<ArrayBuffer> {
@@ -221,8 +221,8 @@ export class CryptoService {
     return await crypto.subtle.deriveKey(
       {
         name: "HKDF",
-        salt: salt,
-        info: info,
+        salt: salt as BufferSource,
+        info: info as BufferSource,
         hash: "SHA-256"
       },
       hkdfKey,

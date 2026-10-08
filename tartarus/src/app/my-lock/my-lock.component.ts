@@ -6,14 +6,12 @@ import {ConfigService} from '../config.service';
 import {ContractCardComponent} from '../contract-card/contract-card.component';
 import {Contract} from '../models/contract';
 import {ToastService} from '../toast.service';
-import {DatePipe} from "@angular/common";
 import {DateAgoPipe} from "../date-ago.pipe";
 
 @Component({
   selector: 'app-my-lock',
   imports: [
     ContractCardComponent,
-    DatePipe,
     DateAgoPipe
   ],
   templateUrl: './my-lock.component.html',

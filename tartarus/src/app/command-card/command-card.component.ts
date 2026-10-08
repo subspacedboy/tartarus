@@ -2,7 +2,6 @@ import {Component, ElementRef, Input, ViewChild, ChangeDetectionStrategy} from '
 import {Contract} from '../models/contract';
 import {Command} from '../models/command';
 import {DatePipe} from '@angular/common';
-import {RouterLink} from '@angular/router';
 import * as QRCode from 'qrcode';
 import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
 import {UserDataService} from '../user-data.service';
@@ -13,8 +12,7 @@ import * as flatbuffers from 'flatbuffers';
 @Component({
   selector: 'app-command-card',
   imports: [
-    DatePipe,
-    RouterLink
+    DatePipe
   ],
   templateUrl: './command-card.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
