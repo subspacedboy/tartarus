@@ -2,33 +2,25 @@
 
 package club.subjugated.fb.bots
 
-import com.google.flatbuffers.BaseVector
-import com.google.flatbuffers.BooleanVector
-import com.google.flatbuffers.ByteVector
 import com.google.flatbuffers.Constants
-import com.google.flatbuffers.DoubleVector
 import com.google.flatbuffers.FlatBufferBuilder
-import com.google.flatbuffers.FloatVector
-import com.google.flatbuffers.LongVector
-import com.google.flatbuffers.StringVector
-import com.google.flatbuffers.Struct
 import com.google.flatbuffers.Table
-import com.google.flatbuffers.UnionVector
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.math.sign
 
 @Suppress("unused")
 class GetLockSessionResponse : Table() {
 
-    fun __init(_i: Int, _bb: ByteBuffer)  {
+    fun __init(_i: Int, _bb: ByteBuffer) {
         __reset(_i, _bb)
     }
-    fun __assign(_i: Int, _bb: ByteBuffer) : GetLockSessionResponse {
+
+    fun __assign(_i: Int, _bb: ByteBuffer): GetLockSessionResponse {
         __init(_i, _bb)
         return this
     }
-    val name : String?
+
+    val name: String?
         get() {
             val o = __offset(4)
             return if (o != 0) {
@@ -37,9 +29,13 @@ class GetLockSessionResponse : Table() {
                 null
             }
         }
-    val nameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun nameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
-    fun publicKey(j: Int) : UByte {
+
+    val nameAsByteBuffer: ByteBuffer
+        get() = __vector_as_bytebuffer(4, 1)
+
+    fun nameInByteBuffer(_bb: ByteBuffer): ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+
+    fun publicKey(j: Int): UByte {
         val o = __offset(6)
         return if (o != 0) {
             bb.get(__vector(o) + j * 1).toUByte()
@@ -47,19 +43,28 @@ class GetLockSessionResponse : Table() {
             0u
         }
     }
-    val publicKeyLength : Int
+
+    val publicKeyLength: Int
         get() {
-            val o = __offset(6); return if (o != 0) __vector_len(o) else 0
+            val o = __offset(6)
+            return if (o != 0) __vector_len(o) else 0
         }
-    val publicKeyAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
-    fun publicKeyInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
-    val availableForContract : Boolean
+
+    val publicKeyAsByteBuffer: ByteBuffer
+        get() = __vector_as_bytebuffer(6, 1)
+
+    fun publicKeyInByteBuffer(_bb: ByteBuffer): ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
+
+    val availableForContract: Boolean
         get() {
             val o = __offset(8)
-            return if(o != 0) 0.toByte() != bb.get(o + bb_pos) else false
+            return if (o != 0) 0.toByte() != bb.get(o + bb_pos) else false
         }
-    val error : club.subjugated.fb.bots.Error? get() = error(club.subjugated.fb.bots.Error())
-    fun error(obj: club.subjugated.fb.bots.Error) : club.subjugated.fb.bots.Error? {
+
+    val error: club.subjugated.fb.bots.Error?
+        get() = error(club.subjugated.fb.bots.Error())
+
+    fun error(obj: club.subjugated.fb.bots.Error): club.subjugated.fb.bots.Error? {
         val o = __offset(10)
         return if (o != 0) {
             obj.__assign(__indirect(o + bb_pos), bb)
@@ -67,14 +72,28 @@ class GetLockSessionResponse : Table() {
             null
         }
     }
+
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
-        fun getRootAsGetLockSessionResponse(_bb: ByteBuffer): GetLockSessionResponse = getRootAsGetLockSessionResponse(_bb, GetLockSessionResponse())
-        fun getRootAsGetLockSessionResponse(_bb: ByteBuffer, obj: GetLockSessionResponse): GetLockSessionResponse {
+
+        fun getRootAsGetLockSessionResponse(_bb: ByteBuffer): GetLockSessionResponse =
+            getRootAsGetLockSessionResponse(_bb, GetLockSessionResponse())
+
+        fun getRootAsGetLockSessionResponse(
+            _bb: ByteBuffer,
+            obj: GetLockSessionResponse,
+        ): GetLockSessionResponse {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createGetLockSessionResponse(builder: FlatBufferBuilder, nameOffset: Int, publicKeyOffset: Int, availableForContract: Boolean, errorOffset: Int) : Int {
+
+        fun createGetLockSessionResponse(
+            builder: FlatBufferBuilder,
+            nameOffset: Int,
+            publicKeyOffset: Int,
+            availableForContract: Boolean,
+            errorOffset: Int,
+        ): Int {
             builder.startTable(4)
             addError(builder, errorOffset)
             addPublicKey(builder, publicKeyOffset)
@@ -82,21 +101,32 @@ class GetLockSessionResponse : Table() {
             addAvailableForContract(builder, availableForContract)
             return endGetLockSessionResponse(builder)
         }
+
         fun startGetLockSessionResponse(builder: FlatBufferBuilder) = builder.startTable(4)
+
         fun addName(builder: FlatBufferBuilder, name: Int) = builder.addOffset(0, name, 0)
-        fun addPublicKey(builder: FlatBufferBuilder, publicKey: Int) = builder.addOffset(1, publicKey, 0)
+
+        fun addPublicKey(builder: FlatBufferBuilder, publicKey: Int) =
+            builder.addOffset(1, publicKey, 0)
+
         @kotlin.ExperimentalUnsignedTypes
-        fun createPublicKeyVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
+        fun createPublicKeyVector(builder: FlatBufferBuilder, data: UByteArray): Int {
             builder.startVector(1, data.size, 1)
             for (i in data.size - 1 downTo 0) {
                 builder.addByte(data[i].toByte())
             }
             return builder.endVector()
         }
-        fun startPublicKeyVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
-        fun addAvailableForContract(builder: FlatBufferBuilder, availableForContract: Boolean) = builder.addBoolean(2, availableForContract, false)
+
+        fun startPublicKeyVector(builder: FlatBufferBuilder, numElems: Int) =
+            builder.startVector(1, numElems, 1)
+
+        fun addAvailableForContract(builder: FlatBufferBuilder, availableForContract: Boolean) =
+            builder.addBoolean(2, availableForContract, false)
+
         fun addError(builder: FlatBufferBuilder, error: Int) = builder.addOffset(3, error, 0)
-        fun endGetLockSessionResponse(builder: FlatBufferBuilder) : Int {
+
+        fun endGetLockSessionResponse(builder: FlatBufferBuilder): Int {
             val o = builder.endTable()
             return o
         }

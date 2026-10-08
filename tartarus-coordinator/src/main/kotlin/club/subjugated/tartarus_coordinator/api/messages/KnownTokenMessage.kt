@@ -18,7 +18,7 @@ data class KnownTokenMessage(
                 state = knownToken.state.toString(),
                 notes = knownToken.notes,
                 shareableToken = knownToken.shareableToken,
-                createdAt = knownToken.createdAt
+                createdAt = knownToken.createdAt,
             )
         }
     }

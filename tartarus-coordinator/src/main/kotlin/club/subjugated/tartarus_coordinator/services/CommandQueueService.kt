@@ -2,7 +2,6 @@ package club.subjugated.tartarus_coordinator.services
 
 import club.subjugated.fb.message.Acknowledgement
 import club.subjugated.tartarus_coordinator.events.AcknowledgedCommandEvent
-import club.subjugated.tartarus_coordinator.filters.WebUserAuthenticationFilter
 import club.subjugated.tartarus_coordinator.models.AuthorSession
 import club.subjugated.tartarus_coordinator.models.Command
 import club.subjugated.tartarus_coordinator.models.CommandState
@@ -31,11 +30,11 @@ class CommandQueueService {
         this.commandRepository.save(command)
     }
 
-    fun saveCommandIgnoreDupes(command: Command) : Boolean {
+    fun saveCommandIgnoreDupes(command: Command): Boolean {
         val queue = command.commandQueue
         val pendingCommands = queue.commands.sortedBy { it.createdAt }
         val lastPendingCommand = pendingCommands.lastOrNull()
-        if(lastPendingCommand != null && command.type == lastPendingCommand.type) {
+        if (lastPendingCommand != null && command.type == lastPendingCommand.type) {
             logger.info("Ignoring duplicate command: $command")
             return false
         }
@@ -46,10 +45,10 @@ class CommandQueueService {
     fun acknowledgeCommand(command: Command, ack: Acknowledgement) {
         command.state = CommandState.ACKNOWLEDGED
 
-        if(command.type == CommandType.RELEASE) {
+        if (command.type == CommandType.RELEASE) {
             command.commandQueue.lockSession.availableForContract = true
         }
-        if(command.type == CommandType.ACCEPT_CONTRACT) {
+        if (command.type == CommandType.ACCEPT_CONTRACT) {
             command.commandQueue.lockSession.availableForContract = false
         }
 
@@ -60,7 +59,7 @@ class CommandQueueService {
     fun manuallyAcknowledgeCommand(command: Command) {
         command.state = CommandState.ACKNOWLEDGED
 
-        if(command.type == CommandType.RELEASE) {
+        if (command.type == CommandType.RELEASE) {
             command.commandQueue.lockSession.availableForContract = true
         }
 
@@ -91,11 +90,17 @@ class CommandQueueService {
         )
     }
 
-    fun getByAuthorSessionIdAndContract(authorSession: AuthorSession, contract : Contract) : List<Command> {
-        return this.commandRepository.findByAuthorSessionIdAndContractIdOrderByCounterDesc(authorSession.id, contract.id)
+    fun getByAuthorSessionIdAndContract(
+        authorSession: AuthorSession,
+        contract: Contract,
+    ): List<Command> {
+        return this.commandRepository.findByAuthorSessionIdAndContractIdOrderByCounterDesc(
+            authorSession.id,
+            contract.id,
+        )
     }
 
-    fun getByContract(contract : Contract) : List<Command> {
+    fun getByContract(contract: Contract): List<Command> {
         return this.commandRepository.findByContractIdOrderByCounterDesc(contract.id)
     }
 }

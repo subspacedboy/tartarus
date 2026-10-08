@@ -29,10 +29,14 @@ class ContractController {
     @ResponseBody
     fun getContractsByShareableToken(
         @AuthenticationPrincipal user: UserDetails,
-        @PathVariable someToken: String
+        @PathVariable someToken: String,
     ): ResponseEntity<List<ContractMessage>> {
         val authorSession = this.authorSessionService.findByName(user.username)
-        val contracts = this.contractService.findContractsByAuthorSessionAndShareableToken(authorSession, someToken)
+        val contracts =
+            this.contractService.findContractsByAuthorSessionAndShareableToken(
+                authorSession,
+                someToken,
+            )
 
         return ResponseEntity.ok(contracts.map { ContractMessage.fromContract(it) })
     }
@@ -43,7 +47,11 @@ class ContractController {
         @AuthenticationPrincipal user: UserDetails
     ): ResponseEntity<List<ContractMessage>> {
         val authorSession = this.authorSessionService.findByName(user.username)
-        val contracts = this.contractService.findContractsByAuthorSessionAndState(authorSession, ContractState.CONFIRMED)
+        val contracts =
+            this.contractService.findContractsByAuthorSessionAndState(
+                authorSession,
+                ContractState.CONFIRMED,
+            )
 
         return ResponseEntity.ok(contracts.map { ContractMessage.fromContract(it) })
     }
@@ -52,7 +60,8 @@ class ContractController {
     @ResponseBody
     fun getContractsByName(
         @AuthenticationPrincipal author: UserDetails,
-        @PathVariable name: String): ResponseEntity<ContractMessage> {
+        @PathVariable name: String,
+    ): ResponseEntity<ContractMessage> {
         val contract = this.contractService.getByNameForAuthor(name)
         return ResponseEntity.ok(ContractMessage.fromContract(contract))
     }
@@ -60,36 +69,50 @@ class ContractController {
     @GetMapping("/reviewPending", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
     fun getForReview(
-        @AuthenticationPrincipal lockUser: UserDetails,
+        @AuthenticationPrincipal lockUser: UserDetails
     ): ResponseEntity<List<ContractMessage>> {
         val lockUserSession = lockUserSessionService.findByName(lockUser.username)
-        val contracts = this.contractService.findByLockSessionIdAndState(lockUserSession.lockSession, listOf(ContractState.CREATED))
+        val contracts =
+            this.contractService.findByLockSessionIdAndState(
+                lockUserSession.lockSession,
+                listOf(ContractState.CREATED),
+            )
         return ResponseEntity.ok(contracts.map { ContractMessage.fromContract(it) })
     }
 
     @GetMapping("/byLockUserSession", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
     fun getContractsForLockSession(
-        @AuthenticationPrincipal lockUser: UserDetails,
+        @AuthenticationPrincipal lockUser: UserDetails
     ): ResponseEntity<List<ContractMessage>> {
         val lockUserSession = lockUserSessionService.findByName(lockUser.username)
         val contracts = this.contractService.findByLockSessionId(lockUserSession.lockSession)
-        return ResponseEntity.ok(contracts.map { ContractMessage.fromContract(it, skipMessages = true) })
+        return ResponseEntity.ok(
+            contracts.map { ContractMessage.fromContract(it, skipMessages = true) }
+        )
     }
 
     @PostMapping("/approve/{contractName}", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
-    fun approve(@AuthenticationPrincipal lockUser: UserDetails, @PathVariable contractName : String): ResponseEntity<ContractMessage> {
+    fun approve(
+        @AuthenticationPrincipal lockUser: UserDetails,
+        @PathVariable contractName: String,
+    ): ResponseEntity<ContractMessage> {
         val lockUserSession = lockUserSessionService.findByName(lockUser.username)
-        val contract = this.contractService.approveContract(lockUserSession.lockSession, contractName)
+        val contract =
+            this.contractService.approveContract(lockUserSession.lockSession, contractName)
         return ResponseEntity.ok(ContractMessage.fromContract(contract))
     }
 
     @PostMapping("/reject/{contractName}", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
-    fun reject(@AuthenticationPrincipal lockUser: UserDetails, @PathVariable contractName : String): ResponseEntity<ContractMessage> {
+    fun reject(
+        @AuthenticationPrincipal lockUser: UserDetails,
+        @PathVariable contractName: String,
+    ): ResponseEntity<ContractMessage> {
         val lockUserSession = lockUserSessionService.findByName(lockUser.username)
-        val contract = this.contractService.rejectContract(lockUserSession.lockSession, contractName)
+        val contract =
+            this.contractService.rejectContract(lockUserSession.lockSession, contractName)
         return ResponseEntity.ok(ContractMessage.fromContract(contract))
     }
 
@@ -97,7 +120,7 @@ class ContractController {
     @ResponseBody
     fun saveContract(
         @AuthenticationPrincipal user: UserDetails,
-        @RequestBody newContractMessage: NewContractMessage
+        @RequestBody newContractMessage: NewContractMessage,
     ): ResponseEntity<ContractMessage> {
         val lockSession =
             this.lockSessionService.findByShareableToken(newContractMessage.shareableToken!!)
@@ -113,7 +136,8 @@ class ContractController {
     @ResponseBody
     fun command(
         @AuthenticationPrincipal user: UserDetails,
-        @RequestBody newCommandMessage: NewCommandMessage): ResponseEntity<Void> {
+        @RequestBody newCommandMessage: NewCommandMessage,
+    ): ResponseEntity<Void> {
         val authorSession =
             this.authorSessionService.findByName(newCommandMessage.authorSessionName!!)
         val lockSession =

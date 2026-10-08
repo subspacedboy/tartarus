@@ -12,16 +12,14 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 
 @Configuration
 @EnableWebSocket
-class WebsocketConfig(
-    private val webSocketHandler: EventWebSocketHandler) : WebSocketConfigurer {
+class WebsocketConfig(private val webSocketHandler: EventWebSocketHandler) : WebSocketConfigurer {
 
-    @Autowired
-    lateinit var lockUserSessionService: LockUserSessionService
-    @Autowired
-    lateinit var authorSessionService: AuthorSessionService
+    @Autowired lateinit var lockUserSessionService: LockUserSessionService
+    @Autowired lateinit var authorSessionService: AuthorSessionService
 
     override fun registerWebSocketHandlers(registry: WebSocketHandlerRegistry) {
-        registry.addHandler(webSocketHandler, "/ws/events")
+        registry
+            .addHandler(webSocketHandler, "/ws/events")
             .addInterceptors(JwtHandshakeInterceptor(authorSessionService, lockUserSessionService))
             .setAllowedOrigins("*")
     }

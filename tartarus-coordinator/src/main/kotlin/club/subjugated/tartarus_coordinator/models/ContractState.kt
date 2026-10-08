@@ -7,5 +7,5 @@ enum class ContractState {
     CONFIRMED,
     REJECTED,
     RELEASED,
-    ABORTED
+    ABORTED,
 }

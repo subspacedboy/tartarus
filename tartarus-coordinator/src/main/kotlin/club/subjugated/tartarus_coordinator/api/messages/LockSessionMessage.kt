@@ -7,7 +7,6 @@ import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromCompressedKey
 import club.subjugated.tartarus_coordinator.util.getPemEncoding
 import com.fasterxml.jackson.annotation.JsonFormat
 import java.time.OffsetDateTime
-import java.util.Base64
 
 data class LockSessionMessage(
     var name: String = "",
@@ -16,7 +15,7 @@ data class LockSessionMessage(
     var publicPem: String = "",
     var shareToken: String = "",
     var totalControlToken: String? = "",
-    var lockUserSession : LockUserSessionMessage? = null,
+    var lockUserSession: LockUserSessionMessage? = null,
     var knownToken: KnownTokenMessage? = null,
     var lockState: LockStateMessage? = null,
     var availableForContract: Boolean? = null,
@@ -24,28 +23,40 @@ data class LockSessionMessage(
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
 ) {
     companion object {
-        fun fromLockSession(lockSession: LockSession,
-                            lockUserSession: LockUserSession?,
-                            knownToken: KnownToken?,
-                            lockSessionArgs: List<LockSessionArgs>): LockSessionMessage {
+        fun fromLockSession(
+            lockSession: LockSession,
+            lockUserSession: LockUserSession?,
+            knownToken: KnownToken?,
+            lockSessionArgs: List<LockSessionArgs>,
+        ): LockSessionMessage {
             // Because javascript blows immeasurable ass, it's just easier to send
             // a PEM encoded version of the public key.
-            val ecKey =
-                getECPublicKeyFromCompressedKeyByteArray(
-                    lockSession.decodePublicKey()
-                )
+            val ecKey = getECPublicKeyFromCompressedKeyByteArray(lockSession.decodePublicKey())
             val pemKey = getPemEncoding(ecKey)
             return LockSessionMessage(
                 name = lockSession.name,
-                sessionToken = if(lockSessionArgs.contains(LockSessionArgs.INCLUDE_SESSION_TOKEN)) lockSession.sessionToken!! else null,
+                sessionToken =
+                    if (lockSessionArgs.contains(LockSessionArgs.INCLUDE_SESSION_TOKEN))
+                        lockSession.sessionToken!!
+                    else null,
                 publicKey = lockSession.publicKey,
                 publicPem = pemKey,
                 shareToken = lockSession.shareToken!!,
-                lockState = if(lockSessionArgs.contains(LockSessionArgs.SUPPRESS_LOCK_STATE)) null else LockStateMessage(lockSession.isLocked),
-                totalControlToken = if(lockSessionArgs.contains(LockSessionArgs.SUPPRESS_TC_TOKEN)) "" else lockSession.totalControlToken,
-                lockUserSession = if(lockUserSession == null) null else LockUserSessionMessage.fromLockUserSession(lockUserSession),
-                availableForContract = if(lockSessionArgs.contains(LockSessionArgs.SUPPRESS_AVAILABLE_FOR_CONTRACT)) null else lockSession.availableForContract,
-                knownToken = if(knownToken== null) null else KnownTokenMessage.fromKnownToken(knownToken),
+                lockState =
+                    if (lockSessionArgs.contains(LockSessionArgs.SUPPRESS_LOCK_STATE)) null
+                    else LockStateMessage(lockSession.isLocked),
+                totalControlToken =
+                    if (lockSessionArgs.contains(LockSessionArgs.SUPPRESS_TC_TOKEN)) ""
+                    else lockSession.totalControlToken,
+                lockUserSession =
+                    if (lockUserSession == null) null
+                    else LockUserSessionMessage.fromLockUserSession(lockUserSession),
+                availableForContract =
+                    if (lockSessionArgs.contains(LockSessionArgs.SUPPRESS_AVAILABLE_FOR_CONTRACT))
+                        null
+                    else lockSession.availableForContract,
+                knownToken =
+                    if (knownToken == null) null else KnownTokenMessage.fromKnownToken(knownToken),
                 updatedAt = lockSession.updatedAt,
                 createdAt = lockSession.createdAt,
             )

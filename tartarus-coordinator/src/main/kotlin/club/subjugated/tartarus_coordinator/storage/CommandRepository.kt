@@ -14,6 +14,10 @@ interface CommandRepository : JpaRepository<Command, Long> {
 
     fun findByCommandQueueIdAndSerialNumber(commandQueueId: Long, serialNumber: Int): List<Command>
 
-    fun findByAuthorSessionIdAndContractIdOrderByCounterDesc(authorSessionId: Long, contractId: Long): List<Command>
+    fun findByAuthorSessionIdAndContractIdOrderByCounterDesc(
+        authorSessionId: Long,
+        contractId: Long,
+    ): List<Command>
+
     fun findByContractIdOrderByCounterDesc(contractId: Long): List<Command>
 }

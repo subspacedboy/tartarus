@@ -6,11 +6,8 @@ import picocli.CommandLine
 
 @Component
 @CommandLine.Command(name = "add-admin-key", description = ["Add a new admin key"])
-class AddAdminKeyCommand(
-    var adminSessionService: AdminSessionService
-) : Runnable {
-    @CommandLine.Option(names = ["--key"], required = true)
-    lateinit var key: String
+class AddAdminKeyCommand(var adminSessionService: AdminSessionService) : Runnable {
+    @CommandLine.Option(names = ["--key"], required = true) lateinit var key: String
 
     override fun run() {
         val adminSession = adminSessionService.addAdminSessionKey(keyInBase64 = key)

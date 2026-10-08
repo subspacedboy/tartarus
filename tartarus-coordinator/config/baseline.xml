@@ -1,0 +1,513 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:MqttListenerService.kt$MqttListenerService$@PostConstruct fun start()</ID>
+    <ID>CyclomaticComplexMethod:fb_helpers.kt$fun signedMessageBytesValidatorWithExternalKey(buf: ByteBuffer, key: ByteArray): ValidatedPayload</ID>
+    <ID>EmptyClassBlock:ContractChangeEvent.kt$ContractChangeEvent${}</ID>
+    <ID>EmptyClassBlock:LockStateMessage.kt$LockStateMessage${}</ID>
+    <ID>EmptyClassBlock:NewCommandMessage.kt$NewCommandMessage${}</ID>
+    <ID>EmptyClassBlock:NewFirmwareMessage.kt$NewFirmwareMessage${}</ID>
+    <ID>EmptyDefaultConstructor:SecurityConfiguration.kt$SecurityConfiguration$()</ID>
+    <ID>EmptyFunctionBlock:JwtHandshakeInterceptor.kt$JwtHandshakeInterceptor${}</ID>
+    <ID>EmptyFunctionBlock:TartarusCoordinatorApplicationTests.kt$TartarusCoordinatorApplicationTests${}</ID>
+    <ID>FunctionNaming:AbortCommand.kt$AbortCommand$fun __assign(_i: Int, _bb: ByteBuffer): AbortCommand</ID>
+    <ID>FunctionNaming:AbortCommand.kt$AbortCommand$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:Acknowledgement.kt$Acknowledgement$fun __assign(_i: Int, _bb: ByteBuffer): Acknowledgement</ID>
+    <ID>FunctionNaming:Acknowledgement.kt$Acknowledgement$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:Bot.kt$Bot$fun __assign(_i: Int, _bb: ByteBuffer): Bot</ID>
+    <ID>FunctionNaming:Bot.kt$Bot$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:BotApiMessage.kt$BotApiMessage$fun __assign(_i: Int, _bb: ByteBuffer): BotApiMessage</ID>
+    <ID>FunctionNaming:BotApiMessage.kt$BotApiMessage$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:CommonMetadata.kt$CommonMetadata$fun __assign(_i: Int, _bb: ByteBuffer): CommonMetadata</ID>
+    <ID>FunctionNaming:CommonMetadata.kt$CommonMetadata$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:Configuration.kt$Configuration$fun __assign(_i: Int, _bb: ByteBuffer): Configuration</ID>
+    <ID>FunctionNaming:Configuration.kt$Configuration$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:Contract.kt$Contract$fun __assign(_i: Int, _bb: ByteBuffer): Contract</ID>
+    <ID>FunctionNaming:Contract.kt$Contract$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:CoordinatorConfiguration.kt$CoordinatorConfiguration$fun __assign(_i: Int, _bb: ByteBuffer): CoordinatorConfiguration</ID>
+    <ID>FunctionNaming:CoordinatorConfiguration.kt$CoordinatorConfiguration$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:CreateCommandRequest.kt$CreateCommandRequest$fun __assign(_i: Int, _bb: ByteBuffer): CreateCommandRequest</ID>
+    <ID>FunctionNaming:CreateCommandRequest.kt$CreateCommandRequest$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:CreateCommandResponse.kt$CreateCommandResponse$fun __assign(_i: Int, _bb: ByteBuffer): CreateCommandResponse</ID>
+    <ID>FunctionNaming:CreateCommandResponse.kt$CreateCommandResponse$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:CreateContractRequest.kt$CreateContractRequest$fun __assign(_i: Int, _bb: ByteBuffer): CreateContractRequest</ID>
+    <ID>FunctionNaming:CreateContractRequest.kt$CreateContractRequest$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:CreateContractResponse.kt$CreateContractResponse$fun __assign(_i: Int, _bb: ByteBuffer): CreateContractResponse</ID>
+    <ID>FunctionNaming:CreateContractResponse.kt$CreateContractResponse$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:CreateMessageRequest.kt$CreateMessageRequest$fun __assign(_i: Int, _bb: ByteBuffer): CreateMessageRequest</ID>
+    <ID>FunctionNaming:CreateMessageRequest.kt$CreateMessageRequest$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:CreateMessageResponse.kt$CreateMessageResponse$fun __assign(_i: Int, _bb: ByteBuffer): CreateMessageResponse</ID>
+    <ID>FunctionNaming:CreateMessageResponse.kt$CreateMessageResponse$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:Error.kt$Error$fun __assign(_i: Int, _bb: ByteBuffer): Error</ID>
+    <ID>FunctionNaming:Error.kt$Error$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:Event.kt$Event$fun __assign(_i: Int, _bb: ByteBuffer): Event</ID>
+    <ID>FunctionNaming:Event.kt$Event$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:FirmwareChallengeRequest.kt$FirmwareChallengeRequest$fun __assign(_i: Int, _bb: ByteBuffer): FirmwareChallengeRequest</ID>
+    <ID>FunctionNaming:FirmwareChallengeRequest.kt$FirmwareChallengeRequest$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:FirmwareChallengeResponse.kt$FirmwareChallengeResponse$fun __assign(_i: Int, _bb: ByteBuffer): FirmwareChallengeResponse</ID>
+    <ID>FunctionNaming:FirmwareChallengeResponse.kt$FirmwareChallengeResponse$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:FirmwareMessage.kt$FirmwareMessage$fun __assign(_i: Int, _bb: ByteBuffer): FirmwareMessage</ID>
+    <ID>FunctionNaming:FirmwareMessage.kt$FirmwareMessage$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:GetContractRequest.kt$GetContractRequest$fun __assign(_i: Int, _bb: ByteBuffer): GetContractRequest</ID>
+    <ID>FunctionNaming:GetContractRequest.kt$GetContractRequest$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:GetContractResponse.kt$GetContractResponse$fun __assign(_i: Int, _bb: ByteBuffer): GetContractResponse</ID>
+    <ID>FunctionNaming:GetContractResponse.kt$GetContractResponse$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:GetFirmwareChunkRequest.kt$GetFirmwareChunkRequest$fun __assign(_i: Int, _bb: ByteBuffer): GetFirmwareChunkRequest</ID>
+    <ID>FunctionNaming:GetFirmwareChunkRequest.kt$GetFirmwareChunkRequest$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:GetFirmwareChunkResponse.kt$GetFirmwareChunkResponse$fun __assign(_i: Int, _bb: ByteBuffer): GetFirmwareChunkResponse</ID>
+    <ID>FunctionNaming:GetFirmwareChunkResponse.kt$GetFirmwareChunkResponse$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:GetLatestFirmwareRequest.kt$GetLatestFirmwareRequest$fun __assign(_i: Int, _bb: ByteBuffer): GetLatestFirmwareRequest</ID>
+    <ID>FunctionNaming:GetLatestFirmwareRequest.kt$GetLatestFirmwareRequest$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:GetLatestFirmwareResponse.kt$GetLatestFirmwareResponse$fun __assign(_i: Int, _bb: ByteBuffer): GetLatestFirmwareResponse</ID>
+    <ID>FunctionNaming:GetLatestFirmwareResponse.kt$GetLatestFirmwareResponse$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:GetLockSessionRequest.kt$GetLockSessionRequest$fun __assign(_i: Int, _bb: ByteBuffer): GetLockSessionRequest</ID>
+    <ID>FunctionNaming:GetLockSessionRequest.kt$GetLockSessionRequest$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:GetLockSessionResponse.kt$GetLockSessionResponse$fun __assign(_i: Int, _bb: ByteBuffer): GetLockSessionResponse</ID>
+    <ID>FunctionNaming:GetLockSessionResponse.kt$GetLockSessionResponse$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:Key.kt$Key$fun __assign(_i: Int, _bb: ByteBuffer): Key</ID>
+    <ID>FunctionNaming:Key.kt$Key$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:LockCommand.kt$LockCommand$fun __assign(_i: Int, _bb: ByteBuffer): LockCommand</ID>
+    <ID>FunctionNaming:LockCommand.kt$LockCommand$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:PeriodicUpdate.kt$PeriodicUpdate$fun __assign(_i: Int, _bb: ByteBuffer): PeriodicUpdate</ID>
+    <ID>FunctionNaming:PeriodicUpdate.kt$PeriodicUpdate$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:Permission.kt$Permission$fun __assign(_i: Int, _bb: ByteBuffer): Permission</ID>
+    <ID>FunctionNaming:Permission.kt$Permission$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:ReleaseCommand.kt$ReleaseCommand$fun __assign(_i: Int, _bb: ByteBuffer): ReleaseCommand</ID>
+    <ID>FunctionNaming:ReleaseCommand.kt$ReleaseCommand$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:ResetCommand.kt$ResetCommand$fun __assign(_i: Int, _bb: ByteBuffer): ResetCommand</ID>
+    <ID>FunctionNaming:ResetCommand.kt$ResetCommand$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:SignedEvent.kt$SignedEvent$fun __assign(_i: Int, _bb: ByteBuffer): SignedEvent</ID>
+    <ID>FunctionNaming:SignedEvent.kt$SignedEvent$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:SignedMessage.kt$SignedMessage$fun __assign(_i: Int, _bb: ByteBuffer): SignedMessage</ID>
+    <ID>FunctionNaming:SignedMessage.kt$SignedMessage$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:StartedUpdate.kt$StartedUpdate$fun __assign(_i: Int, _bb: ByteBuffer): StartedUpdate</ID>
+    <ID>FunctionNaming:StartedUpdate.kt$StartedUpdate$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:TemporaryUnlockRules.kt$TemporaryUnlockRules$fun __assign(_i: Int, _bb: ByteBuffer): TemporaryUnlockRules</ID>
+    <ID>FunctionNaming:TemporaryUnlockRules.kt$TemporaryUnlockRules$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:TimeEndCondition.kt$TimeEndCondition$fun __assign(_i: Int, _bb: ByteBuffer): TimeEndCondition</ID>
+    <ID>FunctionNaming:TimeEndCondition.kt$TimeEndCondition$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:UnlockCommand.kt$UnlockCommand$fun __assign(_i: Int, _bb: ByteBuffer): UnlockCommand</ID>
+    <ID>FunctionNaming:UnlockCommand.kt$UnlockCommand$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:Version.kt$Version$fun __assign(_i: Int, _bb: ByteBuffer): Version</ID>
+    <ID>FunctionNaming:Version.kt$Version$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:WebHook.kt$WebHook$fun __assign(_i: Int, _bb: ByteBuffer): WebHook</ID>
+    <ID>FunctionNaming:WebHook.kt$WebHook$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:WhenISaySo.kt$WhenISaySo$fun __assign(_i: Int, _bb: ByteBuffer): WhenISaySo</ID>
+    <ID>FunctionNaming:WhenISaySo.kt$WhenISaySo$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionParameterNaming:AbortCommand.kt$AbortCommand$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:AbortCommand.kt$AbortCommand$_i: Int</ID>
+    <ID>FunctionParameterNaming:AbortCommand.kt$AbortCommand.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:Acknowledgement.kt$Acknowledgement$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:Acknowledgement.kt$Acknowledgement$_i: Int</ID>
+    <ID>FunctionParameterNaming:Acknowledgement.kt$Acknowledgement.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:Bot.kt$Bot$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:Bot.kt$Bot$_i: Int</ID>
+    <ID>FunctionParameterNaming:Bot.kt$Bot.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:BotApiMessage.kt$BotApiMessage$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:BotApiMessage.kt$BotApiMessage$_i: Int</ID>
+    <ID>FunctionParameterNaming:BotApiMessage.kt$BotApiMessage.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:CommonMetadata.kt$CommonMetadata$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:CommonMetadata.kt$CommonMetadata$_i: Int</ID>
+    <ID>FunctionParameterNaming:CommonMetadata.kt$CommonMetadata.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:Configuration.kt$Configuration$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:Configuration.kt$Configuration$_i: Int</ID>
+    <ID>FunctionParameterNaming:Configuration.kt$Configuration.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:Contract.kt$Contract$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:Contract.kt$Contract$_i: Int</ID>
+    <ID>FunctionParameterNaming:Contract.kt$Contract.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:CoordinatorConfiguration.kt$CoordinatorConfiguration$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:CoordinatorConfiguration.kt$CoordinatorConfiguration$_i: Int</ID>
+    <ID>FunctionParameterNaming:CoordinatorConfiguration.kt$CoordinatorConfiguration.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:CreateCommandRequest.kt$CreateCommandRequest$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:CreateCommandRequest.kt$CreateCommandRequest$_i: Int</ID>
+    <ID>FunctionParameterNaming:CreateCommandRequest.kt$CreateCommandRequest.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:CreateCommandResponse.kt$CreateCommandResponse$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:CreateCommandResponse.kt$CreateCommandResponse$_i: Int</ID>
+    <ID>FunctionParameterNaming:CreateCommandResponse.kt$CreateCommandResponse.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:CreateContractRequest.kt$CreateContractRequest$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:CreateContractRequest.kt$CreateContractRequest$_i: Int</ID>
+    <ID>FunctionParameterNaming:CreateContractRequest.kt$CreateContractRequest.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:CreateContractResponse.kt$CreateContractResponse$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:CreateContractResponse.kt$CreateContractResponse$_i: Int</ID>
+    <ID>FunctionParameterNaming:CreateContractResponse.kt$CreateContractResponse.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:CreateMessageRequest.kt$CreateMessageRequest$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:CreateMessageRequest.kt$CreateMessageRequest$_i: Int</ID>
+    <ID>FunctionParameterNaming:CreateMessageRequest.kt$CreateMessageRequest.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:CreateMessageResponse.kt$CreateMessageResponse$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:CreateMessageResponse.kt$CreateMessageResponse$_i: Int</ID>
+    <ID>FunctionParameterNaming:CreateMessageResponse.kt$CreateMessageResponse.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:Error.kt$Error$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:Error.kt$Error$_i: Int</ID>
+    <ID>FunctionParameterNaming:Error.kt$Error.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:Event.kt$Event$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:Event.kt$Event$_i: Int</ID>
+    <ID>FunctionParameterNaming:Event.kt$Event.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:FirmwareChallengeRequest.kt$FirmwareChallengeRequest$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:FirmwareChallengeRequest.kt$FirmwareChallengeRequest$_i: Int</ID>
+    <ID>FunctionParameterNaming:FirmwareChallengeRequest.kt$FirmwareChallengeRequest.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:FirmwareChallengeResponse.kt$FirmwareChallengeResponse$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:FirmwareChallengeResponse.kt$FirmwareChallengeResponse$_i: Int</ID>
+    <ID>FunctionParameterNaming:FirmwareChallengeResponse.kt$FirmwareChallengeResponse.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:FirmwareMessage.kt$FirmwareMessage$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:FirmwareMessage.kt$FirmwareMessage$_i: Int</ID>
+    <ID>FunctionParameterNaming:FirmwareMessage.kt$FirmwareMessage.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:GetContractRequest.kt$GetContractRequest$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:GetContractRequest.kt$GetContractRequest$_i: Int</ID>
+    <ID>FunctionParameterNaming:GetContractRequest.kt$GetContractRequest.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:GetContractResponse.kt$GetContractResponse$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:GetContractResponse.kt$GetContractResponse$_i: Int</ID>
+    <ID>FunctionParameterNaming:GetContractResponse.kt$GetContractResponse.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:GetFirmwareChunkRequest.kt$GetFirmwareChunkRequest$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:GetFirmwareChunkRequest.kt$GetFirmwareChunkRequest$_i: Int</ID>
+    <ID>FunctionParameterNaming:GetFirmwareChunkRequest.kt$GetFirmwareChunkRequest.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:GetFirmwareChunkResponse.kt$GetFirmwareChunkResponse$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:GetFirmwareChunkResponse.kt$GetFirmwareChunkResponse$_i: Int</ID>
+    <ID>FunctionParameterNaming:GetFirmwareChunkResponse.kt$GetFirmwareChunkResponse.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:GetLatestFirmwareRequest.kt$GetLatestFirmwareRequest$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:GetLatestFirmwareRequest.kt$GetLatestFirmwareRequest$_i: Int</ID>
+    <ID>FunctionParameterNaming:GetLatestFirmwareRequest.kt$GetLatestFirmwareRequest.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:GetLatestFirmwareResponse.kt$GetLatestFirmwareResponse$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:GetLatestFirmwareResponse.kt$GetLatestFirmwareResponse$_i: Int</ID>
+    <ID>FunctionParameterNaming:GetLatestFirmwareResponse.kt$GetLatestFirmwareResponse.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:GetLockSessionRequest.kt$GetLockSessionRequest$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:GetLockSessionRequest.kt$GetLockSessionRequest$_i: Int</ID>
+    <ID>FunctionParameterNaming:GetLockSessionRequest.kt$GetLockSessionRequest.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:GetLockSessionResponse.kt$GetLockSessionResponse$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:GetLockSessionResponse.kt$GetLockSessionResponse$_i: Int</ID>
+    <ID>FunctionParameterNaming:GetLockSessionResponse.kt$GetLockSessionResponse.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:Key.kt$Key$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:Key.kt$Key$_i: Int</ID>
+    <ID>FunctionParameterNaming:Key.kt$Key.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:LockCommand.kt$LockCommand$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:LockCommand.kt$LockCommand$_i: Int</ID>
+    <ID>FunctionParameterNaming:LockCommand.kt$LockCommand.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:PeriodicUpdate.kt$PeriodicUpdate$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:PeriodicUpdate.kt$PeriodicUpdate$_i: Int</ID>
+    <ID>FunctionParameterNaming:PeriodicUpdate.kt$PeriodicUpdate.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:Permission.kt$Permission$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:Permission.kt$Permission$_i: Int</ID>
+    <ID>FunctionParameterNaming:Permission.kt$Permission.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:ReleaseCommand.kt$ReleaseCommand$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:ReleaseCommand.kt$ReleaseCommand$_i: Int</ID>
+    <ID>FunctionParameterNaming:ReleaseCommand.kt$ReleaseCommand.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:ResetCommand.kt$ResetCommand$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:ResetCommand.kt$ResetCommand$_i: Int</ID>
+    <ID>FunctionParameterNaming:ResetCommand.kt$ResetCommand.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:SignedEvent.kt$SignedEvent$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:SignedEvent.kt$SignedEvent$_i: Int</ID>
+    <ID>FunctionParameterNaming:SignedEvent.kt$SignedEvent.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:SignedMessage.kt$SignedMessage$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:SignedMessage.kt$SignedMessage$_i: Int</ID>
+    <ID>FunctionParameterNaming:SignedMessage.kt$SignedMessage.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:StartedUpdate.kt$StartedUpdate$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:StartedUpdate.kt$StartedUpdate$_i: Int</ID>
+    <ID>FunctionParameterNaming:StartedUpdate.kt$StartedUpdate.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:TemporaryUnlockRules.kt$TemporaryUnlockRules$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:TemporaryUnlockRules.kt$TemporaryUnlockRules$_i: Int</ID>
+    <ID>FunctionParameterNaming:TemporaryUnlockRules.kt$TemporaryUnlockRules.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:TimeEndCondition.kt$TimeEndCondition$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:TimeEndCondition.kt$TimeEndCondition$_i: Int</ID>
+    <ID>FunctionParameterNaming:TimeEndCondition.kt$TimeEndCondition.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:UnlockCommand.kt$UnlockCommand$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:UnlockCommand.kt$UnlockCommand$_i: Int</ID>
+    <ID>FunctionParameterNaming:UnlockCommand.kt$UnlockCommand.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:Version.kt$Version$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:Version.kt$Version$_i: Int</ID>
+    <ID>FunctionParameterNaming:Version.kt$Version.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:WebHook.kt$WebHook$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:WebHook.kt$WebHook$_i: Int</ID>
+    <ID>FunctionParameterNaming:WebHook.kt$WebHook.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:WhenISaySo.kt$WhenISaySo$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:WhenISaySo.kt$WhenISaySo$_i: Int</ID>
+    <ID>FunctionParameterNaming:WhenISaySo.kt$WhenISaySo.Companion$_bb: ByteBuffer</ID>
+    <ID>LongMethod:ContractService.kt$ContractService$fun abortContractWithSafetyKey(contract: Contract, safetyKey: SafetyKey): Contract</ID>
+    <ID>LongMethod:ContractService.kt$ContractService$fun resetWithSafetyKey(contract: Contract, safetyKey: SafetyKey): Contract</ID>
+    <ID>LongMethod:ContractService.kt$ContractService$fun saveCommand( authorSession: AuthorSession, lockSession: LockSession, contract: Contract, signedMessage: String, )</ID>
+    <ID>LongMethod:MqttListenerService.kt$MqttListenerService$@PostConstruct fun start()</ID>
+    <ID>LongMethod:fb_helpers.kt$fun signedMessageBytesValidatorWithExternalKey(buf: ByteBuffer, key: ByteArray): ValidatedPayload</ID>
+    <ID>MagicNumber:AbortCommand.kt$AbortCommand$4</ID>
+    <ID>MagicNumber:AbortCommand.kt$AbortCommand$6</ID>
+    <ID>MagicNumber:AbortCommand.kt$AbortCommand$8</ID>
+    <ID>MagicNumber:AbortCommand.kt$AbortCommand.Companion$3</ID>
+    <ID>MagicNumber:Acknowledgement.kt$Acknowledgement$10</ID>
+    <ID>MagicNumber:Acknowledgement.kt$Acknowledgement$4</ID>
+    <ID>MagicNumber:Acknowledgement.kt$Acknowledgement$6</ID>
+    <ID>MagicNumber:Acknowledgement.kt$Acknowledgement$8</ID>
+    <ID>MagicNumber:Acknowledgement.kt$Acknowledgement.Companion$3</ID>
+    <ID>MagicNumber:Acknowledgement.kt$Acknowledgement.Companion$4</ID>
+    <ID>MagicNumber:AddFirmwareImage.kt$AddFirmwareImage$32</ID>
+    <ID>MagicNumber:AddFirmwareImage.kt$AddFirmwareImage$48</ID>
+    <ID>MagicNumber:Bot.kt$Bot$4</ID>
+    <ID>MagicNumber:Bot.kt$Bot$6</ID>
+    <ID>MagicNumber:Bot.kt$Bot$8</ID>
+    <ID>MagicNumber:Bot.kt$Bot$9</ID>
+    <ID>MagicNumber:Bot.kt$Bot.Companion$3</ID>
+    <ID>MagicNumber:BotApiController.kt$BotApiController$1024</ID>
+    <ID>MagicNumber:BotApiMessage.kt$BotApiMessage$10</ID>
+    <ID>MagicNumber:BotApiMessage.kt$BotApiMessage$4</ID>
+    <ID>MagicNumber:BotApiMessage.kt$BotApiMessage$6</ID>
+    <ID>MagicNumber:BotApiMessage.kt$BotApiMessage$8</ID>
+    <ID>MagicNumber:BotApiMessage.kt$BotApiMessage.Companion$3</ID>
+    <ID>MagicNumber:BotApiMessage.kt$BotApiMessage.Companion$4</ID>
+    <ID>MagicNumber:CommonMetadata.kt$CommonMetadata$10</ID>
+    <ID>MagicNumber:CommonMetadata.kt$CommonMetadata$4</ID>
+    <ID>MagicNumber:CommonMetadata.kt$CommonMetadata$6</ID>
+    <ID>MagicNumber:CommonMetadata.kt$CommonMetadata$8</ID>
+    <ID>MagicNumber:CommonMetadata.kt$CommonMetadata.Companion$3</ID>
+    <ID>MagicNumber:CommonMetadata.kt$CommonMetadata.Companion$4</ID>
+    <ID>MagicNumber:Configuration.kt$Configuration$4</ID>
+    <ID>MagicNumber:Configuration.kt$Configuration$6</ID>
+    <ID>MagicNumber:ConfigurationService.kt$ConfigurationService$1024</ID>
+    <ID>MagicNumber:Contract.kt$Contract$10</ID>
+    <ID>MagicNumber:Contract.kt$Contract$12</ID>
+    <ID>MagicNumber:Contract.kt$Contract$4</ID>
+    <ID>MagicNumber:Contract.kt$Contract$6</ID>
+    <ID>MagicNumber:Contract.kt$Contract$8</ID>
+    <ID>MagicNumber:Contract.kt$Contract.Companion$3</ID>
+    <ID>MagicNumber:Contract.kt$Contract.Companion$4</ID>
+    <ID>MagicNumber:Contract.kt$Contract.Companion$5</ID>
+    <ID>MagicNumber:ContractService.kt$ContractService$0xFF</ID>
+    <ID>MagicNumber:ContractService.kt$ContractService$1024</ID>
+    <ID>MagicNumber:ContractService.kt$ContractService$45</ID>
+    <ID>MagicNumber:ContractService.kt$ContractService$55</ID>
+    <ID>MagicNumber:ContractService.kt$ContractService$8</ID>
+    <ID>MagicNumber:CoordinatorConfiguration.kt$CoordinatorConfiguration$10</ID>
+    <ID>MagicNumber:CoordinatorConfiguration.kt$CoordinatorConfiguration$12</ID>
+    <ID>MagicNumber:CoordinatorConfiguration.kt$CoordinatorConfiguration$14</ID>
+    <ID>MagicNumber:CoordinatorConfiguration.kt$CoordinatorConfiguration$16</ID>
+    <ID>MagicNumber:CoordinatorConfiguration.kt$CoordinatorConfiguration$18</ID>
+    <ID>MagicNumber:CoordinatorConfiguration.kt$CoordinatorConfiguration$20</ID>
+    <ID>MagicNumber:CoordinatorConfiguration.kt$CoordinatorConfiguration$22</ID>
+    <ID>MagicNumber:CoordinatorConfiguration.kt$CoordinatorConfiguration$4</ID>
+    <ID>MagicNumber:CoordinatorConfiguration.kt$CoordinatorConfiguration$6</ID>
+    <ID>MagicNumber:CoordinatorConfiguration.kt$CoordinatorConfiguration$8</ID>
+    <ID>MagicNumber:CoordinatorConfiguration.kt$CoordinatorConfiguration.Companion$10</ID>
+    <ID>MagicNumber:CoordinatorConfiguration.kt$CoordinatorConfiguration.Companion$3</ID>
+    <ID>MagicNumber:CoordinatorConfiguration.kt$CoordinatorConfiguration.Companion$4</ID>
+    <ID>MagicNumber:CoordinatorConfiguration.kt$CoordinatorConfiguration.Companion$5</ID>
+    <ID>MagicNumber:CoordinatorConfiguration.kt$CoordinatorConfiguration.Companion$6</ID>
+    <ID>MagicNumber:CoordinatorConfiguration.kt$CoordinatorConfiguration.Companion$7</ID>
+    <ID>MagicNumber:CoordinatorConfiguration.kt$CoordinatorConfiguration.Companion$8</ID>
+    <ID>MagicNumber:CoordinatorConfiguration.kt$CoordinatorConfiguration.Companion$9</ID>
+    <ID>MagicNumber:CreateCommandRequest.kt$CreateCommandRequest$4</ID>
+    <ID>MagicNumber:CreateCommandRequest.kt$CreateCommandRequest$6</ID>
+    <ID>MagicNumber:CreateCommandRequest.kt$CreateCommandRequest$8</ID>
+    <ID>MagicNumber:CreateCommandRequest.kt$CreateCommandRequest.Companion$3</ID>
+    <ID>MagicNumber:CreateCommandResponse.kt$CreateCommandResponse$4</ID>
+    <ID>MagicNumber:CreateContractRequest.kt$CreateContractRequest$4</ID>
+    <ID>MagicNumber:CreateContractRequest.kt$CreateContractRequest$6</ID>
+    <ID>MagicNumber:CreateContractResponse.kt$CreateContractResponse$4</ID>
+    <ID>MagicNumber:CreateMessageRequest.kt$CreateMessageRequest$4</ID>
+    <ID>MagicNumber:CreateMessageRequest.kt$CreateMessageRequest$6</ID>
+    <ID>MagicNumber:Error.kt$Error$10</ID>
+    <ID>MagicNumber:Error.kt$Error$12</ID>
+    <ID>MagicNumber:Error.kt$Error$4</ID>
+    <ID>MagicNumber:Error.kt$Error$6</ID>
+    <ID>MagicNumber:Error.kt$Error$8</ID>
+    <ID>MagicNumber:Error.kt$Error.Companion$3</ID>
+    <ID>MagicNumber:Error.kt$Error.Companion$4</ID>
+    <ID>MagicNumber:Error.kt$Error.Companion$5</ID>
+    <ID>MagicNumber:Event.kt$Event$4</ID>
+    <ID>MagicNumber:Event.kt$Event$6</ID>
+    <ID>MagicNumber:FirmwareApiController.kt$FirmwareApiController$1024</ID>
+    <ID>MagicNumber:FirmwareChallengeRequest.kt$FirmwareChallengeRequest$4</ID>
+    <ID>MagicNumber:FirmwareChallengeRequest.kt$FirmwareChallengeRequest$6</ID>
+    <ID>MagicNumber:FirmwareChallengeResponse.kt$FirmwareChallengeResponse$4</ID>
+    <ID>MagicNumber:FirmwareChallengeResponse.kt$FirmwareChallengeResponse$6</ID>
+    <ID>MagicNumber:FirmwareMessage.kt$FirmwareMessage$10</ID>
+    <ID>MagicNumber:FirmwareMessage.kt$FirmwareMessage$4</ID>
+    <ID>MagicNumber:FirmwareMessage.kt$FirmwareMessage$6</ID>
+    <ID>MagicNumber:FirmwareMessage.kt$FirmwareMessage$8</ID>
+    <ID>MagicNumber:FirmwareMessage.kt$FirmwareMessage.Companion$3</ID>
+    <ID>MagicNumber:FirmwareMessage.kt$FirmwareMessage.Companion$4</ID>
+    <ID>MagicNumber:FirmwareService.kt$FirmwareService$1024</ID>
+    <ID>MagicNumber:FirmwareService.kt$FirmwareService$10_000</ID>
+    <ID>MagicNumber:FirmwareService.kt$FirmwareService$32</ID>
+    <ID>MagicNumber:FirmwareService.kt$FirmwareService$48</ID>
+    <ID>MagicNumber:FirmwareService.kt$FirmwareService$5</ID>
+    <ID>MagicNumber:FirmwareService.kt$FirmwareService$80</ID>
+    <ID>MagicNumber:GetContractRequest.kt$GetContractRequest$4</ID>
+    <ID>MagicNumber:GetContractRequest.kt$GetContractRequest$6</ID>
+    <ID>MagicNumber:GetContractResponse.kt$GetContractResponse$10</ID>
+    <ID>MagicNumber:GetContractResponse.kt$GetContractResponse$12</ID>
+    <ID>MagicNumber:GetContractResponse.kt$GetContractResponse$14</ID>
+    <ID>MagicNumber:GetContractResponse.kt$GetContractResponse$4</ID>
+    <ID>MagicNumber:GetContractResponse.kt$GetContractResponse$6</ID>
+    <ID>MagicNumber:GetContractResponse.kt$GetContractResponse$8</ID>
+    <ID>MagicNumber:GetContractResponse.kt$GetContractResponse.Companion$3</ID>
+    <ID>MagicNumber:GetContractResponse.kt$GetContractResponse.Companion$4</ID>
+    <ID>MagicNumber:GetContractResponse.kt$GetContractResponse.Companion$5</ID>
+    <ID>MagicNumber:GetContractResponse.kt$GetContractResponse.Companion$6</ID>
+    <ID>MagicNumber:GetFirmwareChunkRequest.kt$GetFirmwareChunkRequest$4</ID>
+    <ID>MagicNumber:GetFirmwareChunkRequest.kt$GetFirmwareChunkRequest$6</ID>
+    <ID>MagicNumber:GetFirmwareChunkRequest.kt$GetFirmwareChunkRequest$8</ID>
+    <ID>MagicNumber:GetFirmwareChunkRequest.kt$GetFirmwareChunkRequest.Companion$3</ID>
+    <ID>MagicNumber:GetFirmwareChunkResponse.kt$GetFirmwareChunkResponse$4</ID>
+    <ID>MagicNumber:GetFirmwareChunkResponse.kt$GetFirmwareChunkResponse$6</ID>
+    <ID>MagicNumber:GetFirmwareChunkResponse.kt$GetFirmwareChunkResponse$8</ID>
+    <ID>MagicNumber:GetFirmwareChunkResponse.kt$GetFirmwareChunkResponse.Companion$3</ID>
+    <ID>MagicNumber:GetLatestFirmwareRequest.kt$GetLatestFirmwareRequest$4</ID>
+    <ID>MagicNumber:GetLatestFirmwareResponse.kt$GetLatestFirmwareResponse$10</ID>
+    <ID>MagicNumber:GetLatestFirmwareResponse.kt$GetLatestFirmwareResponse$4</ID>
+    <ID>MagicNumber:GetLatestFirmwareResponse.kt$GetLatestFirmwareResponse$6</ID>
+    <ID>MagicNumber:GetLatestFirmwareResponse.kt$GetLatestFirmwareResponse$8</ID>
+    <ID>MagicNumber:GetLatestFirmwareResponse.kt$GetLatestFirmwareResponse.Companion$3</ID>
+    <ID>MagicNumber:GetLatestFirmwareResponse.kt$GetLatestFirmwareResponse.Companion$4</ID>
+    <ID>MagicNumber:GetLockSessionRequest.kt$GetLockSessionRequest$4</ID>
+    <ID>MagicNumber:GetLockSessionResponse.kt$GetLockSessionResponse$10</ID>
+    <ID>MagicNumber:GetLockSessionResponse.kt$GetLockSessionResponse$4</ID>
+    <ID>MagicNumber:GetLockSessionResponse.kt$GetLockSessionResponse$6</ID>
+    <ID>MagicNumber:GetLockSessionResponse.kt$GetLockSessionResponse$8</ID>
+    <ID>MagicNumber:GetLockSessionResponse.kt$GetLockSessionResponse.Companion$3</ID>
+    <ID>MagicNumber:GetLockSessionResponse.kt$GetLockSessionResponse.Companion$4</ID>
+    <ID>MagicNumber:HiveMqMqttBroker.kt$HiveMqMqttBroker$1000</ID>
+    <ID>MagicNumber:Key.kt$Key$4</ID>
+    <ID>MagicNumber:Key.kt$Key$6</ID>
+    <ID>MagicNumber:LockCommand.kt$LockCommand$4</ID>
+    <ID>MagicNumber:LockCommand.kt$LockCommand$6</ID>
+    <ID>MagicNumber:LockCommand.kt$LockCommand$8</ID>
+    <ID>MagicNumber:LockCommand.kt$LockCommand.Companion$3</ID>
+    <ID>MagicNumber:LockUserSessionService.kt$LockUserSessionService$128</ID>
+    <ID>MagicNumber:LockUserSessionService.kt$LockUserSessionService$32</ID>
+    <ID>MagicNumber:MqttListenerService.kt$MqttListenerService$10_000</ID>
+    <ID>MagicNumber:MqttListenerService.kt$MqttListenerService$5</ID>
+    <ID>MagicNumber:PeriodicUpdate.kt$PeriodicUpdate$10</ID>
+    <ID>MagicNumber:PeriodicUpdate.kt$PeriodicUpdate$12</ID>
+    <ID>MagicNumber:PeriodicUpdate.kt$PeriodicUpdate$4</ID>
+    <ID>MagicNumber:PeriodicUpdate.kt$PeriodicUpdate$6</ID>
+    <ID>MagicNumber:PeriodicUpdate.kt$PeriodicUpdate$8</ID>
+    <ID>MagicNumber:PeriodicUpdate.kt$PeriodicUpdate.Companion$3</ID>
+    <ID>MagicNumber:PeriodicUpdate.kt$PeriodicUpdate.Companion$4</ID>
+    <ID>MagicNumber:PeriodicUpdate.kt$PeriodicUpdate.Companion$5</ID>
+    <ID>MagicNumber:Permission.kt$Permission$10</ID>
+    <ID>MagicNumber:Permission.kt$Permission$4</ID>
+    <ID>MagicNumber:Permission.kt$Permission$6</ID>
+    <ID>MagicNumber:Permission.kt$Permission$8</ID>
+    <ID>MagicNumber:Permission.kt$Permission.Companion$3</ID>
+    <ID>MagicNumber:Permission.kt$Permission.Companion$4</ID>
+    <ID>MagicNumber:ReleaseCommand.kt$ReleaseCommand$4</ID>
+    <ID>MagicNumber:ReleaseCommand.kt$ReleaseCommand$6</ID>
+    <ID>MagicNumber:ReleaseCommand.kt$ReleaseCommand$8</ID>
+    <ID>MagicNumber:ReleaseCommand.kt$ReleaseCommand.Companion$3</ID>
+    <ID>MagicNumber:ResetCommand.kt$ResetCommand$4</ID>
+    <ID>MagicNumber:ResetCommand.kt$ResetCommand$6</ID>
+    <ID>MagicNumber:SecurityConfiguration.kt$SecurityConfiguration$3600L</ID>
+    <ID>MagicNumber:SignedEvent.kt$SignedEvent$4</ID>
+    <ID>MagicNumber:SignedEvent.kt$SignedEvent$6</ID>
+    <ID>MagicNumber:SignedMessage.kt$SignedMessage$10</ID>
+    <ID>MagicNumber:SignedMessage.kt$SignedMessage$4</ID>
+    <ID>MagicNumber:SignedMessage.kt$SignedMessage$6</ID>
+    <ID>MagicNumber:SignedMessage.kt$SignedMessage$8</ID>
+    <ID>MagicNumber:SignedMessage.kt$SignedMessage.Companion$3</ID>
+    <ID>MagicNumber:SignedMessage.kt$SignedMessage.Companion$4</ID>
+    <ID>MagicNumber:StartedUpdate.kt$StartedUpdate$10</ID>
+    <ID>MagicNumber:StartedUpdate.kt$StartedUpdate$12</ID>
+    <ID>MagicNumber:StartedUpdate.kt$StartedUpdate$4</ID>
+    <ID>MagicNumber:StartedUpdate.kt$StartedUpdate$6</ID>
+    <ID>MagicNumber:StartedUpdate.kt$StartedUpdate$8</ID>
+    <ID>MagicNumber:StartedUpdate.kt$StartedUpdate.Companion$3</ID>
+    <ID>MagicNumber:StartedUpdate.kt$StartedUpdate.Companion$4</ID>
+    <ID>MagicNumber:StartedUpdate.kt$StartedUpdate.Companion$5</ID>
+    <ID>MagicNumber:TemporaryUnlockRules.kt$TemporaryUnlockRules$4</ID>
+    <ID>MagicNumber:TemporaryUnlockRules.kt$TemporaryUnlockRules$6</ID>
+    <ID>MagicNumber:TimeEndCondition.kt$TimeEndCondition$4</ID>
+    <ID>MagicNumber:UnlockCommand.kt$UnlockCommand$4</ID>
+    <ID>MagicNumber:UnlockCommand.kt$UnlockCommand$6</ID>
+    <ID>MagicNumber:UnlockCommand.kt$UnlockCommand$8</ID>
+    <ID>MagicNumber:UnlockCommand.kt$UnlockCommand.Companion$3</ID>
+    <ID>MagicNumber:Version.kt$Version$4</ID>
+    <ID>MagicNumber:Version.kt$Version$6</ID>
+    <ID>MagicNumber:Version.kt$Version$8</ID>
+    <ID>MagicNumber:Version.kt$Version.Companion$3</ID>
+    <ID>MagicNumber:WebHook.kt$WebHook$4</ID>
+    <ID>MagicNumber:WebUserAuthenticationFilter.kt$WebUserAuthenticationFilter$7</ID>
+    <ID>MagicNumber:crypto_helpers.kt$0x03</ID>
+    <ID>MagicNumber:crypto_helpers.kt$0xFF</ID>
+    <ID>MagicNumber:crypto_helpers.kt$16</ID>
+    <ID>MagicNumber:crypto_helpers.kt$16384</ID>
+    <ID>MagicNumber:crypto_helpers.kt$32</ID>
+    <ID>MagicNumber:crypto_helpers.kt$8</ID>
+    <ID>MagicNumber:id_helpers.kt$4</ID>
+    <ID>MatchingDeclarationName:jwt_helpers.kt$JwtValidationResult</ID>
+    <ID>MaxLineLength:Command.kt$Command$return "Command(name='$name', state=$state, type=$type, serialNumber=$serialNumber, counter=$counter, authorSession=$authorSession)"</ID>
+    <ID>MaxLineLength:MqttListenerService.kt$MqttListenerService$"👀 Periodic update from ${update.session} -&gt; Locked? ${update.isLocked}, Local Lock -&gt; ${update.localLock}, Local Unlock -&gt; ${update.localUnlock}"</ID>
+    <ID>ReturnCount:AdminSessionController.kt$AdminSessionController$@PostMapping("/") fun confirmAdminSession( @RequestBody confirmAdminSessionMessage: ConfirmAdminSessionMessage ): ResponseEntity&lt;AdminSessionMessage&gt;</ID>
+    <ID>ReturnCount:AuthorSessionController.kt$AuthorSessionController$@PostMapping("/", produces = [MediaType.APPLICATION_JSON]) @ResponseBody fun saveAuthorSession( @RequestBody newAuthorSessionMessage: NewAuthorSessionMessage ): ResponseEntity&lt;AuthorSessionMessage&gt;</ID>
+    <ID>ReturnCount:BotApiController.kt$BotApiController$fun routeRequest(message: BotApiMessage): BotApiMessage</ID>
+    <ID>ReturnCount:FirmwareApiController.kt$FirmwareApiController$fun routeRequest(message: FirmwareMessage): FirmwareMessage?</ID>
+    <ID>ReturnCount:HiveMqMqttBroker.kt$AuthExtension.MyAuthenticator$override fun onConnect(input: SimpleAuthInput, output: SimpleAuthOutput)</ID>
+    <ID>ReturnCount:HiveMqMqttBroker.kt$AuthExtension.MyAuthorizer$override fun authorizePublish(p0: PublishAuthorizerInput?, p1: PublishAuthorizerOutput?)</ID>
+    <ID>ReturnCount:HiveMqMqttBroker.kt$AuthExtension.MyAuthorizer$override fun authorizeSubscribe( p0: SubscriptionAuthorizerInput?, p1: SubscriptionAuthorizerOutput?, )</ID>
+    <ID>ReturnCount:crypto_helpers.kt$fun isDerEncoded(signature: ByteArray): Boolean</ID>
+    <ID>ReturnCount:fb_helpers.kt$fun signedMessageBytesValidator(buf: ByteBuffer): ValidatedPayload</ID>
+    <ID>ReturnCount:jwt_helpers.kt$fun verifyJwt( authorSessionService: AuthorSessionService, lockUserSessionService: LockUserSessionService, jwt: String, ): JwtValidationResult</ID>
+    <ID>SpreadOperator:TartarusCoordinatorApplication.kt$(*args)</ID>
+    <ID>SwallowedException:AdminSessionController.kt$AdminSessionController$e: Exception</ID>
+    <ID>SwallowedException:AuthorSessionController.kt$AuthorSessionController$e: CryptoException</ID>
+    <ID>SwallowedException:AuthorSessionController.kt$AuthorSessionController$e: IllegalArgumentException</ID>
+    <ID>SwallowedException:AuthorSessionController.kt$AuthorSessionController$e: IllegalStateException</ID>
+    <ID>SwallowedException:BotService.kt$BotService$cryptoException: CryptoException</ID>
+    <ID>SwallowedException:LockSession.kt$LockSession$e: IllegalArgumentException</ID>
+    <ID>SwallowedException:jwt_helpers.kt$ex: Exception</ID>
+    <ID>ThrowingExceptionsWithoutMessageOrCause:MqttListenerService.kt$MqttListenerService$IllegalStateException()</ID>
+    <ID>TooGenericExceptionCaught:AdminSessionController.kt$AdminSessionController$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:MqttListenerService.kt$MqttListenerService$ex: Exception</ID>
+    <ID>TooGenericExceptionCaught:WebUserAuthenticationFilter.kt$WebUserAuthenticationFilter$ex: Exception</ID>
+    <ID>TooGenericExceptionCaught:jwt_helpers.kt$ex: Exception</ID>
+    <ID>TooManyFunctions:Acknowledgement.kt$Acknowledgement$Companion</ID>
+    <ID>TooManyFunctions:Bot.kt$Bot$Companion</ID>
+    <ID>TooManyFunctions:BotApiMessage.kt$BotApiMessage$Companion</ID>
+    <ID>TooManyFunctions:Contract.kt$Contract$Companion</ID>
+    <ID>TooManyFunctions:ContractService.kt$ContractService</ID>
+    <ID>TooManyFunctions:CoordinatorConfiguration.kt$CoordinatorConfiguration : Table</ID>
+    <ID>TooManyFunctions:CoordinatorConfiguration.kt$CoordinatorConfiguration$Companion</ID>
+    <ID>TooManyFunctions:CreateCommandRequest.kt$CreateCommandRequest$Companion</ID>
+    <ID>TooManyFunctions:Error.kt$Error$Companion</ID>
+    <ID>TooManyFunctions:FirmwareMessage.kt$FirmwareMessage$Companion</ID>
+    <ID>TooManyFunctions:GetContractResponse.kt$GetContractResponse$Companion</ID>
+    <ID>TooManyFunctions:GetFirmwareChunkResponse.kt$GetFirmwareChunkResponse$Companion</ID>
+    <ID>TooManyFunctions:GetLatestFirmwareResponse.kt$GetLatestFirmwareResponse$Companion</ID>
+    <ID>TooManyFunctions:GetLockSessionResponse.kt$GetLockSessionResponse$Companion</ID>
+    <ID>TooManyFunctions:PeriodicUpdate.kt$PeriodicUpdate$Companion</ID>
+    <ID>TooManyFunctions:SignedEvent.kt$SignedEvent$Companion</ID>
+    <ID>TooManyFunctions:SignedMessage.kt$SignedMessage$Companion</ID>
+    <ID>TooManyFunctions:StartedUpdate.kt$StartedUpdate$Companion</ID>
+    <ID>TooManyFunctions:Version.kt$Version$Companion</ID>
+    <ID>TooManyFunctions:crypto_helpers.kt$club.subjugated.tartarus_coordinator.util.crypto_helpers.kt</ID>
+    <ID>UnusedParameter:AdminContractController.kt$AdminContractController$@AuthenticationPrincipal admin: UserDetails</ID>
+    <ID>UnusedParameter:AdminFirmwareController.kt$AdminFirmwareController$@AuthenticationPrincipal admin: UserDetails</ID>
+    <ID>UnusedParameter:AdminLockSessionController.kt$AdminLockSessionController$@AuthenticationPrincipal admin: UserDetails</ID>
+    <ID>UnusedParameter:AdminLockSessionController.kt$AdminLockSessionController$@RequestParam("states", required = false) statesParam: String?</ID>
+    <ID>UnusedParameter:ContractController.kt$ContractController$@AuthenticationPrincipal author: UserDetails</ID>
+    <ID>UnusedParameter:ContractController.kt$ContractController$@AuthenticationPrincipal user: UserDetails</ID>
+    <ID>UnusedParameter:FirmwareApiController.kt$FirmwareApiController$requestId: Long</ID>
+    <ID>UnusedPrivateProperty:AddFirmwareImage.kt$AddFirmwareImage$val version = versionBytes.takeWhile { it != 0.toByte() }.toByteArray().toString(Charsets.UTF_8)</ID>
+    <ID>UnusedPrivateProperty:ContractService.kt$ContractService$val validated = signedMessageBytesValidatorWithExternalKey( ByteBuffer.wrap(signedMessage), compressedPubKey, )</ID>
+    <ID>UseCheckOrError:MqttListenerService.kt$MqttListenerService$throw IllegalStateException()</ID>
+    <ID>UseRequire:ConfirmAdminSessionMessage.kt$ConfirmAdminSessionMessage$throw IllegalArgumentException("Invalid signature on session token")</ID>
+    <ID>UseRequire:ContractService.kt$ContractService$throw IllegalArgumentException("Bot isn't listed in the contract")</ID>
+    <ID>UseRequire:FirmwareService.kt$FirmwareService$throw IllegalArgumentException("Firmware doesn't start with magic byte 0xE9")</ID>
+    <ID>UseRequire:FirmwareService.kt$FirmwareService$throw IllegalArgumentException("Requested beyond the bounds of the image")</ID>
+    <ID>UseRequire:NewAuthorSessionMessage.kt$NewAuthorSessionMessage$throw IllegalArgumentException("Invalid signature on session token")</ID>
+    <ID>UseRequire:crypto_helpers.kt$throw IllegalArgumentException("Invalid private key length")</ID>
+    <ID>UseRequire:crypto_helpers.kt$throw IllegalArgumentException("Invalid raw signature length")</ID>
+    <ID>VariableNaming:FirmwareApiController.kt$FirmwareApiController$val firmware_name_offset = builder.createString(firmware.name)</ID>
+    <ID>WildcardImport:AuthorSession.kt$import jakarta.persistence.*</ID>
+    <ID>WildcardImport:AuthorSessionController.kt$import org.springframework.web.bind.annotation.*</ID>
+    <ID>WildcardImport:Command.kt$import jakarta.persistence.*</ID>
+    <ID>WildcardImport:CommandQueue.kt$import jakarta.persistence.*</ID>
+    <ID>WildcardImport:Contract.kt$import jakarta.persistence.*</ID>
+    <ID>WildcardImport:ContractController.kt$import org.springframework.web.bind.annotation.*</ID>
+    <ID>WildcardImport:KnownToken.kt$import jakarta.persistence.*</ID>
+    <ID>WildcardImport:LockSession.kt$import jakarta.persistence.*</ID>
+    <ID>WildcardImport:LockSessionController.kt$import org.springframework.web.bind.annotation.*</ID>
+    <ID>WildcardImport:LockSessionService.kt$import club.subjugated.tartarus_coordinator.models.*</ID>
+    <ID>WildcardImport:MqttListenerService.kt$import club.subjugated.tartarus_coordinator.util.*</ID>
+    <ID>WildcardImport:SafetyKey.kt$import jakarta.persistence.*</ID>
+    <ID>WildcardImport:SafetyKeyService.kt$import club.subjugated.tartarus_coordinator.util.*</ID>
+    <ID>WildcardImport:crypto_helpers.kt$import java.security.*</ID>
+    <ID>WildcardImport:crypto_helpers.kt$import java.security.spec.*</ID>
+    <ID>WildcardImport:fb_helpers.kt$import club.subjugated.fb.message.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

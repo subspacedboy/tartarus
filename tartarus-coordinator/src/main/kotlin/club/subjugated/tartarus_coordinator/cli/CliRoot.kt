@@ -5,15 +5,11 @@ import picocli.CommandLine
 
 @CommandLine.Command(
     name = "tartarus",
-    subcommands = [
-        AddAdminKeyCommand::class,
-        AddFirmwareImage::class,
-        MakePasswordsForBots::class
-    ],
-    description = ["Tartarus CLI entry point"]
+    subcommands = [AddAdminKeyCommand::class, AddFirmwareImage::class, MakePasswordsForBots::class],
+    description = ["Tartarus CLI entry point"],
 )
 @Component
-class CliRoot : Runnable{
+class CliRoot : Runnable {
     override fun run() {
         println("Specify a subcommand. Use --help for options.")
     }

@@ -61,14 +61,21 @@ class LockSessionService {
 
         lockSession.isLocked = periodicUpdate.isLocked
         saveLockSession(lockSession)
-        val internalUpdate = if(periodicUpdate.currentContractSerial.toInt() != 0){
-            val contracts = contractService.findByLockSessionIdAndState(lockSession, listOf(ContractState.CONFIRMED))
-            val activeContract = contracts.firstOrNull { it.serialNumber == periodicUpdate.currentContractSerial.toInt() }
-            PeriodicUpdateEvent(this, lockSession, activeContract)
-
-        } else {
-            PeriodicUpdateEvent(this, lockSession, null)
-        }
+        val internalUpdate =
+            if (periodicUpdate.currentContractSerial.toInt() != 0) {
+                val contracts =
+                    contractService.findByLockSessionIdAndState(
+                        lockSession,
+                        listOf(ContractState.CONFIRMED),
+                    )
+                val activeContract =
+                    contracts.firstOrNull {
+                        it.serialNumber == periodicUpdate.currentContractSerial.toInt()
+                    }
+                PeriodicUpdateEvent(this, lockSession, activeContract)
+            } else {
+                PeriodicUpdateEvent(this, lockSession, null)
+            }
 
         publisher.publishEvent(internalUpdate)
     }
@@ -79,7 +86,7 @@ class LockSessionService {
         return maybeSession
     }
 
-    fun findAllForAdmin() : List<LockSession> {
+    fun findAllForAdmin(): List<LockSession> {
         return lockSessionRepository.findAll()
     }
 

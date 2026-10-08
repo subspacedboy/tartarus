@@ -26,7 +26,9 @@ class Contract(
     var nextCounter: Int = 0,
     var serialNumber: Int = 0,
     @Transient var lockState: Boolean? = null,
-    @Transient @JsonFormat(shape = JsonFormat.Shape.STRING) var lockLastUpdate: OffsetDateTime? = null,
+    @Transient
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    var lockLastUpdate: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
 ) {
@@ -36,7 +38,7 @@ class Contract(
         }
     }
 
-    fun getEmbeddedBots() : List<Bot> {
+    fun getEmbeddedBots(): List<Bot> {
         val byteBuffer = ByteBuffer.wrap(body)
 
         // Parse the FlatBuffer object

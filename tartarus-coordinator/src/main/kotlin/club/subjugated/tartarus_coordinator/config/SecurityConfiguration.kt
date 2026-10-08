@@ -1,7 +1,6 @@
 package club.subjugated.tartarus_coordinator.config
 
 import club.subjugated.tartarus_coordinator.filters.WebUserAuthenticationFilter
-import club.subjugated.tartarus_coordinator.models.AdminSession
 import club.subjugated.tartarus_coordinator.services.AdminSessionService
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
 import club.subjugated.tartarus_coordinator.services.LockUserSessionService
@@ -26,7 +25,12 @@ class SecurityConfiguration() {
 
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
-        val webUserAuthenticationFilter = WebUserAuthenticationFilter(authorSessionService, lockUserSessionService, adminSessionService)
+        val webUserAuthenticationFilter =
+            WebUserAuthenticationFilter(
+                authorSessionService,
+                lockUserSessionService,
+                adminSessionService,
+            )
 
         http
             .cors { it.configurationSource(corsConfigurationSource()) }

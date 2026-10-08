@@ -25,26 +25,22 @@ import org.springframework.web.server.ResponseStatusException
 @RequestMapping("/contracts/{contractName}/commands")
 @Controller
 class CommandController {
-    @Autowired
-    lateinit var contractService: ContractService
-    @Autowired
-    lateinit var authorSessionService: AuthorSessionService
-    @Autowired
-    lateinit var lockSessionService: LockSessionService
-    @Autowired
-    lateinit var lockUserSessionService: LockUserSessionService
-    @Autowired
-    lateinit var commandQueueService: CommandQueueService
+    @Autowired lateinit var contractService: ContractService
+    @Autowired lateinit var authorSessionService: AuthorSessionService
+    @Autowired lateinit var lockSessionService: LockSessionService
+    @Autowired lateinit var lockUserSessionService: LockUserSessionService
+    @Autowired lateinit var commandQueueService: CommandQueueService
 
     @GetMapping("/forAuthor", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
     fun getCommandsForContractForAuthor(
         @AuthenticationPrincipal authorUser: UserDetails,
-        @PathVariable contractName: String
+        @PathVariable contractName: String,
     ): ResponseEntity<List<CommandMessage>> {
         val authorUserSession = authorSessionService.findByName(authorUser.username)
         val contract = this.contractService.getByNameForAuthor(contractName)
-        val commands = this.commandQueueService.getByAuthorSessionIdAndContract(authorUserSession, contract)
+        val commands =
+            this.commandQueueService.getByAuthorSessionIdAndContract(authorUserSession, contract)
 
         return ResponseEntity.ok(commands.map { CommandMessage.fromCommand(it) })
     }
@@ -53,12 +49,15 @@ class CommandController {
     @ResponseBody
     fun getCommandsForContractForLockUser(
         @AuthenticationPrincipal lockUser: UserDetails,
-        @PathVariable contractName: String
+        @PathVariable contractName: String,
     ): ResponseEntity<List<CommandMessage>> {
         val lockSessionUser = lockUserSessionService.findByName(lockUser.username)
         val contract = this.contractService.getByNameForAuthor(contractName)
         if (lockSessionUser.lockSession != contract.lockSession) {
-            throw ResponseStatusException(HttpStatus.FORBIDDEN, "Lock session does not match contract")
+            throw ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "Lock session does not match contract",
+            )
         }
 
         val commands = this.commandQueueService.getByContract(contract)
@@ -66,7 +65,10 @@ class CommandController {
         return ResponseEntity.ok(commands.map { CommandMessage.fromCommand(it) })
     }
 
-    @PostMapping("/forLockUser/command/{commandName}/acknowledge", produces = [MediaType.APPLICATION_JSON])
+    @PostMapping(
+        "/forLockUser/command/{commandName}/acknowledge",
+        produces = [MediaType.APPLICATION_JSON],
+    )
     @ResponseBody
     fun manuallyAcknowledgeCommand(
         @AuthenticationPrincipal lockUser: UserDetails,
@@ -76,19 +78,21 @@ class CommandController {
         val lockSessionUser = lockUserSessionService.findByName(lockUser.username)
         val contract = this.contractService.getByNameForAuthor(contractName)
         if (lockSessionUser.lockSession != contract.lockSession) {
-            throw ResponseStatusException(HttpStatus.FORBIDDEN, "Lock session does not match contract")
+            throw ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "Lock session does not match contract",
+            )
         }
 
         val commands = this.commandQueueService.getByContract(contract)
 
-        val command = commands.firstOrNull { it.name == commandName }
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Command not found")
+        val command =
+            commands.firstOrNull { it.name == commandName }
+                ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Command not found")
         this.commandQueueService.manuallyAcknowledgeCommand(command)
         contract.nextCounter = command.counter!! + 1
         this.contractService.save(contract)
 
         return ResponseEntity.ok(commands.map { CommandMessage.fromCommand(it) })
     }
-
-
 }

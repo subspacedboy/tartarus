@@ -12,19 +12,17 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.OneToMany
-import org.bouncycastle.util.encoders.Base32
 import java.time.OffsetDateTime
 import java.util.*
+import org.bouncycastle.util.encoders.Base32
 
 @Entity
-class Bot (
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) var id: Long = 0,
+class Bot(
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) var id: Long = 0,
     var name: String = generateId(),
     @Enumerated(EnumType.STRING) var state: BotState = BotState.UNSPECIFIED,
     var publicKey: String,
-    @Transient
-    var clearTextPassword: String? = null,
+    @Transient var clearTextPassword: String? = null,
     var password: String? = "",
     var salt: String? = "",
     var description: String,
@@ -39,19 +37,19 @@ class Bot (
         }
     }
 
-    fun canReadMqtt(topic: String) : Boolean {
+    fun canReadMqtt(topic: String): Boolean {
         return listOf("bots/inbox_api_${name}", "bots/inbox_events_${name}").contains(topic)
     }
 
-    fun canWriteMqtt(topic: String) : Boolean {
+    fun canWriteMqtt(topic: String): Boolean {
         // Bots can always write to lock queues?
-        if(topic.startsWith("locks/")) {
+        if (topic.startsWith("locks/")) {
             return true
         }
         return listOf("status/${name}", "coordinator/inbox").contains(topic)
     }
 
-    fun checkPassword(input : String) : Boolean {
+    fun checkPassword(input: String): Boolean {
         val salt = Base64.getDecoder().decode(this.salt)
         val derived = runSCryptWithCommonParams(input.toByteArray(), salt)
         return Base64.getEncoder().encodeToString(derived) == this.password

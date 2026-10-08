@@ -15,26 +15,23 @@ import club.subjugated.tartarus_coordinator.util.rawToDerSignature
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.google.flatbuffers.FlatBufferBuilder
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.context.ApplicationEventPublisher
-import org.springframework.stereotype.Service
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.security.Signature
 import java.util.*
 import java.util.concurrent.TimeUnit
-import kotlin.math.min
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.stereotype.Service
 
 @Service
 class FirmwareService(
     private var firmwareRepository: FirmwareRepository,
     private var firmwareUpgradePathRepository: FirmwareUpgradePathRepository,
     private var timeSource: TimeSource,
-    private var publisher: ApplicationEventPublisher
+    private var publisher: ApplicationEventPublisher,
 ) {
-    @Value("\${tartarus.firmware.challenge_key}")
-    var challengeKey : String = ""
+    @Value("\${tartarus.firmware.challenge_key}") var challengeKey: String = ""
 
     private val nonceChallenges: Cache<Long, ByteArray> =
         Caffeine.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(10_000).build()
@@ -42,61 +39,66 @@ class FirmwareService(
     private val firmwareImages: Cache<String, ByteArray> =
         Caffeine.newBuilder().maximumSize(2).build()
 
-    fun createNewFirmware(image : ByteArray) : Firmware {
-        if(image[0] == 0xE9.toByte()) {
+    fun createNewFirmware(image: ByteArray): Firmware {
+        if (image[0] == 0xE9.toByte()) {
             println("Magic byte matches")
         } else {
             throw IllegalArgumentException("Firmware doesn't start with magic byte 0xE9")
         }
 
         val versionBytes = image.copyOfRange(48, 80)
-        val version = versionBytes.takeWhile { it != 0.toByte() }.toByteArray().toString(Charsets.UTF_8)
+        val version =
+            versionBytes.takeWhile { it != 0.toByte() }.toByteArray().toString(Charsets.UTF_8)
 
         val digest = MessageDigest.getInstance("SHA-256")
         digest.update(image)
         val hash = Base64.getEncoder().encodeToString(digest.digest())
 
-        val firmware : Firmware = firmwareRepository.findFirstByDigest(hash) ?: run {
-            val f = Firmware(
-                state = FirmwareState.ACTIVE,
-                image = image,
-                signature = "",
-                digest = hash,
-                version = version,
-                createdAt = timeSource.nowInUtc()
-            )
-            firmwareRepository.save(f)
-        }
+        val firmware: Firmware =
+            firmwareRepository.findFirstByDigest(hash)
+                ?: run {
+                    val f =
+                        Firmware(
+                            state = FirmwareState.ACTIVE,
+                            image = image,
+                            signature = "",
+                            digest = hash,
+                            version = version,
+                            createdAt = timeSource.nowInUtc(),
+                        )
+                    firmwareRepository.save(f)
+                }
         return firmware
     }
 
-    fun getLatest() : Firmware {
+    fun getLatest(): Firmware {
         return firmwareRepository.findFirstByOrderByCreatedAtDesc()
     }
 
-    fun getByVersion(versionName : String) : List<Firmware> {
+    fun getByVersion(versionName: String): List<Firmware> {
         return firmwareRepository.findByVersion(versionName)
     }
 
-    fun getFirmwareBytes(name : String, size: Int, offset : Int) : ByteArray {
-        val image = firmwareImages.get(name) {
-            val firmware = firmwareRepository.findByName(name)
-            firmware.image!!
-        }
+    fun getFirmwareBytes(name: String, size: Int, offset: Int): ByteArray {
+        val image =
+            firmwareImages.get(name) {
+                val firmware = firmwareRepository.findByName(name)
+                firmware.image!!
+            }
 
-        if(offset > image.size) {
+        if (offset > image.size) {
             throw IllegalArgumentException("Requested beyond the bounds of the image")
         }
-        var end = offset+size
-        if(end > image.lastIndex){
+        var end = offset + size
+        if (end > image.lastIndex) {
             end = image.lastIndex
         }
 
         // +1 because copyOfRange is end-exclusive
-        return image.copyOfRange(offset, end+1)
+        return image.copyOfRange(offset, end + 1)
     }
 
-    fun generateFirmwareChallenge(sessionToken: String) : ByteArray {
+    fun generateFirmwareChallenge(sessionToken: String): ByteArray {
         val builder = FlatBufferBuilder(1024)
 
         val nonce = ByteArray(32) // P-256 (secp256r1) requires 32 bytes (256 bits)
@@ -122,50 +124,57 @@ class FirmwareService(
         return builder.sizedByteArray()
     }
 
-    fun validateChallengeSignature(requestId: Long, sessionToken: String, data : ByteArray) : Boolean {
-        val challengeKey = getECPublicKeyFromCompressedKeyByteArray(Base64.getDecoder().decode(challengeKey))
+    fun validateChallengeSignature(
+        requestId: Long,
+        sessionToken: String,
+        data: ByteArray,
+    ): Boolean {
+        val challengeKey =
+            getECPublicKeyFromCompressedKeyByteArray(Base64.getDecoder().decode(challengeKey))
 
-        val nonce = nonceChallenges.getIfPresent(requestId) ?: run {
-            println("⚠️ Challenge nonce for requestId $requestId expired or not found")
-            val event = FirmwareValidationEvent(
-                this,
-                sessionToken = sessionToken,
-                validated = false
-            )
-            publisher.publishEvent(event)
-            return false
-        }
+        val nonce =
+            nonceChallenges.getIfPresent(requestId)
+                ?: run {
+                    println("⚠️ Challenge nonce for requestId $requestId expired or not found")
+                    val event =
+                        FirmwareValidationEvent(
+                            this,
+                            sessionToken = sessionToken,
+                            validated = false,
+                        )
+                    publisher.publishEvent(event)
+                    return false
+                }
         nonceChallenges.invalidate(requestId)
 
-        val verifier = Signature.getInstance("NonewithECDSA", "BC").apply {
-            initVerify(challengeKey)
-            update(nonce)
-        }
+        val verifier =
+            Signature.getInstance("NonewithECDSA", "BC").apply {
+                initVerify(challengeKey)
+                update(nonce)
+            }
         val signature = rawToDerSignature(data)
 
         val validated = verifier.verify(signature)
 
-        val event = FirmwareValidationEvent(
-            this,
-            sessionToken = sessionToken,
-            validated = validated
-        )
+        val event =
+            FirmwareValidationEvent(this, sessionToken = sessionToken, validated = validated)
         publisher.publishEvent(event)
 
         return validated
     }
 
-    fun createUpgradePath(fromVersion: String, toVersion: String) : FirmwareUpgradePath {
-        val upgradePath = FirmwareUpgradePath(
-            fromVersion = fromVersion,
-            toVersion = toVersion,
-            createdAt = timeSource.nowInUtc()
-        )
+    fun createUpgradePath(fromVersion: String, toVersion: String): FirmwareUpgradePath {
+        val upgradePath =
+            FirmwareUpgradePath(
+                fromVersion = fromVersion,
+                toVersion = toVersion,
+                createdAt = timeSource.nowInUtc(),
+            )
         firmwareUpgradePathRepository.save(upgradePath)
         return upgradePath
     }
 
-    fun findUpgradesForVersion(fromVersion: String) : List<FirmwareUpgradePath> {
+    fun findUpgradesForVersion(fromVersion: String): List<FirmwareUpgradePath> {
         return firmwareUpgradePathRepository.findByFromVersion(fromVersion)
     }
 }

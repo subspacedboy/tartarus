@@ -15,6 +15,7 @@ import jakarta.annotation.PreDestroy
 import java.nio.ByteBuffer
 import java.util.Base64
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import org.eclipse.paho.client.mqttv3.MqttClient
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
@@ -29,19 +30,18 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionTemplate
-import java.util.concurrent.ScheduledExecutorService
 
 @Component
 class InternalMqttClient {
     private val clientId: String = "internal"
     @Value("\${tartarus.hivemq.local_tcp_port}") val localTcpPort: Long = 0
 
-    private fun brokerUrl() : String {
+    private fun brokerUrl(): String {
         return "tcp://localhost:${localTcpPort}"
     }
 
     @Bean
-    fun mqttClient() : MqttClient {
+    fun mqttClient(): MqttClient {
         return MqttClient(brokerUrl(), clientId, null)
     }
 }
@@ -66,7 +66,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
     @Autowired lateinit var botApiController: BotApiController
     @Autowired lateinit var firmwareApiController: FirmwareApiController
 
-    @Autowired lateinit var internalMqttSubscriberPassword : String
+    @Autowired lateinit var internalMqttSubscriberPassword: String
 
     private val executorService = Executors.newSingleThreadExecutor()
 
@@ -74,8 +74,9 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
 
     @Value("\${tartarus.hivemq.local_tcp_port}") val localTcpPort: Long = 0
 
-    // TODO Remove this duped brokerUrl and consolidate the client code. Main lock updates should also have watchdog
-    private fun brokerUrl() : String {
+    // TODO Remove this duped brokerUrl and consolidate the client code. Main lock updates should
+    // also have watchdog
+    private fun brokerUrl(): String {
         return "tcp://localhost:${localTcpPort}"
     }
 
@@ -90,16 +91,20 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                 }
 
             client.connect(options)
-            client.subscribe("coordinator/inbox") {topic, message ->
-                transactionTemplate.execute {status ->
+            client.subscribe("coordinator/inbox") { topic, message ->
+                transactionTemplate.execute { status ->
                     try {
-                        val apiMessage = BotApiMessage.getRootAsBotApiMessage(ByteBuffer.wrap(message.payload))
+                        val apiMessage =
+                            BotApiMessage.getRootAsBotApiMessage(ByteBuffer.wrap(message.payload))
                         println("🧫 Got Bot API message -> ${apiMessage}")
 
                         val response = botApiController.routeRequest(apiMessage)
 
-                        client.publish("bots/inbox_api_${apiMessage.name!!}", MqttMessage(response.byteBuffer.array()))
-                    } catch (ex : Exception) {
+                        client.publish(
+                            "bots/inbox_api_${apiMessage.name!!}",
+                            MqttMessage(response.byteBuffer.array()),
+                        )
+                    } catch (ex: Exception) {
                         println("Encountered exception in processing BOT MQTT")
                         ex.printStackTrace()
                         status.setRollbackOnly()
@@ -113,13 +118,19 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
     fun start() {
         var executor = createBotApiExecutor()
 
-        botExecutorWatchdogService.scheduleAtFixedRate({
-            if (botExecutorWatchdogService.isTerminated || botExecutorWatchdogService.isShutdown) {
-                println("Bot executor stopped unexpectedly, restarting...")
-                executor = createBotApiExecutor()
-            }
-        }, 1, 5, TimeUnit.SECONDS)
-
+        botExecutorWatchdogService.scheduleAtFixedRate(
+            {
+                if (
+                    botExecutorWatchdogService.isTerminated || botExecutorWatchdogService.isShutdown
+                ) {
+                    println("Bot executor stopped unexpectedly, restarting...")
+                    executor = createBotApiExecutor()
+                }
+            },
+            1,
+            5,
+            TimeUnit.SECONDS,
+        )
 
         executorService.submit {
             val options =
@@ -146,15 +157,16 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                                         this.lockSessionService.findBySessionToken(
                                             keyRequirement.sessionToken
                                         )
-                                    if(lockSession == null) {
-                                        signedMessageBytesValidator(ByteBuffer.wrap(message.payload))
+                                    if (lockSession == null) {
+                                        signedMessageBytesValidator(
+                                            ByteBuffer.wrap(message.payload)
+                                        )
                                     } else {
                                         signedMessageBytesValidatorWithExternalKey(
                                             ByteBuffer.wrap(message.payload),
                                             lockSession.decodePublicKey(),
                                         )
                                     }
-
                                 }
                                 else -> {
                                     throw IllegalStateException()
@@ -189,19 +201,24 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                 }
             }
 
-            client.subscribe("locks/firmware") {_, message ->
+            client.subscribe("locks/firmware") { _, message ->
                 transactionTemplate.execute { status ->
                     try {
-                        val firmwareApiMessage = FirmwareMessage.getRootAsFirmwareMessage(ByteBuffer.wrap(message.payload))
+                        val firmwareApiMessage =
+                            FirmwareMessage.getRootAsFirmwareMessage(
+                                ByteBuffer.wrap(message.payload)
+                            )
                         println("🧱 Got Firmware API message -> ${firmwareApiMessage}")
 
                         val response = firmwareApiController.routeRequest(firmwareApiMessage)
 
-                        if(response != null) {
-                            client.publish("firmware/${response.sessionToken!!}", MqttMessage(response.byteBuffer.array()))
+                        if (response != null) {
+                            client.publish(
+                                "firmware/${response.sessionToken!!}",
+                                MqttMessage(response.byteBuffer.array()),
+                            )
                         }
-                    }
-                    catch (ex : Exception) {
+                    } catch (ex: Exception) {
                         println("Encountered exception in processing Firmware MQTT")
                         ex.printStackTrace()
                         status.setRollbackOnly()
@@ -214,10 +231,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
     private fun handleStartUpdateEvent(signedMessage: ValidatedPayload.StartedUpdatePayload) {
         val theUpdate = signedMessage.startedUpdate
 
-        val key =
-            ByteArray(theUpdate.publicKeyLength) {
-                theUpdate.publicKey(it).toByte()
-            }
+        val key = ByteArray(theUpdate.publicKeyLength) { theUpdate.publicKey(it).toByte() }
         val sessionToken = theUpdate.session!!
 
         this.liveClients.put(sessionToken, "locks/$sessionToken")
@@ -226,7 +240,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
             NewLockSessionMessage(
                 publicKey = Base64.getEncoder().encodeToString(key),
                 sessionToken = theUpdate.session!!,
-                userSessionPublicKey = ""
+                userSessionPublicKey = "",
             )
 
         val lockSession = lockSessionService.createLockSession(nlsm)
@@ -244,10 +258,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
         // Send back Configuration data for safety keys.
         val configData = this.configurationService.getConfigurationAsFB()
         println("🧩 Transmitting configuration data -> ${sessionToken}")
-        client.publish(
-            "configuration/$sessionToken",
-            MqttMessage(configData),
-        )
+        client.publish("configuration/$sessionToken", MqttMessage(configData))
 
         // Also send the firmware challenge :-)
         val firmwareChallenge = firmwareService.generateFirmwareChallenge(sessionToken)
@@ -258,27 +269,28 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
     private fun handlePeriodicUpdate(signedMessage: ValidatedPayload.PeriodicUpdatePayload) {
         val update = signedMessage.periodicUpdate
 
-        println("👀 Periodic update from ${update.session} -> Locked? ${update.isLocked}, Local Lock -> ${update.localLock}, Local Unlock -> ${update.localUnlock}")
+        println(
+            "👀 Periodic update from ${update.session} -> Locked? ${update.isLocked}, Local Lock -> ${update.localLock}, Local Unlock -> ${update.localUnlock}"
+        )
         this.lockSessionService.handlePeriodicUpdate(update)
     }
 
     private fun handleAcknowledgePayload(signedMessage: ValidatedPayload.AcknowledgementPayload) {
         val ack = signedMessage.acknowledgement
 
-        val lockSession =
-            this.lockSessionService.findBySessionToken(ack.session!!)
+        val lockSession = this.lockSessionService.findBySessionToken(ack.session!!)
         val commands =
             this.commandQueueService.getCommandBySessionAndSerial(
                 lockSession!!,
                 ack.serialNumber.toInt(),
             )
 
-        if(commands.size > 1) {
+        if (commands.size > 1) {
             println("☣️ More than one command matched.")
         }
 
         println("🥕 Received ack: $ack")
-        for(command in commands) {
+        for (command in commands) {
             println("🥕 Processing ack: ${command.name}")
             this.commandQueueService.acknowledgeCommand(command, ack)
         }
@@ -286,8 +298,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
 
     private fun handleErrorPayload(signedMessage: ValidatedPayload.ErrorPayload) {
         val err = signedMessage.error
-        val lockSession =
-            this.lockSessionService.findBySessionToken(err.session!!)
+        val lockSession = this.lockSessionService.findBySessionToken(err.session!!)
 
         val commands =
             this.commandQueueService.getCommandBySessionAndSerial(
@@ -295,11 +306,11 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                 err.serialNumber.toInt(),
             )
 
-        if(commands.size > 1) {
+        if (commands.size > 1) {
             println("☣️ More than one command matched for error.")
         }
 
-        for(command in commands) {
+        for (command in commands) {
             this.commandQueueService.errorCommand(command, err.message)
             println("😞 Error received $err [Command ${command.name}")
         }

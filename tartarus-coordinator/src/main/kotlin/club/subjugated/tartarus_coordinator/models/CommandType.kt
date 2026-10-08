@@ -7,5 +7,5 @@ enum class CommandType {
     LOCK,
     RELEASE,
     ABORT,
-    RESET
+    RESET,
 }

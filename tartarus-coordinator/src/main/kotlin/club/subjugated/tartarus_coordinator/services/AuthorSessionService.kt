@@ -38,13 +38,12 @@ class AuthorSessionService {
         return authorSession
     }
 
-    fun getSessionForBot(publicKey: String) : AuthorSession {
+    fun getSessionForBot(publicKey: String): AuthorSession {
         return authorSessionRepository.findByPublicKey(publicKey)!!
     }
 
-    fun saveAuthorSessionForBot(publicKey: String) : AuthorSession {
-        val maybeSession =
-            this.authorSessionRepository.findByPublicKey(publicKey)
+    fun saveAuthorSessionForBot(publicKey: String): AuthorSession {
+        val maybeSession = this.authorSessionRepository.findByPublicKey(publicKey)
 
         if (maybeSession != null) {
             // Ok, this author already had a session from some other time. Return that
@@ -67,7 +66,7 @@ class AuthorSessionService {
         return this.authorSessionRepository.findByName(name)
     }
 
-    fun authorKnowsToken(authorSession: AuthorSession, shareableToken: String) : KnownToken {
+    fun authorKnowsToken(authorSession: AuthorSession, shareableToken: String): KnownToken {
         return knownTokenRepository.findByAuthorSessionIdAndShareableToken(
             authorSession.id,
             shareableToken,
@@ -89,10 +88,19 @@ class AuthorSessionService {
         )
     }
 
-    fun updateKnownToken(authorSessionName: String, updateKnownTokenMessage: UpdateKnownTokenMessage) : KnownToken {
+    fun updateKnownToken(
+        authorSessionName: String,
+        updateKnownTokenMessage: UpdateKnownTokenMessage,
+    ): KnownToken {
         val authorSession = findByName(authorSessionName)
-        val knownToken = knownTokenRepository.findByAuthorSessionIdAndName(authorSession.id, updateKnownTokenMessage.name)
-        require(authorSession == knownToken.authorSession) { "Token does not belong to this author" }
+        val knownToken =
+            knownTokenRepository.findByAuthorSessionIdAndName(
+                authorSession.id,
+                updateKnownTokenMessage.name,
+            )
+        require(authorSession == knownToken.authorSession) {
+            "Token does not belong to this author"
+        }
 
         knownToken.notes = updateKnownTokenMessage.notes
         knownTokenRepository.save(knownToken)

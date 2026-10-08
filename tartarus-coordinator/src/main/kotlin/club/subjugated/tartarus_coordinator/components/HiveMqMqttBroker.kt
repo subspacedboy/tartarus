@@ -22,10 +22,6 @@ import com.hivemq.extension.sdk.api.parameter.ExtensionStopOutput
 import com.hivemq.extension.sdk.api.services.Services
 import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Profile
-import org.springframework.stereotype.Component
 import java.nio.charset.StandardCharsets
 import java.nio.file.FileSystems
 import java.nio.file.Files
@@ -33,6 +29,10 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
 import java.util.*
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Profile
+import org.springframework.stereotype.Component
 
 fun isLockUser(username: String?): Boolean {
     if (username.isNullOrEmpty()) {
@@ -43,18 +43,16 @@ fun isLockUser(username: String?): Boolean {
 }
 
 class AuthExtension(
-    private var internalPassword : String,
+    private var internalPassword: String,
     private var botService: BotService,
-    private var lockSessionService: LockSessionService
+    private var lockSessionService: LockSessionService,
 ) : ExtensionMain {
 
     override fun extensionStart(input: ExtensionStartInput, output: ExtensionStartOutput) {
         Services.securityRegistry().setAuthenticatorProvider {
             MyAuthenticator(internalPassword, botService, lockSessionService)
         }
-        Services.securityRegistry().setAuthorizerProvider {
-            MyAuthorizer(botService)
-        }
+        Services.securityRegistry().setAuthorizerProvider { MyAuthorizer(botService) }
     }
 
     override fun extensionStop(input: ExtensionStopInput, output: ExtensionStopOutput) {
@@ -64,40 +62,42 @@ class AuthExtension(
     class MyAuthenticator(
         private var internalPassword: String,
         private var botService: BotService,
-        private var lockSessionService: LockSessionService) : SimpleAuthenticator {
+        private var lockSessionService: LockSessionService,
+    ) : SimpleAuthenticator {
 
         override fun onConnect(input: SimpleAuthInput, output: SimpleAuthOutput) {
             val clientId = input.connectPacket.clientId
             val username = input.connectPacket.userName.orElse(null)
             val password = input.connectPacket.password
 
-            if(password.isEmpty) {
+            if (password.isEmpty) {
                 output.failAuthentication()
                 return
             }
 
-            if(clientId != username) {
+            if (clientId != username) {
                 output.failAuthentication()
                 return
             }
 
-            val actualPassword = StandardCharsets.UTF_8.decode(input.connectPacket.password.get()).toString()
+            val actualPassword =
+                StandardCharsets.UTF_8.decode(input.connectPacket.password.get()).toString()
 
             val isInternalUser = username == "internal" || username == "bot_processor"
-            if(isInternalUser && actualPassword == internalPassword) {
+            if (isInternalUser && actualPassword == internalPassword) {
                 output.authenticateSuccessfully()
                 return
             }
 
-            if(username.startsWith("b-")) {
+            if (username.startsWith("b-")) {
                 val bot = botService.getByName(username)
-                if(bot.checkPassword(actualPassword)) {
+                if (bot.checkPassword(actualPassword)) {
                     output.authenticateSuccessfully()
                     return
                 }
             }
 
-            if(isLockUser(username)) {
+            if (isLockUser(username)) {
                 val session = lockSessionService.findBySessionToken(username)
                 if (session == null) {
                     output.authenticateSuccessfully()
@@ -123,22 +123,24 @@ class AuthExtension(
         }
     }
 
-    class MyAuthorizer(
-        private var botService: BotService
-    ) : SubscriptionAuthorizer, PublishAuthorizer {
-        override fun authorizeSubscribe(p0: SubscriptionAuthorizerInput?, p1: SubscriptionAuthorizerOutput?) {
+    class MyAuthorizer(private var botService: BotService) :
+        SubscriptionAuthorizer, PublishAuthorizer {
+        override fun authorizeSubscribe(
+            p0: SubscriptionAuthorizerInput?,
+            p1: SubscriptionAuthorizerOutput?,
+        ) {
             val client = p0!!.clientInformation
             val topicName = p0.subscription.topicFilter
 
             val internalUser = client.clientId == "bot_processor" || client.clientId == "internal"
-            if(internalUser) {
+            if (internalUser) {
                 p1!!.authorizeSuccessfully()
                 return
             }
 
-            if(client.clientId.startsWith("b-")) {
+            if (client.clientId.startsWith("b-")) {
                 val bot = botService.getByName(client.clientId)
-                if(bot.canReadMqtt(topicName)){
+                if (bot.canReadMqtt(topicName)) {
                     p1!!.authorizeSuccessfully()
                     return
                 }
@@ -165,36 +167,36 @@ class AuthExtension(
             val topicName = p0.publishPacket.topic
 
             val internalUser = client.clientId == "bot_processor" || client.clientId == "internal"
-            if(internalUser) {
+            if (internalUser) {
                 p1!!.authorizeSuccessfully()
                 return
             }
 
-            if(client.clientId.startsWith("b-")) {
+            if (client.clientId.startsWith("b-")) {
                 val bot = botService.getByName(client.clientId)
-                if(bot.canWriteMqtt(topicName)){
+                if (bot.canWriteMqtt(topicName)) {
                     p1!!.authorizeSuccessfully()
                     return
                 }
             }
 
-            if(isLockUser(client.clientId)){
-                if(topicName!!.startsWith("bots/inbox_events_b-")){
+            if (isLockUser(client.clientId)) {
+                if (topicName!!.startsWith("bots/inbox_events_b-")) {
                     p1!!.authorizeSuccessfully()
                     return
                 }
 
-                if(topicName.toString() == "locks/updates") {
+                if (topicName.toString() == "locks/updates") {
                     p1!!.authorizeSuccessfully()
                     return
                 }
 
-                if(topicName.toString() == "locks/firmware") {
+                if (topicName.toString() == "locks/firmware") {
                     p1!!.authorizeSuccessfully()
                     return
                 }
 
-                if(topicName.toString() == "devices/status") {
+                if (topicName.toString() == "devices/status") {
                     p1!!.authorizeSuccessfully()
                     return
                 }
@@ -205,14 +207,12 @@ class AuthExtension(
     }
 }
 
-/**
- * HiveMQ broker component for managing the lifecycle of the embedded HiveMQ instance.
- */
+/** HiveMQ broker component for managing the lifecycle of the embedded HiveMQ instance. */
 @Component
 @Profile("!cli")
 class HiveMqMqttBroker(
     private var botService: BotService,
-    private var lockSessionService: LockSessionService
+    private var lockSessionService: LockSessionService,
 ) {
     lateinit var hiveMQ: EmbeddedHiveMQ
 
@@ -223,32 +223,36 @@ class HiveMqMqttBroker(
     @Value("\${tartarus.hivemq.data_directory}") val dataDirectory: String = ""
 
     @Bean
-    fun internalMqttSubscriberPassword() : String {
+    fun internalMqttSubscriberPassword(): String {
         return internalPassword.toString()
     }
 
     @PostConstruct
     fun start() {
-        val embeddedExtension = EmbeddedExtension.builder()
-            .withId("embedded-ext-1")
-            .withName("Embedded Extension")
-            .withVersion("1.0.0")
-            .withPriority(0)
-            .withStartPriority(1000)
-            .withAuthor("Me")
-            .withExtensionMain(AuthExtension(internalPassword.toString(), botService, lockSessionService))
-            .build()
+        val embeddedExtension =
+            EmbeddedExtension.builder()
+                .withId("embedded-ext-1")
+                .withName("Embedded Extension")
+                .withVersion("1.0.0")
+                .withPriority(0)
+                .withStartPriority(1000)
+                .withAuthor("Me")
+                .withExtensionMain(
+                    AuthExtension(internalPassword.toString(), botService, lockSessionService)
+                )
+                .build()
 
         val pathToConfig = extractResourceDir(configDirectory)
 
         Files.createDirectories(Paths.get(dataDirectory))
 
-        hiveMQ = EmbeddedHiveMQBuilder.builder()
-            .withDataFolder(Path.of(dataDirectory)) // Specify the data folder for persistence
-            .withoutLoggingBootstrap()
-            .withEmbeddedExtension(embeddedExtension)
-            .withConfigurationFolder(pathToConfig)
-            .build()
+        hiveMQ =
+            EmbeddedHiveMQBuilder.builder()
+                .withDataFolder(Path.of(dataDirectory)) // Specify the data folder for persistence
+                .withoutLoggingBootstrap()
+                .withEmbeddedExtension(embeddedExtension)
+                .withConfigurationFolder(pathToConfig)
+                .build()
 
         println("💬 (HiveMQ) Started")
 
@@ -258,15 +262,16 @@ class HiveMqMqttBroker(
     }
 
     /**
-     * HiveMQ can't read its configuration when it's packed inside a jar file. This will make
-     * a temporary directory and extract the contents there and return the path to that directory.
+     * HiveMQ can't read its configuration when it's packed inside a jar file. This will make a
+     * temporary directory and extract the contents there and return the path to that directory.
      */
     private fun extractResourceDir(resourceDir: String): Path {
         val tempDir = Files.createTempDirectory("hivemq-config")
 
         val classLoader = Thread.currentThread().contextClassLoader
-        val resource = classLoader.getResource(resourceDir)
-            ?: error("Resource directory not found: $resourceDir")
+        val resource =
+            classLoader.getResource(resourceDir)
+                ?: error("Resource directory not found: $resourceDir")
 
         val uri = resource.toURI()
 

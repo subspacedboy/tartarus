@@ -12,13 +12,13 @@ class EventPublisher(private val webSocketHandler: EventWebSocketHandler) {
     @EventListener
     fun handleCustomEvent(event: AcknowledgedCommandEvent) {
         webSocketHandler.sendAuthorMessage(event.command.authorSession.name, event.toString())
-        for(lu in event.command.commandQueue.lockSession.lockUserSessions) {
+        for (lu in event.command.commandQueue.lockSession.lockUserSessions) {
             webSocketHandler.sendLockUserMessage(lu.name, event.toString())
         }
     }
 
     @EventListener
-    fun handleContractChangeEvent(event : ContractChangeEvent) {
+    fun handleContractChangeEvent(event: ContractChangeEvent) {
         webSocketHandler.sendAuthorMessage(event.contract.authorSession.name, event.toString())
     }
 
@@ -28,7 +28,7 @@ class EventPublisher(private val webSocketHandler: EventWebSocketHandler) {
             webSocketHandler.sendAuthorMessage(event.contract.authorSession.name, event.toString())
         }
 
-        for(lu in event.lockSession.lockUserSessions) {
+        for (lu in event.lockSession.lockUserSessions) {
             webSocketHandler.sendLockUserMessage(lu.name, event.toString())
         }
     }

@@ -1,13 +1,15 @@
 package club.subjugated.tartarus_coordinator.util
 
-import org.bouncycastle.asn1.ASN1InputStream
-import org.bouncycastle.asn1.ASN1Integer
-import org.bouncycastle.asn1.ASN1Sequence
+import java.io.File
+import java.io.StringReader
 import java.io.StringWriter
 import java.math.BigInteger
 import java.security.*
 import java.security.interfaces.ECPublicKey
 import java.security.spec.*
+import org.bouncycastle.asn1.ASN1InputStream
+import org.bouncycastle.asn1.ASN1Integer
+import org.bouncycastle.asn1.ASN1Sequence
 import org.bouncycastle.asn1.sec.SECNamedCurves
 import org.bouncycastle.asn1.x9.X9ECParameters
 import org.bouncycastle.crypto.generators.SCrypt
@@ -18,9 +20,6 @@ import org.bouncycastle.jce.spec.ECNamedCurveSpec
 import org.bouncycastle.math.ec.ECCurve
 import org.bouncycastle.openssl.PEMParser
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter
-import java.io.File
-import java.io.StringReader
-import java.security.interfaces.ECPrivateKey
 
 fun getPemEncoding(ecPublicKey: ECPublicKey): String {
     val stringWriter = StringWriter()
@@ -58,11 +57,12 @@ fun loadECPublicKeyFromPem(pem: String): ECPublicKey {
 
     val pemParser = PEMParser(StringReader(pem))
     val obj = pemParser.readObject()
-    val keyInfo = when (obj) {
-        is org.bouncycastle.asn1.x509.SubjectPublicKeyInfo -> obj
-        is org.bouncycastle.cert.X509CertificateHolder -> obj.subjectPublicKeyInfo
-        else -> throw IllegalArgumentException("Unsupported PEM content")
-    }
+    val keyInfo =
+        when (obj) {
+            is org.bouncycastle.asn1.x509.SubjectPublicKeyInfo -> obj
+            is org.bouncycastle.cert.X509CertificateHolder -> obj.subjectPublicKeyInfo
+            else -> throw IllegalArgumentException("Unsupported PEM content")
+        }
 
     val encoded = keyInfo.encoded
     val keyFactory = KeyFactory.getInstance("EC", "BC")
@@ -118,7 +118,8 @@ fun getECPublicKeyFromCompressedKeyByteArray(compressedKeyBytes: ByteArray): ECP
 }
 
 fun isDerEncoded(signature: ByteArray): Boolean {
-    if (signature.isEmpty() || signature[0] != 0x30.toByte()) return false // Check for SEQUENCE (0x30)
+    if (signature.isEmpty() || signature[0] != 0x30.toByte())
+        return false // Check for SEQUENCE (0x30)
 
     val totalLength = signature[1].toInt() and 0xFF
     if (totalLength + 2 != signature.size) return false // Validate total length
@@ -151,7 +152,6 @@ fun isDerEncoded(signature: ByteArray): Boolean {
     return true
 }
 
-
 fun rawToDerSignature(rawSig: ByteArray): ByteArray {
     if (rawSig.size % 2 != 0) {
         throw IllegalArgumentException("Invalid raw signature length")
@@ -177,14 +177,8 @@ fun loadRawPrivateKey(filePath: String): PrivateKey {
     val ecSpec = ECNamedCurveTable.getParameterSpec("prime256v1")
 
     // Convert BouncyCastle's ECParameterSpec to a standard Java ECParameterSpec
-    val parameterSpec = ECNamedCurveSpec(
-        "secp256r1",
-        ecSpec.curve,
-        ecSpec.g,
-        ecSpec.n,
-        ecSpec.h,
-        ecSpec.seed
-    )
+    val parameterSpec =
+        ECNamedCurveSpec("secp256r1", ecSpec.curve, ecSpec.g, ecSpec.n, ecSpec.h, ecSpec.seed)
 
     // Create ECPrivateKeySpec with the private key integer and the parameter spec
     val privateKeySpec = ECPrivateKeySpec(privateKeyInt, parameterSpec)
@@ -216,7 +210,7 @@ fun generateSalt(): ByteArray {
     return salt
 }
 
-fun runSCryptWithCommonParams(input : ByteArray, salt : ByteArray) : ByteArray {
+fun runSCryptWithCommonParams(input: ByteArray, salt: ByteArray): ByteArray {
     return SCrypt.generate(input, salt, 16384, 8, 1, 32)
 }
 

@@ -15,7 +15,6 @@ import org.springframework.test.annotation.Commit
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.TestPropertySource
 import org.springframework.transaction.annotation.Transactional
-import java.util.Base64
 
 @SpringBootTest(classes = [TartarusCoordinatorApplication::class])
 @TestPropertySource(locations = ["classpath:application-test.properties"])
@@ -24,29 +23,29 @@ import java.util.Base64
 @Commit
 @Configuration()
 class LockUserSessionControllerTest {
-    @Autowired
-    lateinit var lockUserSessionController: LockUserSessionController
-    @Autowired
-    lateinit var lockSessionService: LockSessionService
+    @Autowired lateinit var lockUserSessionController: LockUserSessionController
+    @Autowired lateinit var lockSessionService: LockSessionService
 
     @Test
     fun testLockStart() {
         val sessionToken = "QAAAB3"
         val nlsm =
             NewLockSessionMessage(
-                publicKey = "BPNK1yPUgv8o6P3Y/e82FyrjlNfzcoA5OWZW/7vAxK3if7HC/tIy5jyMWXUCLxTpSpFlAxy9fcmEh0hcZN4ocgY=",
+                publicKey =
+                    "BPNK1yPUgv8o6P3Y/e82FyrjlNfzcoA5OWZW/7vAxK3if7HC/tIy5jyMWXUCLxTpSpFlAxy9fcmEh0hcZN4ocgY=",
                 sessionToken = sessionToken,
-                userSessionPublicKey = ""
+                userSessionPublicKey = "",
             )
 
         val lockSession = lockSessionService.createLockSession(nlsm)
 
-        val newLockUserSessionMessage = NewLockUserSessionMessage(
-            sessionToken = sessionToken,
-            nonce = "MRkJneafXtcJKCnR",
-            cipher = "_cGjTEwwVfgcZc-TuNfOyV4p00RR",
-            lockUserSessionPublicKey = "AvlJtmzUZQEdSEt9x+ifMWx/0iDNwruaqbOIRUif9UJs"
-        )
+        val newLockUserSessionMessage =
+            NewLockUserSessionMessage(
+                sessionToken = sessionToken,
+                nonce = "MRkJneafXtcJKCnR",
+                cipher = "_cGjTEwwVfgcZc-TuNfOyV4p00RR",
+                lockUserSessionPublicKey = "AvlJtmzUZQEdSEt9x+ifMWx/0iDNwruaqbOIRUif9UJs",
+            )
 
         val response = lockUserSessionController.createLockUserSession(newLockUserSessionMessage)
         assertThat(response.statusCode).isEqualTo(HttpStatusCode.valueOf(200))

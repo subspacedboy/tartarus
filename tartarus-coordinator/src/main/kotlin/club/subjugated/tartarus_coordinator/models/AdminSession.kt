@@ -10,8 +10,7 @@ import java.util.*
 
 @Entity
 class AdminSession(
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) var id: Long = 0,
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) var id: Long = 0,
     var name: String = generateId(),
     var publicKey: String,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,

@@ -7,13 +7,26 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface ContractRepository : JpaRepository<Contract, Long> {
-    fun findByAuthorSessionIdAndStateOrderByCreatedAtDesc(authorSessionId: Long, state: ContractState) : List<Contract>
-    fun findByAuthorSessionIdAndShareableTokenOrderByCreatedAtDesc(authorSessionId: Long, shareableToken: String): List<Contract>
-    fun findByName(name: String): Contract
+    fun findByAuthorSessionIdAndStateOrderByCreatedAtDesc(
+        authorSessionId: Long,
+        state: ContractState,
+    ): List<Contract>
+
+    fun findByAuthorSessionIdAndShareableTokenOrderByCreatedAtDesc(
+        authorSessionId: Long,
+        shareableToken: String,
+    ): List<Contract>
+
+    fun findByName(name: String): Contract?
 
     fun findByLockSessionIdOrderByCreatedAtDesc(lockSessionId: Long): List<Contract>
-    fun findByLockSessionIdAndSerialNumber(lockSessionId: Long, serial : Int): Contract
-    fun findByLockSessionIdAndStateInOrderByCreatedAtDesc(lockSessionId: Long, states: List<ContractState>): List<Contract>
 
-    fun findByStateInOrderByUpdatedAtDesc(states: List<ContractState>) : List<Contract>
+    fun findByLockSessionIdAndSerialNumber(lockSessionId: Long, serial: Int): Contract?
+
+    fun findByLockSessionIdAndStateInOrderByCreatedAtDesc(
+        lockSessionId: Long,
+        states: List<ContractState>,
+    ): List<Contract>
+
+    fun findByStateInOrderByUpdatedAtDesc(states: List<ContractState>): List<Contract>
 }

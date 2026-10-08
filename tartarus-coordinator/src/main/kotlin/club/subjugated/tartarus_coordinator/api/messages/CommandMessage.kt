@@ -7,12 +7,12 @@ import java.util.Base64
 
 data class CommandMessage(
     val name: String,
-    val authorName : String,
-    val contractName : String,
-    val state : String,
-    val type : String,
-    val message : String?,
-    val body : String,
+    val authorName: String,
+    val contractName: String,
+    val state: String,
+    val type: String,
+    val message: String?,
+    val body: String,
     val counter: Int? = null,
     val isManuallyAcknowledged: Boolean? = false,
     val serialNumber: Int? = null,
@@ -33,7 +33,7 @@ data class CommandMessage(
                 isManuallyAcknowledged = command.isManuallyAcknowledged,
                 serialNumber = command.serialNumber,
                 createdAt = command.createdAt,
-                updatedAt = command.updatedAt
+                updatedAt = command.updatedAt,
             )
         }
     }

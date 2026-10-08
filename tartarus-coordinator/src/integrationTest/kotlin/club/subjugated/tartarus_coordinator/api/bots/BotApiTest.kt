@@ -17,15 +17,6 @@ import club.subjugated.tartarus_coordinator.util.derToRawSignature
 import club.subjugated.tartarus_coordinator.util.encodePublicKeySecp1
 import club.subjugated.tartarus_coordinator.util.generateECKeyPair
 import com.google.flatbuffers.FlatBufferBuilder
-import org.assertj.core.api.Assertions.assertThat
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.context.annotation.Configuration
-import org.springframework.http.HttpStatusCode
-import org.springframework.test.annotation.Commit
-import org.springframework.test.context.ContextConfiguration
-import org.springframework.test.context.TestPropertySource
-import org.springframework.transaction.annotation.Transactional
 import java.nio.ByteBuffer
 import java.security.KeyFactory
 import java.security.MessageDigest
@@ -35,6 +26,15 @@ import java.security.spec.PKCS8EncodedKeySpec
 import java.util.Base64
 import kotlin.random.Random
 import kotlin.test.Test
+import org.assertj.core.api.Assertions.assertThat
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpStatusCode
+import org.springframework.test.annotation.Commit
+import org.springframework.test.context.ContextConfiguration
+import org.springframework.test.context.TestPropertySource
+import org.springframework.transaction.annotation.Transactional
 
 @SpringBootTest(classes = [TartarusCoordinatorApplication::class])
 @TestPropertySource(locations = ["classpath:application-test.properties"])
@@ -43,24 +43,23 @@ import kotlin.test.Test
 @Commit
 @Configuration()
 class BotApiTest {
-    @Autowired
-    lateinit var botApiController: BotApiController
+    @Autowired lateinit var botApiController: BotApiController
 
-    @Autowired
-    lateinit var botController: BotController
-    @Autowired
-    lateinit var lockSessionService: LockSessionService
+    @Autowired lateinit var botController: BotController
+    @Autowired lateinit var lockSessionService: LockSessionService
 
     @Test
     fun testCreateContractRequest() {
         // We need a bot.
         val keyPair = generateECKeyPair()
-        val compressedPubKeyInBase64 = Base64.getEncoder().encodeToString(encodePublicKeySecp1(keyPair.public as ECPublicKey))
+        val compressedPubKeyInBase64 =
+            Base64.getEncoder().encodeToString(encodePublicKeySecp1(keyPair.public as ECPublicKey))
 
-        val newBotMessage = NewBotMessage(
-            publicKey = compressedPubKeyInBase64,
-            description = "integration test bot"
-        )
+        val newBotMessage =
+            NewBotMessage(
+                publicKey = compressedPubKeyInBase64,
+                description = "integration test bot",
+            )
         val response = botController.newBot(newBotMessage)
         assertThat(response.statusCode).isEqualTo(HttpStatusCode.valueOf(200))
         val botName = response.body!!.name
@@ -69,37 +68,40 @@ class BotApiTest {
         val sessionToken = "QAAAB3"
         val nlsm =
             NewLockSessionMessage(
-                publicKey = "BPNK1yPUgv8o6P3Y/e82FyrjlNfzcoA5OWZW/7vAxK3if7HC/tIy5jyMWXUCLxTpSpFlAxy9fcmEh0hcZN4ocgY=",
+                publicKey =
+                    "BPNK1yPUgv8o6P3Y/e82FyrjlNfzcoA5OWZW/7vAxK3if7HC/tIy5jyMWXUCLxTpSpFlAxy9fcmEh0hcZN4ocgY=",
                 sessionToken = sessionToken,
-                userSessionPublicKey = ""
+                userSessionPublicKey = "",
             )
 
         val lockSession = lockSessionService.createLockSession(nlsm)
         val shareToken = lockSession.shareToken
 
-        val message = Helper.makeCreateContractBotApiMessage(
-            botName!!,
-            shareToken!!,
-            "",
-            false,
-            keyPair.private.encoded,
-            encodePublicKeySecp1(keyPair.public as ECPublicKey),
-            false
-        )
+        val message =
+            Helper.makeCreateContractBotApiMessage(
+                botName!!,
+                shareToken!!,
+                "",
+                false,
+                keyPair.private.encoded,
+                encodePublicKeySecp1(keyPair.public as ECPublicKey),
+                false,
+            )
 
         val apiMessage = BotApiMessage.getRootAsBotApiMessage(ByteBuffer.wrap(message))
         val apiResponse = botApiController.routeRequest(apiMessage)
 
-        val response2 : CreateContractResponse = when(apiResponse.payloadType){
-            MessagePayload.CreateContractResponse -> {
-                val response = CreateContractResponse()
-                apiResponse.payload(response)
-                response
+        val response2: CreateContractResponse =
+            when (apiResponse.payloadType) {
+                MessagePayload.CreateContractResponse -> {
+                    val response = CreateContractResponse()
+                    apiResponse.payload(response)
+                    response
+                }
+                else -> {
+                    throw IllegalStateException()
+                }
             }
-            else -> {
-                throw IllegalStateException()
-            }
-        }
 
         assertThat(response2.contractName).isNotEmpty()
     }
@@ -107,31 +109,41 @@ class BotApiTest {
 
 class Helper {
     companion object {
-        fun makeCreateContractBotApiMessage(botName : String, shareableToken: String, terms: String, temporaryUnlock: Boolean, privateKey: ByteArray, publicKey : ByteArray, public: Boolean) : ByteArray {
+        fun makeCreateContractBotApiMessage(
+            botName: String,
+            shareableToken: String,
+            terms: String,
+            temporaryUnlock: Boolean,
+            privateKey: ByteArray,
+            publicKey: ByteArray,
+            public: Boolean,
+        ): ByteArray {
             val builder = FlatBufferBuilder(1024)
 
-            var announcerBotOffset : Int? = 0
+            var announcerBotOffset: Int? = 0
 
-//        if(public) {
-//            val announcerBotMap = botMapService.getBotMap("announcer", coordinator)
-//
-//            // Build permission for Announcer
-//            Permission.startPermission(builder)
-//            Permission.addReceiveEvents(builder, true)
-//            Permission.addCanUnlock(builder, false)
-//            Permission.addCanRelease(builder, false)
-//            val announcerPermissionOffset = Permission.endPermission(builder)
-//
-//            val announcerBotName = builder.createString(announcerBotMap.externalName)
-//            val compressedPublicKeyBytes = encodePublicKeySecp1(loadECPublicKeyFromPkcs8(announcerBotMap.publicKey!!) as ECPublicKey)
-//            val pubKeyOffset = builder.createByteVector(compressedPublicKeyBytes)
-//
-//            Bot.startBot(builder)
-//            Bot.addName(builder, announcerBotName)
-//            Bot.addPublicKey(builder, pubKeyOffset)
-//            Bot.addPermissions(builder, announcerPermissionOffset)
-//            announcerBotOffset = Bot.endBot(builder)
-//        }
+            //        if(public) {
+            //            val announcerBotMap = botMapService.getBotMap("announcer", coordinator)
+            //
+            //            // Build permission for Announcer
+            //            Permission.startPermission(builder)
+            //            Permission.addReceiveEvents(builder, true)
+            //            Permission.addCanUnlock(builder, false)
+            //            Permission.addCanRelease(builder, false)
+            //            val announcerPermissionOffset = Permission.endPermission(builder)
+            //
+            //            val announcerBotName = builder.createString(announcerBotMap.externalName)
+            //            val compressedPublicKeyBytes =
+            // encodePublicKeySecp1(loadECPublicKeyFromPkcs8(announcerBotMap.publicKey!!) as
+            // ECPublicKey)
+            //            val pubKeyOffset = builder.createByteVector(compressedPublicKeyBytes)
+            //
+            //            Bot.startBot(builder)
+            //            Bot.addName(builder, announcerBotName)
+            //            Bot.addPublicKey(builder, pubKeyOffset)
+            //            Bot.addPermissions(builder, announcerPermissionOffset)
+            //            announcerBotOffset = Bot.endBot(builder)
+            //        }
 
             // Build Permission
             Permission.startPermission(builder)
@@ -150,16 +162,17 @@ class Helper {
             val botOffset = Bot.endBot(builder)
 
             val termsOffset = builder.createString(terms)
-            val botsVectorOffset = if(public) {
-                club.subjugated.fb.message.Contract.startBotsVector(builder, 2)
-                builder.addOffset(botOffset)
-                builder.addOffset(announcerBotOffset!!)
-                builder.endVector()
-            } else {
-                club.subjugated.fb.message.Contract.startBotsVector(builder, 1)
-                builder.addOffset(botOffset)
-                builder.endVector()
-            }
+            val botsVectorOffset =
+                if (public) {
+                    club.subjugated.fb.message.Contract.startBotsVector(builder, 2)
+                    builder.addOffset(botOffset)
+                    builder.addOffset(announcerBotOffset!!)
+                    builder.endVector()
+                } else {
+                    club.subjugated.fb.message.Contract.startBotsVector(builder, 1)
+                    builder.addOffset(botOffset)
+                    builder.endVector()
+                }
 
             val serialNumber = Random.nextInt(0, 1 shl 16)
 
@@ -167,7 +180,10 @@ class Helper {
             club.subjugated.fb.message.Contract.addSerialNumber(builder, serialNumber.toUShort())
             club.subjugated.fb.message.Contract.addPublicKey(builder, publicKeyOffset)
             club.subjugated.fb.message.Contract.addTerms(builder, termsOffset)
-            club.subjugated.fb.message.Contract.addIsTemporaryUnlockAllowed(builder, temporaryUnlock)
+            club.subjugated.fb.message.Contract.addIsTemporaryUnlockAllowed(
+                builder,
+                temporaryUnlock,
+            )
             club.subjugated.fb.message.Contract.addBots(builder, botsVectorOffset)
             val contractOffset = club.subjugated.fb.message.Contract.endContract(builder)
 
@@ -185,10 +201,13 @@ class Helper {
             val keyFactory = KeyFactory.getInstance("EC", "BC")
             val privateKey = keyFactory.generatePrivate(keySpec)
 
-            var signature = Signature.getInstance("SHA256withECDSA", "BC").apply {
-                initSign(privateKey)
-                update(hash)
-            }.sign()
+            var signature =
+                Signature.getInstance("SHA256withECDSA", "BC")
+                    .apply {
+                        initSign(privateKey)
+                        update(hash)
+                    }
+                    .sign()
             signature = derToRawSignature(signature)
 
             val signatureOffset = builder.createByteVector(signature)
@@ -196,9 +215,13 @@ class Helper {
             SignedMessage.startSignedMessage(builder)
             SignedMessage.addSignature(builder, signatureOffset)
             SignedMessage.addPayload(builder, contractOffset)
-            SignedMessage.addPayloadType(builder, club.subjugated.fb.message.MessagePayload.Contract)
+            SignedMessage.addPayloadType(
+                builder,
+                club.subjugated.fb.message.MessagePayload.Contract,
+            )
             // NB: Even if a bot is the issuer of the contract we don't set the authority identifier
-            // because that will break contract acceptance. The lock will try and validate against a key
+            // because that will break contract acceptance. The lock will try and validate against a
+            // key
             // it doesn't have.
             // SignedMessage.addAuthorityIdentifier(builder, botAuthorityIdentifer)
             val signedMessageOffset = SignedMessage.endSignedMessage(builder)

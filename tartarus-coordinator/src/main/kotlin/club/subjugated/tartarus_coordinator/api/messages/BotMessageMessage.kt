@@ -11,18 +11,19 @@ data class BotMessageMessage(
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
 ) {
     companion object {
-        fun fromMessage(message : Message) : BotMessageMessage {
-            val botName : String = if(message.bot == null) {
-                "Deleted"
-            } else {
-                message.bot!!.name
-            }
+        fun fromMessage(message: Message): BotMessageMessage {
+            val botName: String =
+                if (message.bot == null) {
+                    "Deleted"
+                } else {
+                    message.bot!!.name
+                }
 
             return BotMessageMessage(
                 name = message.name,
                 body = message.body,
                 botName = botName,
-                createdAt = message.createdAt
+                createdAt = message.createdAt,
             )
         }
     }

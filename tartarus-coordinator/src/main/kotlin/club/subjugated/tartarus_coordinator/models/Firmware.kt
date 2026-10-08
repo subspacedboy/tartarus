@@ -14,7 +14,7 @@ class Firmware(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) var id: Long = 0,
     var name: String = generateId(),
     @Enumerated(EnumType.STRING) var state: FirmwareState = FirmwareState.UNSPECIFIED,
-    var image : ByteArray? = null,
+    var image: ByteArray? = null,
     var signature: String,
     var digest: String,
     var version: String,

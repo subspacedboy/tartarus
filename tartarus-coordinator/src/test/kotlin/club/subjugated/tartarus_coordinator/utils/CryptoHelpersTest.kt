@@ -9,14 +9,14 @@ import club.subjugated.tartarus_coordinator.util.getPemEncoding
 import club.subjugated.tartarus_coordinator.util.loadECPublicKeyFromPem
 import club.subjugated.tartarus_coordinator.util.loadECPublicKeyFromPkcs8
 import club.subjugated.tartarus_coordinator.util.runSCryptWithCommonParams
+import java.security.Security
+import java.util.*
 import org.assertj.core.api.Assertions.assertThat
 import org.bouncycastle.jce.interfaces.ECPrivateKey
 import org.bouncycastle.jce.interfaces.ECPublicKey
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
-import java.security.Security
-import java.util.*
 
 class CryptoHelpersTest {
 
@@ -29,12 +29,14 @@ class CryptoHelpersTest {
 
     @Test
     fun testReadPemPublic() {
-        val key = """
+        val key =
+            """
             -----BEGIN PUBLIC KEY-----
             MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEi1Fon/zVd/Xu3066aPztAsJKdNJm
             TU2GzNM846j/IaA8c+POQ3N3PtLo0jpsHh7cH3ii7mxeHjrhdLaLbZKnQw==
             -----END PUBLIC KEY-----
-        """.trimIndent()
+        """
+                .trimIndent()
         loadECPublicKeyFromPem(key)
     }
 

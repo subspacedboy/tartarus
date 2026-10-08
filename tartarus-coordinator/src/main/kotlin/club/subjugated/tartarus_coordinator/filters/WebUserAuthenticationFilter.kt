@@ -11,10 +11,10 @@ import jakarta.servlet.FilterChain
 import jakarta.servlet.ServletException
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.util.*
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.authority.SimpleGrantedAuthority
@@ -27,10 +27,11 @@ import org.springframework.web.filter.OncePerRequestFilter
 class WebUserAuthenticationFilter(
     private val authorSessionService: AuthorSessionService,
     private val lockUserSessionService: LockUserSessionService,
-    private val adminSessionService: AdminSessionService) :
-    OncePerRequestFilter() {
+    private val adminSessionService: AdminSessionService,
+) : OncePerRequestFilter() {
 
-    private val filterLogger: Logger = LoggerFactory.getLogger(WebUserAuthenticationFilter::class.java)
+    private val filterLogger: Logger =
+        LoggerFactory.getLogger(WebUserAuthenticationFilter::class.java)
 
     @Throws(IOException::class, ServletException::class)
     override fun doFilterInternal(
@@ -48,26 +49,29 @@ class WebUserAuthenticationFilter(
                 val claimsSet = signedJWT.jwtClaimsSet
 
                 val sessionTokenName = claimsSet.subject
-                val (publicKey, authorities: List<GrantedAuthority>) = when {
-                    sessionTokenName.startsWith("as-") -> {
-                        val authorSession = authorSessionService.findByName(sessionTokenName)
-                        authorSession.decodePublicKey() to emptyList<GrantedAuthority>()
+                val (publicKey, authorities: List<GrantedAuthority>) =
+                    when {
+                        sessionTokenName.startsWith("as-") -> {
+                            val authorSession = authorSessionService.findByName(sessionTokenName)
+                            authorSession.decodePublicKey() to emptyList<GrantedAuthority>()
+                        }
+                        sessionTokenName.startsWith("u-") -> {
+                            val lockUserSession =
+                                lockUserSessionService.findByName(sessionTokenName)
+                            lockUserSession.decodePublicKey() to emptyList<GrantedAuthority>()
+                        }
+                        sessionTokenName.startsWith("ad-") -> {
+                            val adminSession = adminSessionService.findByName(sessionTokenName)
+                            adminSession.decodePublicKey() to
+                                listOf<GrantedAuthority>(SimpleGrantedAuthority("ADMIN"))
+                        }
+                        else ->
+                            throw IllegalArgumentException(
+                                "Unknown session token prefix: $sessionTokenName"
+                            )
                     }
-                    sessionTokenName.startsWith("u-") -> {
-                        val lockUserSession = lockUserSessionService.findByName(sessionTokenName)
-                        lockUserSession.decodePublicKey() to emptyList<GrantedAuthority>()
-                    }
-                    sessionTokenName.startsWith("ad-") -> {
-                        val adminSession = adminSessionService.findByName(sessionTokenName)
-                        adminSession.decodePublicKey() to listOf<GrantedAuthority>(SimpleGrantedAuthority("ADMIN"))
-                    }
-                    else -> throw IllegalArgumentException("Unknown session token prefix: $sessionTokenName")
-                }
 
-                val sessionPublicECKey =
-                    getECPublicKeyFromCompressedKeyByteArray(
-                        publicKey
-                    )
+                val sessionPublicECKey = getECPublicKeyFromCompressedKeyByteArray(publicKey)
                 val verifier = ECDSAVerifier(sessionPublicECKey)
                 if (signedJWT.verify(verifier)) {
                     val userDetails: UserDetails =

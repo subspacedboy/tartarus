@@ -8,10 +8,10 @@ import club.subjugated.tartarus_coordinator.util.encodePublicKeySecp1
 import club.subjugated.tartarus_coordinator.util.loadECPublicKeyFromPkcs8
 import com.google.flatbuffers.FlatBufferBuilder
 import java.security.interfaces.ECPublicKey
+import kotlin.io.encoding.Base64
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
-import kotlin.io.encoding.Base64
 
 @Service
 class ConfigurationService {
@@ -38,7 +38,7 @@ class ConfigurationService {
                 webUri = webUri,
                 mqttUri = mqttUri,
                 safetyKeys = safetyKeys.map { SafetyKeyMessage.fromSafetyKey(it) },
-                enableResetCommand = enableReset
+                enableResetCommand = enableReset,
             )
         return configuration
     }
@@ -74,7 +74,8 @@ class ConfigurationService {
         val apiUriOffset = builder.createString(apiUri)
 
         val bytes = java.util.Base64.getDecoder().decode(loginTokenPublicKey)
-        val compressedPublicKey = encodePublicKeySecp1(loadECPublicKeyFromPkcs8(bytes) as ECPublicKey)
+        val compressedPublicKey =
+            encodePublicKeySecp1(loadECPublicKeyFromPkcs8(bytes) as ECPublicKey)
         val loginTokenPublicKeyOffset = builder.createByteVector(compressedPublicKey)
 
         CoordinatorConfiguration.startCoordinatorConfiguration(builder)

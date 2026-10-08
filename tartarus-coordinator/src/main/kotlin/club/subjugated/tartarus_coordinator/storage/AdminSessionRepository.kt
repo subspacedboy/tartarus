@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface AdminSessionRepository : JpaRepository<AdminSession, Long> {
-    fun findByName(name : String) : AdminSession
-    fun findByPublicKey(name : String) : AdminSession?
+    fun findByName(name: String): AdminSession
+
+    fun findByPublicKey(name: String): AdminSession?
 }

@@ -17,8 +17,7 @@ class Message(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) var id: Long = 0,
     var name: String = generateId(),
     var body: String = "",
-    @Enumerated(EnumType.STRING)
-    var type: MessageType = MessageType.UNSPECIFIED,
+    @Enumerated(EnumType.STRING) var type: MessageType = MessageType.UNSPECIFIED,
     @ManyToOne @JoinColumn(name = "contract_id") var contract: Contract,
     @ManyToOne @JoinColumn(name = "bot_id") var bot: Bot?,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,

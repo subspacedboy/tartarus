@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface FirmwareUpgradePathRepository : JpaRepository<FirmwareUpgradePath, Long> {
-    fun findByFromVersion(fromVersion : String) : List<FirmwareUpgradePath>
+    fun findByFromVersion(fromVersion: String): List<FirmwareUpgradePath>
 }

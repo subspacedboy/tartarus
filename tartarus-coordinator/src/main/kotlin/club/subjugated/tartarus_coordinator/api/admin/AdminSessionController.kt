@@ -15,15 +15,22 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/admin/admin_sessions")
 @Controller
 class AdminSessionController {
-    @Autowired
-    lateinit var adminSessionService: AdminSessionService
+    @Autowired lateinit var adminSessionService: AdminSessionService
 
     @PostMapping("/")
-    fun confirmAdminSession(@RequestBody confirmAdminSessionMessage: ConfirmAdminSessionMessage) : ResponseEntity<AdminSessionMessage> {
-        confirmAdminSessionMessage.validateOrThrow()
+    fun confirmAdminSession(
+        @RequestBody confirmAdminSessionMessage: ConfirmAdminSessionMessage
+    ): ResponseEntity<AdminSessionMessage> {
+        try {
+            confirmAdminSessionMessage.validateOrThrow()
+        } catch (e: Exception) {
+            return ResponseEntity.badRequest().build()
+        }
 
-        val adminSession = adminSessionService.findByPublicKey(confirmAdminSessionMessage.publicKey!!)
+        val adminSession =
+            adminSessionService.findByPublicKey(confirmAdminSessionMessage.publicKey!!)
+                ?: return ResponseEntity.notFound().build()
 
-        return ResponseEntity.ok(AdminSessionMessage(name = adminSession!!.name))
+        return ResponseEntity.ok(AdminSessionMessage(name = adminSession.name))
     }
 }

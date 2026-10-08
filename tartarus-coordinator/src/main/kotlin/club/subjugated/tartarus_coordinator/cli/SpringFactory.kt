@@ -5,8 +5,6 @@ import org.springframework.stereotype.Component
 import picocli.CommandLine
 
 @Component
-class SpringFactory(
-    private val context: ApplicationContext
-) : CommandLine.IFactory {
+class SpringFactory(private val context: ApplicationContext) : CommandLine.IFactory {
     override fun <K : Any?> create(cls: Class<K>): K = context.getBean(cls)
 }

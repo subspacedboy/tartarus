@@ -24,58 +24,73 @@ import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromCompressedKey
 import club.subjugated.tartarus_coordinator.util.signedMessageBytesValidator
 import com.google.flatbuffers.FlatBufferBuilder
 import com.google.flatbuffers.Table
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.stereotype.Controller
 import java.nio.ByteBuffer
 import java.util.*
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.stereotype.Controller
 
-class ResponseBuilderContext<T>(
-    var builder: FlatBufferBuilder,
-    var messageOffset: Int,
-)
+class ResponseBuilderContext<T>(var builder: FlatBufferBuilder, var messageOffset: Int)
 
 @Controller
 class BotApiController {
-    @Autowired
-    lateinit var contractService: ContractService
-    @Autowired
-    lateinit var lockSessionService: LockSessionService
-    @Autowired
-    lateinit var authorSessionService: AuthorSessionService
-    @Autowired
-    lateinit var botService: BotService
+    @Autowired lateinit var contractService: ContractService
+    @Autowired lateinit var lockSessionService: LockSessionService
+    @Autowired lateinit var authorSessionService: AuthorSessionService
+    @Autowired lateinit var botService: BotService
 
-    fun routeRequest(message: BotApiMessage) : BotApiMessage {
-        when(message.payloadType) {
+    fun routeRequest(message: BotApiMessage): BotApiMessage {
+        when (message.payloadType) {
             MessagePayload.GetContractRequest -> {
                 val contractRequest = GetContractRequest()
                 message.payload(contractRequest)
                 val response = handleGetContractRequest(message.name!!, contractRequest)
-                return buildResponse(MessagePayload.GetContractResponse, message.requestId, response)
+                return buildResponse(
+                    MessagePayload.GetContractResponse,
+                    message.requestId,
+                    response,
+                )
             }
             MessagePayload.CreateContractRequest -> {
                 val createRequest = CreateContractRequest()
                 message.payload(createRequest)
                 val response = handleCreateContractRequest(createRequest)
-                return buildResponse(MessagePayload.CreateContractResponse, message.requestId, response)
+                return buildResponse(
+                    MessagePayload.CreateContractResponse,
+                    message.requestId,
+                    response,
+                )
             }
             MessagePayload.GetLockSessionRequest -> {
                 val getLockSessionRequest = GetLockSessionRequest()
                 message.payload(getLockSessionRequest)
                 val builderContext = handleGetLockSessionRequest(getLockSessionRequest)
-                return buildResponse(MessagePayload.GetLockSessionResponse, message.requestId, builderContext)
+                return buildResponse(
+                    MessagePayload.GetLockSessionResponse,
+                    message.requestId,
+                    builderContext,
+                )
             }
             MessagePayload.CreateCommandRequest -> {
                 val createCommandRequest = CreateCommandRequest()
                 message.payload(createCommandRequest)
-                val builderContext = handleCreateCommandRequest(message.name!!, createCommandRequest)
-                return buildResponse(MessagePayload.CreateCommandResponse, message.requestId, builderContext)
+                val builderContext =
+                    handleCreateCommandRequest(message.name!!, createCommandRequest)
+                return buildResponse(
+                    MessagePayload.CreateCommandResponse,
+                    message.requestId,
+                    builderContext,
+                )
             }
             MessagePayload.CreateMessageRequest -> {
                 val createMessageRequest = CreateMessageRequest()
                 message.payload(createMessageRequest)
-                val builderContext = handleCreateMessageRequest(message.name!!, createMessageRequest)
-                return buildResponse(MessagePayload.CreateMessageResponse, message.requestId, builderContext)
+                val builderContext =
+                    handleCreateMessageRequest(message.name!!, createMessageRequest)
+                return buildResponse(
+                    MessagePayload.CreateMessageResponse,
+                    message.requestId,
+                    builderContext,
+                )
             }
             else -> {
                 TODO()
@@ -83,8 +98,12 @@ class BotApiController {
         }
     }
 
-    private fun <T : Table> buildResponse(payloadType: UByte, requestId: Long, builderContext: ResponseBuilderContext<T>?) : BotApiMessage {
-        if(builderContext != null) {
+    private fun <T : Table> buildResponse(
+        payloadType: UByte,
+        requestId: Long,
+        builderContext: ResponseBuilderContext<T>?,
+    ): BotApiMessage {
+        if (builderContext != null) {
             val builder = builderContext.builder
 
             val nameOffset = builder.createString("coordinator")
@@ -103,12 +122,12 @@ class BotApiController {
         val builder = FlatBufferBuilder(1024)
 
         val nameOffset = builder.createString("coordinator")
-//        val responseOffset = builder.createByteVector(response.byteBuffer)
+        //        val responseOffset = builder.createByteVector(response.byteBuffer)
 
         BotApiMessage.startBotApiMessage(builder)
         BotApiMessage.addName(builder, nameOffset)
 
-//        BotApiMessage.addPayload(builder, response.byteBuffer)
+        //        BotApiMessage.addPayload(builder, response.byteBuffer)
         BotApiMessage.addPayloadType(builder, payloadType)
         BotApiMessage.addRequestId(builder, requestId)
         val botApiOffset = BotApiMessage.endBotApiMessage(builder)
@@ -117,9 +136,17 @@ class BotApiController {
         return BotApiMessage.getRootAsBotApiMessage(ByteBuffer.wrap(builder.sizedByteArray()))
     }
 
-    fun handleGetContractRequest(botName: String, getContractRequest: GetContractRequest) : ResponseBuilderContext<GetContractResponse> {
+    fun handleGetContractRequest(
+        botName: String,
+        getContractRequest: GetContractRequest,
+    ): ResponseBuilderContext<GetContractResponse> {
         val lockSession = lockSessionService.findBySessionToken(getContractRequest.lockSession!!)
-        val contract = contractService.getBySerialAndLockSessionForBot(lockSession!!, getContractRequest.contractSerialNumber.toInt(), botName)
+        val contract =
+            contractService.getBySerialAndLockSessionForBot(
+                lockSession!!,
+                getContractRequest.contractSerialNumber.toInt(),
+                botName,
+            )
 
         val builder = FlatBufferBuilder(1024)
 
@@ -140,24 +167,36 @@ class BotApiController {
         return ResponseBuilderContext(builder, response)
     }
 
-    fun handleCreateContractRequest(createContractRequest: CreateContractRequest) : ResponseBuilderContext<CreateContractResponse> {
+    fun handleCreateContractRequest(
+        createContractRequest: CreateContractRequest
+    ): ResponseBuilderContext<CreateContractResponse> {
         val signedMessageBytes =
-            ByteArray(createContractRequest.contractLength) { createContractRequest.contract(it).toByte() }
+            ByteArray(createContractRequest.contractLength) {
+                createContractRequest.contract(it).toByte()
+            }
 
         val buf = ByteBuffer.wrap(signedMessageBytes)
-        val validated : ValidatedPayload.ContractPayload = signedMessageBytesValidator(buf) as ValidatedPayload.ContractPayload
-        val key = ByteArray(validated.contract.publicKeyLength) { validated.contract.publicKey(it).toByte() }
+        val validated: ValidatedPayload.ContractPayload =
+            signedMessageBytesValidator(buf) as ValidatedPayload.ContractPayload
+        val key =
+            ByteArray(validated.contract.publicKeyLength) {
+                validated.contract.publicKey(it).toByte()
+            }
 
-        val authorSession = authorSessionService.saveAuthorSessionForBot(Base64.getEncoder().encodeToString(key))
+        val authorSession =
+            authorSessionService.saveAuthorSessionForBot(Base64.getEncoder().encodeToString(key))
 
-        val newContractMessage = NewContractMessage(
-            shareableToken = createContractRequest.shareableToken!!,
-            authorName = authorSession.name, // cheat for now
-            signedMessage = Base64.getEncoder().encodeToString(signedMessageBytes),
-            notes = ""
-        )
-        val lockSession = lockSessionService.findByShareableToken(createContractRequest.shareableToken!!)
-        val contract = contractService.saveContract(newContractMessage, lockSession!!, authorSession)
+        val newContractMessage =
+            NewContractMessage(
+                shareableToken = createContractRequest.shareableToken!!,
+                authorName = authorSession.name, // cheat for now
+                signedMessage = Base64.getEncoder().encodeToString(signedMessageBytes),
+                notes = "",
+            )
+        val lockSession =
+            lockSessionService.findByShareableToken(createContractRequest.shareableToken!!)
+        val contract =
+            contractService.saveContract(newContractMessage, lockSession!!, authorSession)
 
         val builder = FlatBufferBuilder(1024)
         val nameOffset = builder.createString(contract.name)
@@ -167,20 +206,22 @@ class BotApiController {
         return ResponseBuilderContext(builder, response)
     }
 
-    fun handleGetLockSessionRequest(request : GetLockSessionRequest) : ResponseBuilderContext<GetLockSessionResponse> {
+    fun handleGetLockSessionRequest(
+        request: GetLockSessionRequest
+    ): ResponseBuilderContext<GetLockSessionResponse> {
         val maybeSession = lockSessionService.findByShareableToken(request.shareableToken!!)
 
         val builder = FlatBufferBuilder(1024)
-        if(maybeSession == null) {
+        if (maybeSession == null) {
             val messageOffset = builder.createString("Shareable token not found")
             Error.startError(builder)
             Error.addMessage(builder, messageOffset)
             val errorOffset = Error.endError(builder)
             GetLockSessionResponse.startGetLockSessionResponse(builder)
             GetLockSessionResponse.addError(builder, errorOffset)
-            val getLockSessionResponseOffset = GetLockSessionResponse.endGetLockSessionResponse(builder)
+            val getLockSessionResponseOffset =
+                GetLockSessionResponse.endGetLockSessionResponse(builder)
             return ResponseBuilderContext(builder, getLockSessionResponseOffset)
-
         } else {
             val nameOffset = builder.createString(maybeSession.name)
             val publicKeyOffset = builder.createByteVector(maybeSession.decodePublicKey())
@@ -190,23 +231,30 @@ class BotApiController {
             GetLockSessionResponse.addName(builder, nameOffset)
             GetLockSessionResponse.addPublicKey(builder, publicKeyOffset)
             GetLockSessionResponse.addAvailableForContract(builder, availableForContract)
-            val getLockSessionResponseOffset = GetLockSessionResponse.endGetLockSessionResponse(builder)
+            val getLockSessionResponseOffset =
+                GetLockSessionResponse.endGetLockSessionResponse(builder)
             return ResponseBuilderContext(builder, getLockSessionResponseOffset)
         }
     }
 
-    fun handleCreateCommandRequest(botName: String, createCommandRequest : CreateCommandRequest) : ResponseBuilderContext<CreateCommandResponse> {
+    fun handleCreateCommandRequest(
+        botName: String,
+        createCommandRequest: CreateCommandRequest,
+    ): ResponseBuilderContext<CreateCommandResponse> {
         val bot = botService.getByName(botName)
 
-        val key = getECPublicKeyFromCompressedKeyByteArray(Base64.getDecoder().decode(bot.publicKey))
-        val reencode= Base64.getEncoder().encodeToString(encodePublicKeySecp1(key))
+        val key =
+            getECPublicKeyFromCompressedKeyByteArray(Base64.getDecoder().decode(bot.publicKey))
+        val reencode = Base64.getEncoder().encodeToString(encodePublicKeySecp1(key))
 
         val authorSession = authorSessionService.getSessionForBot(reencode)
 
         val contract = contractService.getByNameForBot(createCommandRequest.contractName!!, botName)
 
         val commandBytes =
-            ByteArray(createCommandRequest.commandBodyLength) { createCommandRequest.commandBody(it).toByte() }
+            ByteArray(createCommandRequest.commandBodyLength) {
+                createCommandRequest.commandBody(it).toByte()
+            }
 
         this.contractService.saveCommand(
             authorSession,
@@ -221,11 +269,15 @@ class BotApiController {
         return ResponseBuilderContext(builder, offset)
     }
 
-    fun handleCreateMessageRequest(botName : String, createMessageRequest: CreateMessageRequest) : ResponseBuilderContext<CreateMessageResponse> {
+    fun handleCreateMessageRequest(
+        botName: String,
+        createMessageRequest: CreateMessageRequest,
+    ): ResponseBuilderContext<CreateMessageResponse> {
         val bot = botService.getByName(botName)
 
-        val key = getECPublicKeyFromCompressedKeyByteArray(Base64.getDecoder().decode(bot.publicKey))
-        val reencode= Base64.getEncoder().encodeToString(encodePublicKeySecp1(key))
+        val key =
+            getECPublicKeyFromCompressedKeyByteArray(Base64.getDecoder().decode(bot.publicKey))
+        val reencode = Base64.getEncoder().encodeToString(encodePublicKeySecp1(key))
 
         val authorSession = authorSessionService.getSessionForBot(reencode)
 

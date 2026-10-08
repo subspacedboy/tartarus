@@ -20,9 +20,7 @@ version = "0.0.1-SNAPSHOT"
 
 java { toolchain { languageVersion = JavaLanguageVersion.of(21) } }
 
-repositories {
-    mavenCentral()
-}
+repositories { mavenCentral() }
 
 extra["springAiVersion"] = "1.0.0-M6"
 
@@ -81,9 +79,13 @@ ktfmt {
 detekt {
     buildUponDefaultConfig = true // preconfigure defaults
     allRules = false // activate all available (even unstable) rules.
-    config.setFrom("$projectDir/config/detekt/detekt.yml") // point to your custom config defining rules to run, overwriting default behavior
-    baseline = file("$projectDir/config/baseline.xml") // a way of suppressing issues before introducing detekt
-
+    config.setFrom(
+        "$projectDir/config/detekt/detekt.yml"
+    ) // point to your custom config defining rules to run, overwriting default behavior
+    baseline =
+        file(
+            "$projectDir/config/baseline.xml"
+        ) // a way of suppressing issues before introducing detekt
 }
 
 tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
@@ -107,33 +109,38 @@ tasks.getByName<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar
     )
 }
 
-val integrationTest: SourceSet = sourceSets.create("integrationTest") {
-    java {
-        compileClasspath += sourceSets.main.get().output + sourceSets.test.get().output
-        runtimeClasspath += sourceSets.main.get().output + sourceSets.test.get().output
-        srcDir("src/integrationTest/kotlin")
+val integrationTest: SourceSet =
+    sourceSets.create("integrationTest") {
+        java {
+            compileClasspath += sourceSets.main.get().output + sourceSets.test.get().output
+            runtimeClasspath += sourceSets.main.get().output + sourceSets.test.get().output
+            srcDir("src/integrationTest/kotlin")
+        }
+
+        resources.srcDir("src/integrationTest/resources")
     }
 
-    resources.srcDir("src/integrationTest/resources")
-}
+configurations[integrationTest.implementationConfigurationName].extendsFrom(
+    configurations.testImplementation.get()
+)
 
-configurations[integrationTest.implementationConfigurationName].extendsFrom(configurations.testImplementation.get())
-configurations[integrationTest.runtimeOnlyConfigurationName].extendsFrom(configurations.testRuntimeOnly.get())
+configurations[integrationTest.runtimeOnlyConfigurationName].extendsFrom(
+    configurations.testRuntimeOnly.get()
+)
 
-val integrationTestTask = tasks.register<Test>("integrationTest") {
-    group = "verification"
+val integrationTestTask =
+    tasks.register<Test>("integrationTest") {
+        group = "verification"
 
-    useJUnitPlatform()
+        useJUnitPlatform()
 
-    testClassesDirs = integrationTest.output.classesDirs
-    classpath = sourceSets["integrationTest"].runtimeClasspath
+        testClassesDirs = integrationTest.output.classesDirs
+        classpath = sourceSets["integrationTest"].runtimeClasspath
 
-    shouldRunAfter("test")
-}
+        shouldRunAfter("test")
+    }
 
-tasks.check {
-    dependsOn(integrationTestTask)
-}
+tasks.check { dependsOn(integrationTestTask) }
 
 tasks.named<Copy>("processIntegrationTestResources") {
     duplicatesStrategy = DuplicatesStrategy.INCLUDE

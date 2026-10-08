@@ -12,36 +12,48 @@ import club.subjugated.tartarus_coordinator.services.FirmwareService
 import club.subjugated.tartarus_coordinator.services.LockSessionService
 import com.google.flatbuffers.FlatBufferBuilder
 import com.google.flatbuffers.Table
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.stereotype.Controller
 import java.nio.ByteBuffer
 import java.util.*
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.stereotype.Controller
 
 @Controller
 class FirmwareApiController {
-    @Autowired
-    lateinit var firmwareService: FirmwareService
-    @Autowired
-    lateinit var lockSessionService: LockSessionService
+    @Autowired lateinit var firmwareService: FirmwareService
+    @Autowired lateinit var lockSessionService: LockSessionService
 
-    fun routeRequest(message: FirmwareMessage) : FirmwareMessage? {
-        when(message.payloadType) {
+    fun routeRequest(message: FirmwareMessage): FirmwareMessage? {
+        when (message.payloadType) {
             MessagePayload.GetLatestFirmwareRequest -> {
                 val latestRequest = GetLatestFirmwareRequest()
                 message.payload(latestRequest)
                 val response = handleGetLatestFirmwareRequest(latestRequest)
-                return buildResponse(MessagePayload.GetLatestFirmwareResponse, message.requestId, message.sessionToken!!, response)
+                return buildResponse(
+                    MessagePayload.GetLatestFirmwareResponse,
+                    message.requestId,
+                    message.sessionToken!!,
+                    response,
+                )
             }
             MessagePayload.GetFirmwareChunkRequest -> {
                 val getFirmwareChunk = GetFirmwareChunkRequest()
                 message.payload(getFirmwareChunk)
                 val response = handleGetFirmwareChunkRequest(message.requestId, getFirmwareChunk)
-                return buildResponse(MessagePayload.GetFirmwareChunkResponse, message.requestId, message.sessionToken!!, response)
+                return buildResponse(
+                    MessagePayload.GetFirmwareChunkResponse,
+                    message.requestId,
+                    message.sessionToken!!,
+                    response,
+                )
             }
             MessagePayload.FirmwareChallengeResponse -> {
                 val challengeResponse = FirmwareChallengeResponse()
                 message.payload(challengeResponse)
-                handleChallengeResponse(message.requestId, message.sessionToken!!, challengeResponse)
+                handleChallengeResponse(
+                    message.requestId,
+                    message.sessionToken!!,
+                    challengeResponse,
+                )
                 return null
             }
             else -> {
@@ -50,7 +62,12 @@ class FirmwareApiController {
         }
     }
 
-    private fun <T : Table> buildResponse(payloadType: UByte, requestId: Long, sessionToken: String, builderContext: ResponseBuilderContext<T>) : FirmwareMessage {
+    private fun <T : Table> buildResponse(
+        payloadType: UByte,
+        requestId: Long,
+        sessionToken: String,
+        builderContext: ResponseBuilderContext<T>,
+    ): FirmwareMessage {
         val builder = builderContext.builder
 
         val sessionTokenOffset = builder.createString(sessionToken)
@@ -65,15 +82,17 @@ class FirmwareApiController {
 
         builder.finish(firmwareMessageOffset)
         return FirmwareMessage.getRootAsFirmwareMessage(ByteBuffer.wrap(builder.sizedByteArray()))
-
     }
 
-    fun handleGetLatestFirmwareRequest(message : GetLatestFirmwareRequest) : ResponseBuilderContext<GetLatestFirmwareResponse> {
-        val possibleUpgrades = firmwareService.findUpgradesForVersion(message.version!!.versionName!!)
+    fun handleGetLatestFirmwareRequest(
+        message: GetLatestFirmwareRequest
+    ): ResponseBuilderContext<GetLatestFirmwareResponse> {
+        val possibleUpgrades =
+            firmwareService.findUpgradesForVersion(message.version!!.versionName!!)
 
         val builder = FlatBufferBuilder(1024)
 
-        if(possibleUpgrades.isEmpty()) {
+        if (possibleUpgrades.isEmpty()) {
             // No upgrade is available so just return the name of whatever the firmware
             // said.
             val versionNameOffset = builder.createString(message.version!!.versionName)
@@ -99,11 +118,15 @@ class FirmwareApiController {
             GetLatestFirmwareResponse.addDigest(builder, hashOffset)
         }
 
-        val getLatestFirmwareVersionResponseOffset = GetLatestFirmwareResponse.endGetLatestFirmwareResponse(builder)
+        val getLatestFirmwareVersionResponseOffset =
+            GetLatestFirmwareResponse.endGetLatestFirmwareResponse(builder)
         return ResponseBuilderContext(builder, getLatestFirmwareVersionResponseOffset)
     }
 
-    fun handleGetFirmwareChunkRequest(requestId: Long, message: GetFirmwareChunkRequest) : ResponseBuilderContext<GetFirmwareChunkResponse> {
+    fun handleGetFirmwareChunkRequest(
+        requestId: Long,
+        message: GetFirmwareChunkRequest,
+    ): ResponseBuilderContext<GetFirmwareChunkResponse> {
         val builder = FlatBufferBuilder(1024)
 
         val firmwareName = message.firmwareName!!
@@ -122,10 +145,15 @@ class FirmwareApiController {
         return ResponseBuilderContext(builder, getFirmwareChunkOffset)
     }
 
-    fun handleChallengeResponse(requestId: Long, sessionToken: String, message : FirmwareChallengeResponse) {
+    fun handleChallengeResponse(
+        requestId: Long,
+        sessionToken: String,
+        message: FirmwareChallengeResponse,
+    ) {
         val signatureBytes = ByteArray(message.signatureLength) { message.signature(it).toByte() }
 
-        val validated = firmwareService.validateChallengeSignature(requestId, sessionToken, signatureBytes)
+        val validated =
+            firmwareService.validateChallengeSignature(requestId, sessionToken, signatureBytes)
         println("🧑‍🔬 Firmware validated as official? -> $validated")
     }
 }

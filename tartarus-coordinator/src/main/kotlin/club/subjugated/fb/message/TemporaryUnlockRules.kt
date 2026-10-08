@@ -2,59 +2,70 @@
 
 package club.subjugated.fb.message
 
-import com.google.flatbuffers.BaseVector
-import com.google.flatbuffers.BooleanVector
-import com.google.flatbuffers.ByteVector
 import com.google.flatbuffers.Constants
-import com.google.flatbuffers.DoubleVector
 import com.google.flatbuffers.FlatBufferBuilder
-import com.google.flatbuffers.FloatVector
-import com.google.flatbuffers.LongVector
-import com.google.flatbuffers.StringVector
-import com.google.flatbuffers.Struct
 import com.google.flatbuffers.Table
-import com.google.flatbuffers.UnionVector
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.math.sign
 
 @Suppress("unused")
 class TemporaryUnlockRules : Table() {
 
-    fun __init(_i: Int, _bb: ByteBuffer)  {
+    fun __init(_i: Int, _bb: ByteBuffer) {
         __reset(_i, _bb)
     }
-    fun __assign(_i: Int, _bb: ByteBuffer) : TemporaryUnlockRules {
+
+    fun __assign(_i: Int, _bb: ByteBuffer): TemporaryUnlockRules {
         __init(_i, _bb)
         return this
     }
-    val maxUnlocks : UShort
+
+    val maxUnlocks: UShort
         get() {
             val o = __offset(4)
-            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+            return if (o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
         }
-    val timeLimit : UShort
+
+    val timeLimit: UShort
         get() {
             val o = __offset(6)
-            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+            return if (o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
         }
+
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
-        fun getRootAsTemporaryUnlockRules(_bb: ByteBuffer): TemporaryUnlockRules = getRootAsTemporaryUnlockRules(_bb, TemporaryUnlockRules())
-        fun getRootAsTemporaryUnlockRules(_bb: ByteBuffer, obj: TemporaryUnlockRules): TemporaryUnlockRules {
+
+        fun getRootAsTemporaryUnlockRules(_bb: ByteBuffer): TemporaryUnlockRules =
+            getRootAsTemporaryUnlockRules(_bb, TemporaryUnlockRules())
+
+        fun getRootAsTemporaryUnlockRules(
+            _bb: ByteBuffer,
+            obj: TemporaryUnlockRules,
+        ): TemporaryUnlockRules {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createTemporaryUnlockRules(builder: FlatBufferBuilder, maxUnlocks: UShort, timeLimit: UShort) : Int {
+
+        fun createTemporaryUnlockRules(
+            builder: FlatBufferBuilder,
+            maxUnlocks: UShort,
+            timeLimit: UShort,
+        ): Int {
             builder.startTable(2)
             addTimeLimit(builder, timeLimit)
             addMaxUnlocks(builder, maxUnlocks)
             return endTemporaryUnlockRules(builder)
         }
+
         fun startTemporaryUnlockRules(builder: FlatBufferBuilder) = builder.startTable(2)
-        fun addMaxUnlocks(builder: FlatBufferBuilder, maxUnlocks: UShort) = builder.addShort(0, maxUnlocks.toShort(), 0)
-        fun addTimeLimit(builder: FlatBufferBuilder, timeLimit: UShort) = builder.addShort(1, timeLimit.toShort(), 0)
-        fun endTemporaryUnlockRules(builder: FlatBufferBuilder) : Int {
+
+        fun addMaxUnlocks(builder: FlatBufferBuilder, maxUnlocks: UShort) =
+            builder.addShort(0, maxUnlocks.toShort(), 0)
+
+        fun addTimeLimit(builder: FlatBufferBuilder, timeLimit: UShort) =
+            builder.addShort(1, timeLimit.toShort(), 0)
+
+        fun endTemporaryUnlockRules(builder: FlatBufferBuilder): Int {
             val o = builder.endTable()
             return o
         }

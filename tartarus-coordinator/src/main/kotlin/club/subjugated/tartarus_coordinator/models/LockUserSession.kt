@@ -11,9 +11,8 @@ import java.time.OffsetDateTime
 import java.util.*
 
 @Entity
-class LockUserSession (
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) var id: Long = 0,
+class LockUserSession(
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) var id: Long = 0,
     var name: String = generateId(),
     var publicKey: String,
     var nonceUsed: String?,

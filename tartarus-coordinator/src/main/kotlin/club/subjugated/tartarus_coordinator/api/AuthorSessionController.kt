@@ -26,7 +26,9 @@ class AuthorSessionController {
             newAuthorSessionMessage.validateOrThrow()
         } catch (e: CryptoException) {
             return ResponseEntity.badRequest().build()
-        } catch(e : IllegalStateException) {
+        } catch (e: IllegalStateException) {
+            return ResponseEntity.badRequest().build()
+        } catch (e: IllegalArgumentException) {
             return ResponseEntity.badRequest().build()
         }
 

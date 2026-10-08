@@ -27,16 +27,16 @@ import club.subjugated.tartarus_coordinator.util.loadECPublicKeyFromPkcs8
 import club.subjugated.tartarus_coordinator.util.signedMessageBytesValidator
 import club.subjugated.tartarus_coordinator.util.signedMessageBytesValidatorWithExternalKey
 import com.google.flatbuffers.FlatBufferBuilder
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.context.ApplicationEventPublisher
-import org.springframework.context.event.EventListener
-import org.springframework.stereotype.Service
 import java.nio.ByteBuffer
 import java.security.KeyFactory
 import java.security.MessageDigest
 import java.security.Signature
 import java.security.spec.PKCS8EncodedKeySpec
 import java.util.*
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.context.event.EventListener
+import org.springframework.stereotype.Service
 
 @Service
 class ContractService {
@@ -102,9 +102,19 @@ class ContractService {
         }
     }
 
-    fun approveContract(lockSession: LockSession, contractName: String) : Contract {
-        val contract = contractRepository.findByName(contractName)
-        require(lockSession == contract.lockSession) { "Contract does not belong to this lock session" }
+    fun approveContract(lockSession: LockSession, contractName: String): Contract {
+        val contract =
+            contractRepository.findByName(contractName)
+                ?: throw org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.NOT_FOUND,
+                    "Contract not found",
+                )
+        if (lockSession.id != contract.lockSession.id) {
+            throw org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.FORBIDDEN,
+                "Contract does not belong to this lock session",
+            )
+        }
 
         contract.state = ContractState.ACCEPTED
         val command =
@@ -127,9 +137,19 @@ class ContractService {
         return contract
     }
 
-    fun rejectContract(lockSession: LockSession, contractName: String) : Contract {
-        val contract = contractRepository.findByName(contractName)
-        require(lockSession == contract.lockSession) { "Contract does not belong to this lock session" }
+    fun rejectContract(lockSession: LockSession, contractName: String): Contract {
+        val contract =
+            contractRepository.findByName(contractName)
+                ?: throw org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.NOT_FOUND,
+                    "Contract not found",
+                )
+        if (lockSession.id != contract.lockSession.id) {
+            throw org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.FORBIDDEN,
+                "Contract does not belong to this lock session",
+            )
+        }
         contract.state = ContractState.REJECTED
         contractRepository.save(contract)
 
@@ -137,12 +157,18 @@ class ContractService {
         return contract
     }
 
-    fun findByLockSessionId(lockSession: LockSession) : List<Contract> {
+    fun findByLockSessionId(lockSession: LockSession): List<Contract> {
         return contractRepository.findByLockSessionIdOrderByCreatedAtDesc(lockSession.id)
     }
 
-    fun findByLockSessionIdAndState(lockSession: LockSession, state: List<ContractState>) : List<Contract> {
-        return contractRepository.findByLockSessionIdAndStateInOrderByCreatedAtDesc(lockSession.id, state)
+    fun findByLockSessionIdAndState(
+        lockSession: LockSession,
+        state: List<ContractState>,
+    ): List<Contract> {
+        return contractRepository.findByLockSessionIdAndStateInOrderByCreatedAtDesc(
+            lockSession.id,
+            state,
+        )
     }
 
     fun saveCommand(
@@ -157,7 +183,9 @@ class ContractService {
 
         when (val incomingCommand = signedMessageBytesValidatorWithExternalKey(buf, authorPubKey)) {
             is ValidatedPayload.UnlockCommandPayload -> {
-                require(incomingCommand.unlockCommand.serialNumber.toInt() != 0) { "Serial number must not be zero" }
+                require(incomingCommand.unlockCommand.serialNumber.toInt() != 0) {
+                    "Serial number must not be zero"
+                }
 
                 val command =
                     Command(
@@ -176,7 +204,9 @@ class ContractService {
                 publisher.publishEvent(NewCommandEvent(this, lockSession.sessionToken!!))
             }
             is ValidatedPayload.LockCommandPayload -> {
-                require(incomingCommand.lockCommand.serialNumber.toInt() != 0) { "Serial number must not be zero" }
+                require(incomingCommand.lockCommand.serialNumber.toInt() != 0) {
+                    "Serial number must not be zero"
+                }
                 val command =
                     Command(
                         commandQueue = lockSession.commandQueue.first(),
@@ -194,7 +224,9 @@ class ContractService {
                 publisher.publishEvent(NewCommandEvent(this, lockSession.sessionToken!!))
             }
             is ValidatedPayload.ReleaseCommandPayload -> {
-                require(incomingCommand.releaseCommand.serialNumber.toInt() != 0) { "Serial number must not be zero" }
+                require(incomingCommand.releaseCommand.serialNumber.toInt() != 0) {
+                    "Serial number must not be zero"
+                }
                 val command =
                     Command(
                         commandQueue = lockSession.commandQueue.first(),
@@ -208,7 +240,7 @@ class ContractService {
                         updatedAt = timeSource.nowInUtc(),
                         contract = contract,
                     )
-                if(this.commandQueueService.saveCommandIgnoreDupes(command)) {
+                if (this.commandQueueService.saveCommandIgnoreDupes(command)) {
                     publisher.publishEvent(NewCommandEvent(this, lockSession.sessionToken!!))
                 }
             }
@@ -216,38 +248,63 @@ class ContractService {
         }
     }
 
-    fun findContractsByAuthorSessionAndState(authorSession: AuthorSession, contractState: ContractState) : List<Contract> {
-        return contractRepository.findByAuthorSessionIdAndStateOrderByCreatedAtDesc(authorSession.id, contractState)
+    fun findContractsByAuthorSessionAndState(
+        authorSession: AuthorSession,
+        contractState: ContractState,
+    ): List<Contract> {
+        return contractRepository.findByAuthorSessionIdAndStateOrderByCreatedAtDesc(
+            authorSession.id,
+            contractState,
+        )
     }
 
-    fun findContractsByAuthorSessionAndShareableToken(authorSession: AuthorSession, someToken: String): List<Contract> {
-        return this.contractRepository.findByAuthorSessionIdAndShareableTokenOrderByCreatedAtDesc(authorSession.id, someToken)
+    fun findContractsByAuthorSessionAndShareableToken(
+        authorSession: AuthorSession,
+        someToken: String,
+    ): List<Contract> {
+        return this.contractRepository.findByAuthorSessionIdAndShareableTokenOrderByCreatedAtDesc(
+            authorSession.id,
+            someToken,
+        )
     }
 
     fun getByNameForAuthor(name: String): Contract {
-        val contract = this.contractRepository.findByName(name)
-        if(contract.state == ContractState.CONFIRMED) {
+        val contract =
+            this.contractRepository.findByName(name)
+                ?: throw org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.NOT_FOUND,
+                    "Contract not found",
+                )
+        if (contract.state == ContractState.CONFIRMED) {
             contract.lockState = contract.lockSession.isLocked
             contract.lockLastUpdate = contract.lockSession.updatedAt
         }
         return contract
     }
 
-    fun getByNameForBot(name : String, botName : String) : Contract {
-        val contract = this.contractRepository.findByName(name)
-        require(contract.getEmbeddedBots().any { it.name == botName }) { "Bot is not listed in the contract" }
+    fun getByNameForBot(name: String, botName: String): Contract {
+        val contract =
+            this.contractRepository.findByName(name)
+                ?: throw org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.NOT_FOUND,
+                    "Contract not found",
+                )
+        require(contract.getEmbeddedBots().any { it.name == botName }) {
+            "Bot is not listed in the contract"
+        }
         return contract
     }
 
-    fun addMessageForBot(message: String, bot : Bot, contract: Contract) {
-        val contractMessage = Message(
-            body = message,
-            type = MessageType.BOT_MESSAGE,
-            contract = contract,
-            bot = bot,
-            createdAt = timeSource.nowInUtc(),
-            updatedAt = timeSource.nowInUtc()
-        )
+    fun addMessageForBot(message: String, bot: Bot, contract: Contract) {
+        val contractMessage =
+            Message(
+                body = message,
+                type = MessageType.BOT_MESSAGE,
+                contract = contract,
+                bot = bot,
+                createdAt = timeSource.nowInUtc(),
+                updatedAt = timeSource.nowInUtc(),
+            )
 
         val lastMessage = contract.messages.lastOrNull()
         if (lastMessage?.body == message && lastMessage.bot?.name == bot.name) {
@@ -259,31 +316,45 @@ class ContractService {
         contractRepository.save(contract)
     }
 
-    fun getBySerialAndLockSessionForBot(lockSession: LockSession, serial: Int, botName: String) : Contract {
-        val contract = this.contractRepository.findByLockSessionIdAndSerialNumber(lockSession.id, serial)
+    fun getBySerialAndLockSessionForBot(
+        lockSession: LockSession,
+        serial: Int,
+        botName: String,
+    ): Contract {
+        val contract =
+            this.contractRepository.findByLockSessionIdAndSerialNumber(lockSession.id, serial)
+                ?: throw org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.NOT_FOUND,
+                    "Contract not found",
+                )
         val embeddedBots = contract.getEmbeddedBots()
         val bot = embeddedBots.firstOrNull { it.name == botName }
-        if(bot == null){
+        if (bot == null) {
             throw IllegalArgumentException("Bot isn't listed in the contract")
         }
 
         return contract
     }
 
-    fun getByStateAdminOnly(states : List<ContractState>) : List<Contract> {
+    fun getByStateAdminOnly(states: List<ContractState>): List<Contract> {
         return contractRepository.findByStateInOrderByUpdatedAtDesc(states)
     }
 
-    fun getByNameAdminOnly(name : String) : Contract {
-        val contract = contractRepository.findByName(name)
-        if(contract.state == ContractState.CONFIRMED) {
+    fun getByNameAdminOnly(name: String): Contract {
+        val contract =
+            contractRepository.findByName(name)
+                ?: throw org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.NOT_FOUND,
+                    "Contract not found",
+                )
+        if (contract.state == ContractState.CONFIRMED) {
             contract.lockState = contract.lockSession.isLocked
             contract.lockLastUpdate = contract.lockSession.updatedAt
         }
         return contract
     }
 
-    fun abortContractWithSafetyKey(contract: Contract, safetyKey : SafetyKey) : Contract {
+    fun abortContractWithSafetyKey(contract: Contract, safetyKey: SafetyKey): Contract {
         val builder = FlatBufferBuilder(1024)
 
         AbortCommand.startAbortCommand(builder)
@@ -298,7 +369,9 @@ class ContractService {
         val data = builder.sizedByteArray()
 
         val offsetToTable = (data[0].toInt() and 0xFF) or ((data[1].toInt() and 0xFF) shl 8)
-        val offsetToVTable = (data[offsetToTable].toInt() and 0xFF) or ((data[offsetToTable + 1].toInt() and 0xFF) shl 8)
+        val offsetToVTable =
+            (data[offsetToTable].toInt() and 0xFF) or
+                ((data[offsetToTable + 1].toInt() and 0xFF) shl 8)
         val vTableStart = offsetToTable - offsetToVTable
         val vtableAndContract = data.copyOfRange(vTableStart, data.size)
 
@@ -310,10 +383,13 @@ class ContractService {
         digest.update(vtableAndContract)
         val hash = digest.digest()
 
-        val signature = Signature.getInstance("SHA256withECDSA", "BC").apply {
-            initSign(privateKey)
-            update(hash)
-        }.sign()
+        val signature =
+            Signature.getInstance("SHA256withECDSA", "BC")
+                .apply {
+                    initSign(privateKey)
+                    update(hash)
+                }
+                .sign()
 
         val rawSig = derToRawSignature(signature)
 
@@ -321,7 +397,10 @@ class ContractService {
         val sigOffset = builder.createByteVector(rawSig)
 
         SignedMessage.startSignedMessage(builder)
-        SignedMessage.addPayloadType(builder, club.subjugated.fb.message.MessagePayload.AbortCommand)
+        SignedMessage.addPayloadType(
+            builder,
+            club.subjugated.fb.message.MessagePayload.AbortCommand,
+        )
         SignedMessage.addPayload(builder, abortOffset)
         SignedMessage.addSignature(builder, sigOffset)
         SignedMessage.addAuthorityIdentifier(builder, authorityOffset)
@@ -334,7 +413,11 @@ class ContractService {
         val ecPublicKey = publicKey as java.security.interfaces.ECPublicKey
         val compressedPubKey = encodePublicKeySecp1(ecPublicKey)
 
-        val validated = signedMessageBytesValidatorWithExternalKey(ByteBuffer.wrap(signedMessage), compressedPubKey)
+        val validated =
+            signedMessageBytesValidatorWithExternalKey(
+                ByteBuffer.wrap(signedMessage),
+                compressedPubKey,
+            )
 
         val command =
             Command(
@@ -358,9 +441,11 @@ class ContractService {
         return contract
     }
 
-    // It's not a contract operation per se, but it's processed, handled, and structured like all the other
-    // "contract" commands. There's almost certainly an associated contract though to wind up in this situation.
-    fun resetWithSafetyKey(contract: Contract, safetyKey : SafetyKey) : Contract {
+    // It's not a contract operation per se, but it's processed, handled, and structured like all
+    // the other
+    // "contract" commands. There's almost certainly an associated contract though to wind up in
+    // this situation.
+    fun resetWithSafetyKey(contract: Contract, safetyKey: SafetyKey): Contract {
         val builder = FlatBufferBuilder(1024)
 
         val sessionTokenOffset = builder.createString(contract.lockSession.sessionToken!!)
@@ -375,7 +460,9 @@ class ContractService {
         val data = builder.sizedByteArray()
 
         val offsetToTable = (data[0].toInt() and 0xFF) or ((data[1].toInt() and 0xFF) shl 8)
-        val offsetToVTable = (data[offsetToTable].toInt() and 0xFF) or ((data[offsetToTable + 1].toInt() and 0xFF) shl 8)
+        val offsetToVTable =
+            (data[offsetToTable].toInt() and 0xFF) or
+                ((data[offsetToTable + 1].toInt() and 0xFF) shl 8)
         val vTableStart = offsetToTable - offsetToVTable
         val vtableAndContract = data.copyOfRange(vTableStart, data.size)
 
@@ -387,10 +474,13 @@ class ContractService {
         digest.update(vtableAndContract)
         val hash = digest.digest()
 
-        val signature = Signature.getInstance("SHA256withECDSA", "BC").apply {
-            initSign(privateKey)
-            update(hash)
-        }.sign()
+        val signature =
+            Signature.getInstance("SHA256withECDSA", "BC")
+                .apply {
+                    initSign(privateKey)
+                    update(hash)
+                }
+                .sign()
 
         val rawSig = derToRawSignature(signature)
 
@@ -398,7 +488,10 @@ class ContractService {
         val sigOffset = builder.createByteVector(rawSig)
 
         SignedMessage.startSignedMessage(builder)
-        SignedMessage.addPayloadType(builder, club.subjugated.fb.message.MessagePayload.ResetCommand)
+        SignedMessage.addPayloadType(
+            builder,
+            club.subjugated.fb.message.MessagePayload.ResetCommand,
+        )
         SignedMessage.addPayload(builder, resetOffset)
         SignedMessage.addSignature(builder, sigOffset)
         SignedMessage.addAuthorityIdentifier(builder, authorityOffset)
@@ -411,7 +504,11 @@ class ContractService {
         val ecPublicKey = publicKey as java.security.interfaces.ECPublicKey
         val compressedPubKey = encodePublicKeySecp1(ecPublicKey)
 
-        val validated = signedMessageBytesValidatorWithExternalKey(ByteBuffer.wrap(signedMessage), compressedPubKey)
+        val validated =
+            signedMessageBytesValidatorWithExternalKey(
+                ByteBuffer.wrap(signedMessage),
+                compressedPubKey,
+            )
 
         val command =
             Command(
@@ -435,7 +532,7 @@ class ContractService {
         return contract
     }
 
-    internal fun save(contract : Contract) : Contract {
+    internal fun save(contract: Contract): Contract {
         return contractRepository.save(contract)
     }
 

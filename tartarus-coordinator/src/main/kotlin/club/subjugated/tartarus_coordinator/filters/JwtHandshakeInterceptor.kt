@@ -11,13 +11,13 @@ import org.springframework.web.socket.server.HandshakeInterceptor
 
 class JwtHandshakeInterceptor(
     private val authorSessionService: AuthorSessionService,
-    private val lockUserSessionService: LockUserSessionService
+    private val lockUserSessionService: LockUserSessionService,
 ) : HandshakeInterceptor {
     override fun beforeHandshake(
         request: org.springframework.http.server.ServerHttpRequest,
         response: org.springframework.http.server.ServerHttpResponse,
         wsHandler: WebSocketHandler,
-        attributes: MutableMap<String, Any>
+        attributes: MutableMap<String, Any>,
     ): Boolean {
         if (request is ServletServerHttpRequest) {
             val servletRequest: HttpServletRequest = request.servletRequest
@@ -25,8 +25,11 @@ class JwtHandshakeInterceptor(
             val authorJwt = servletRequest.getParameter("authorJwt")
             var somethingWasValidated = false
 
-            if(!lockUserJwt.isNullOrEmpty()) {
-                when(val result = verifyJwt(authorSessionService, lockUserSessionService, lockUserJwt)) {
+            if (!lockUserJwt.isNullOrEmpty()) {
+                when (
+                    val result =
+                        verifyJwt(authorSessionService, lockUserSessionService, lockUserJwt)
+                ) {
                     is JwtValidationResult.AuthorSession -> {}
                     JwtValidationResult.Invalid -> {}
                     is JwtValidationResult.LockUserSession -> {
@@ -36,8 +39,10 @@ class JwtHandshakeInterceptor(
                 }
             }
 
-            if(!authorJwt.isNullOrEmpty()) {
-                when(val result = verifyJwt(authorSessionService, lockUserSessionService, authorJwt)) {
+            if (!authorJwt.isNullOrEmpty()) {
+                when (
+                    val result = verifyJwt(authorSessionService, lockUserSessionService, authorJwt)
+                ) {
                     is JwtValidationResult.AuthorSession -> {
                         attributes["authorSession"] = result.value
                         somethingWasValidated = true
@@ -56,7 +61,6 @@ class JwtHandshakeInterceptor(
         request: org.springframework.http.server.ServerHttpRequest,
         response: org.springframework.http.server.ServerHttpResponse,
         wsHandler: WebSocketHandler,
-        exception: Exception?
-    ) {
-    }
+        exception: Exception?,
+    ) {}
 }

@@ -17,9 +17,11 @@ sealed class ValidatedPayload {
     data class ReleaseCommandPayload(val releaseCommand: ReleaseCommand) : ValidatedPayload()
 
     data class StartedUpdatePayload(val startedUpdate: StartedUpdate) : ValidatedPayload()
+
     data class PeriodicUpdatePayload(val periodicUpdate: PeriodicUpdate) : ValidatedPayload()
 
     data class AcknowledgementPayload(val acknowledgement: Acknowledgement) : ValidatedPayload()
+
     data class AbortPayload(val abortCommand: AbortCommand) : ValidatedPayload()
 
     data class ErrorPayload(val error: Error) : ValidatedPayload()
@@ -193,7 +195,7 @@ fun <T : Table> verifySignedMessageSignature(
             update(hash)
         }
 
-    if(isDerEncoded(signature)) {
+    if (isDerEncoded(signature)) {
         return verifier.verify(signature)
     } else {
         val derEncodedSignature = rawToDerSignature(signature)

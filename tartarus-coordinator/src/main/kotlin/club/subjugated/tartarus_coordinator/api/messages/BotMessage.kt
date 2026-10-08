@@ -13,14 +13,14 @@ class BotMessage(
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
 ) {
     companion object {
-        fun fromBot(bot : Bot) : BotMessage {
+        fun fromBot(bot: Bot): BotMessage {
             return BotMessage(
                 name = bot.name,
                 publicKey = bot.publicKey,
                 clearTextPassword = bot.clearTextPassword,
                 description = bot.description,
                 createdAt = bot.createdAt,
-                updatedAt = bot.updatedAt
+                updatedAt = bot.updatedAt,
             )
         }
     }

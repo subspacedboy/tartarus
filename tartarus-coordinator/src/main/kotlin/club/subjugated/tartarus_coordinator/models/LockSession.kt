@@ -1,11 +1,9 @@
 package club.subjugated.tartarus_coordinator.models
 
 import club.subjugated.tartarus_coordinator.util.generateSalt
-import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromCompressedKeyByteArray
 import club.subjugated.tartarus_coordinator.util.runSCryptWithCommonParams
 import com.fasterxml.jackson.annotation.JsonFormat
 import jakarta.persistence.*
-import java.security.interfaces.ECPublicKey
 import java.time.OffsetDateTime
 import java.util.*
 
@@ -41,12 +39,12 @@ class LockSession(
     override fun decodePublicKey(): ByteArray {
         return try {
             Base64.getDecoder().decode(this.publicKey)
-        } catch (e : IllegalArgumentException) {
+        } catch (e: IllegalArgumentException) {
             Base64.getUrlDecoder().decode(this.publicKey)
         }
     }
 
-    fun setPassword(input : String) {
+    fun setPassword(input: String) {
         val salt = generateSalt()
 
         val derived = runSCryptWithCommonParams(input.toByteArray(), salt)
@@ -55,7 +53,7 @@ class LockSession(
         this.mqttPassword = Base64.getEncoder().encodeToString(derived)
     }
 
-    fun checkPassword(input : String) : Boolean {
+    fun checkPassword(input: String): Boolean {
         val salt = Base64.getDecoder().decode(this.mqttSalt)
         val derived = runSCryptWithCommonParams(input.toByteArray(), salt)
         return Base64.getEncoder().encodeToString(derived) == this.mqttPassword

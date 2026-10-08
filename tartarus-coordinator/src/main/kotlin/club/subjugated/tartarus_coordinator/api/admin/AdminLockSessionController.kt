@@ -18,19 +18,25 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/admin/lock_sessions")
 @Controller
-class AdminLockSessionController(
-    private val lockSessionService: LockSessionService
-) {
+class AdminLockSessionController(private val lockSessionService: LockSessionService) {
     @GetMapping("/", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
     @PreAuthorize("hasAuthority('ADMIN')")
     fun getLiveContracts(
         @AuthenticationPrincipal admin: UserDetails,
-        @RequestParam("states", required = false) statesParam: String?
+        @RequestParam("states", required = false) statesParam: String?,
     ): ResponseEntity<List<LockSessionMessage>> {
         val lockSessions = lockSessionService.findAllForAdmin()
 
-        return ResponseEntity.ok(lockSessions.map { LockSessionMessage.fromLockSession(it, null, null, listOf(
-            LockSessionArgs.INCLUDE_SESSION_TOKEN)) })
+        return ResponseEntity.ok(
+            lockSessions.map {
+                LockSessionMessage.fromLockSession(
+                    it,
+                    null,
+                    null,
+                    listOf(LockSessionArgs.INCLUDE_SESSION_TOKEN),
+                )
+            }
+        )
     }
 }
