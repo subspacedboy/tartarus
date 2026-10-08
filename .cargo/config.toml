@@ -8,7 +8,6 @@ linker = "ldproxy"
 runner = "espflash flash --monitor --partition-table partitions.csv --no-skip" # Select this runner for espflash v2.x.x
 rustflags = [ "--cfg",
     "espidf_time64",
-    "-C", "link-arg=-Wl,--gc-sections",
 ] # Extending time_t for ESP IDF 5: https://github.com/esp-rs/rust/issues/110
 
 [unstable]
