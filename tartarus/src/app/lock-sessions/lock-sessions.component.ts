@@ -1,4 +1,4 @@
-import {Component, OnInit} from '@angular/core';
+import {Component, OnInit, ChangeDetectionStrategy} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
 import {UserDataService} from '../user-data.service';
@@ -10,6 +10,7 @@ import {KnownToken} from '../models/known-token';
     RouterLink
   ],
   templateUrl: './lock-sessions.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './lock-sessions.component.scss'
 })
 export class LockSessionsComponent implements OnInit {

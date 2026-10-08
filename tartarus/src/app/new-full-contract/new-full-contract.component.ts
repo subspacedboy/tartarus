@@ -1,4 +1,4 @@
-import {Component, ElementRef, OnInit, ViewChild} from '@angular/core';
+import {Component, ElementRef, OnInit, ViewChild, ChangeDetectionStrategy} from '@angular/core';
 import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
 import {IdHelperService} from '../id-helper.service';
 import * as flatbuffers from 'flatbuffers';
@@ -23,6 +23,7 @@ import {Bot} from '../models/bot';
     ReactiveFormsModule
   ],
   templateUrl: './new-full-contract.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './new-full-contract.component.scss'
 })
 export class NewFullContractComponent implements OnInit {

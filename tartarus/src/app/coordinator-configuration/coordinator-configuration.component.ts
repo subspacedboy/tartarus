@@ -1,4 +1,4 @@
-import {AfterViewInit, Component, ElementRef, OnInit, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, OnInit, ViewChild, ChangeDetectionStrategy} from '@angular/core';
 import {ConfigService} from '../config.service';
 import * as flatbuffers from 'flatbuffers';
 import {Key} from '../club/subjugated/fb/message/configuration/key';
@@ -15,6 +15,7 @@ import {QrcodeService} from '../qrcode.service';
   selector: 'app-coordinator-configuration',
   imports: [ReactiveFormsModule],
   templateUrl: './coordinator-configuration.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './coordinator-configuration.component.scss'
 })
 export class CoordinatorConfigurationComponent implements OnInit, AfterViewInit {

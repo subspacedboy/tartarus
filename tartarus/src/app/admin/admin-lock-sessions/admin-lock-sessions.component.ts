@@ -1,4 +1,4 @@
-import {Component, OnInit} from '@angular/core';
+import {Component, OnInit, ChangeDetectionStrategy} from '@angular/core';
 import {Observable} from 'rxjs';
 import {LockSession} from '../../models/lock-session';
 import {TartarusCoordinatorService} from '../../tartarus-coordinator.service';
@@ -16,6 +16,7 @@ import {RouterLink} from '@angular/router';
     RouterLink
   ],
   templateUrl: './admin-lock-sessions.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './admin-lock-sessions.component.scss'
 })
 export class AdminLockSessionsComponent implements OnInit {

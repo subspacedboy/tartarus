@@ -1,4 +1,4 @@
-import {Component, OnInit} from '@angular/core';
+import {Component, OnInit, ChangeDetectionStrategy} from '@angular/core';
 import {Contract} from '../../models/contract';
 import {Command} from '../../models/command';
 import {TartarusCoordinatorService} from '../../tartarus-coordinator.service';
@@ -20,6 +20,7 @@ import {ContractDescription} from '../../models/contract-description';
     CommandCardComponent
   ],
   templateUrl: './admin-contract-detail.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './admin-contract-detail.component.scss'
 })
 export class AdminContractDetailComponent implements OnInit {

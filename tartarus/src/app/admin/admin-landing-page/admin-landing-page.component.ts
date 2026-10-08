@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import {ContractCardComponent} from '../../contract-card/contract-card.component';
 import {RouterLink} from '@angular/router';
 
@@ -9,6 +9,7 @@ import {RouterLink} from '@angular/router';
     RouterLink
   ],
   templateUrl: './admin-landing-page.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './admin-landing-page.component.scss'
 })
 export class AdminLandingPageComponent {

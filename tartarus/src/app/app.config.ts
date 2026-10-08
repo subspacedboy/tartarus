@@ -9,7 +9,7 @@ import { provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
 import {provideAnimations} from '@angular/platform-browser/animations';
-import {provideHttpClient, withInterceptors} from '@angular/common/http';
+import {provideHttpClient, withInterceptors, withXhr} from '@angular/common/http';
 import {ConfigService} from './config.service';
 import {authInterceptor} from './auth.interceptor';
 
@@ -24,7 +24,7 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
     provideAnimations(),
-    provideHttpClient(withInterceptors([authInterceptor])),
+    provideHttpClient(withXhr(), withInterceptors([authInterceptor])),
     ConfigService,
     provideAppInitializer(() => loadConfig(inject(ConfigService))),
   ]

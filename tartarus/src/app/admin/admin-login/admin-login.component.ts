@@ -1,4 +1,4 @@
-import {Component, ElementRef, ViewChild} from '@angular/core';
+import {Component, ElementRef, ViewChild, ChangeDetectionStrategy} from '@angular/core';
 import {UserDataService} from '../../user-data.service';
 import {TartarusCoordinatorService} from '../../tartarus-coordinator.service';
 import {IdHelperService} from '../../id-helper.service';
@@ -10,6 +10,7 @@ import jsQR from 'jsqr';
   selector: 'app-admin-login',
   imports: [],
   templateUrl: './admin-login.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './admin-login.component.scss'
 })
 export class AdminLoginComponent {

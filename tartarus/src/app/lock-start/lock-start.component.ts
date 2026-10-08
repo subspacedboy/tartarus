@@ -1,4 +1,4 @@
-import {AfterViewInit, Component, OnInit} from '@angular/core';
+import {AfterViewInit, Component, OnInit, ChangeDetectionStrategy} from '@angular/core';
 import {ActivatedRoute, Router} from '@angular/router';
 import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
 import {UserDataService} from '../user-data.service';
@@ -12,6 +12,7 @@ import {LockUserSession} from '../models/lock-user-session';
   selector: 'app-lock-start',
   imports: [],
   templateUrl: './lock-start.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './lock-start.component.scss'
 })
 export class LockStartComponent implements OnInit, AfterViewInit {

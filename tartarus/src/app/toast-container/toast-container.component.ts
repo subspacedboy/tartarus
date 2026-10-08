@@ -1,4 +1,4 @@
-import {Component, TemplateRef} from '@angular/core';
+import {Component, TemplateRef, ChangeDetectionStrategy} from '@angular/core';
 import {ToastService} from '../toast.service';
 import {NgbToast} from '@ng-bootstrap/ng-bootstrap';
 import { NgTemplateOutlet } from '@angular/common';
@@ -10,6 +10,7 @@ import { NgTemplateOutlet } from '@angular/common';
     NgTemplateOutlet
 ],
   templateUrl: './toast-container.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './toast-container.component.scss'
 })
 export class ToastContainerComponent {

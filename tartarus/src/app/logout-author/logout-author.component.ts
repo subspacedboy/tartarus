@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import {UserDataService} from '../user-data.service';
 import {Router} from '@angular/router';
 
@@ -6,6 +6,7 @@ import {Router} from '@angular/router';
   selector: 'app-logout-author',
   imports: [],
   templateUrl: './logout-author.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './logout-author.component.scss'
 })
 export class LogoutAuthorComponent {

@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import {TartarusCoordinatorService} from '../../tartarus-coordinator.service';
 import {FormBuilder, FormGroup, ReactiveFormsModule} from '@angular/forms';
 
@@ -8,6 +8,7 @@ import {FormBuilder, FormGroup, ReactiveFormsModule} from '@angular/forms';
     ReactiveFormsModule
   ],
   templateUrl: './admin-add-firmware.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './admin-add-firmware.component.scss'
 })
 export class AdminAddFirmwareComponent {

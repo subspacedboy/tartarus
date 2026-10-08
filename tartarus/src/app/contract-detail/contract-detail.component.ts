@@ -1,4 +1,4 @@
-import {Component, OnInit} from '@angular/core';
+import {Component, OnInit, ChangeDetectionStrategy} from '@angular/core';
 import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
 import {Contract} from '../models/contract';
 import {ActivatedRoute} from '@angular/router';
@@ -23,6 +23,7 @@ import {DateAgoPipe} from "../date-ago.pipe";
         DateAgoPipe
     ],
   templateUrl: './contract-detail.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './contract-detail.component.scss'
 })
 export class ContractDetailComponent implements OnInit {

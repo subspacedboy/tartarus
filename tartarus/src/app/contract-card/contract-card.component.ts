@@ -1,4 +1,4 @@
-import {Component, Input} from '@angular/core';
+import {Component, Input, ChangeDetectionStrategy} from '@angular/core';
 import {Contract} from '../models/contract';
 import {RouterLink} from '@angular/router';
 import {DatePipe} from '@angular/common';
@@ -10,6 +10,7 @@ import {DatePipe} from '@angular/common';
     DatePipe
   ],
   templateUrl: './contract-card.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './contract-card.component.scss'
 })
 export class ContractCardComponent {

@@ -1,4 +1,4 @@
-import {Component, ElementRef, ViewChild} from '@angular/core';
+import {Component, ElementRef, ViewChild, ChangeDetectionStrategy} from '@angular/core';
 import {CryptoService} from '../crypto.service';
 import jsQR from 'jsqr';
 
@@ -6,6 +6,7 @@ import jsQR from 'jsqr';
   selector: 'app-key-helper',
   imports: [],
   templateUrl: './key-helper.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './key-helper.component.scss'
 })
 export class KeyHelperComponent {

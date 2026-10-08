@@ -1,4 +1,4 @@
-import {Component, OnInit, QueryList, ViewChildren} from '@angular/core';
+import {Component, OnInit, QueryList, ViewChildren, ChangeDetectionStrategy} from '@angular/core';
 import {TartarusCoordinatorService} from '../../tartarus-coordinator.service';
 import {Contract} from '../../models/contract';
 import {ContractCardComponent} from '../../contract-card/contract-card.component';
@@ -20,6 +20,7 @@ import {FormsModule} from '@angular/forms';
     DatePipe
   ],
   templateUrl: './admin-contracts.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './admin-contracts.component.scss'
 })
 export class AdminContractsComponent implements OnInit {

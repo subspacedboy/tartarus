@@ -1,4 +1,4 @@
-import {Component, OnInit} from '@angular/core';
+import {Component, OnInit, ChangeDetectionStrategy} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
 import {UserDataService} from '../user-data.service';
@@ -18,6 +18,7 @@ import {DateAgoPipe} from "../date-ago.pipe";
         DateAgoPipe
     ],
   templateUrl: './lock-session-detail.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './lock-session-detail.component.scss'
 })
 export class LockSessionDetailComponent implements OnInit {

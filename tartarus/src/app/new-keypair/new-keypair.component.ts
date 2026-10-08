@@ -1,4 +1,4 @@
-import {Component, ElementRef, OnInit, ViewChild} from '@angular/core';
+import {Component, ElementRef, OnInit, ViewChild, ChangeDetectionStrategy} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 
 import * as QRCode from 'qrcode';
@@ -12,6 +12,7 @@ import {CryptoService} from '../crypto.service';
     FormsModule
   ],
   templateUrl: './new-keypair.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './new-keypair.component.scss'
 })
 export class NewKeypairComponent implements OnInit {

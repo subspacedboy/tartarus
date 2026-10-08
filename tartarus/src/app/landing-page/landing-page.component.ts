@@ -1,4 +1,4 @@
-import {Component, Inject, OnInit} from '@angular/core';
+import {Component, Inject, OnInit, ChangeDetectionStrategy} from '@angular/core';
 import {RouterLink} from '@angular/router';
 import {UserDataService} from '../user-data.service';
 import {AppComponent} from '../app.component';
@@ -13,6 +13,7 @@ import {ContractCardComponent} from '../contract-card/contract-card.component';
     ContractCardComponent
   ],
   templateUrl: './landing-page.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './landing-page.component.scss'
 })
 export class LandingPageComponent implements OnInit {

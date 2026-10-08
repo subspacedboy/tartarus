@@ -1,4 +1,4 @@
-import {Component, OnInit} from '@angular/core';
+import {Component, OnInit, ChangeDetectionStrategy} from '@angular/core';
 import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
 import {ActivatedRoute} from '@angular/router';
 import {UserDataService} from '../user-data.service';
@@ -19,6 +19,7 @@ import {CommandCardComponent} from '../command-card/command-card.component';
     CommandCardComponent
   ],
   templateUrl: './lock-user-contract-detail.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './lock-user-contract-detail.component.scss'
 })
 export class LockUserContractDetailComponent implements OnInit {

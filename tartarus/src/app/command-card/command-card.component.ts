@@ -1,4 +1,4 @@
-import {Component, ElementRef, Input, ViewChild} from '@angular/core';
+import {Component, ElementRef, Input, ViewChild, ChangeDetectionStrategy} from '@angular/core';
 import {Contract} from '../models/contract';
 import {Command} from '../models/command';
 import {DatePipe} from '@angular/common';
@@ -17,6 +17,7 @@ import * as flatbuffers from 'flatbuffers';
     RouterLink
   ],
   templateUrl: './command-card.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './command-card.component.scss'
 })
 export class CommandCardComponent {

@@ -1,4 +1,4 @@
-import {Component, ElementRef, ViewChild} from '@angular/core';
+import {Component, ElementRef, ViewChild, ChangeDetectionStrategy} from '@angular/core';
 import {QrcodeService} from '../qrcode.service';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 
@@ -8,6 +8,7 @@ import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
     ReactiveFormsModule
   ],
   templateUrl: './wifi-helper.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './wifi-helper.component.scss'
 })
 export class WifiHelperComponent {

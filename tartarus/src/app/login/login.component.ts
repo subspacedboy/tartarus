@@ -1,4 +1,4 @@
-import {Component, ElementRef, OnInit, ViewChild} from '@angular/core';
+import {Component, ElementRef, OnInit, ViewChild, ChangeDetectionStrategy} from '@angular/core';
 import {UserDataService} from '../user-data.service';
 import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
 import jsQR from 'jsqr';
@@ -17,6 +17,7 @@ interface LoadedKeyPair {
   selector: 'app-login',
   imports: [],
   templateUrl: './login.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './login.component.scss'
 })
 export class LoginComponent implements OnInit {
