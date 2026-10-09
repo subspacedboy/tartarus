@@ -53,8 +53,9 @@ impl ScreenState for QrCodeScreen {
                     let verifier = SignedMessageVerifier::new();
 
                     let keys = lock_ctx.get_keyring();
+                    let payload = data_encoding::BASE64.decode(qr_data.as_slice()).unwrap_or_else(|_| qr_data.clone());
                     if let Ok(VerifiedType::Contract(contract)) =
-                        verifier.verify(qr_data.clone(), &keys, 0, 0)
+                        verifier.verify(payload, &keys, 0, 0)
                     {
                         lock_ctx.accept_contract(&contract);
                         lock_ctx.contract = Some(contract);

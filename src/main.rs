@@ -34,6 +34,8 @@ mod wifi_info_screen;
 mod wifi_manager;
 
 use crate::wifi_manager::WifiManager;
+use std::io::Read;
+use std::sync::mpsc::{channel, Receiver};
 use std::sync::Mutex;
 use crate::wifi_manager::WIFI_MANAGER;
 use crate::servo::Servo;
@@ -251,6 +253,7 @@ fn main() {
     log::info!("Ready :-)");
     const SLEEP_DURATION: Duration = Duration::from_millis(150);
 
+    let stdin_rx = start_stdin_reader();
     let mut lock_ctx = LockCtx::new(display, nvs, servo);
 
     loop {
@@ -271,7 +274,10 @@ fn main() {
 
         let mut data: Option<Vec<u8>> = None;
 
-        if i2c_driver.read(READER_ADDRESS, &mut rx_buf, NON_BLOCK).is_ok() {
+        if let Ok(stdin_payload) = stdin_rx.try_recv() {
+            log::info!("Injecting STDIN payload into qr_data: {} bytes", stdin_payload.len());
+            data = Some(stdin_payload);
+        } else if i2c_driver.read(READER_ADDRESS, &mut rx_buf, NON_BLOCK).is_ok() {
             // 1. Read the 16-bit little-endian length properly
             let size = u16::from_le_bytes([rx_buf[0], rx_buf[1]]) as usize;
 
@@ -316,3 +322,58 @@ fn is_usb_download_disabled() -> bool {
     let val = unsafe { core::ptr::read_volatile(0x6001A008 as *const u32) };
     (val & USB_DISABLE_BIT) != 0
 }
+
+fn start_stdin_reader() -> Receiver<Vec<u8>> {
+    let (tx, rx) = channel();
+
+    std::thread::Builder::new()
+        .stack_size(4096)
+        .name("stdin-reader".to_string())
+        .spawn(move || {
+            let mut stdin = std::io::stdin();
+            let mut buffer: Vec<u8> = Vec::new();
+            let mut byte_buf = [0u8; 64];
+
+            loop {
+                match stdin.read(&mut byte_buf) {
+                    Ok(0) => {
+                        sleep(Duration::from_millis(50));
+                    }
+                    Ok(n) => {
+                        for &b in &byte_buf[..n] {
+                            match b {
+                                b'\r' | b'\n' => {
+                                    if !buffer.is_empty() {
+                                        log::info!(
+                                            "STDIN received line ({} bytes): {:?}",
+                                            buffer.len(),
+                                            String::from_utf8_lossy(&buffer)
+                                        );
+                                        let _ = tx.send(buffer.clone());
+                                        buffer.clear();
+                                    }
+                                }
+                                0x08 | 0x7F => {
+                                    buffer.pop();
+                                }
+                                other => {
+                                    buffer.push(other);
+                                }
+                            }
+                        }
+                    }
+                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                        sleep(Duration::from_millis(20));
+                    }
+                    Err(e) => {
+                        log::warn!("STDIN read error: {:?}", e);
+                        sleep(Duration::from_millis(100));
+                    }
+                }
+            }
+        })
+        .expect("Failed to spawn stdin reader thread");
+
+    rx
+}
+
