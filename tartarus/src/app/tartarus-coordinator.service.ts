@@ -94,6 +94,17 @@ export class TartarusCoordinatorService {
     }));
   }
 
+  public deleteKnownToken(knownToken : string) : Observable<boolean> {
+    const delete_token_uri = `${this.baseUrl}/lock_sessions/known/${knownToken}`;
+    return this.http.delete(delete_token_uri, {
+      headers: new HttpHeaders({ 'X-Require-Author': 'requires authorization tokens' }),
+    }).pipe(map((res: any) => {
+      return true;
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
   public saveLockUserSessionWithCryptogram(nonce: string, cipher: string, session: string, userSessionPublicPem: string) : Observable<LockUserSession> {
       const save_key_uri = `${this.baseUrl}/lock_user_sessions/`;
       const body = JSON.stringify({

@@ -1,0 +1,23 @@
+@if (knownToken) {
+  <div class="card mb-3" style="max-width: 20rem;">
+    <div class="card-header text-truncate" [title]="knownToken.notes || knownToken.name">
+      {{ knownToken.notes || knownToken.name }}
+    </div>
+    <div class="card-body">
+      <h4 class="card-title">🔑 Lock Session</h4>
+      <p class="card-text mb-1">
+        <small class="text-muted">Token: </small>
+        <code class="user-select-all">{{ knownToken.shareableToken }}</code>
+      </p>
+      @if (knownToken.createdAt) {
+        <p class="card-text text-muted small mb-2">
+          Added {{ knownToken.createdAt | date: 'short' }}
+        </p>
+      }
+      <div class="d-flex justify-content-between align-items-center mt-3">
+        <a [routerLink]="['/lock-sessions', knownToken.shareableToken]" class="btn btn-primary btn-sm">Details</a>
+        <button type="button" class="btn btn-outline-danger btn-sm" (click)="onDelete($event)">Delete</button>
+      </div>
+    </div>
+  </div>
+}
