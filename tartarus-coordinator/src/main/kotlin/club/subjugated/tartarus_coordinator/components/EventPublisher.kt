@@ -15,11 +15,16 @@ class EventPublisher(private val webSocketHandler: EventWebSocketHandler) {
         for (lu in event.command.commandQueue.lockSession.lockUserSessions) {
             webSocketHandler.sendLockUserMessage(lu.name, event.toString())
         }
+        webSocketHandler.broadcastAdminMessage(event.toString())
     }
 
     @EventListener
     fun handleContractChangeEvent(event: ContractChangeEvent) {
         webSocketHandler.sendAuthorMessage(event.contract.authorSession.name, event.toString())
+        for (lu in event.contract.lockSession.lockUserSessions) {
+            webSocketHandler.sendLockUserMessage(lu.name, event.toString())
+        }
+        webSocketHandler.broadcastAdminMessage(event.toString())
     }
 
     @EventListener
@@ -31,5 +36,6 @@ class EventPublisher(private val webSocketHandler: EventWebSocketHandler) {
         for (lu in event.lockSession.lockUserSessions) {
             webSocketHandler.sendLockUserMessage(lu.name, event.toString())
         }
+        webSocketHandler.broadcastAdminMessage(event.toString())
     }
 }

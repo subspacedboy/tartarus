@@ -23,7 +23,7 @@ class LockSession(
     @JsonFormat(shape = JsonFormat.Shape.STRING) var lastValidated: OffsetDateTime? = null,
     @OneToMany(mappedBy = "lockSession", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     var commandQueue: MutableList<CommandQueue> = mutableListOf(),
-    @OneToMany(mappedBy = "lockSession", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "lockSession", cascade = [CascadeType.ALL], fetch = FetchType.EAGER)
     var lockUserSessions: MutableList<LockUserSession> = mutableListOf(),
     @OneToMany(mappedBy = "lockSession", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     var contracts: MutableList<Contract> = mutableListOf(),
