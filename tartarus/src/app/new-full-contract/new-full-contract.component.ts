@@ -17,10 +17,13 @@ import {Permission} from '../club/subjugated/fb/message/permission';
 import {Bot as FBBot} from '../club/subjugated/fb/message/bot';
 import {Bot} from '../models/bot';
 
+import {BotSelectorComponent} from '../bot-selector/bot-selector.component';
+
 @Component({
   selector: 'app-new-full-contract',
   imports: [
-    ReactiveFormsModule
+    ReactiveFormsModule,
+    BotSelectorComponent
   ],
   templateUrl: './new-full-contract.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
@@ -70,11 +73,16 @@ export class NewFullContractComponent implements OnInit {
     return this.contractForm.get('bots') as FormArray;
   }
 
-  addBot(item: Bot, id : number): void {
+  get selectedBotNames(): string[] {
+    return this.selectedBots.controls.map(control => control.value.name);
+  }
+
+  addBot(item: Bot, id?: number): void {
     const itemExists = this.selectedBots.controls.some(control => control.value.name === item.name);
     if (!itemExists) {
+      const botIndex = id ?? this.bots.findIndex(b => b.name === item.name);
       const group = this.fb.group({
-        id: id,
+        id: botIndex,
         name: item.name
       });
       this.selectedBots.push(group);
@@ -83,6 +91,13 @@ export class NewFullContractComponent implements OnInit {
 
   removeBot(index: number): void {
     this.selectedBots.removeAt(index);
+  }
+
+  removeBotByName(botName: string): void {
+    const index = this.selectedBots.controls.findIndex(c => c.value.name === botName);
+    if (index !== -1) {
+      this.selectedBots.removeAt(index);
+    }
   }
 
   async createContract(): Promise<Uint8Array> {

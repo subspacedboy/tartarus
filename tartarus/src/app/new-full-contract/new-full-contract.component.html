@@ -1,62 +1,73 @@
-<div class="row">
-  <div class="col-lg-4">
-    <div class="bs-component">
-      <h2>Contract Builder</h2>
+<form [formGroup]="contractForm" (submit)="createContract()">
+  <div class="row">
+    <!-- Left Column: Contract Settings & Output -->
+    <div class="col-lg-5 col-md-12 mb-3">
+      <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+          <h3 class="h5 mb-0">Contract Builder</h3>
+        </div>
+        <div class="card-body">
+          <fieldset>
+            <div class="form-check form-switch mb-3">
+              <input
+                id="isTempUnlockAllowed"
+                class="form-check-input"
+                type="checkbox"
+                formControlName="isTempUnlockAllowed"
+              />
+              <label class="form-check-label" for="isTempUnlockAllowed">
+                Is temporary unlocking allowed?
+              </label>
+            </div>
 
-      <form [formGroup]="contractForm" (submit)="createContract()">
-        <fieldset>
-          <div class="form-check form-switch">
-            <label class="form-check-label" for="isTempUnlockAllowed">Is temporary unlocking allowed?</label>
-            <input id="isTempUnlockAllowed" class="form-check-input" type="checkbox" formControlName="isTempUnlockAllowed">
-          </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold" for="terms">Terms</label>
+              <textarea
+                id="terms"
+                class="form-control"
+                formControlName="terms"
+                placeholder="Part of the contract body. Will be digitally signed."
+                rows="4">
+              </textarea>
+            </div>
 
-          <div>
-            <label class="form-label" for="notes">Terms</label>
-            <textarea id="terms" class="form-control" type="text" formControlName="terms" placeholder="Part of the contract body. Will be digitally signed." rows="3"></textarea>
-          </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold" for="notes">Notes</label>
+              <textarea
+                id="notes"
+                class="form-control"
+                formControlName="notes"
+                placeholder="Only shown on website"
+                rows="3">
+              </textarea>
+            </div>
 
-          <div>
-            <label class="form-label" for="notes">Notes</label>
-            <textarea id="notes" class="form-control" type="text" formControlName="notes" placeholder="Only shown on website" rows="3"></textarea>
-          </div>
+            <button class="btn btn-lg btn-primary w-100" type="submit">
+              Save Contract
+            </button>
+          </fieldset>
+        </div>
+      </div>
 
-<!--          <div>-->
-<!--            <label class="form-label" for="bots">Bot Names</label>-->
-<!--            <textarea id="bots" class="form-control" type="text" formControlName="bots" placeholder="Bot names" rows="3"></textarea>-->
-<!--          </div>-->
-
-          <div>
-            <h4>Available Bots</h4>
-            <ul class="list-group">
-            @for (b of bots; track b.name; let i = $index) {
-              <li class="list-group-item d-flex justify-content-between align-items-center" (click)="addBot(b, i)">{{b.name}} - {{b.description}}</li>
-            }
-            </ul>
-          </div>
-
-          <ul class="list-group">
-            <h4>Chosen Bots</h4>
-            @for(b of selectedBots.controls; track b; let i = $index){
-              <li class="list-group-item d-flex justify-content-between align-items-center">{{ b.value.name }} <button class="btn btn-primary" type="button" (click)="removeBot(i); $event.stopPropagation();">Remove</button></li>
-            }
-          </ul>
-
-          <button class="btn btn-lg btn-primary" type="submit">
-            Save
-          </button>
-        </fieldset>
-      </form>
-    </div>
-  </div>
-</div>
-
-<div class="row">
-  <div class="col-lg-4">
-    <div class="bs-component">
-      <div #hiddenDiv hidden>
-        <h3 style="color: black">Contract</h3>
-        <canvas #canvas></canvas>
+      <!-- Generated Contract Canvas -->
+      <div class="card shadow-sm mt-3" #hiddenDiv hidden>
+        <div class="card-header bg-dark text-white">
+          <h4 class="h6 mb-0">Contract QR Code</h4>
+        </div>
+        <div class="card-body text-center">
+          <canvas #canvas></canvas>
+        </div>
       </div>
     </div>
+
+    <!-- Right Column: Bot Selection -->
+    <div class="col-lg-7 col-md-12 mb-3">
+      <app-bot-selector
+        [bots]="bots"
+        [selectedBotNames]="selectedBotNames"
+        (botAdded)="addBot($event)"
+        (botRemoved)="removeBotByName($event)">
+      </app-bot-selector>
+    </div>
   </div>
-</div>
+</form>

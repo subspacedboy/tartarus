@@ -1,0 +1,23 @@
+.cursor-pointer {
+  cursor: pointer;
+  user-select: none;
+}
+
+.bot-list-scroll {
+  max-height: 550px;
+  overflow-y: auto;
+}
+
+.description-text {
+  font-size: 0.925rem;
+  line-height: 1.4;
+}
+
+.btn-close-sm {
+  font-size: 0.65rem;
+  margin-left: 0.25rem;
+}
+
+.selected-bots-tray {
+  background-color: #f8f9fa;
+}

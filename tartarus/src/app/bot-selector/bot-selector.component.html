@@ -1,0 +1,170 @@
+<div class="card mb-3">
+  <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h4 class="mb-0">Bots</h4>
+      <small class="text-muted">Search, inspect and attach bots to this contract</small>
+    </div>
+    <span class="badge bg-primary fs-6">
+      {{ selectedBotNames.length }} Selected
+    </span>
+  </div>
+
+  <div class="card-body">
+    <!-- Selected Bots Tray -->
+    @if (selectedBotNames.length > 0) {
+      <div class="selected-bots-tray p-2 mb-3 rounded bg-light border">
+        <div class="d-flex align-items-center justify-content-between mb-1">
+          <small class="fw-bold text-uppercase text-secondary">Chosen Bots ({{ selectedBotNames.length }})</small>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          @for (name of selectedBotNames; track name) {
+            <span class="badge bg-info text-dark d-inline-flex align-items-center py-2 px-3 fs-6">
+              <span class="me-2">{{ name }}</span>
+              <button
+                type="button"
+                class="btn-close btn-close-sm"
+                aria-label="Remove bot"
+                (click)="onRemove(name)">
+              </button>
+            </span>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Search & Filter Controls -->
+    <div class="row g-2 mb-3 align-items-center">
+      <div class="col-md-7 col-12">
+        <div class="input-group">
+          <span class="input-group-text bg-white">🔍</span>
+          <input
+            type="text"
+            class="form-control"
+            placeholder="Search by bot name or description..."
+            [(ngModel)]="searchQuery"
+            [ngModelOptions]="{standalone: true}"
+            aria-label="Search bots"
+          />
+          @if (searchQuery) {
+            <button class="btn btn-outline-secondary" type="button" (click)="clearSearch()">✕</button>
+          }
+        </div>
+      </div>
+
+      <div class="col-md-5 col-12 d-flex justify-content-md-end gap-1">
+        <div class="btn-group w-100" role="group" aria-label="Sort controls">
+          <button
+            type="button"
+            class="btn btn-sm"
+            [class.btn-secondary]="sortField === 'name'"
+            [class.btn-outline-secondary]="sortField !== 'name'"
+            (click)="toggleSort('name')">
+            Name
+            @if (sortField === 'name') {
+              <span>{{ sortDirection === 'asc' ? '▲ (A-Z)' : '▼ (Z-A)' }}</span>
+            }
+          </button>
+          <button
+            type="button"
+            class="btn btn-sm"
+            [class.btn-secondary]="sortField === 'createdAt'"
+            [class.btn-outline-secondary]="sortField !== 'createdAt'"
+            (click)="toggleSort('createdAt')">
+            Date Added
+            @if (sortField === 'createdAt') {
+              <span>{{ sortDirection === 'asc' ? '▲ Oldest' : '▼ Newest' }}</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+      <small class="text-muted">
+        Showing {{ filteredBots.length }} of {{ bots.length }} bots
+      </small>
+    </div>
+
+    <!-- Bots List -->
+    <div class="list-group bot-list-scroll">
+      @for (b of filteredBots; track b.name) {
+        <div
+          class="list-group-item list-group-item-action p-3"
+          [class.list-group-item-success]="isBotSelected(b.name)">
+          <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+            <!-- Bot Header / Name & Key -->
+            <div>
+              <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                <span class="fw-bold fs-5">{{ b.name }}</span>
+
+                @if (b.publicKey) {
+                  <span
+                    class="badge bg-secondary font-monospace cursor-pointer"
+                    [ngbTooltip]="b.publicKey"
+                    container="body"
+                    placement="top"
+                    (click)="copyKey(b.publicKey, b.name, $event)"
+                    title="Hover to view full key or click to copy">
+                    🔑 {{ copiedBotName === b.name ? 'Copied!' : 'Public Key' }}
+                  </span>
+                }
+
+                @if (isBotSelected(b.name)) {
+                  <span class="badge bg-success">✓ Selected</span>
+                }
+              </div>
+
+              <!-- Date Added -->
+              <div class="text-muted small mb-2">
+                @if (b.createdAt) {
+                  <span>📅 Added {{ b.createdAt | date: 'mediumDate' }} ({{ b.createdAt | date: 'shortTime' }})</span>
+                } @else {
+                  <span>📅 Added: <em>Date not recorded</em></span>
+                }
+              </div>
+            </div>
+
+            <!-- Action Button -->
+            <div class="d-flex align-items-center gap-1">
+              @if (isBotSelected(b.name)) {
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-danger"
+                  (click)="onRemove(b.name)">
+                  Remove
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  class="btn btn-sm btn-primary"
+                  (click)="onAdd(b)">
+                  + Add Bot
+                </button>
+              }
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div class="text-body mt-1">
+            @if (b.description) {
+              <p class="mb-0 text-secondary description-text">{{ b.description }}</p>
+            } @else {
+              <p class="mb-0 text-muted fst-italic">No description provided</p>
+            }
+          </div>
+        </div>
+      } @empty {
+        <div class="list-group-item text-center py-4 text-muted">
+          @if (bots.length === 0) {
+            <p class="mb-0">No bots found in the system.</p>
+          } @else {
+            <p class="mb-1">No bots match "<strong>{{ searchQuery }}</strong>"</p>
+            <button class="btn btn-sm btn-outline-secondary mt-2" type="button" (click)="clearSearch()">
+              Clear Search
+            </button>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</div>
