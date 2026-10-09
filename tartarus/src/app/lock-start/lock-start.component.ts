@@ -7,6 +7,7 @@ import {ConfigService} from '../config.service';
 import {CryptoService} from '../crypto.service';
 import {firstValueFrom, Subject} from 'rxjs';
 import {LockUserSession} from '../models/lock-user-session';
+import {WebsocketService} from '../websocket.service';
 
 @Component({
   selector: 'app-lock-start',
@@ -29,7 +30,8 @@ export class LockStartComponent implements OnInit, AfterViewInit {
               private tartarusCoordinatorService: TartarusCoordinatorService,
               private userDataService: UserDataService,
               private configService: ConfigService,
-              private cryptoService: CryptoService,) {
+              private cryptoService: CryptoService,
+              private websocketService: WebsocketService,) {
     this.activatedRoute.queryParamMap.subscribe(params => {
       this.session = params.get('session');
       this.nonce = params.get('nonce');
@@ -53,6 +55,7 @@ export class LockStartComponent implements OnInit, AfterViewInit {
     let b64compressed = btoa(String.fromCharCode(...new Uint8Array(compressedPublicKey)));
     this.lockUserSession = await firstValueFrom(this.tartarusCoordinatorService.saveLockUserSessionWithCryptogram(this.nonce!, this.cipher!, this.session!, b64compressed));
     this.userDataService.setLockUserSessionToken(this.lockUserSession.name!);
+    this.websocketService.reconnect();
     this.loaded = true;
   }
 

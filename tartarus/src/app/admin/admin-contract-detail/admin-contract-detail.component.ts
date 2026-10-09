@@ -41,6 +41,17 @@ export class AdminContractDetailComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.websocketService.connect();
+    this.refreshData();
+
+    this.websocketService.onMessage().subscribe({
+      next: (message) => this.handleMessage(message),
+      error: (err) => console.error('WebSocket error:', err),
+    });
+  }
+
+  handleMessage(message: string) {
+    console.log("Admin contract subscription -> Message: " + message);
     this.refreshData();
   }
 

@@ -28,7 +28,7 @@ export class ConfigService {
 
   setOverride(apiUri: string, wsUri: string): void {
     localStorage.setItem("apiUri", apiUri);
-    localStorage.setItem("wsUri", apiUri);
+    localStorage.setItem("wsUri", wsUri);
   }
 
   getOverrides(): {"apiUri": string, wsUri: string} | null {

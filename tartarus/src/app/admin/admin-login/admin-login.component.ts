@@ -4,6 +4,7 @@ import {TartarusCoordinatorService} from '../../tartarus-coordinator.service';
 import {IdHelperService} from '../../id-helper.service';
 import {CryptoService} from '../../crypto.service';
 import {Router} from '@angular/router';
+import {WebsocketService} from '../../websocket.service';
 import jsQR from 'jsqr';
 
 @Component({
@@ -23,6 +24,7 @@ export class AdminLoginComponent {
               private tartarusCoordinatorService: TartarusCoordinatorService,
               private idHelperService: IdHelperService,
               private cryptoService: CryptoService,
+              private websocketService: WebsocketService,
               private router: Router) {
   }
 
@@ -66,6 +68,7 @@ export class AdminLoginComponent {
           this.tartarusCoordinatorService.confirmAdminSession(b64compressed, token, b64Signature).subscribe(res => {
 
             this.userDataService.addPublicAndPrivateKeyToAdminSession(r.privateKeyPem, r.publicKeyPem, String(res.name));
+            this.websocketService.reconnect();
             this.loginComplete = true;
           });
           // this.tartarusCoordinatorService.createAuthorSession(b64compressed, token, b64Signature).subscribe(session_result => {

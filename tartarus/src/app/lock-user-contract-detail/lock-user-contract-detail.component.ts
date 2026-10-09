@@ -53,6 +53,7 @@ export class LockUserContractDetailComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.websocketService.connect();
     this.refreshData();
     this.fetchBots();
   }

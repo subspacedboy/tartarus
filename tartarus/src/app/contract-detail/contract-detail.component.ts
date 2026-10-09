@@ -56,6 +56,7 @@ export class ContractDetailComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.websocketService.connect();
     this.refreshData();
     this.fetchBots();
 

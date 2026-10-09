@@ -41,7 +41,7 @@ describe('ConfigService', () => {
 
     service.setOverride('http://api.local', 'ws://api.local');
     const overrides = service.getOverrides();
-    expect(overrides).toEqual({ apiUri: 'http://api.local', wsUri: 'http://api.local' });
+    expect(overrides).toEqual({ apiUri: 'http://api.local', wsUri: 'ws://api.local' });
 
     service.clearOverride();
     expect(service.getOverrides()).toBeNull();
@@ -64,7 +64,7 @@ describe('ConfigService', () => {
 
     const config = service.getConfig();
     expect(config.apiUri).toBe('http://override.api');
-    expect(config.wsUri).toBe('http://override.api');
+    expect(config.wsUri).toBe('ws://override.ws');
     expect(config.webUri).toBe('http://default.web');
   });
 });

@@ -5,6 +5,7 @@ import jsQR from 'jsqr';
 import {IdHelperService} from '../id-helper.service';
 import {CryptoService} from '../crypto.service';
 import {Router} from '@angular/router';
+import {WebsocketService} from '../websocket.service';
 
 interface LoadedKeyPair {
   privateKey: CryptoKey;
@@ -30,6 +31,7 @@ export class LoginComponent implements OnInit {
               private tartarusCoordinatorService: TartarusCoordinatorService,
               private idHelperService: IdHelperService,
               private cryptoService: CryptoService,
+              private websocketService: WebsocketService,
               private router: Router) {
   }
 
@@ -76,6 +78,7 @@ export class LoginComponent implements OnInit {
               console.log("Session created");
 
               this.userDataService.addPublicAndPrivateKeyToAuthorSession(r.privateKeyPem, r.publicKeyPem, String(session_result.sessionToken));
+              this.websocketService.reconnect();
               this.loginComplete = true;
 
               this.router.navigate(['/']);
