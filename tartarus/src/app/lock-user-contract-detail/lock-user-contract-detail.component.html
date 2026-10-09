@@ -1,6 +1,6 @@
 @if(contract) {
   <div class="row">
-    <div class="col-lg-4">
+    <div class="col-lg-6 col-md-8 col-12">
       <div class="bs-component">
         <h2>Contract Details for {{contract.name}}</h2>
         <h3>What is this for?</h3>
@@ -19,6 +19,68 @@
           <p>
             Terms: {{contractDescription.terms}}
           </p>
+
+          @if(contractDescription.bots && contractDescription.bots.length > 0) {
+            <hr>
+            <h3>Attached Bots</h3>
+            <div class="list-group mb-3">
+              @for (b of contractDescription.bots; track b.name) {
+                <div class="list-group-item p-3 bot-card">
+                  <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap mb-1">
+                    <div>
+                      <span class="fw-bold fs-5 me-2">{{ b.name }}</span>
+                      @if (b.publicKey) {
+                        <span
+                          class="badge bg-secondary font-monospace cursor-pointer"
+                          [ngbTooltip]="b.publicKey"
+                          container="body"
+                          placement="top"
+                          (click)="copyKey(b.publicKey, b.name, $event)"
+                          title="Hover to view full key or click to copy">
+                          🔑 {{ copiedBotName === b.name ? 'Copied!' : 'Public Key' }}
+                        </span>
+                      }
+                    </div>
+                    @if (b.createdAt) {
+                      <small class="text-muted">📅 Added {{ b.createdAt | date: 'mediumDate' }}</small>
+                    }
+                  </div>
+
+                  @if (b.description) {
+                    <p class="mb-2 text-secondary">{{ b.description }}</p>
+                  }
+
+                  @if (b.permissions) {
+                    <div class="mt-2">
+                      <span class="small fw-bold text-muted d-block mb-1">Permissions:</span>
+                      <div class="d-flex flex-wrap gap-1">
+                        @if (b.permissions.canUnlock) {
+                          <span class="badge bg-success">
+                            🔓 Can Unlock
+                          </span>
+                        }
+                        @if (b.permissions.canRelease) {
+                          <span class="badge bg-warning text-dark">
+                            🚪 Can Release
+                          </span>
+                        }
+                        @if (b.permissions.canLock) {
+                          <span class="badge bg-danger">
+                            🔒 Can Lock
+                          </span>
+                        }
+                        @if (b.permissions.receiveEvents) {
+                          <span class="badge bg-info text-dark">
+                            📡 Receive Events
+                          </span>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
         }
 
         @if(contract.notes) {

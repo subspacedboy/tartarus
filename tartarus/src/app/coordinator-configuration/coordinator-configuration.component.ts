@@ -132,6 +132,13 @@ export class CoordinatorConfigurationComponent implements OnInit, AfterViewInit 
     builder.finish(configOffset);
     const data = builder.asUint8Array();
     console.log("Data size: " + data.length);
+    let binaryString = '';
+    for (let i = 0; i < data.length; i++) {
+      binaryString += String.fromCharCode(data[i]);
+    }
+    const base64Data = btoa(binaryString);
+    console.log("QR Data (Base64):\n" + base64Data);
+
     this.qrService.generateQRCode(data, this.canvas).then(r => {
       console.log("Generated");
       this.hiddenDiv.nativeElement.hidden = false;
