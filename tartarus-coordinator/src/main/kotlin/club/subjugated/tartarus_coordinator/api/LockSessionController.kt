@@ -91,4 +91,14 @@ class LockSessionController {
             this.authorSessionService.updateKnownToken(authorUser.username, updateKnownTokenMessage)
         return ResponseEntity.ok(null)
     }
+
+    @DeleteMapping("/known/{tokenName}", produces = [MediaType.APPLICATION_JSON])
+    @ResponseBody
+    fun deleteKnownToken(
+        @AuthenticationPrincipal authorUser: UserDetails,
+        @PathVariable tokenName: String,
+    ): ResponseEntity<Void> {
+        this.authorSessionService.deleteKnownToken(authorUser.username, tokenName)
+        return ResponseEntity.ok(null)
+    }
 }

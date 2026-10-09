@@ -67,18 +67,27 @@ class AuthorSessionService {
     }
 
     fun authorKnowsToken(authorSession: AuthorSession, shareableToken: String): KnownToken {
-        return knownTokenRepository.findByAuthorSessionIdAndShareableToken(
-            authorSession.id,
-            shareableToken,
-        )
-            ?: KnownToken(
-                    state = KnownTokenState.CREATED,
-                    authorSession = authorSession,
-                    notes = "",
-                    shareableToken = shareableToken,
-                    createdAt = timeSource.nowInUtc(),
-                )
-                .let { knownTokenRepository.save(it) }
+        val existing =
+            knownTokenRepository.findByAuthorSessionIdAndShareableToken(
+                authorSession.id,
+                shareableToken,
+            )
+        if (existing != null) {
+            if (existing.state == KnownTokenState.DELETED) {
+                existing.state = KnownTokenState.CREATED
+                return knownTokenRepository.save(existing)
+            }
+            return existing
+        }
+
+        return KnownToken(
+                state = KnownTokenState.CREATED,
+                authorSession = authorSession,
+                notes = "",
+                shareableToken = shareableToken,
+                createdAt = timeSource.nowInUtc(),
+            )
+            .let { knownTokenRepository.save(it) }
     }
 
     fun getKnownTokens(authorSession: AuthorSession): List<KnownToken> {
@@ -97,7 +106,7 @@ class AuthorSessionService {
             knownTokenRepository.findByAuthorSessionIdAndName(
                 authorSession.id,
                 updateKnownTokenMessage.name,
-            )
+            ) ?: throw IllegalArgumentException("Token not found")
         require(authorSession == knownToken.authorSession) {
             "Token does not belong to this author"
         }
@@ -105,5 +114,23 @@ class AuthorSessionService {
         knownToken.notes = updateKnownTokenMessage.notes
         knownTokenRepository.save(knownToken)
         return knownToken
+    }
+
+    fun deleteKnownToken(
+        authorSessionName: String,
+        tokenName: String,
+    ) {
+        val authorSession = findByName(authorSessionName)
+        val knownToken =
+            knownTokenRepository.findByAuthorSessionIdAndName(
+                authorSession.id,
+                tokenName,
+            ) ?: return
+        require(authorSession == knownToken.authorSession) {
+            "Token does not belong to this author"
+        }
+
+        knownToken.state = KnownTokenState.DELETED
+        knownTokenRepository.save(knownToken)
     }
 }
