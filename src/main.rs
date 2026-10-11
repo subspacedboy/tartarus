@@ -12,26 +12,20 @@ mod fb_helper;
 #[allow(unused_imports, mismatched_lifetime_syntaxes)]
 mod firmware_generated;
 mod firmware_updater;
+mod generated;
+mod generated_ui;
 mod internal_config;
 mod internal_contract;
 mod internal_firmware;
 mod lock_ctx;
-mod lock_state_screen;
 mod mqtt_service;
-mod overlay;
-mod overlays;
 mod prelude;
-mod qr_screen;
 mod screen_ids;
-mod screen_state;
 mod servo;
+mod slint_platform;
 mod verifier;
-mod wifi_util;
-
-mod firmware_screen;
-mod generated;
-mod wifi_info_screen;
 mod wifi_manager;
+mod wifi_util;
 
 use crate::wifi_manager::WifiManager;
 use std::io::Read;
@@ -253,8 +247,18 @@ fn main() {
     log::info!("Ready :-)");
     const SLEEP_DURATION: Duration = Duration::from_millis(150);
 
+    let (window, ui) = slint_platform::init_slint_platform();
     let stdin_rx = start_stdin_reader();
-    let mut lock_ctx = LockCtx::new(display, nvs, servo);
+    let mut lock_ctx = LockCtx::new(nvs, servo);
+
+    // Initial QR code load
+    if !lock_ctx.needs_configuration() {
+        if let Ok(url) = lock_ctx.get_lock_url() {
+            if let Some(qr_img) = slint_platform::generate_qr_image(&url) {
+                ui.set_qr_code_image(qr_img);
+            }
+        }
+    }
 
     loop {
         let mut rx_buf: [u8; 254] = [0; 254];
@@ -305,9 +309,72 @@ fn main() {
         };
 
         lock_ctx.tick(this_update);
-        sleep(SLEEP_DURATION);
 
-        // continue; // keep optimizer from removing in --release
+        // Sync state to Slint UI
+        ui.set_active_screen(lock_ctx.active_screen_idx as i32);
+        ui.set_is_locked(lock_ctx.is_locked());
+        ui.set_needs_config(lock_ctx.needs_configuration());
+
+        if let Some(c) = &lock_ctx.contract {
+            ui.set_contract_id(c.serial_number.to_string().into());
+        } else {
+            ui.set_contract_id("".into());
+        }
+
+        let is_connected = if let Some(m) = WIFI_MANAGER.get() {
+            if let Ok(guard) = m.lock() {
+                guard.is_connected()
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+        ui.set_wifi_connected(is_connected);
+
+        if let Ok(ssid) = lock_ctx.get_wifi_ssid() {
+            ui.set_wifi_ssid(ssid.into());
+        }
+
+        if let Ok(version) = lock_ctx.firmware_manager.get_running_version() {
+            ui.set_firmware_version(version.into());
+        }
+        let update_avail = lock_ctx.firmware_manager.is_update_available();
+        ui.set_firmware_upgrade_available(update_avail);
+        if update_avail {
+            ui.set_next_firmware_version(lock_ctx.firmware_manager.next_firmware_version().into());
+        }
+
+        let btn_indicator = if d0_pressed {
+            1
+        } else if d1_pressed {
+            2
+        } else if d2_pressed {
+            3
+        } else {
+            0
+        };
+        ui.set_button_indicator(btn_indicator);
+
+        // Refresh QR code if needed
+        if lock_ctx.active_screen_idx == 0 && !lock_ctx.needs_configuration() {
+            if let Ok(url) = lock_ctx.get_lock_url() {
+                if let Some(qr_img) = slint_platform::generate_qr_image(&url) {
+                    ui.set_qr_code_image(qr_img);
+                }
+            }
+        }
+
+        // Render Slint UI
+        slint::platform::update_timers_and_animations();
+        window.draw_if_needed(|renderer| {
+            renderer.render_by_line(slint_platform::DisplayWrapper {
+                display: &mut display,
+                line_buffer: [slint::platform::software_renderer::Rgb565Pixel(0); 240],
+            });
+        });
+
+        sleep(SLEEP_DURATION);
     }
 }
 

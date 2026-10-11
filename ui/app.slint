@@ -1,0 +1,335 @@
+import "./fonts/DejaVuSans.ttf";
+
+export component AppWindow inherits Window {
+    width: 240px;
+    height: 135px;
+    background: #000000;
+    default-font-family: "DejaVu Sans";
+
+    in-out property <int> active_screen: 0;
+    in-out property <bool> is_locked: false;
+    in-out property <string> contract_id: "";
+    in-out property <string> wifi_ssid: "";
+    in-out property <bool> wifi_connected: false;
+    in-out property <string> firmware_version: "";
+    in-out property <string> next_firmware_version: "";
+    in-out property <bool> firmware_upgrade_available: false;
+    in-out property <image> qr_code_image;
+    in-out property <int> button_indicator: 0; // 0=none, 1=D0, 2=D1, 3=D2
+    in-out property <bool> needs_config: false;
+
+    // Header bar (height 20px)
+    Rectangle {
+        x: 0px;
+        y: 0px;
+        width: 240px;
+        height: 20px;
+        background: #141419;
+
+        // Button indicator dot (leftmost)
+        Rectangle {
+            x: 6px;
+            y: 5px;
+            width: 10px;
+            height: 10px;
+            border-radius: 5px;
+            background: root.button_indicator == 1 ? #2979ff :
+                        root.button_indicator == 2 ? #00e676 :
+                        root.button_indicator == 3 ? #ff1744 : #33333e;
+        }
+
+        // Title
+        Text {
+            x: 24px;
+            y: 2px;
+            text: root.active_screen == 0 ? "PAIRING / QR" :
+                  root.active_screen == 1 ? "LOCK STATUS" :
+                  root.active_screen == 2 ? "NETWORK" : "SYSTEM";
+            font-size: 11px;
+            font-weight: 700;
+            color: #e0e0e0;
+        }
+
+        // Screen indicators (dots in top right)
+        Rectangle {
+            x: 180px;
+            y: 6px;
+            width: 8px;
+            height: 8px;
+            border-radius: 4px;
+            background: root.active_screen == 0 ? #00e676 : #444455;
+        }
+        Rectangle {
+            x: 192px;
+            y: 6px;
+            width: 8px;
+            height: 8px;
+            border-radius: 4px;
+            background: root.active_screen == 1 ? #00e676 : #444455;
+        }
+        Rectangle {
+            x: 204px;
+            y: 6px;
+            width: 8px;
+            height: 8px;
+            border-radius: 4px;
+            background: root.active_screen == 2 ? #00e676 : #444455;
+        }
+        Rectangle {
+            x: 216px;
+            y: 6px;
+            width: 8px;
+            height: 8px;
+            border-radius: 4px;
+            background: root.active_screen == 3 ? #00e676 : #444455;
+        }
+    }
+
+    // Main content area (height 97px, y 20px)
+    // Screen 0: QR Code / Pairing
+    if root.active_screen == 0 : Rectangle {
+        x: 0px;
+        y: 20px;
+        width: 240px;
+        height: 97px;
+
+        if root.needs_config : VerticalLayout {
+            alignment: center;
+            spacing: 4px;
+            Text {
+                text: "Configuration Needed";
+                font-size: 14px;
+                font-weight: 700;
+                color: #ff5252;
+                horizontal-alignment: center;
+            }
+            Text {
+                text: "Scan config payload to initialize";
+                font-size: 11px;
+                color: #aaaaaa;
+                horizontal-alignment: center;
+            }
+        }
+
+        if !root.needs_config : HorizontalLayout {
+            alignment: center;
+            spacing: 12px;
+            padding-top: 4px;
+            padding-bottom: 4px;
+
+            Rectangle {
+                width: 89px;
+                height: 89px;
+                background: #ffffff;
+                border-radius: 4px;
+
+                Image {
+                    x: 2px;
+                    y: 2px;
+                    width: 85px;
+                    height: 85px;
+                    source: root.qr_code_image;
+                    image-fit: contain;
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                spacing: 4px;
+                Text {
+                    text: "Tartarus Lock";
+                    font-size: 13px;
+                    font-weight: 700;
+                    color: #00e676;
+                }
+                Text {
+                    text: "Scan to pair";
+                    font-size: 11px;
+                    color: #ffffff;
+                }
+                Text {
+                    text: "or enter contract";
+                    font-size: 9px;
+                    color: #888888;
+                }
+            }
+        }
+    }
+
+    // Screen 1: Lock State
+    if root.active_screen == 1 : Rectangle {
+        x: 0px;
+        y: 20px;
+        width: 240px;
+        height: 97px;
+
+        VerticalLayout {
+            alignment: center;
+            spacing: 6px;
+
+            // Status Badge
+            HorizontalLayout {
+                alignment: center;
+
+                Rectangle {
+                    width: 150px;
+                    height: 36px;
+                    border-radius: 6px;
+                    background: root.is_locked ? #003314 : #331100;
+                    border-width: 1px;
+                    border-color: root.is_locked ? #00e676 : #ff9100;
+
+                    Text {
+                        width: 100%;
+                        height: 100%;
+                        text: root.is_locked ? "LOCKED" : "UNLOCKED";
+                        font-size: 18px;
+                        font-weight: 700;
+                        color: root.is_locked ? #00e676 : #ff9100;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+
+            Text {
+                text: root.contract_id != "" ? "Contract: " + root.contract_id : "No Active Contract";
+                font-size: 11px;
+                color: #b0bec5;
+                horizontal-alignment: center;
+            }
+
+            Text {
+                text: "D1: Toggle Lock";
+                font-size: 9px;
+                color: #607d8b;
+                horizontal-alignment: center;
+            }
+        }
+    }
+
+    // Screen 2: WiFi Info
+    if root.active_screen == 2 : Rectangle {
+        x: 0px;
+        y: 20px;
+        width: 240px;
+        height: 97px;
+
+        VerticalLayout {
+            alignment: center;
+            padding-left: 20px;
+            padding-right: 20px;
+            spacing: 6px;
+
+            HorizontalLayout {
+                spacing: 8px;
+                Text {
+                    text: "Status:";
+                    font-size: 12px;
+                    color: #888888;
+                }
+                Text {
+                    text: root.wifi_connected ? "Connected" : "Disconnected";
+                    font-size: 12px;
+                    font-weight: 700;
+                    color: root.wifi_connected ? #00e676 : #ff5252;
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 8px;
+                Text {
+                    text: "SSID:";
+                    font-size: 12px;
+                    color: #888888;
+                }
+                Text {
+                    text: root.wifi_ssid != "" ? root.wifi_ssid : "(none)";
+                    font-size: 12px;
+                    color: #ffffff;
+                }
+            }
+
+            Text {
+                text: "Scan 'WIFI:S:...' QR to configure";
+                font-size: 9px;
+                color: #555566;
+            }
+        }
+    }
+
+    // Screen 3: Firmware Info
+    if root.active_screen == 3 : Rectangle {
+        x: 0px;
+        y: 20px;
+        width: 240px;
+        height: 97px;
+
+        VerticalLayout {
+            alignment: center;
+            padding-left: 20px;
+            padding-right: 20px;
+            spacing: 6px;
+
+            HorizontalLayout {
+                spacing: 8px;
+                Text {
+                    text: "Version:";
+                    font-size: 12px;
+                    color: #888888;
+                }
+                Text {
+                    text: root.firmware_version;
+                    font-size: 12px;
+                    color: #ffffff;
+                }
+            }
+
+            if root.firmware_upgrade_available : HorizontalLayout {
+                spacing: 8px;
+                Text {
+                    text: "Upgrade:";
+                    font-size: 12px;
+                    font-weight: 700;
+                    color: #ffd600;
+                }
+                Text {
+                    text: root.next_firmware_version + " (Press D1)";
+                    font-size: 12px;
+                    color: #ffd600;
+                }
+            }
+
+            if !root.firmware_upgrade_available : Text {
+                text: "Firmware is up to date";
+                font-size: 10px;
+                color: #00e676;
+            }
+        }
+    }
+
+    // Bottom navigation footer (height 18px, y 117px)
+    Rectangle {
+        x: 0px;
+        y: 117px;
+        width: 240px;
+        height: 18px;
+        background: #0d0d11;
+
+        Text {
+            x: 8px;
+            y: 2px;
+            text: "D2: Next Screen";
+            font-size: 10px;
+            color: #607d8b;
+        }
+
+        Text {
+            x: 160px;
+            y: 2px;
+            text: "Tartarus v2";
+            font-size: 10px;
+            color: #37474f;
+        }
+    }
+}

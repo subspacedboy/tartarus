@@ -47,6 +47,9 @@ ciborium = "0.2.2"
 serde = { version = "1.0.219", default-features = false, features = ["derive"] }
 hkdf = "0.12.4"
 aes-gcm = "0.10.3"
+slint = { version = "=1.8.0", default-features = false, features = ["renderer-software", "compat-1-2", "unsafe-single-threaded"] }
+i-slint-core = { version = "=1.8.0", default-features = false, features = ["libm"] }
 
 [build-dependencies]
 embuild = { features = ["espidf"], version = "0.33.1" }
+slint-build = { version = "=1.8.0" }

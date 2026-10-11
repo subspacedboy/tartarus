@@ -425,11 +425,6 @@ impl FirmwareManager {
         }
 
         let current_version = self.get_running_version().unwrap();
-        log::info!(
-            "Performing check on {} vs {}",
-            current_version,
-            self.next_firmware_version.as_ref().unwrap()
-        );
         current_version.as_str() != self.next_firmware_version.as_ref().unwrap()
     }
 

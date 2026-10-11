@@ -8,29 +8,18 @@ use crate::event_generated::club::subjugated::fb::event::{
     CommonMetadata, CommonMetadataArgs, Event, EventArgs, EventType, SignedEvent, SignedEventArgs,
 };
 use crate::fb_helper::calculate_signature;
-use crate::firmware_screen::FirmwareScreen;
-use crate::firmware_updater::{FirmwareManager};
+use crate::firmware_updater::FirmwareManager;
 use crate::internal_config::InternalConfig;
 use crate::internal_contract::{InternalContract, InternalResetCommand, SaveState};
 use crate::lock_ctx::TopicType::{Acknowledgments, ConfigurationData, SignedMessages};
-use crate::lock_state_screen::LockstateScreen;
 use crate::mqtt_service::{MqttService, SignedMessageTransport, TopicType};
-use crate::overlays::{ButtonPressOverlay, WifiOverlay};
-use crate::prelude::{DynOverlay, MyDisplay, MySPI};
-use crate::qr_screen::QrCodeScreen;
-use crate::screen_ids::ScreenId;
-use crate::screen_state::ScreenState;
 use crate::servo::Servo;
 use crate::verifier::{SignedMessageVerifier, VerifiedType};
-use crate::wifi_info_screen::WifiInfoScreen;
 use crate::Esp32Rng;
 use aes_gcm::aead::{Aead};
 use aes_gcm::KeyInit;
 use aes_gcm::{AeadCore, Aes256Gcm, Key};
 use data_encoding::{BASE32_NOPAD, BASE64, BASE64URL};
-use embedded_graphics_core::pixelcolor::Rgb565;
-use embedded_graphics_core::prelude::{DrawTarget, RgbColor};
-use esp_idf_hal::gpio::{AnyOutputPin, GpioError};
 use esp_idf_svc::nvs::{EspNvs, NvsDefault};
 use esp_idf_svc::sys::{nvs_flash_deinit, nvs_flash_erase, nvs_flash_init};
 use flatbuffers::FlatBufferBuilder;
@@ -58,12 +47,9 @@ pub struct TickUpdate {
 }
 
 pub struct LockCtx {
-    pub(crate) display: MyDisplay<'static>,
     nvs: EspNvs<NvsDefault>,
-    overlays: Vec<Box<DynOverlay<'static>>>,
     pub(crate) lock_secret_key: Option<SecretKey>,
     pub(crate) lock_public_key: Option<PublicKey>,
-    pub(crate) this_update: Option<TickUpdate>,
     pub(crate) contract: Option<InternalContract>,
     is_locked: bool,
     pub(crate) session_token: String,
@@ -77,12 +63,7 @@ pub struct LockCtx {
 
     schedule_next_update: Option<u64>,
     mqtt_service: Option<Rc<RefCell<MqttService>>>,
-    active_screen_idx: usize,
-
-    qr_code_screen: Option<Box<QrCodeScreen>>,
-    wifi_info_screen: Option<Box<WifiInfoScreen>>,
-    lock_state_screen: Option<Box<LockstateScreen>>,
-    firmware_screen: Option<Box<FirmwareScreen>>,
+    pub active_screen_idx: usize,
 
     login_cryptogram: Option<Box<String>>,
     login_cryptogram_nonce: Option<Box<String>>,
@@ -90,18 +71,13 @@ pub struct LockCtx {
 
 impl LockCtx {
     pub fn new(
-        display: MyDisplay<'static>,
         nvs: EspNvs<NvsDefault>,
         servo: Servo<'static>,
     ) -> Self {
         let mut lck = LockCtx {
-            display,
             nvs,
-            overlays: Vec::new(),
-            qr_code_screen: None,
             lock_secret_key: None,
             lock_public_key: None,
-            this_update: None,
             contract: None,
             is_locked: false,
             session_token: String::new(),
@@ -114,9 +90,6 @@ impl LockCtx {
             schedule_next_update: None,
             mqtt_service: None,
             active_screen_idx: 0,
-            wifi_info_screen: None,
-            lock_state_screen: None,
-            firmware_screen: None,
             login_cryptogram: None,
             login_cryptogram_nonce: None,
         };
@@ -182,35 +155,6 @@ impl LockCtx {
             lck.firmware_manager.enqueue_get_latest_firmware();
         }
         drop(manager);
-
-        let qr_code_screen: Box<QrCodeScreen> = Box::new(QrCodeScreen::new());
-        lck.qr_code_screen = Some(qr_code_screen);
-
-        let lock_state_screen: Box<LockstateScreen> = Box::new(LockstateScreen::new());
-        lck.lock_state_screen = Some(lock_state_screen);
-
-        let wifi_info_screen: Box<WifiInfoScreen> = Box::new(WifiInfoScreen::new());
-        lck.wifi_info_screen = Some(wifi_info_screen);
-
-        let firmware_screen: Box<FirmwareScreen> = Box::new(FirmwareScreen::new());
-        lck.firmware_screen = Some(firmware_screen);
-
-        let wifi_overlay: Box<DynOverlay<'static>> = Box::new(WifiOverlay::<
-            MySPI<'static>,
-            AnyOutputPin,
-            AnyOutputPin,
-            GpioError,
-        >::new());
-        lck.overlays.push(wifi_overlay);
-
-        let button_overlay: Box<DynOverlay<'static>> = Box::new(ButtonPressOverlay::<
-            MySPI<'static>,
-            AnyOutputPin,
-            AnyOutputPin,
-            GpioError,
-        >::new());
-        lck.overlays.push(button_overlay);
-        lck.display.clear(Rgb565::BLACK).unwrap();
 
         // Do some sanity checks?
         if let Ok(version) = lck.firmware_manager.get_running_version() {
@@ -340,8 +284,6 @@ impl LockCtx {
     pub fn tick(&mut self, update: TickUpdate) {
         // Update time
         self.time_in_ticks += update.since_last.as_millis() as u64;
-        let mut screen_changed = false;
-        let screen_idx_at_start_of_tick = self.active_screen_idx;
 
         // Commands to process
         let mut commands: VecDeque<Vec<u8>> = VecDeque::new();
@@ -480,21 +422,21 @@ impl LockCtx {
                 .process_message(firmware_data, self.contract.is_some());
         }
 
-        if let Some(mut wifi_screen) = self.wifi_info_screen.take() {
-            wifi_screen.on_update(self);
-            self.wifi_info_screen = Some(wifi_screen);
+        // Process QR payload if present
+        if let Some(qr_data) = &update.qr_data {
+            self.process_qr_payload(qr_data);
         }
 
-        // See if the user has physically pressed some buttons or scanned a QR code.
-        self.this_update = Some(update.clone());
-        self.process_updates();
-
-        // Update all the overlays.
-        let mut overlays = core::mem::take(&mut self.overlays);
-        for overlay in overlays.iter_mut() {
-            overlay.draw_screen(self);
+        // D2 button cycles through screens
+        if update.d2_pressed {
+            self.active_screen_idx = (self.active_screen_idx + 1) % 4;
+            log::info!("Active screen now idx -> {}", self.active_screen_idx);
         }
-        self.overlays = overlays;
+
+        // D1 button action
+        if update.d1_pressed {
+            self.handle_d1_action();
+        }
 
         // If MQTT is running, run its tick to process all message queues.
         // Also schedule next periodic update.
@@ -521,130 +463,126 @@ impl LockCtx {
             }
         }
 
-        // D2 to cycle through the screens...
-        if update.d2_pressed {
-            self.active_screen_idx = (self.active_screen_idx + 1) % 4;
-            screen_changed = true;
-        }
-
-        if screen_idx_at_start_of_tick != self.active_screen_idx {
-            log::info!("Active screen now idx -> {}", self.active_screen_idx);
-            screen_changed = true;
-        }
-
-        // Explicitly draw a screen.
-        match ScreenId::from(self.active_screen_idx) {
-            ScreenId::QrCode => {
-                if let Some(mut qr_screen) = self.qr_code_screen.take() {
-                    if screen_changed || qr_screen.needs_redraw() {
-                        qr_screen.draw_screen(self);
-                    }
-                    self.qr_code_screen = Some(qr_screen);
-                }
-            }
-            ScreenId::LockState => {
-                if let Some(mut lock_screen) = self.lock_state_screen.take() {
-                    if screen_changed || lock_screen.needs_redraw() {
-                        log::info!("Drawing lock screen");
-                        lock_screen.draw_screen(self);
-                    }
-                    self.lock_state_screen = Some(lock_screen);
-                }
-            }
-            ScreenId::WifiInfo => {
-                if let Some(mut wifi_screen) = self.wifi_info_screen.take() {
-                    if screen_changed || wifi_screen.needs_redraw() {
-                        wifi_screen.draw_screen(self);
-                    }
-                    self.wifi_info_screen = Some(wifi_screen);
-                }
-            }
-            ScreenId::FirmwareInfo => {
-                if let Some(mut firmware_screen) = self.firmware_screen.take() {
-                    if screen_changed || firmware_screen.needs_redraw() {
-                        firmware_screen.draw_screen(self);
-                    }
-                    self.firmware_screen = Some(firmware_screen);
-                }
-            }
-        }
-
-        if self.qr_code_screen.is_none()
-            || self.lock_state_screen.is_none()
-            || self.wifi_info_screen.is_none()
-            || self.firmware_screen.is_none()
-        {
-            panic!("One of the screens was taken and not replaced");
-        }
-
-        self.save_state_if_dirty()
+        self.save_state_if_dirty();
     } // end tick
 
-    /// Process updates for the current screen. This is different from process_commands
-    /// because we're interacting with the user directly via buttons and it's all they
-    /// can see.
-    // NB: Because of poor choices, this expects LockCtx 'this_update' to have the data
-    // to actually process the change.
-    pub fn process_updates(&mut self) {
+    pub fn handle_d1_action(&mut self) {
         match self.active_screen_idx {
-            0 => {
-                if let Some(mut current_screen) = self.qr_code_screen.take() {
-                    let result = current_screen.on_update(self);
-                    if let Some(value) = result {
-                        self.active_screen_idx = value;
-                    }
-                    self.qr_code_screen = Some(current_screen);
-                }
-            }
             1 => {
-                if let Some(mut lock_screen) = self.lock_state_screen.take() {
-                    let result = lock_screen.on_update(self);
-                    if let Some(value) = result {
-                        self.active_screen_idx = value;
+                let allowed = match &self.contract {
+                    Some(c) => c.temporary_unlock_allowed,
+                    None => true,
+                };
+                if allowed {
+                    if self.is_locked() {
+                        self.local_unlock();
+                    } else {
+                        self.local_lock();
                     }
-                    self.lock_state_screen = Some(lock_screen);
-                }
-            }
-            2 => {
-                if let Some(mut wifi_info_screen) = self.wifi_info_screen.take() {
-                    let result = wifi_info_screen.on_update(self);
-                    if let Some(value) = result {
-                        self.active_screen_idx = value;
-                    }
-                    self.wifi_info_screen = Some(wifi_info_screen);
+                    self.save_state_if_dirty();
                 }
             }
             3 => {
-                if let Some(mut firmware_screen) = self.firmware_screen.take() {
-                    let result = firmware_screen.on_update(self);
-                    if let Some(value) = result {
-                        self.active_screen_idx = value;
-                    }
-                    self.firmware_screen = Some(firmware_screen);
+                if self.firmware_manager.is_update_available() {
+                    log::info!("User initiated a firmware update via D1");
+                    self.firmware_manager.initiate_firmware_update();
                 }
             }
             _ => {}
         }
     }
 
-    pub fn process_command(&mut self, command: VerifiedType) -> Result<bool, String> {
-        // Update: Thanks to refactoring, all commands are handled by lock screen.
-        if let Some(mut lock_screen) = self.lock_state_screen.take() {
-            let res = lock_screen.process_command(self, command);
-            self.lock_state_screen = Some(lock_screen);
-            match res {
-                Ok(succeeded) => {
-                    if let Some(new_screen) = succeeded {
-                        self.active_screen_idx = new_screen.into();
-                    }
-
-                    self.save_state_if_dirty();
-                    Ok(true)
+    pub fn process_qr_payload(&mut self, qr_data: &[u8]) {
+        // 1. Check if WiFi QR
+        if let Ok(maybe_str) = std::str::from_utf8(qr_data) {
+            if maybe_str.starts_with("WIFI:") {
+                if let Some((ssid, password)) = crate::wifi_util::parse_wifi_qr(maybe_str.to_string()) {
+                    let mut manager = crate::wifi_manager::WIFI_MANAGER.get().unwrap().lock().unwrap();
+                    manager.ssid = Some(ssid);
+                    manager.password = Some(password);
+                    let _ = manager.robust_connect();
+                    return;
                 }
-                Err(message) => Err(message),
             }
-        } else {
-            Err("lock state screen didn't exist?!".to_string())
+        }
+
+        // 2. Check if configuration
+        if let Ok(config) = ConfigVerifier::read_configuration(qr_data.to_vec()) {
+            if self.contract.is_none() {
+                self.save_configuration(&config);
+            } else {
+                log::info!("Configuration cannot be changed while under contract.");
+            }
+            return;
+        }
+
+        // 3. Check if signed contract or command
+        let verifier = SignedMessageVerifier::new();
+        let keys = self.get_keyring();
+        let payload = BASE64.decode(qr_data).unwrap_or_else(|_| qr_data.to_vec());
+        let (min_counter, contract_serial) = self.contract.as_ref().map(|c| (c.command_counter, c.serial_number)).unwrap_or((0, 0));
+
+        if let Ok(cmd) = verifier.verify(payload, &keys, min_counter, contract_serial) {
+            let counter_to_update = match &cmd {
+                VerifiedType::UnlockCommand(c) => Some(c.counter),
+                VerifiedType::LockCommand(c) => Some(c.counter),
+                VerifiedType::ReleaseCommand(c) => Some(c.counter),
+                VerifiedType::AbortCommand(c) => Some(c.counter),
+                _ => None,
+            };
+            if let Ok(_) = self.process_command(cmd) {
+                if let Some(counter) = counter_to_update {
+                    self.increment_command_counter(counter);
+                }
+                self.save_state_if_dirty();
+            }
+        }
+    }
+
+    pub fn process_command(&mut self, command: VerifiedType) -> Result<bool, String> {
+        self.check_permission(&command)?;
+
+        match command {
+            VerifiedType::Contract(contract) => {
+                if self.contract.is_some() {
+                    return Err("Lock already under contract".to_string());
+                }
+                self.accept_contract(&contract);
+                self.contract = Some(contract);
+                self.active_screen_idx = 1;
+                self.save_state_if_dirty();
+                Ok(true)
+            }
+            VerifiedType::UnlockCommand(_) => {
+                self.unlock();
+                self.active_screen_idx = 1;
+                self.save_state_if_dirty();
+                Ok(true)
+            }
+            VerifiedType::LockCommand(_) => {
+                self.lock();
+                self.active_screen_idx = 1;
+                self.save_state_if_dirty();
+                Ok(true)
+            }
+            VerifiedType::ReleaseCommand(_) => {
+                self.end_contract();
+                self.active_screen_idx = 0;
+                self.save_state_if_dirty();
+                Ok(true)
+            }
+            VerifiedType::AbortCommand(_) => {
+                self.end_contract();
+                self.active_screen_idx = 0;
+                self.save_state_if_dirty();
+                Ok(true)
+            }
+            VerifiedType::ResetCommand(reset) => {
+                self.full_reset(&reset);
+                self.active_screen_idx = 0;
+                self.save_state_if_dirty();
+                Ok(true)
+            }
         }
     }
 

@@ -216,8 +216,6 @@ impl WifiManager {
     }
 
     pub fn is_connected(&self) -> bool {
-        info!("WifiManager -> is_connected?");
-
         if self.wifi.is_none() {
             return false;
         }
