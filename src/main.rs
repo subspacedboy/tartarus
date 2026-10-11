@@ -252,10 +252,12 @@ fn main() {
     let mut lock_ctx = LockCtx::new(nvs, servo);
 
     // Initial QR code load
+    let mut last_rendered_qr_url: Option<String> = None;
     if !lock_ctx.needs_configuration() {
         if let Ok(url) = lock_ctx.get_lock_url() {
             if let Some(qr_img) = slint_platform::generate_qr_image(&url) {
                 ui.set_qr_code_image(qr_img);
+                last_rendered_qr_url = Some(url);
             }
         }
     }
@@ -359,8 +361,11 @@ fn main() {
         // Refresh QR code if needed
         if lock_ctx.active_screen_idx == 0 && !lock_ctx.needs_configuration() {
             if let Ok(url) = lock_ctx.get_lock_url() {
-                if let Some(qr_img) = slint_platform::generate_qr_image(&url) {
-                    ui.set_qr_code_image(qr_img);
+                if last_rendered_qr_url.as_deref() != Some(&url) {
+                    if let Some(qr_img) = slint_platform::generate_qr_image(&url) {
+                        ui.set_qr_code_image(qr_img);
+                        last_rendered_qr_url = Some(url);
+                    }
                 }
             }
         }

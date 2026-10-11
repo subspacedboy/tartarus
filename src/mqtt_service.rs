@@ -147,12 +147,12 @@ impl MqttService {
         let config = MqttClientConfiguration::<'_> {
             client_id: Some(self.session_token.as_ref()),
             disable_clean_session: true,
-            network_timeout: Duration::from_secs(5),
+            network_timeout: Duration::from_secs(15),
             // Password is not used. Just needs a value.
             password: Some(self.password.as_ref()),
             username: Some(self.session_token.as_ref()),
             reconnect_timeout: Some(Duration::from_secs(5)),
-            keep_alive_interval: Some(Duration::from_secs(20)),
+            keep_alive_interval: Some(Duration::from_secs(30)),
             // Requires -> CONFIG_MBEDTLS_CERTIFICATE_BUNDLE in sdkconfig.defaults
             crt_bundle_attach: Some(esp_idf_svc::sys::esp_crt_bundle_attach),
             lwt: Some(lwt_config),
@@ -411,14 +411,46 @@ fn run_mqtt_publisher_worker(
         vec![inbound_queue, configuration_queue, firmware_queue];
 
     'outer: loop {
-        'inner: for q in queues_to_subscribe_to.iter() {
-            if let Err(e) = client.subscribe(q, QoS::AtMostOnce) {
-                log::error!("Failed to subscribe to topic : {e}, retrying...");
-                std::thread::sleep(Duration::from_secs(1));
-                continue 'inner;
+        // Wait until connected before attempting any subscriptions
+        loop {
+            if let Ok(state) = state_machine_ref.lock() {
+                match *state {
+                    MqttStateMachine::Connected => break,
+                    MqttStateMachine::Disconnected
+                    | MqttStateMachine::Restarting
+                    | MqttStateMachine::NotRunning => {
+                        log::info!("Exiting subscribe/publish thread (state: {:?})", *state);
+                        return;
+                    }
+                    MqttStateMachine::Running => {}
+                }
             }
-            log::info!("Subscribed -> {q}");
+            std::thread::sleep(Duration::from_millis(50));
         }
+
+        for q in queues_to_subscribe_to.iter() {
+            loop {
+                // Check if still connected
+                if let Ok(state) = state_machine_ref.lock() {
+                    if *state != MqttStateMachine::Connected {
+                        log::info!(
+                            "Exiting subscribe/publish thread during subscription (state: {:?})",
+                            *state
+                        );
+                        return;
+                    }
+                }
+
+                if let Err(e) = client.subscribe(q, QoS::AtLeastOnce) {
+                    log::error!("Failed to subscribe to topic {q}: {e}, retrying...");
+                    std::thread::sleep(Duration::from_millis(250));
+                    continue;
+                }
+                log::info!("Subscribed -> {q}");
+                break;
+            }
+        }
+
         // Just to give a chance of our connection to get even the first published message
         std::thread::sleep(Duration::from_millis(800));
         loop {
