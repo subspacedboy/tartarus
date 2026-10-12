@@ -1,0 +1,18 @@
+.log-terminal {
+  min-height: 400px;
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+  border-bottom-left-radius: inherit;
+  border-bottom-right-radius: inherit;
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.825rem;
+  line-height: 1.45;
+}
+
+.log-line {
+  word-break: break-all;
+}
+
+.card {
+  border-radius: 0.5rem;
+}

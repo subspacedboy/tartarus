@@ -40,6 +40,10 @@ export class CommandCardComponent {
     const container = button.parentElement;
     if (!container) return;
 
+    if (this.command?.body != null) {
+      console.log(this.getBase64Body(this.command.body));
+    }
+
     // const text = new TextDecoder().decode(uint8Array);
     QRCode.toCanvas(this.command!.body!, { errorCorrectionLevel: 'L' }, (err, canvas) => {
       if (err) throw err;
@@ -49,6 +53,21 @@ export class CommandCardComponent {
     });
   }
 
+  private getBase64Body(body: string): string {
+    try {
+      if (btoa(atob(body)) === body) {
+        return body;
+      }
+    } catch {
+      // not valid base64
+    }
+    try {
+      return btoa(body);
+    } catch {
+      return body;
+    }
+  }
+
   maybeShowAcknowledge() {
     if(this.command?.type === 'ACCEPT_CONTRACT') {
       // There's no way to manually accept a contract.
@@ -56,7 +75,9 @@ export class CommandCardComponent {
       return;
     }
 
-    this.ackBtn.nativeElement.hidden = false;
+    if (this.ackBtn) {
+      this.ackBtn.nativeElement.hidden = false;
+    }
   }
 
   manuallyAcknowledge(event: Event): void {

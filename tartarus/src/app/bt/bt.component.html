@@ -1,0 +1,333 @@
+<div class="container py-4">
+  <!-- Title & Status Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <div>
+      <h2 class="mb-1">Tartarus Bluetooth Manager 📡</h2>
+      <p class="text-muted mb-0">Configure Wi-Fi, set coordinator endpoints, and send commands over Web Bluetooth (BLE).</p>
+    </div>
+    <div>
+      @if (connectionState() === 'connected') {
+        <span class="badge bg-success fs-6 px-3 py-2">
+          <i class="bi bi-bluetooth"></i> Connected: {{ connectedDeviceName() }}
+        </span>
+      } @else if (connectionState() === 'connecting') {
+        <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+          Connecting...
+        </span>
+      } @else {
+        <span class="badge bg-secondary fs-6 px-3 py-2">
+          Disconnected
+        </span>
+      }
+    </div>
+  </div>
+
+  <!-- Browser Support Warning -->
+  @if (!isBluetoothSupported()) {
+    <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
+      <div>
+        <h5 class="alert-heading mb-1">Web Bluetooth Not Supported</h5>
+        <p class="mb-0">
+          This browser does not support the Web Bluetooth API.
+          Please open this page in <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong> on desktop/Android,
+          or use <strong>Bluefy (Web BLE Browser)</strong> on iOS.
+        </p>
+      </div>
+    </div>
+  }
+
+  <div class="row g-4">
+    <!-- Left Column: Controls -->
+    <div class="col-lg-7">
+      <!-- 1. Connection Card -->
+      <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+          <span class="fw-bold">1. Device Connection</span>
+          <small class="text-muted">Target: Tartarus</small>
+        </div>
+        <div class="card-body">
+          @if (connectionState() === 'disconnected') {
+            <p class="card-text text-muted mb-3">
+              Turn on your Tartarus device and click below to scan and pair via Bluetooth Low Energy.
+            </p>
+            <button
+              class="btn btn-primary btn-lg w-100"
+              [disabled]="!isBluetoothSupported()"
+              (click)="connect()"
+            >
+              Scan & Connect to Tartarus
+            </button>
+            <div class="form-check mt-2 text-start">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="scanAll"
+                [checked]="scanAllDevices()"
+                (change)="toggleScanAllDevices()"
+              />
+              <label class="form-check-label text-muted small" for="scanAll">
+                Show all nearby Bluetooth devices (use if "Tartarus" is not appearing)
+              </label>
+            </div>
+          } @else if (connectionState() === 'connecting') {
+            <div class="text-center py-2">
+              <div class="spinner-border text-primary mb-2" role="status"></div>
+              <p class="mb-0 text-muted">Pairing with Tartarus GATT Server...</p>
+            </div>
+          } @else {
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <strong class="text-success d-block">Connected to {{ connectedDeviceName() }}</strong>
+                <small class="text-muted">Status: {{ deviceStatus() }}</small>
+              </div>
+              <button class="btn btn-outline-danger" (click)="disconnect()">
+                Disconnect
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- 2. Wi-Fi Configuration Card -->
+      <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-dark text-white">
+          <span class="fw-bold">2. Wi-Fi Configuration</span>
+        </div>
+        <div class="card-body">
+          <form [formGroup]="wifiForm" (ngSubmit)="sendWifi()">
+            <div class="mb-3">
+              <label for="ssid" class="form-label fw-bold">Network Name (SSID)</label>
+              <input
+                id="ssid"
+                type="text"
+                class="form-control"
+                formControlName="ssid"
+                placeholder="e.g. MyHomeNetwork"
+                [disabled]="connectionState() !== 'connected' || isSendingWifi()"
+              />
+            </div>
+
+            <div class="mb-3">
+              <label for="password" class="form-label fw-bold">Wi-Fi Password</label>
+              <div class="input-group">
+                <input
+                  id="password"
+                  [type]="showPassword() ? 'text' : 'password'"
+                  class="form-control"
+                  formControlName="password"
+                  placeholder="Enter Wi-Fi password"
+                  [disabled]="connectionState() !== 'connected' || isSendingWifi()"
+                />
+                <button
+                  class="btn btn-outline-secondary"
+                  type="button"
+                  (click)="toggleShowPassword()"
+                  [disabled]="connectionState() !== 'connected' || isSendingWifi()"
+                >
+                  {{ showPassword() ? 'Hide' : 'Show' }}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              class="btn btn-success w-100"
+              [disabled]="connectionState() !== 'connected' || wifiForm.invalid || isSendingWifi()"
+            >
+              @if (isSendingWifi()) {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                Sending Wi-Fi Credentials...
+              } @else {
+                Save & Connect Wi-Fi on Tartarus
+              }
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- 3. Coordinator Configuration Card -->
+      <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+          <span class="fw-bold">3. Coordinator Configuration</span>
+          <button
+            class="btn btn-sm btn-outline-light"
+            type="button"
+            (click)="loadCoordinatorConfig()"
+            [disabled]="isLoadingConfig()"
+            title="Reload configuration values from coordinator API"
+          >
+            @if (isLoadingConfig()) {
+              <span class="spinner-border spinner-border-sm" role="status"></span>
+            } @else {
+              ↻ Refresh
+            }
+          </button>
+        </div>
+        <div class="card-body">
+          <p class="text-muted small mb-3">
+            Sets the server endpoints where Tartarus connects. Transmitted as FlatBuffers data directly to the device.
+          </p>
+
+          <form [formGroup]="coordinatorConfigForm" (ngSubmit)="sendCoordinatorConfiguration()">
+            <div class="row g-2 mb-2">
+              <div class="col-md-6">
+                <label for="webUri" class="form-label fw-bold small">Web URI</label>
+                <input
+                  id="webUri"
+                  type="text"
+                  class="form-control form-control-sm"
+                  formControlName="webUri"
+                  placeholder="http://..."
+                  [disabled]="connectionState() !== 'connected' || isSendingConfig()"
+                />
+              </div>
+              <div class="col-md-6">
+                <label for="wsUri" class="form-label fw-bold small">WebSocket (WS) URI</label>
+                <input
+                  id="wsUri"
+                  type="text"
+                  class="form-control form-control-sm"
+                  formControlName="wsUri"
+                  placeholder="ws://..."
+                  [disabled]="connectionState() !== 'connected' || isSendingConfig()"
+                />
+              </div>
+            </div>
+
+            <div class="row g-2 mb-3">
+              <div class="col-md-6">
+                <label for="apiUri" class="form-label fw-bold small">API URI</label>
+                <input
+                  id="apiUri"
+                  type="text"
+                  class="form-control form-control-sm"
+                  formControlName="apiUri"
+                  placeholder="http://.../api"
+                  [disabled]="connectionState() !== 'connected' || isSendingConfig()"
+                />
+              </div>
+              <div class="col-md-6">
+                <label for="mqttUri" class="form-label fw-bold small">MQTT URI</label>
+                <input
+                  id="mqttUri"
+                  type="text"
+                  class="form-control form-control-sm"
+                  formControlName="mqttUri"
+                  placeholder="mqtt://..."
+                  [disabled]="connectionState() !== 'connected' || isSendingConfig()"
+                />
+              </div>
+            </div>
+
+            <div class="form-check form-switch mb-3">
+              <input
+                id="includeSafetyKeys"
+                class="form-check-input"
+                type="checkbox"
+                formControlName="includeSafetyKeys"
+                [disabled]="connectionState() !== 'connected' || isSendingConfig()"
+              />
+              <label class="form-check-label small" for="includeSafetyKeys">
+                Include Safety Keys in configuration payload
+              </label>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button
+                type="submit"
+                class="btn btn-primary flex-grow-1"
+                [disabled]="connectionState() !== 'connected' || coordinatorConfigForm.invalid || isSendingConfig()"
+              >
+                @if (isSendingConfig()) {
+                  <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                  Transmitting Config...
+                } @else {
+                  Transmit Configuration over BLE
+                }
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                (click)="copyConfigToCommand()"
+                [disabled]="coordinatorConfigForm.invalid"
+                title="Populate Command field with Base64"
+              >
+                Copy to Command
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- 4. Arbitrary Command Card -->
+      <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-dark text-white">
+          <span class="fw-bold">4. Send Arbitrary Base64 Command</span>
+        </div>
+        <div class="card-body">
+          <form [formGroup]="commandForm" (ngSubmit)="sendCommand()">
+            <div class="mb-3">
+              <label for="command" class="form-label fw-bold">Base64 Command String</label>
+              <textarea
+                id="command"
+                class="form-control font-monospace"
+                rows="4"
+                formControlName="command"
+                placeholder="Paste signed Base64 command string here..."
+                [disabled]="connectionState() !== 'connected' || isSendingCommand()"
+              ></textarea>
+              <div class="form-text">
+                Input is transmitted directly to Tartarus and decoded via <code>process_qr_payload()</code>.
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              class="btn btn-outline-primary w-100"
+              [disabled]="connectionState() !== 'connected' || commandForm.invalid || isSendingCommand()"
+            >
+              @if (isSendingCommand()) {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                Transmitting Command...
+              } @else {
+                Execute Command over BLE
+              }
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Live Terminal Activity Log -->
+    <div class="col-lg-5">
+      <div class="card shadow-sm sticky-top" style="top: 1rem;">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+          <span class="fw-bold">Activity Log</span>
+          <button class="btn btn-sm btn-outline-light" (click)="clearLogs()">Clear</button>
+        </div>
+        <div class="card-body p-0 log-terminal bg-black text-light">
+          <div class="p-3 font-monospace small">
+            @if (logs().length === 0) {
+              <div class="text-muted">No activity yet.</div>
+            } @else {
+              @for (entry of logs(); track $index) {
+                <div class="log-line mb-1">
+                  <span class="text-muted me-2">[{{ entry.timestamp }}]</span>
+                  @if (entry.type === 'success') {
+                    <span class="text-success">{{ entry.message }}</span>
+                  } @else if (entry.type === 'error') {
+                    <span class="text-danger fw-bold">{{ entry.message }}</span>
+                  } @else if (entry.type === 'warn') {
+                    <span class="text-warning">{{ entry.message }}</span>
+                  } @else {
+                    <span class="text-info">{{ entry.message }}</span>
+                  }
+                </div>
+              }
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -13,6 +13,7 @@ import {CoordinatorConfigurationComponent} from './coordinator-configuration/coo
 import {LogoutAuthorComponent} from './logout-author/logout-author.component';
 import {LockUserContractDetailComponent} from './lock-user-contract-detail/lock-user-contract-detail.component';
 import {WifiHelperComponent} from './wifi-helper/wifi-helper.component';
+import {BtComponent} from './bt/bt.component';
 import {KeyHelperComponent} from './key-helper/key-helper.component';
 import {AdminLoginComponent} from './admin/admin-login/admin-login.component';
 import {AdminContractsComponent} from './admin/admin-contracts/admin-contracts.component';
@@ -82,6 +83,10 @@ export const routes: Routes = [
   {
     path: 'wifi-helper',
     component: WifiHelperComponent
+  },
+  {
+    path: 'bt',
+    component: BtComponent
   },
   {
     path: 'key-helper',

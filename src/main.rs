@@ -1,6 +1,7 @@
 extern crate core;
 
 mod acknowledger;
+pub mod ble_server;
 mod config_verifier;
 #[allow(unused_imports, mismatched_lifetime_syntaxes)]
 mod configuration_generated;
@@ -262,7 +263,42 @@ fn main() {
         }
     }
 
+    // Initialize Tartarus BLE GATT Server
+    if let Err(e) = ble_server::init_ble_server() {
+        log::error!("Failed to initialize Tartarus BLE GATT server: {:?}", e);
+    }
+
     loop {
+        // Process any incoming BLE events (WiFi credentials or Base64 commands)
+        for ble_event in ble_server::drain_ble_events() {
+            match ble_event {
+                ble_server::BleEvent::SetWifiSsid(ssid) => {
+                    log::info!("BLE updating WiFi SSID: {}", ssid);
+                    if let Some(mgr_cell) = crate::wifi_manager::WIFI_MANAGER.get() {
+                        let mut mgr = mgr_cell.lock().unwrap();
+                        mgr.ssid = Some(ssid);
+                        if mgr.password.is_some() {
+                            let _ = mgr.robust_connect();
+                        }
+                    }
+                }
+                ble_server::BleEvent::SetWifiPassword(pass) => {
+                    log::info!("BLE updating WiFi password");
+                    if let Some(mgr_cell) = crate::wifi_manager::WIFI_MANAGER.get() {
+                        let mut mgr = mgr_cell.lock().unwrap();
+                        mgr.password = Some(pass);
+                        if mgr.ssid.is_some() {
+                            let _ = mgr.robust_connect();
+                        }
+                    }
+                }
+                ble_server::BleEvent::Command(cmd_str) => {
+                    log::info!("BLE executing command ({} bytes)", cmd_str.len());
+                    lock_ctx.process_qr_payload(cmd_str.as_bytes());
+                }
+            }
+        }
+
         let mut rx_buf: [u8; 254] = [0; 254];
         let mut d0_pressed = false;
         let mut d1_pressed = false;
