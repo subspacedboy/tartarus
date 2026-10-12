@@ -18,6 +18,37 @@ export component AppWindow inherits Window {
     in-out property <int> button_indicator: 0; // 0=none, 1=D0, 2=D1, 3=D2
     in-out property <bool> needs_config: false;
 
+    callback trigger_unlock_blink();
+
+    property <int> blink_phase: 0;
+    property <bool> blink_visible: false;
+
+    blink_timer := Timer {
+        interval: 120ms;
+        running: false;
+
+        triggered() => {
+            if (root.blink_phase > 0) {
+                root.blink_phase -= 1;
+                if (root.blink_phase == 0) {
+                    root.blink_visible = false;
+                    self.running = false;
+                } else {
+                    root.blink_visible = !root.blink_visible;
+                }
+            } else {
+                root.blink_visible = false;
+                self.running = false;
+            }
+        }
+    }
+
+    trigger_unlock_blink => {
+        root.blink_phase = 6;
+        root.blink_visible = true;
+        blink_timer.running = true;
+    }
+
     // Header bar (height 20px)
     Rectangle {
         x: 0px;
@@ -331,5 +362,14 @@ export component AppWindow inherits Window {
             font-size: 10px;
             color: #37474f;
         }
+    }
+
+    // Topmost blink overlay
+    if root.blink_visible : Rectangle {
+        x: 0px;
+        y: 0px;
+        width: 240px;
+        height: 135px;
+        background: #00e676;
     }
 }

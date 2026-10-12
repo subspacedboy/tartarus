@@ -357,6 +357,10 @@ fn main() {
 
         lock_ctx.tick(this_update);
 
+        if lock_ctx.take_unlock_event() {
+            ui.invoke_trigger_unlock_blink();
+        }
+
         // Sync state to Slint UI
         ui.set_active_screen(lock_ctx.active_screen_idx as i32);
         ui.set_is_locked(lock_ctx.is_locked());

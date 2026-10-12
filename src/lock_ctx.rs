@@ -69,6 +69,7 @@ pub struct LockCtx {
     login_cryptogram: Option<String>,
     login_cryptogram_nonce: Option<String>,
     lock_url: Option<String>,
+    pub unlock_event_pending: bool,
 }
 
 impl LockCtx {
@@ -95,6 +96,7 @@ impl LockCtx {
             login_cryptogram: None,
             login_cryptogram_nonce: None,
             lock_url: None,
+            unlock_event_pending: false,
         };
 
         lck.session_token = lck.load_or_create_session_id();
@@ -561,6 +563,7 @@ impl LockCtx {
             }
             VerifiedType::UnlockCommand(_) => {
                 self.unlock();
+                self.unlock_event_pending = true;
                 self.active_screen_idx = 1;
                 self.save_state_if_dirty();
                 Ok(true)
@@ -760,6 +763,12 @@ impl LockCtx {
 
     pub fn is_locked(&self) -> bool {
         self.is_locked
+    }
+
+    pub fn take_unlock_event(&mut self) -> bool {
+        let pending = self.unlock_event_pending;
+        self.unlock_event_pending = false;
+        pending
     }
 
     pub fn needs_configuration(&self) -> bool {
