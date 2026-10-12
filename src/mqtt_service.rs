@@ -51,6 +51,14 @@ impl SignedMessageTransport {
         self.buffer.clone()
     }
 
+    pub fn as_slice(&self) -> &[u8] {
+        &self.buffer
+    }
+
+    pub fn into_buffer(self) -> Vec<u8> {
+        self.buffer
+    }
+
     pub fn topic(&self) -> TopicType {
         self.topic.clone()
     }
@@ -187,7 +195,7 @@ impl MqttService {
         let session_token_2 = self.session_token.clone();
 
         let t1 = std::thread::Builder::new()
-            .stack_size(12000)
+            .stack_size(8192)
             .spawn(move || {
                 run_mqtt_connection_worker(
                     connection,
@@ -199,7 +207,7 @@ impl MqttService {
             .unwrap();
 
         let t2 = std::thread::Builder::new()
-            .stack_size(12000)
+            .stack_size(8192)
             .spawn(move || {
                 run_mqtt_publisher_worker(
                     client,
@@ -474,15 +482,13 @@ fn publish_outgoing_messages(
     client: &mut EspMqttClient,
     out_queue_ref: &Arc<Mutex<VecDeque<SignedMessageTransport>>>,
 ) {
-    let mut local_signed_messages: Vec<SignedMessageTransport> = Vec::new();
-    if let Ok(mut message_queue) = out_queue_ref.lock() {
-        while let Some(message) = message_queue.pop_front() {
-            local_signed_messages.push(message);
-        }
-    }
+    let messages: Vec<SignedMessageTransport> = if let Ok(mut message_queue) = out_queue_ref.lock() {
+        message_queue.drain(..).collect()
+    } else {
+        return;
+    };
 
-    while !local_signed_messages.is_empty() {
-        let message = local_signed_messages.remove(0);
+    for message in messages {
         match message.topic {
             TopicType::SignedMessages | TopicType::Acknowledgments => {
                 match client.publish(

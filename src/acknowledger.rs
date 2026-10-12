@@ -34,8 +34,7 @@ impl Acknowledger {
             VerifiedType::ResetCommand(reset) => (reset.serial_number(), 0),
         };
 
-        let public_key_bytes: Vec<u8> = public_key.to_sec1_bytes().to_vec();
-        let pub_key_holder = builder.create_vector(&public_key_bytes);
+        let pub_key_holder = builder.create_vector(public_key.to_sec1_bytes().as_ref());
         let session = builder.create_string(session_token);
 
         let ack = Acknowledgement::create(
@@ -57,8 +56,7 @@ impl Acknowledger {
         // // Rust implements flatbuffers.
         let mut builder = FlatBufferBuilder::with_capacity(1024);
 
-        let public_key_bytes: Vec<u8> = public_key.to_sec1_bytes().to_vec();
-        let pub_key_holder = builder.create_vector(&public_key_bytes);
+        let pub_key_holder = builder.create_vector(public_key.to_sec1_bytes().as_ref());
         let session = builder.create_string(session_token);
 
         let ack = Acknowledgement::create(
@@ -111,8 +109,7 @@ impl Acknowledger {
             VerifiedType::ResetCommand(reset) => (reset.serial_number(), 0),
         };
 
-        let public_key_bytes: Vec<u8> = public_key.to_sec1_bytes().to_vec();
-        let pub_key_holder = builder.create_vector(&public_key_bytes);
+        let pub_key_holder = builder.create_vector(public_key.to_sec1_bytes().as_ref());
         let session = builder.create_string(session_token);
         let message_offset = builder.create_string(message);
         let error_message = Error::create(
@@ -135,8 +132,7 @@ impl Acknowledger {
         // // Rust implements flatbuffers.
         let mut builder = FlatBufferBuilder::with_capacity(1024);
 
-        let public_key_bytes: Vec<u8> = public_key.to_sec1_bytes().to_vec();
-        let pub_key_holder = builder.create_vector(&public_key_bytes);
+        let pub_key_holder = builder.create_vector(public_key.to_sec1_bytes().as_ref());
         let session = builder.create_string(session_token);
         let message_offset = builder.create_string(message);
         let error_message = Error::create(
@@ -178,8 +174,7 @@ impl Acknowledger {
     ) -> Vec<u8> {
         let mut builder = FlatBufferBuilder::with_capacity(1024);
 
-        let public_key_bytes: Vec<u8> = public_key.to_sec1_bytes().to_vec();
-        let pub_key_holder = builder.create_vector(&public_key_bytes);
+        let pub_key_holder = builder.create_vector(public_key.to_sec1_bytes().as_ref());
         let session = builder.create_string(session_token);
         let message_offset = builder.create_string(&err.message);
         let error_message = Error::create(
@@ -200,8 +195,7 @@ impl Acknowledger {
 
         let mut builder = FlatBufferBuilder::with_capacity(1024);
 
-        let public_key_bytes: Vec<u8> = public_key.to_sec1_bytes().to_vec();
-        let pub_key_holder = builder.create_vector(&public_key_bytes);
+        let pub_key_holder = builder.create_vector(public_key.to_sec1_bytes().as_ref());
         let session = builder.create_string(session_token);
         let message_offset = builder.create_string(&err.message);
         let error_message = Error::create(

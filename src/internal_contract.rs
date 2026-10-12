@@ -17,6 +17,7 @@ pub struct InternalContract {
     pub temporary_unlock_allowed: bool,
     #[serde(with = "verifying_key_serde")]
     pub public_key: Option<VerifyingKey>,
+    #[serde(default)]
     pub original_bytes: Vec<u8>,
     pub command_counter: u16,
     pub bots: Vec<InternalBot>,
@@ -124,7 +125,6 @@ impl InternalResetCommand {
 
 impl From<Contract<'_>> for InternalContract {
     fn from(contract: Contract<'_>) -> InternalContract {
-        let original_bytes = contract._tab.buf().to_vec();
         let verifying_key = VerifyingKey::from_sec1_bytes(contract.public_key().unwrap().bytes())
             .expect("Valid public key");
 
@@ -143,7 +143,7 @@ impl From<Contract<'_>> for InternalContract {
             serial_number: contract.serial_number(),
             temporary_unlock_allowed: contract.is_temporary_unlock_allowed(),
             public_key: Some(verifying_key),
-            original_bytes,
+            original_bytes: Vec::new(),
             command_counter: 0,
             bots: internal_bots,
         }

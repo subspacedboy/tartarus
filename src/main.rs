@@ -167,7 +167,8 @@ fn main() {
     )
     .expect("SpiDeviceDriver to work");
 
-    let buffer = Box::leak(Box::new([0_u8; 512]));
+    static mut SPI_BUFFER: [u8; 512] = [0; 512];
+    let buffer: &'static mut [u8; 512] = unsafe { &mut SPI_BUFFER };
     let di = SpiInterface::new(spi, tft_dc, buffer);
 
     let mut display: Display<
@@ -256,12 +257,20 @@ fn main() {
     let mut last_rendered_qr_url: Option<String> = None;
     if !lock_ctx.needs_configuration() {
         if let Ok(url) = lock_ctx.get_lock_url() {
-            if let Some(qr_img) = slint_platform::generate_qr_image(&url) {
+            if let Some(qr_img) = slint_platform::generate_qr_image(url) {
                 ui.set_qr_code_image(qr_img);
-                last_rendered_qr_url = Some(url);
+                last_rendered_qr_url = Some(url.to_string());
             }
         }
     }
+
+    if let Ok(version) = lock_ctx.firmware_manager.get_running_version() {
+        ui.set_firmware_version(version.into());
+    }
+
+    let mut last_contract_serial: Option<u16> = None;
+    let mut last_wifi_connected: Option<bool> = None;
+    let mut last_update_avail: Option<bool> = None;
 
     // Initialize Tartarus BLE GATT Server
     if let Err(e) = ble_server::init_ble_server() {
@@ -270,7 +279,7 @@ fn main() {
 
     loop {
         // Process any incoming BLE events (WiFi credentials or Base64 commands)
-        for ble_event in ble_server::drain_ble_events() {
+        while let Some(ble_event) = ble_server::pop_ble_event() {
             match ble_event {
                 ble_server::BleEvent::SetWifiSsid(ssid) => {
                     log::info!("BLE updating WiFi SSID: {}", ssid);
@@ -353,10 +362,14 @@ fn main() {
         ui.set_is_locked(lock_ctx.is_locked());
         ui.set_needs_config(lock_ctx.needs_configuration());
 
-        if let Some(c) = &lock_ctx.contract {
-            ui.set_contract_id(c.serial_number.to_string().into());
-        } else {
-            ui.set_contract_id("".into());
+        let current_contract_serial = lock_ctx.contract.as_ref().map(|c| c.serial_number);
+        if current_contract_serial != last_contract_serial {
+            last_contract_serial = current_contract_serial;
+            if let Some(serial) = current_contract_serial {
+                ui.set_contract_id(serial.to_string().into());
+            } else {
+                ui.set_contract_id("".into());
+            }
         }
 
         let is_connected = if let Some(m) = WIFI_MANAGER.get() {
@@ -368,19 +381,21 @@ fn main() {
         } else {
             false
         };
-        ui.set_wifi_connected(is_connected);
-
-        if let Ok(ssid) = lock_ctx.get_wifi_ssid() {
-            ui.set_wifi_ssid(ssid.into());
+        if last_wifi_connected != Some(is_connected) {
+            last_wifi_connected = Some(is_connected);
+            ui.set_wifi_connected(is_connected);
+            if let Ok(ssid) = lock_ctx.get_wifi_ssid() {
+                ui.set_wifi_ssid(ssid.into());
+            }
         }
 
-        if let Ok(version) = lock_ctx.firmware_manager.get_running_version() {
-            ui.set_firmware_version(version.into());
-        }
         let update_avail = lock_ctx.firmware_manager.is_update_available();
-        ui.set_firmware_upgrade_available(update_avail);
-        if update_avail {
-            ui.set_next_firmware_version(lock_ctx.firmware_manager.next_firmware_version().into());
+        if last_update_avail != Some(update_avail) {
+            last_update_avail = Some(update_avail);
+            ui.set_firmware_upgrade_available(update_avail);
+            if update_avail {
+                ui.set_next_firmware_version(lock_ctx.firmware_manager.next_firmware_version().into());
+            }
         }
 
         let btn_indicator = if d0_pressed {
@@ -397,10 +412,10 @@ fn main() {
         // Refresh QR code if needed
         if lock_ctx.active_screen_idx == 0 && !lock_ctx.needs_configuration() {
             if let Ok(url) = lock_ctx.get_lock_url() {
-                if last_rendered_qr_url.as_deref() != Some(&url) {
-                    if let Some(qr_img) = slint_platform::generate_qr_image(&url) {
+                if last_rendered_qr_url.as_deref() != Some(url) {
+                    if let Some(qr_img) = slint_platform::generate_qr_image(url) {
                         ui.set_qr_code_image(qr_img);
-                        last_rendered_qr_url = Some(url);
+                        last_rendered_qr_url = Some(url.to_string());
                     }
                 }
             }

@@ -69,8 +69,7 @@ pub fn read_as_firmware_message(data: &[u8]) -> Result<FirmwareMessageType, Stri
             MessagePayload::FirmwareChallengeRequest => {
                 if let Some(challenge) = firmware_message.payload_as_firmware_challenge_request() {
                     let copy = challenge.nonce().unwrap();
-                    let mut b: Vec<u8> = Vec::new();
-                    copy.iter().for_each(|x| b.push(x));
+                    let b = copy.bytes().to_vec();
 
                     let challenge = InternalChallenge::new(b, firmware_message.request_id());
                     Ok(FirmwareMessageType::Challenge(challenge))
@@ -94,8 +93,7 @@ pub fn read_as_firmware_message(data: &[u8]) -> Result<FirmwareMessageType, Stri
             MessagePayload::GetFirmwareChunkResponse => {
                 if let Some(chunk) = firmware_message.payload_as_get_firmware_chunk_response() {
                     let copy = chunk.chunk().unwrap();
-                    let mut b: Vec<u8> = Vec::new();
-                    copy.iter().for_each(|x| b.push(x));
+                    let b = copy.bytes().to_vec();
 
                     Ok(FirmwareMessageType::FirmwareChunk(
                         InternalFirmwareChunk::new(

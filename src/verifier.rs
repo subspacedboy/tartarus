@@ -114,15 +114,13 @@ impl SignedMessageVerifier {
 
     pub fn verify(
         self,
-        incoming_data: Vec<u8>,
-        verifying_keys: &HashMap<String, &VerifyingKey>,
+        incoming_data: &[u8],
+        verifying_keys: &HashMap<&str, &VerifyingKey>,
         minimum_counter: u16,
         contract_serial_number: u16,
     ) -> Result<VerifiedType, VerificationError> {
-        let owned_data = incoming_data.clone();
-
         match crate::contract_generated::club::subjugated::fb::message::root_as_signed_message(
-            owned_data.as_slice(),
+            incoming_data,
         ) {
             Ok(signed_msg) => {
                 log::info!("Signed message: {:?}", signed_msg);
@@ -239,7 +237,7 @@ impl SignedMessageVerifier {
                                 })
                             }
                         };
-                        let hash = contract.calculate_hash(&incoming_data);
+                        let hash = contract.calculate_hash(incoming_data);
                         match verifying_key.verify(&hash, &signature) {
                             Ok(_) => {
                                 log::debug!("Signature verified!");
@@ -256,7 +254,7 @@ impl SignedMessageVerifier {
                         log::info!("Processing unlock command");
                         let unlock = signed_msg.payload_as_unlock_command().unwrap();
 
-                        let hash = unlock.calculate_hash(&incoming_data);
+                        let hash = unlock.calculate_hash(incoming_data);
                         match verifying_key.unwrap().verify(&hash, &signature) {
                             Ok(_) => {
                                 log::debug!("Signature verified!");
@@ -295,7 +293,7 @@ impl SignedMessageVerifier {
                         log::info!("Processing lock command");
                         let lock = signed_msg.payload_as_lock_command().unwrap();
 
-                        let hash = lock.calculate_hash(&incoming_data);
+                        let hash = lock.calculate_hash(incoming_data);
                         match verifying_key.unwrap().verify(&hash, &signature) {
                             Ok(_) => {
                                 log::debug!("Signature verified!");
@@ -333,7 +331,7 @@ impl SignedMessageVerifier {
                         log::info!("Processing release command");
                         let release = signed_msg.payload_as_release_command().unwrap();
 
-                        let hash = release.calculate_hash(&incoming_data);
+                        let hash = release.calculate_hash(incoming_data);
                         match verifying_key.unwrap().verify(&hash, &signature) {
                             Ok(_) => {
                                 log::debug!("Signature verified!");
@@ -371,7 +369,7 @@ impl SignedMessageVerifier {
                         log::info!("Processing abort command");
                         let abort = signed_msg.payload_as_abort_command().unwrap();
 
-                        let hash = abort.calculate_hash(&incoming_data);
+                        let hash = abort.calculate_hash(incoming_data);
                         match verifying_key.unwrap().verify(&hash, &signature) {
                             Ok(_) => {
                                 log::debug!("Signature verified!");
@@ -409,7 +407,7 @@ impl SignedMessageVerifier {
                         log::info!("Processing reset command");
                         let reset = signed_msg.payload_as_reset_command().unwrap();
 
-                        let hash = reset.calculate_hash(&incoming_data);
+                        let hash = reset.calculate_hash(incoming_data);
                         match verifying_key.unwrap().verify(&hash, &signature) {
                             Ok(_) => {
                                 let internal: InternalResetCommand = reset.into();

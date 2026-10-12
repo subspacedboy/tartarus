@@ -66,8 +66,9 @@ pub struct LockCtx {
     mqtt_service: Option<Rc<RefCell<MqttService>>>,
     pub active_screen_idx: usize,
 
-    login_cryptogram: Option<Box<String>>,
-    login_cryptogram_nonce: Option<Box<String>>,
+    login_cryptogram: Option<String>,
+    login_cryptogram_nonce: Option<String>,
+    lock_url: Option<String>,
 }
 
 impl LockCtx {
@@ -93,6 +94,7 @@ impl LockCtx {
             active_screen_idx: 0,
             login_cryptogram: None,
             login_cryptogram_nonce: None,
+            lock_url: None,
         };
 
         lck.session_token = lck.load_or_create_session_id();
@@ -174,6 +176,9 @@ impl LockCtx {
         use ciborium::ser::into_writer;
 
         self.configuration = config.clone();
+        self.lock_url = None;
+        self.login_cryptogram = None;
+        self.login_cryptogram_nonce = None;
 
         let mut buf = Vec::new();
         if into_writer(config, &mut buf).is_ok() {
@@ -300,20 +305,19 @@ impl LockCtx {
                 Vec::new()
             };
 
-        while !message_queue.is_empty() {
-            let message = message_queue.remove(0);
+        for message in message_queue {
             match message.topic() {
                 SignedMessages => {
                     log::info!("Received Command: {:?}", message);
-                    commands.push_back(message.buffer());
+                    commands.push_back(message.into_buffer());
                 }
                 ConfigurationData => {
                     log::info!("Received Configuration: {:?}", message);
-                    configuration.push_back(message.buffer());
+                    configuration.push_back(message.into_buffer());
                 }
                 TopicType::FirmwareMessage => {
                     // log::info!("Received Firmware info: {:?}", message);
-                    firmware.push_back(message.buffer());
+                    firmware.push_back(message.into_buffer());
                 }
                 _ => {
                     log::info!("Received Unknown message?!: {:?}", message);
@@ -336,7 +340,7 @@ impl LockCtx {
                 };
 
             match verifier.verify(
-                buffer,
+                &buffer,
                 &self.get_keyring(),
                 min_counter,
                 contract_serial_number,
@@ -410,7 +414,7 @@ impl LockCtx {
         while !configuration.is_empty() {
             // Configuration delivered through this channel is considered trusted.
             let configuration = configuration.pop_front().unwrap();
-            if let Ok(valid_config) = ConfigVerifier::read_configuration(configuration) {
+            if let Ok(valid_config) = ConfigVerifier::read_configuration(&configuration) {
                 // The only way we can reach here is we have a valid MQTT provider and connection. So theoretically
                 // we're just adding SafetyKeys and/or enable_reset_command.
                 self.save_configuration(&valid_config);
@@ -497,7 +501,7 @@ impl LockCtx {
         // 1. Check if WiFi QR
         if let Ok(maybe_str) = std::str::from_utf8(qr_data) {
             if maybe_str.starts_with("WIFI:") {
-                if let Some((ssid, password)) = crate::wifi_util::parse_wifi_qr(maybe_str.to_string()) {
+                if let Some((ssid, password)) = crate::wifi_util::parse_wifi_qr(maybe_str) {
                     let mut manager = crate::wifi_manager::WIFI_MANAGER.get().unwrap().lock().unwrap();
                     manager.ssid = Some(ssid);
                     manager.password = Some(password);
@@ -508,7 +512,7 @@ impl LockCtx {
         }
 
         // 2. Check if configuration
-        if let Ok(config) = ConfigVerifier::read_configuration(qr_data.to_vec()) {
+        if let Ok(config) = ConfigVerifier::read_configuration(qr_data) {
             if self.contract.is_none() {
                 self.save_configuration(&config);
             } else {
@@ -520,7 +524,8 @@ impl LockCtx {
         // 3. Check if signed contract or command
         let verifier = SignedMessageVerifier::new();
         let keys = self.get_keyring();
-        let payload = BASE64.decode(qr_data).unwrap_or_else(|_| qr_data.to_vec());
+        let decoded = BASE64.decode(qr_data).ok();
+        let payload = decoded.as_deref().unwrap_or(qr_data);
         let (min_counter, contract_serial) = self.contract.as_ref().map(|c| (c.command_counter, c.serial_number)).unwrap_or((0, 0));
 
         if let Ok(cmd) = verifier.verify(payload, &keys, min_counter, contract_serial) {
@@ -674,12 +679,12 @@ impl LockCtx {
     }
 
     pub fn get_wifi_ssid(&mut self) -> Result<String, String> {
-        let mut buffer: [u8; 1024] = [0; 1024];
+        let mut buffer: [u8; 64] = [0; 64];
         if let Ok(maybe_byte_buffer) = self.nvs.get_blob("ssid", &mut buffer) {
             if let Some(ssid) = maybe_byte_buffer {
-                return Ok(String::from_utf8(ssid.to_vec()).unwrap());
+                return Ok(String::from_utf8_lossy(ssid).into_owned());
             } else {
-                return Ok("".to_string());
+                return Ok(String::new());
             }
         }
         Err("Failed to get SSID from NVS".to_owned())
@@ -791,21 +796,29 @@ impl LockCtx {
         let clear_text = self.session_token.as_bytes();
         let cipher_text = cipher.encrypt(&nonce, clear_text).unwrap();
 
-        self.login_cryptogram = Some(Box::new(BASE64URL.encode(&cipher_text)));
-        self.login_cryptogram_nonce = Some(Box::new(BASE64URL.encode(&nonce)));
+        self.login_cryptogram = Some(BASE64URL.encode(&cipher_text));
+        self.login_cryptogram_nonce = Some(BASE64URL.encode(&nonce));
     }
 
-    pub fn get_lock_url(&mut self) -> Result<String, String> {
-        self.compute_login_credentials();
+    pub fn get_lock_url(&mut self) -> Result<&str, String> {
+        if self.lock_url.is_none() {
+            self.compute_login_credentials();
 
-        let coordinator = format!("{}/lock-start", self.configuration.web_uri);
-        Ok(format!(
-            "{}?cipher={}&nonce={}&session={}",
-            coordinator,
-            self.login_cryptogram.as_ref().unwrap().as_ref(),
-            self.login_cryptogram_nonce.as_ref().unwrap().as_ref(),
-            self.session_token
-        ))
+            if self.login_cryptogram.is_none() || self.login_cryptogram_nonce.is_none() {
+                return Err("Failed to compute credentials".to_string());
+            }
+
+            let coordinator = format!("{}/lock-start", self.configuration.web_uri);
+            self.lock_url = Some(format!(
+                "{}?cipher={}&nonce={}&session={}",
+                coordinator,
+                self.login_cryptogram.as_ref().unwrap(),
+                self.login_cryptogram_nonce.as_ref().unwrap(),
+                self.session_token
+            ));
+        }
+
+        Ok(self.lock_url.as_deref().unwrap())
     }
 
     pub fn accept_contract(&mut self, _contract: &InternalContract) {
@@ -919,15 +932,9 @@ impl LockCtx {
         let started_with_local_contract = self.contract.is_some();
 
         let mut builder = FlatBufferBuilder::with_capacity(1024);
-        let public_key: Vec<u8> = self
-            .lock_public_key
-            .unwrap()
-            .to_sec1_bytes()
-            .as_ref()
-            .to_vec();
+        let pub_key_holder = builder.create_vector(self.lock_public_key.unwrap().to_sec1_bytes().as_ref());
         let session = builder.create_string(&self.session_token);
 
-        let pub_key_holder = builder.create_vector(&public_key);
         let lock_update_event = StartedUpdate::create(
             &mut builder,
             &StartedUpdateArgs {
@@ -954,15 +961,8 @@ impl LockCtx {
         // UGH. We have to build the whole message over again because of the way
         // Rust implements flatbuffers.
         let mut builder = FlatBufferBuilder::with_capacity(1024);
-        let public_key: Vec<u8> = self
-            .lock_public_key
-            .unwrap()
-            .to_sec1_bytes()
-            .as_ref()
-            .to_vec();
+        let pub_key_holder = builder.create_vector(self.lock_public_key.unwrap().to_sec1_bytes().as_ref());
         let session = builder.create_string(&self.session_token);
-
-        let pub_key_holder = builder.create_vector(&public_key);
         let lock_update_event = StartedUpdate::create(
             &mut builder,
             &StartedUpdateArgs {
@@ -1153,21 +1153,21 @@ impl LockCtx {
         }
     }
 
-    pub fn get_keyring(&self) -> HashMap<String, &VerifyingKey> {
-        let mut keys: HashMap<String, &VerifyingKey> = HashMap::new();
+    pub fn get_keyring(&self) -> HashMap<&str, &VerifyingKey> {
+        let mut keys: HashMap<&str, &VerifyingKey> = HashMap::new();
         if let Some(contract) = &self.contract {
             keys.insert(
-                "contract".to_string(),
+                "contract",
                 contract.public_key.as_ref().unwrap(),
             );
 
             for bot in &contract.bots {
-                keys.insert(bot.name.clone(), bot.public_key.as_ref().unwrap());
+                keys.insert(bot.name.as_str(), bot.public_key.as_ref().unwrap());
             }
         }
         if let Some(safety_keys) = &self.configuration.safety_keys {
             for k in safety_keys {
-                keys.insert(k.name.clone(), k.public_key.as_ref().unwrap());
+                keys.insert(k.name.as_str(), k.public_key.as_ref().unwrap());
             }
         }
         keys

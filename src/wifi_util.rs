@@ -1,4 +1,4 @@
-pub fn parse_wifi_qr(qr_code: String) -> Option<(String, String)> {
+pub fn parse_wifi_qr(qr_code: &str) -> Option<(String, String)> {
     if qr_code.starts_with("WIFI:") {
         let mut ssid = String::new();
         let mut password = String::new();
