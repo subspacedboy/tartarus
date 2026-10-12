@@ -1,3 +1,4 @@
+#[allow(deprecated)]
 use crate::firmware_updater::MessageAssembler;
 use crate::internal_config::InternalConfig;
 use embedded_svc::mqtt::client::EventPayload::Received;

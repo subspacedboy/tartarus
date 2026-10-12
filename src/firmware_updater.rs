@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use crate::firmware_generated::club;
 use crate::firmware_generated::club::subjugated::fb::message::firmware::{
     FirmwareChallengeResponse, FirmwareChallengeResponseArgs, FirmwareMessage, FirmwareMessageArgs,
@@ -13,7 +15,6 @@ use std::cell::RefCell;
 
 use crate::mqtt_service::{MqttService, SignedMessageTransport, TopicType};
 use crate::Esp32Rng;
-use anyhow::anyhow;
 use embedded_svc::ota::SlotState;
 use esp_idf_hal::cpu::Core::Core1;
 use esp_idf_hal::task::thread::ThreadSpawnConfiguration;
@@ -29,6 +30,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
+#[deprecated(note = "OTA updates are deprecated; firmware updates are done via wired connection")]
 pub struct MessageAssembler {
     pub current_message: Vec<u8>,
     pub started: bool,
@@ -115,6 +117,7 @@ pub fn read_as_firmware_message(data: &[u8]) -> Result<FirmwareMessageType, Stri
     }
 }
 
+#[deprecated(note = "OTA updates are deprecated; firmware updates are done via wired connection")]
 pub struct FirmwareManager {
     pub total_size: usize,
     pub acked_size: usize,
@@ -420,7 +423,6 @@ impl FirmwareManager {
 
     pub fn is_update_available(&mut self) -> bool {
         if self.next_firmware_version.is_none() {
-            log::info!("No next firmware version during check");
             return false;
         }
 
@@ -432,9 +434,22 @@ impl FirmwareManager {
         self.next_firmware_version.as_ref().unwrap().clone()
     }
 
+    #[deprecated(note = "OTA updates are deprecated; firmware updates are done via wired connection")]
     pub fn sanity_check_or_abort(&self) -> anyhow::Result<()> {
-        let mut ota = EspOta::new()?;
-        let running_slot = ota.get_running_slot()?;
+        let mut ota = match EspOta::new() {
+            Ok(ota) => ota,
+            Err(e) => {
+                log::info!("OTA not enabled/present in partition table ({:?}); running from factory partition.", e);
+                return Ok(());
+            }
+        };
+        let running_slot = match ota.get_running_slot() {
+            Ok(slot) => slot,
+            Err(e) => {
+                log::info!("No OTA running slot found ({:?}); running from factory partition.", e);
+                return Ok(());
+            }
+        };
 
         if running_slot.state == SlotState::Factory {
             log::info!("Factory slot can't be marked");
@@ -449,7 +464,7 @@ impl FirmwareManager {
 
             if is_app_valid {
                 log::info!("Marking valid.");
-                ota.mark_running_slot_valid()?;
+                let _ = ota.mark_running_slot_valid();
             } else {
                 ota.mark_running_slot_invalid_and_reboot();
             }
@@ -458,27 +473,27 @@ impl FirmwareManager {
         Ok(())
     }
 
+    #[deprecated(note = "OTA updates are deprecated; firmware updates are done via wired connection")]
     pub fn get_running_version(&mut self) -> anyhow::Result<String> {
         if self.current_running_firmware.is_none() {
-            let ota = EspOta::new().expect("Ota new");
-
-            if let Ok(slot) = ota.get_running_slot() {
-                if let Some(firmware) = slot.firmware {
-                    self.current_running_firmware = Some(firmware.version.to_string());
-                    Ok(firmware.version.to_string())
-                } else {
-                    Err(anyhow!("Failed to get firmware version"))
+            if let Ok(ota) = EspOta::new() {
+                if let Ok(slot) = ota.get_running_slot() {
+                    if let Some(firmware) = slot.firmware {
+                        self.current_running_firmware = Some(firmware.version.to_string());
+                    }
                 }
-            } else {
-                Err(anyhow!("Failed to get firmware version"))
             }
-        } else {
-            let current_running = self.current_running_firmware.as_ref().unwrap();
-            Ok(current_running.clone())
+            if self.current_running_firmware.is_none() {
+                self.current_running_firmware = Some(env!("CARGO_PKG_VERSION").to_string());
+            }
         }
+
+        let current_running = self.current_running_firmware.as_ref().unwrap();
+        Ok(current_running.clone())
     }
 }
 
+#[deprecated(note = "OTA updates are deprecated; firmware updates are done via wired connection")]
 pub struct FirmwareUpdater {
     incoming_bytes: Arc<Mutex<VecDeque<Vec<u8>>>>,
     complete: Arc<Mutex<bool>>,

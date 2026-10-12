@@ -95,14 +95,14 @@ impl<T: HasTable> HashTableBytes<T> for T {
         let vtable_start = message_table_start - vtable_offset;
         let message_buffer = &incoming_data[vtable_start..contract_end];
 
-        log::info!(
+        log::debug!(
             "Unlock buffer w/ vtable ({},{}): {:?}",
             vtable_start,
             contract_end,
             message_buffer.bytes()
         );
         let hash: Output<Sha256> = Sha256::digest(message_buffer);
-        log::info!("Hash: {:?}", hash);
+        log::debug!("Hash: {:?}", hash);
         hash
     }
 }

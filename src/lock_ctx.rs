@@ -8,6 +8,7 @@ use crate::event_generated::club::subjugated::fb::event::{
     CommonMetadata, CommonMetadataArgs, Event, EventArgs, EventType, SignedEvent, SignedEventArgs,
 };
 use crate::fb_helper::calculate_signature;
+#[allow(deprecated)]
 use crate::firmware_updater::FirmwareManager;
 use crate::internal_config::InternalConfig;
 use crate::internal_contract::{InternalContract, InternalResetCommand, SaveState};
