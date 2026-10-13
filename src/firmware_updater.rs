@@ -508,7 +508,7 @@ impl FirmwareUpdater {
         let complete_ref = Arc::clone(&updater.complete);
 
         ThreadSpawnConfiguration {
-            name: Some("firmware-thread\x00".as_bytes()),
+            name: Some(c"firmware-thread"),
             stack_size: 5000,
             // priority: 15,
             pin_to_core: Some(Core1),

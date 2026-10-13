@@ -16,7 +16,7 @@ build-std = ["std", "panic_abort"]
 [env]
 MCU="esp32s3"
 # Note: this variable is not used by the pio builder (`cargo build --features pio`)
-ESP_IDF_VERSION = "v5.1.3"
+ESP_IDF_VERSION = "v5.5.4"
 
 # Workaround for https://github.com/esp-rs/esp-idf-template/issues/174 until
 # https://github.com/esp-rs/esp-idf-hal/pull/387 gets released and the template

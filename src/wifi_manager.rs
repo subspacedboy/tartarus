@@ -2,7 +2,6 @@ use std::cmp::PartialEq;
 use std::sync::{Mutex, OnceLock};
 use embedded_svc::wifi::{AuthMethod, ClientConfiguration, Configuration, PmfConfiguration, ScanMethod, ScanSortMethod};
 use esp_idf_hal::{modem, sys};
-use esp_idf_hal::peripheral::Peripheral;
 use esp_idf_hal::sys::{esp_wifi_set_country, wifi_country_t};
 use esp_idf_svc::eventloop::{EspEventLoop, System};
 use esp_idf_svc::nvs::{EspNvs, EspNvsPartition, NvsDefault};
@@ -23,14 +22,14 @@ pub(crate) struct WifiManager {
     pub(crate) password: Option<String>,
     wifi: Option<BlockingWifi<EspWifi<'static>>>,
     pub(crate) sys_loop: EspEventLoop<System>,
-    pub(crate) modem:  modem::Modem,
+    pub(crate) modem:  modem::Modem<'static>,
     nvs_default: EspNvsPartition<NvsDefault>,
     state: WifiState,
 }
 
 impl WifiManager {
     pub fn new(nvs_default: EspNvsPartition<NvsDefault>,
-               modem:  modem::Modem,
+               modem:  modem::Modem<'static>,
                sys_loop: EspEventLoop<System>,
     ) -> Self {
         let mut manager = WifiManager { ssid: None,
@@ -86,7 +85,7 @@ impl WifiManager {
 
     unsafe fn load_wifi_driver(&mut self) {
         let mut wifi: BlockingWifi<EspWifi> = BlockingWifi::wrap(
-            EspWifi::new(self.modem.clone_unchecked(), self.sys_loop.clone(), Some(self.nvs_default.clone()))
+            EspWifi::new(modem::Modem::steal(), self.sys_loop.clone(), Some(self.nvs_default.clone()))
                 .expect("EspWifi to work"),
             self.sys_loop.clone(),
         ).expect("Wifi to start");

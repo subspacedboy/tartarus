@@ -40,15 +40,15 @@ use esp_idf_svc::hal::ledc::LedcTimerDriver;
 use esp_idf_svc::hal::ledc::Resolution;
 use mipidsi::models::ST7789;
 use mipidsi::options::{ColorInversion, Orientation, Rotation};
-use mipidsi::{Builder, Display};
+use mipidsi::Builder;
 use std::thread::sleep;
 use std::time::Duration;
 
-use esp_idf_hal::delay::NON_BLOCK;
-use esp_idf_hal::gpio::{AnyIOPin, Gpio40, Gpio41, Output, PinDriver, Pull};
+use esp_idf_hal::delay::TickType;
+use esp_idf_hal::gpio::{AnyIOPin, Output, PinDriver, Pull};
 use esp_idf_hal::i2c::{I2cConfig, I2cDriver};
 use esp_idf_hal::peripherals::Peripherals;
-use esp_idf_hal::prelude::FromValueType;
+use esp_idf_hal::units::FromValueType;
 use esp_idf_hal::spi;
 use esp_idf_hal::spi::{SpiDeviceDriver, SpiDriver};
 use esp_idf_hal::units::KiloHertz;
@@ -118,8 +118,7 @@ fn main() {
     let mut tft_power = PinDriver::output(peripherals.pins.gpio7).expect("pin to be available");
     let mut tft_rst = PinDriver::output(peripherals.pins.gpio41).expect("to work");
     let mut tft_bl = PinDriver::output(peripherals.pins.gpio45).expect("to work");
-    // let tft_dc = peripherals.pins.gpio40;
-    let tft_dc: PinDriver<Gpio40, Output> =
+    let tft_dc: PinDriver<Output> =
         PinDriver::output(peripherals.pins.gpio40).expect("pin to work");
     let tft_cs = peripherals.pins.gpio42;
     let sclk = peripherals.pins.gpio36;
@@ -131,14 +130,9 @@ fn main() {
     let qr_reader_sda: AnyIOPin = peripherals.pins.gpio3.into();
     let qr_reader_scl: AnyIOPin = peripherals.pins.gpio4.into();
 
-    let mut d0_button = PinDriver::input(peripherals.pins.gpio0).expect("pin to be available");
-    let mut d1_button = PinDriver::input(peripherals.pins.gpio1).expect("pin to be available");
-    let mut d2_button = PinDriver::input(peripherals.pins.gpio2).expect("pin to be available");
-
-    // Configure buttons
-    d0_button.set_pull(Pull::Up).unwrap();
-    d1_button.set_pull(Pull::Down).unwrap();
-    d2_button.set_pull(Pull::Down).unwrap();
+    let mut d0_button = PinDriver::input(peripherals.pins.gpio0, Pull::Up).expect("pin to be available");
+    let mut d1_button = PinDriver::input(peripherals.pins.gpio1, Pull::Down).expect("pin to be available");
+    let mut d2_button = PinDriver::input(peripherals.pins.gpio2, Pull::Down).expect("pin to be available");
 
     // Make sure to configure WiFi before enabling the TFT backlight.
     // Warming up wifi
@@ -163,7 +157,7 @@ fn main() {
         Some(sdi),
         Some(tft_cs),
         &spi::SpiDriverConfig::new().dma(spi::Dma::Disabled),
-        &spi::SpiConfig::new().baudrate(10.MHz().into()),
+        &spi::SpiConfig::new().baudrate(10_u32.MHz().into()),
     )
     .expect("SpiDeviceDriver to work");
 
@@ -171,11 +165,7 @@ fn main() {
     let buffer: &'static mut [u8; 512] = unsafe { &mut SPI_BUFFER };
     let di = SpiInterface::new(spi, tft_dc, buffer);
 
-    let mut display: Display<
-        SpiInterface<SpiDeviceDriver<SpiDriver>, PinDriver<Gpio40, Output>>,
-        ST7789,
-        PinDriver<Gpio41, Output>,
-    > = Builder::new(ST7789, di)
+    let mut display: crate::prelude::MyDisplay = Builder::new(ST7789, di)
         .reset_pin(tft_rst)
         .invert_colors(ColorInversion::Inverted)
         .display_size(135, 240)
@@ -328,7 +318,7 @@ fn main() {
         if let Ok(stdin_payload) = stdin_rx.try_recv() {
             log::info!("Injecting STDIN payload into qr_data: {} bytes", stdin_payload.len());
             data = Some(stdin_payload);
-        } else if i2c_driver.read(READER_ADDRESS, &mut rx_buf, NON_BLOCK).is_ok() {
+        } else if i2c_driver.read(READER_ADDRESS, &mut rx_buf, TickType::new_millis(25).ticks()).is_ok() {
             // 1. Read the 16-bit little-endian length properly
             let size = u16::from_le_bytes([rx_buf[0], rx_buf[1]]) as usize;
 

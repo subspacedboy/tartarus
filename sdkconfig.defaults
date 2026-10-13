@@ -3,6 +3,9 @@ CONFIG_ESP_MAIN_TASK_STACK_SIZE=17000
 
 CONFIG_PTHREAD_TASK_STACK_SIZE_DEFAULT=5000
 
+CONFIG_LOG_COLORS=y
+CONFIG_BOOTLOADER_LOG_COLORS=y
+
 # Use this to set FreeRTOS kernel tick frequency to 1000 Hz (100 Hz by default).
 # This allows to use 1 ms granuality for thread sleeps (10 ms by default).
 #CONFIG_FREERTOS_HZ=1000
