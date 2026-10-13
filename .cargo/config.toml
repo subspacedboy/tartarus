@@ -17,6 +17,10 @@ build-std = ["std", "panic_abort"]
 MCU="esp32s3"
 # Note: this variable is not used by the pio builder (`cargo build --features pio`)
 ESP_IDF_VERSION = "v5.5.4"
+# Copy secure boot signing key into the ESP-IDF build directory
+ESP_IDF_GLOB_COREROOT_BASE = { value = ".", relative = true }
+ESP_IDF_GLOB_COREROOT_KEY = "secure_boot_signing_key.pem"
+
 
 # Workaround for https://github.com/esp-rs/esp-idf-template/issues/174 until
 # https://github.com/esp-rs/esp-idf-hal/pull/387 gets released and the template
