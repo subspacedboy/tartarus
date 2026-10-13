@@ -6,7 +6,6 @@ use crate::firmware_generated::club::subjugated::fb::message::firmware::{
     GetFirmwareChunkRequest, GetFirmwareChunkRequestArgs, GetLatestFirmwareRequest,
     GetLatestFirmwareRequestArgs, MessagePayload, Version, VersionArgs,
 };
-use crate::generated::get_challenge_key;
 use crate::internal_firmware::{
     FirmwareMessageType, InternalChallenge, InternalFirmwareChunk, InternalFirmwareResponse,
 };
@@ -29,6 +28,42 @@ use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
+use p256::ecdsa::SigningKey;
+
+pub fn get_challenge_key() -> Option<SigningKey> {
+    obfstr::obfstr! {
+        let hex_key = include_str!(concat!(env!("OUT_DIR"), "/key_parts.rs"));
+    }
+
+    let hex_key = hex_key.trim();
+    if hex_key.is_empty() {
+        log::info!("We DO NOT have an authenticity key");
+        return None;
+    }
+
+    log::info!("We have an authenticity key");
+    let mut key_bytes = [0u8; 32];
+    match data_encoding::HEXLOWER.decode_mut(hex_key.as_bytes(), &mut key_bytes) {
+        Ok(_) => {
+            let signing_key = match SigningKey::from_slice(&key_bytes) {
+                Ok(k) => Some(k),
+                Err(e) => {
+                    log::error!("Failed to parse signing key: {:?}", e);
+                    None
+                }
+            };
+            key_bytes.fill(0);
+            signing_key
+        }
+        Err(e) => {
+            key_bytes.fill(0);
+            log::error!("Failed to decode hex key: {:?}", e);
+            None
+        }
+    }
+}
+
+
 
 #[deprecated(note = "OTA updates are deprecated; firmware updates are done via wired connection")]
 pub struct MessageAssembler {
