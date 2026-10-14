@@ -17,7 +17,7 @@ pub struct InternalContract {
     pub temporary_unlock_allowed: bool,
     #[serde(with = "verifying_key_serde")]
     pub public_key: Option<VerifyingKey>,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub original_bytes: Vec<u8>,
     pub command_counter: u16,
     pub bots: Vec<InternalBot>,
@@ -125,7 +125,7 @@ impl InternalResetCommand {
 
 impl From<Contract<'_>> for InternalContract {
     fn from(contract: Contract<'_>) -> InternalContract {
-        let verifying_key = VerifyingKey::from_sec1_bytes(contract.public_key().unwrap().bytes())
+        let verifying_key = crate::internal_config::parse_verifying_key(contract.public_key().unwrap().bytes())
             .expect("Valid public key");
 
         let mut internal_bots: Vec<InternalBot> = Vec::new();
@@ -199,7 +199,7 @@ impl From<Bot<'_>> for InternalBot {
         let internal_permission: Option<InternalPermission> =
             bot.permissions().as_ref().map(|p| (*p).into());
 
-        let verifying_key = VerifyingKey::from_sec1_bytes(bot.public_key().unwrap().bytes())
+        let verifying_key = crate::internal_config::parse_verifying_key(bot.public_key().unwrap().bytes())
             .expect("Valid public key");
 
         Self {

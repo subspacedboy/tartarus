@@ -274,20 +274,26 @@ fn main() {
                 ble_server::BleEvent::SetWifiSsid(ssid) => {
                     log::info!("BLE updating WiFi SSID: {}", ssid);
                     if let Some(mgr_cell) = crate::wifi_manager::WIFI_MANAGER.get() {
-                        let mut mgr = mgr_cell.lock().unwrap();
-                        mgr.ssid = Some(ssid);
-                        if mgr.password.is_some() {
-                            let _ = mgr.robust_connect();
+                        let should_connect = {
+                            let mut mgr = mgr_cell.lock().unwrap();
+                            mgr.ssid = Some(ssid);
+                            mgr.password.is_some()
+                        };
+                        if should_connect {
+                            crate::wifi_manager::trigger_async_connect();
                         }
                     }
                 }
                 ble_server::BleEvent::SetWifiPassword(pass) => {
                     log::info!("BLE updating WiFi password");
                     if let Some(mgr_cell) = crate::wifi_manager::WIFI_MANAGER.get() {
-                        let mut mgr = mgr_cell.lock().unwrap();
-                        mgr.password = Some(pass);
-                        if mgr.ssid.is_some() {
-                            let _ = mgr.robust_connect();
+                        let should_connect = {
+                            let mut mgr = mgr_cell.lock().unwrap();
+                            mgr.password = Some(pass);
+                            mgr.ssid.is_some()
+                        };
+                        if should_connect {
+                            crate::wifi_manager::trigger_async_connect();
                         }
                     }
                 }
@@ -367,7 +373,7 @@ fn main() {
         }
 
         let is_connected = if let Some(m) = WIFI_MANAGER.get() {
-            if let Ok(guard) = m.lock() {
+            if let Ok(guard) = m.try_lock() {
                 guard.is_connected()
             } else {
                 false

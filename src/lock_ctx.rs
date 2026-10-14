@@ -139,27 +139,7 @@ impl LockCtx {
 
         // This must come after key loading and contract state restoration
         // because we're announcing to the coordinator with our public key and current contract.
-        let manager = WIFI_MANAGER.get().unwrap().lock().unwrap();
-        if manager.is_connected() {
-            // Start MQTT service
-            let mqtt_service = MqttService::new(
-                lck.configuration.clone(),
-                lck.session_token.clone(),
-                lck.mqtt_password.clone(),
-            );
-            lck.mqtt_service = Some(Rc::new(RefCell::new(mqtt_service)));
-
-            if let Some(mut mqtt_service) = lck.mqtt_service.as_ref().map(|m| m.borrow_mut()) {
-                mqtt_service.start_mqtt();
-            }
-
-            lck.enqueue_announce_message();
-            if let Some(mqtt_service) = lck.mqtt_service.as_ref() {
-                lck.firmware_manager.set_mqtt_service(mqtt_service.clone());
-            }
-            lck.firmware_manager.enqueue_get_latest_firmware();
-        }
-        drop(manager);
+        lck.start_mqtt_service_if_connected();
 
         // Do some sanity checks?
         if let Ok(version) = lck.firmware_manager.get_running_version() {
@@ -287,9 +267,47 @@ impl LockCtx {
         private_key
     }
 
+    pub fn start_mqtt_service_if_connected(&mut self) {
+        if self.mqtt_service.is_some() {
+            return;
+        }
+
+        let is_connected = if let Some(m) = WIFI_MANAGER.get() {
+            if let Ok(guard) = m.try_lock() {
+                guard.is_connected()
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        if is_connected {
+            log::info!("Wi-Fi connected. Starting MQTT service and announcing to coordinator...");
+            let mqtt_service = MqttService::new(
+                self.configuration.clone(),
+                self.session_token.clone(),
+                self.mqtt_password.clone(),
+            );
+            self.mqtt_service = Some(Rc::new(RefCell::new(mqtt_service)));
+
+            if let Some(mut mqtt_service) = self.mqtt_service.as_ref().map(|m| m.borrow_mut()) {
+                mqtt_service.start_mqtt();
+            }
+
+            self.enqueue_announce_message();
+            if let Some(mqtt_service) = self.mqtt_service.as_ref() {
+                self.firmware_manager.set_mqtt_service(mqtt_service.clone());
+            }
+            self.firmware_manager.enqueue_get_latest_firmware();
+        }
+    }
+
     /// The primary event loop of the firmware. This is called by `main` in fixed intervals of milliseconds.
     /// If the buttons on the face are pressed they'll be passed in here as part of the TickUpdate.
     pub fn tick(&mut self, update: TickUpdate) {
+        self.start_mqtt_service_if_connected();
+
         // Update time
         self.time_in_ticks += update.since_last.as_millis() as u64;
 
@@ -504,10 +522,14 @@ impl LockCtx {
         if let Ok(maybe_str) = std::str::from_utf8(qr_data) {
             if maybe_str.starts_with("WIFI:") {
                 if let Some((ssid, password)) = crate::wifi_util::parse_wifi_qr(maybe_str) {
-                    let mut manager = crate::wifi_manager::WIFI_MANAGER.get().unwrap().lock().unwrap();
-                    manager.ssid = Some(ssid);
-                    manager.password = Some(password);
-                    let _ = manager.robust_connect();
+                    if let Some(mgr_cell) = crate::wifi_manager::WIFI_MANAGER.get() {
+                        {
+                            let mut manager = mgr_cell.lock().unwrap();
+                            manager.ssid = Some(ssid);
+                            manager.password = Some(password);
+                        }
+                        crate::wifi_manager::trigger_async_connect();
+                    }
                     return;
                 }
             }
@@ -524,25 +546,95 @@ impl LockCtx {
         }
 
         // 3. Check if signed contract or command
+        let clean_qr_data = if let Ok(s) = std::str::from_utf8(qr_data) {
+            s.trim().as_bytes()
+        } else {
+            qr_data
+        };
+
+        if clean_qr_data.is_empty() {
+            return;
+        }
+
         let verifier = SignedMessageVerifier::new();
         let keys = self.get_keyring();
-        let decoded = BASE64.decode(qr_data).ok();
-        let payload = decoded.as_deref().unwrap_or(qr_data);
-        let (min_counter, contract_serial) = self.contract.as_ref().map(|c| (c.command_counter, c.serial_number)).unwrap_or((0, 0));
+        let decoded = BASE64.decode(clean_qr_data).ok();
+        let payload = decoded.as_deref().unwrap_or(clean_qr_data);
+        let (min_counter, contract_serial) = self
+            .contract
+            .as_ref()
+            .map(|c| (c.command_counter, c.serial_number))
+            .unwrap_or((0, 0));
 
-        if let Ok(cmd) = verifier.verify(payload, &keys, min_counter, contract_serial) {
-            let counter_to_update = match &cmd {
-                VerifiedType::UnlockCommand(c) => Some(c.counter),
-                VerifiedType::LockCommand(c) => Some(c.counter),
-                VerifiedType::ReleaseCommand(c) => Some(c.counter),
-                VerifiedType::AbortCommand(c) => Some(c.counter),
-                _ => None,
-            };
-            if let Ok(_) = self.process_command(cmd) {
-                if let Some(counter) = counter_to_update {
-                    self.increment_command_counter(counter);
+        match verifier.verify(payload, &keys, min_counter, contract_serial) {
+            Ok(cmd) => {
+                let for_acknowledgement = cmd.clone();
+                let counter_to_update = match &cmd {
+                    VerifiedType::UnlockCommand(c) => Some(c.counter),
+                    VerifiedType::LockCommand(c) => Some(c.counter),
+                    VerifiedType::ReleaseCommand(c) => Some(c.counter),
+                    VerifiedType::AbortCommand(c) => Some(c.counter),
+                    _ => None,
+                };
+                match self.process_command(cmd) {
+                    Ok(_) => {
+                        if let Some(counter) = counter_to_update {
+                            self.increment_command_counter(counter);
+                        }
+                        self.save_state_if_dirty();
+
+                        let acknowledger = Acknowledger::new();
+                        let signing_key = self.get_signing_key();
+                        let ack_buffer = acknowledger.build_acknowledgement(
+                            for_acknowledgement,
+                            &self.session_token,
+                            &self.lock_public_key.unwrap(),
+                            &signing_key,
+                        );
+                        let b64 = BASE64.encode(&ack_buffer);
+                        println!("RESULT:{}", b64);
+                        use std::io::Write;
+                        let _ = std::io::stdout().flush();
+                        let ack_message =
+                            SignedMessageTransport::new(ack_buffer, Acknowledgments);
+                        self.enqueue_message(ack_message);
+                    }
+                    Err(e) => {
+                        let acknowledger = Acknowledger::new();
+                        let signing_key = self.get_signing_key();
+                        let ack_buffer = acknowledger.build_error_for_command(
+                            for_acknowledgement,
+                            &self.session_token,
+                            &self.lock_public_key.unwrap(),
+                            &signing_key,
+                            &e,
+                        );
+                        let b64 = BASE64.encode(&ack_buffer);
+                        println!("RESULT:{}", b64);
+                        use std::io::Write;
+                        let _ = std::io::stdout().flush();
+                        let ack_message =
+                            SignedMessageTransport::new(ack_buffer, Acknowledgments);
+                        self.enqueue_message(ack_message);
+                    }
                 }
-                self.save_state_if_dirty();
+            }
+            Err(verification_error) => {
+                log::info!("Verification error {:?}", verification_error);
+                let acknowledger = Acknowledger::new();
+                let signing_key = self.get_signing_key();
+                let ack_buffer = acknowledger.build_error(
+                    verification_error,
+                    &self.session_token,
+                    &self.lock_public_key.unwrap(),
+                    &signing_key,
+                );
+                let b64 = BASE64.encode(&ack_buffer);
+                println!("RESULT:{}", b64);
+                use std::io::Write;
+                let _ = std::io::stdout().flush();
+                let ack_message = SignedMessageTransport::new(ack_buffer, Acknowledgments);
+                self.enqueue_message(ack_message);
             }
         }
     }
@@ -849,18 +941,22 @@ impl LockCtx {
 
                 let mut bytes = Vec::new();
                 if into_writer(&save_state, &mut bytes).is_ok() {
-                    if self.nvs.set_blob("contract", &bytes).is_ok() {
-                        log::info!("Contract saved to NVS [{}]", bytes.len());
-                    } else {
-                        log::error!("Failed to save NVS [{}]", bytes.len());
+                    match self.nvs.set_blob("contract", &bytes) {
+                        Ok(_) => {
+                            log::info!("Contract saved to NVS [{}]", bytes.len());
+                            self.dirty = false;
+                        }
+                        Err(e) => {
+                            log::error!("Failed to save NVS [{}]: {:?}", bytes.len(), e);
+                            // Keep self.dirty = true to retry on subsequent ticks
+                        }
                     }
                 }
             } else {
                 log::info!("Called save state with no contract. Skipping");
+                self.dirty = false;
             }
         }
-
-        self.dirty = false;
     }
 
     pub fn end_contract(&mut self) {

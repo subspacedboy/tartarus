@@ -92,6 +92,7 @@ impl WifiManager {
 
         wifi.start().expect("Wifi should have started");
         unsafe {
+            sys::esp_wifi_set_storage(sys::wifi_storage_t_WIFI_STORAGE_RAM);
             sys::esp_wifi_set_max_tx_power(40);
         }
 
@@ -230,5 +231,35 @@ impl WifiManager {
         let password = self.password.as_ref().unwrap().as_bytes();
         nvs.set_blob("ssid", ssid).unwrap();
         nvs.set_blob("password", password).unwrap();
+    }
+}
+
+static CONNECTING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Triggers a Wi-Fi connection attempt asynchronously in a background thread
+/// so that the main UI event loop is not blocked during long connection/timeout sequences.
+pub fn trigger_async_connect() {
+    if CONNECTING.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        info!("Wi-Fi connection already in progress, skipping redundant trigger");
+        return;
+    }
+
+    let spawn_res = std::thread::Builder::new()
+        .stack_size(8192)
+        .name("wifi-connect".to_string())
+        .spawn(move || {
+            info!("Async Wi-Fi connection thread started");
+            if let Some(mgr_mutex) = WIFI_MANAGER.get() {
+                if let Ok(mut mgr) = mgr_mutex.lock() {
+                    let _ = mgr.robust_connect();
+                }
+            }
+            CONNECTING.store(false, std::sync::atomic::Ordering::SeqCst);
+            info!("Async Wi-Fi connection thread completed");
+        });
+
+    if let Err(e) = spawn_res {
+        CONNECTING.store(false, std::sync::atomic::Ordering::SeqCst);
+        log::error!("Failed to spawn async Wi-Fi connection thread: {:?}", e);
     }
 }

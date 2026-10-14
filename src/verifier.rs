@@ -225,7 +225,7 @@ impl SignedMessageVerifier {
                             });
                         }
                         log::debug!("Contract Public Key: {:?}", contract.public_key().unwrap());
-                        let verifying_key = match VerifyingKey::from_sec1_bytes(
+                        let verifying_key = match crate::internal_config::parse_verifying_key(
                             contract.public_key().unwrap().bytes(),
                         ) {
                             Ok(valid_key) => valid_key,
