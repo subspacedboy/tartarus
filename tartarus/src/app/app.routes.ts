@@ -23,6 +23,8 @@ import {adminGuard} from "./admin.guard";
 import {LogoutLockUserComponent} from "./logout-lock-user/logout-lock-user.component";
 import {AdminLandingPageComponent} from './admin/admin-landing-page/admin-landing-page.component';
 import {AdminLockSessionsComponent} from './admin/admin-lock-sessions/admin-lock-sessions.component';
+import {UpdaterComponent} from './updater/updater.component';
+import {ConsoleComponent} from './console/console.component';
 
 export const routes: Routes = [
   {
@@ -91,6 +93,14 @@ export const routes: Routes = [
   {
     path: 'key-helper',
     component: KeyHelperComponent
+  },
+  {
+    path: 'updater',
+    component: UpdaterComponent
+  },
+  {
+    path: 'console',
+    component: ConsoleComponent
   },
   {
     path: 'admin',

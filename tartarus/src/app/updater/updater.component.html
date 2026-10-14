@@ -1,0 +1,361 @@
+<div class="container py-4">
+  <!-- Title & Status Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom flex-wrap gap-2">
+    <div>
+      <h2 class="mb-1">Tartarus Firmware Flasher ⚡</h2>
+      <p class="text-muted mb-0">
+        Flash signed firmware and migrate older devices to Secure Boot v2 safely via Web Serial without erasing NVS.
+      </p>
+    </div>
+    <div>
+      @if (connectionState() === 'flashing') {
+        <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+          <span class="spinner-border spinner-border-sm me-1" role="status"></span> Flashing: {{ progressPercent() }}%
+        </span>
+      } @else if (connectionState() === 'connected') {
+        <span class="badge bg-success fs-6 px-3 py-2">
+          Connected: {{ connectedChip() || 'ESP32-S3' }}
+        </span>
+      } @else if (connectionState() === 'connecting') {
+        <span class="badge bg-info text-dark fs-6 px-3 py-2">
+          Connecting...
+        </span>
+      } @else if (connectionState() === 'done') {
+        <span class="badge bg-primary fs-6 px-3 py-2">
+          Update Complete!
+        </span>
+      } @else if (connectionState() === 'error') {
+        <span class="badge bg-danger fs-6 px-3 py-2">
+          Error
+        </span>
+      } @else {
+        <span class="badge bg-secondary fs-6 px-3 py-2">
+          Disconnected
+        </span>
+      }
+    </div>
+  </div>
+
+  <!-- Browser Support Warning -->
+  @if (!isSerialSupported()) {
+    <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
+      <div>
+        <h5 class="alert-heading mb-1">Web Serial API Not Supported</h5>
+        <p class="mb-0">
+          Your browser does not support the Web Serial API required to communicate with ESP32-S3 over USB.
+          Please open this page in <strong>Google Chrome</strong>, <strong>Microsoft Edge</strong>, or <strong>Opera</strong> on desktop.
+        </p>
+      </div>
+    </div>
+  }
+
+  <div class="row g-4">
+    <!-- Left Column: Controls & Configuration -->
+    <div class="col-lg-7">
+
+      <!-- 1. Connection Card -->
+      <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+          <span class="fw-bold">1. Device Connection</span>
+          <small class="text-muted">Target: ESP32-S3 USB Serial</small>
+        </div>
+        <div class="card-body">
+          @if (connectionState() === 'disconnected' || connectionState() === 'error' || connectionState() === 'done') {
+            <p class="card-text text-muted mb-3">
+              Connect your Tartarus device to this computer via USB-C. Make sure no other serial monitor (like <code>espflash</code> or Arduino IDE) is using the port.
+            </p>
+
+            <div class="row g-2 align-items-center mb-3">
+              <div class="col-auto">
+                <label for="baudRateSelect" class="col-form-label small fw-bold">Flashing Baud Rate:</label>
+              </div>
+              <div class="col-auto">
+                <select
+                  id="baudRateSelect"
+                  class="form-select form-select-sm"
+                  [ngModel]="baudRate()"
+                  (ngModelChange)="baudRate.set($event)"
+                >
+                  <option [ngValue]="115200">115,200 (Safe / Slow)</option>
+                  <option [ngValue]="460800">460,800 (Standard / Recommended)</option>
+                  <option [ngValue]="921600">921,600 (Fast)</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              class="btn btn-primary btn-lg w-100"
+              [disabled]="!isSerialSupported()"
+              (click)="connect()"
+            >
+              Connect to Device
+            </button>
+          } @else if (connectionState() === 'connecting') {
+            <div class="text-center py-3">
+              <div class="spinner-border text-primary mb-2" role="status"></div>
+              <p class="mb-0 text-muted">Syncing with ESP32 ROM bootloader...</p>
+            </div>
+          } @else {
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <strong class="text-success d-block">Connected to {{ connectedChip() || 'ESP32-S3' }}</strong>
+                <small class="text-muted">{{ baudRate() }} baud &bull; Ready for flashing</small>
+              </div>
+              <button
+                class="btn btn-outline-danger"
+                [disabled]="connectionState() === 'flashing'"
+                (click)="disconnect()"
+              >
+                Disconnect
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- 2. Flashing Preset Card -->
+      <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+          <span class="fw-bold">2. Flash Configuration & Mode</span>
+          <span class="badge bg-success">NVS Safe</span>
+        </div>
+        <div class="card-body">
+          <label class="form-label fw-bold mb-2">Select Flashing Mode:</label>
+
+          <!-- Preset: Migration -->
+          <div class="form-check p-3 mb-2 border rounded bg-light">
+            <input
+              class="form-check-input"
+              type="radio"
+              name="presetRadio"
+              id="presetMigration"
+              value="migration"
+              [checked]="selectedPreset() === 'migration'"
+              (change)="selectedPreset.set('migration')"
+              [disabled]="connectionState() === 'flashing'"
+            />
+            <label class="form-check-label ms-1" for="presetMigration">
+              <strong class="text-primary d-block">Secure Boot v2 Migration (Recommended for Older Devices)</strong>
+              <small class="text-muted d-block mt-1">
+                Flashes the signed bootloader (<code>0x0000</code>), partition table (<code>0x8000</code>), and signed application (<code>0x10000</code>).
+              </small>
+              <div class="alert alert-success py-2 px-3 mt-2 mb-0 small">
+                🛡️ <strong>Zero Data Loss:</strong> NVS storage (<code>0x9000</code>&ndash;<code>0xD000</code>) containing your device keys, credentials, and settings is preserved untouched!
+              </div>
+            </label>
+          </div>
+
+          <!-- Preset: App Only -->
+          <div class="form-check p-3 mb-2 border rounded bg-light">
+            <input
+              class="form-check-input"
+              type="radio"
+              name="presetRadio"
+              id="presetAppOnly"
+              value="app_only"
+              [checked]="selectedPreset() === 'app_only'"
+              (change)="selectedPreset.set('app_only')"
+              [disabled]="connectionState() === 'flashing'"
+            />
+            <label class="form-check-label ms-1" for="presetAppOnly">
+              <strong class="d-block">Application Update Only</strong>
+              <small class="text-muted d-block mt-1">
+                Flashes only <code>app.bin</code> (or <code>tartarus-firmware-signed.bin</code>) to offset <code>0x10000</code>.
+                Use for standard firmware updates when your bootloader is already running Secure Boot v2.
+              </small>
+            </label>
+          </div>
+
+          <!-- Preset: Custom -->
+          <div class="form-check p-3 mb-3 border rounded bg-light">
+            <input
+              class="form-check-input"
+              type="radio"
+              name="presetRadio"
+              id="presetCustom"
+              value="custom"
+              [checked]="selectedPreset() === 'custom'"
+              (change)="selectedPreset.set('custom')"
+              [disabled]="connectionState() === 'flashing'"
+            />
+            <label class="form-check-label ms-1" for="presetCustom">
+              <strong class="d-block">Custom Partitions & Local File Upload</strong>
+              <small class="text-muted d-block mt-1">
+                Manually upload local binary files or specify custom partition offsets.
+              </small>
+            </label>
+          </div>
+
+          <!-- Firmware Base URL -->
+          <div class="mb-3">
+            <label for="baseUrlInput" class="form-label fw-bold">Firmware Server URL</label>
+            <input
+              id="baseUrlInput"
+              type="text"
+              class="form-control font-monospace form-control-sm"
+              [ngModel]="baseUrl()"
+              (ngModelChange)="baseUrl.set($event)"
+              placeholder="https://domain.com/firmware/"
+              [disabled]="connectionState() === 'flashing'"
+            />
+            <div class="form-text small">
+              Base URL hosting <code>bootloader.bin</code>, <code>partitions.bin</code>, and <code>app.bin</code>.
+            </div>
+          </div>
+
+          <!-- Custom Slots File Selectors (Visible when custom preset selected) -->
+          @if (selectedPreset() === 'custom') {
+            <div class="border-top pt-3 mt-3">
+              <h6 class="fw-bold mb-3">Custom Binary Slots</h6>
+
+              <!-- Slot 1: Bootloader -->
+              <div class="mb-3 p-2 border rounded">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="fw-bold small">{{ customBootloader.label }}</span>
+                  <span class="badge bg-secondary font-monospace">{{ customBootloader.address }}</span>
+                </div>
+                <input
+                  type="file"
+                  class="form-control form-control-sm"
+                  accept=".bin"
+                  (change)="onFileSelected(customBootloader, $event)"
+                  [disabled]="connectionState() === 'flashing'"
+                />
+                @if (customBootloader.fileName) {
+                  <small class="text-success d-block mt-1">Loaded: {{ customBootloader.fileName }}</small>
+                } @else {
+                  <small class="text-muted d-block mt-1">Will download from: {{ customBootloader.urlFilename }}</small>
+                }
+              </div>
+
+              <!-- Slot 2: Partitions -->
+              <div class="mb-3 p-2 border rounded">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="fw-bold small">{{ customPartitions.label }}</span>
+                  <span class="badge bg-secondary font-monospace">{{ customPartitions.address }}</span>
+                </div>
+                <input
+                  type="file"
+                  class="form-control form-control-sm"
+                  accept=".bin"
+                  (change)="onFileSelected(customPartitions, $event)"
+                  [disabled]="connectionState() === 'flashing'"
+                />
+                @if (customPartitions.fileName) {
+                  <small class="text-success d-block mt-1">Loaded: {{ customPartitions.fileName }}</small>
+                } @else {
+                  <small class="text-muted d-block mt-1">Will download from: {{ customPartitions.urlFilename }}</small>
+                }
+              </div>
+
+              <!-- Slot 3: App -->
+              <div class="mb-3 p-2 border rounded">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="fw-bold small">{{ customApp.label }}</span>
+                  <span class="badge bg-secondary font-monospace">{{ customApp.address }}</span>
+                </div>
+                <input
+                  type="file"
+                  class="form-control form-control-sm"
+                  accept=".bin"
+                  (change)="onFileSelected(customApp, $event)"
+                  [disabled]="connectionState() === 'flashing'"
+                />
+                @if (customApp.fileName) {
+                  <small class="text-success d-block mt-1">Loaded: {{ customApp.fileName }}</small>
+                } @else {
+                  <small class="text-muted d-block mt-1">Will download from: {{ customApp.urlFilename }}</small>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- 3. Flashing Execution Card -->
+      <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-dark text-white">
+          <span class="fw-bold">3. Flash Execution</span>
+        </div>
+        <div class="card-body">
+          @if (connectionState() === 'flashing') {
+            <div class="mb-3">
+              <div class="d-flex justify-content-between mb-1">
+                <span class="small fw-bold">{{ currentAction() }}</span>
+                <span class="small fw-bold">{{ progressPercent() }}%</span>
+              </div>
+              <div class="progress" style="height: 22px;">
+                <div
+                  class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                  role="progressbar"
+                  [style.width.%]="progressPercent()"
+                  [attr.aria-valuenow]="progressPercent()"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                >
+                  {{ progressPercent() }}%
+                </div>
+              </div>
+              @if (progressDetails()) {
+                <small class="text-muted font-monospace d-block mt-1 text-truncate">
+                  {{ progressDetails() }}
+                </small>
+              }
+            </div>
+            <div class="alert alert-warning py-2 mb-0 small">
+              ⚠️ Please keep the device connected. Do not close or refresh this tab while flashing is in progress.
+            </div>
+          } @else {
+            <p class="text-muted small mb-3">
+              Ready to write. Flash writes will overwrite only designated partition sectors. Sector erase mode is used (full chip erase is disabled) to ensure NVS preservation.
+            </p>
+            <button
+              class="btn btn-success btn-lg w-100 fw-bold"
+              [disabled]="!isSerialSupported()"
+              (click)="startFlashing()"
+            >
+              @if (connectionState() === 'connected') {
+                Flash Device (NVS Protected) 🚀
+              } @else {
+                Connect & Flash Device (NVS Protected) 🚀
+              }
+            </button>
+          }
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Live Activity Terminal -->
+    <div class="col-lg-5">
+      <div class="card shadow-sm sticky-top" style="top: 1rem;">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+          <span class="fw-bold">Activity Log</span>
+          <button class="btn btn-sm btn-outline-light" (click)="clearLogs()">Clear</button>
+        </div>
+        <div #logContainer class="card-body p-0 log-terminal bg-black text-light">
+          <div class="p-3 font-monospace small">
+            @if (logs().length === 0) {
+              <div class="text-muted">No activity yet. Click "Connect" or "Flash Device" to begin.</div>
+            } @else {
+              @for (entry of logs(); track $index) {
+                <div class="log-line mb-1">
+                  <span class="text-muted me-2">[{{ entry.timestamp }}]</span>
+                  @if (entry.type === 'success') {
+                    <span class="text-success">{{ entry.message }}</span>
+                  } @else if (entry.type === 'error') {
+                    <span class="text-danger fw-bold">{{ entry.message }}</span>
+                  } @else if (entry.type === 'warn') {
+                    <span class="text-warning">{{ entry.message }}</span>
+                  } @else {
+                    <span class="text-info">{{ entry.message }}</span>
+                  }
+                </div>
+              }
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

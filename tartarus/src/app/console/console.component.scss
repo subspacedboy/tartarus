@@ -1,0 +1,39 @@
+.terminal-screen {
+  min-height: 520px;
+  max-height: calc(100vh - 250px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: #e5e7eb;
+  background-color: #0b0f19 !important;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.terminal-content {
+  display: block;
+}
+
+:host ::ng-deep .system-line {
+  font-style: italic;
+  font-weight: 500;
+  margin: 4px 0;
+}
+
+:host ::ng-deep .echo-line {
+  font-weight: 600;
+  margin: 2px 0;
+  border-left: 2px solid #0dcaf0;
+  padding-left: 6px;
+}
+
+kbd {
+  background-color: #212529;
+  color: #adb5bd;
+  border: 1px solid #495057;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.75rem;
+}

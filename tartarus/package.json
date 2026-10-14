@@ -23,6 +23,7 @@
     "@popperjs/core": "^2.11.8",
     "bootstrap": "^5.3.3",
     "bootswatch": "^5.3.3",
+    "esptool-js": "^0.7.0",
     "flatbuffers": "^25.2.10",
     "hi-base32": "^0.5.1",
     "jose": "^6.0.9",
