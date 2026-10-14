@@ -5,8 +5,13 @@ import club.subjugated.tartarus_coordinator.api.messages.NewAuthorSessionMessage
 import club.subjugated.tartarus_coordinator.api.messages.NewContractMessage
 import club.subjugated.tartarus_coordinator.api.messages.NewLockSessionMessage
 import club.subjugated.tartarus_coordinator.api.messages.NewLockUserSessionMessage
+import club.subjugated.tartarus_coordinator.api.messages.AcknowledgeCommandMessage
 import club.subjugated.tartarus_coordinator.integration.config.IntegrationTestConfig
 import club.subjugated.tartarus_coordinator.integration.helpers.makeCreateContractCommand
+import club.subjugated.tartarus_coordinator.integration.helpers.makeLoginCryptogram
+import club.subjugated.tartarus_coordinator.integration.helpers.makeSignedAcknowledgement
+import club.subjugated.tartarus_coordinator.integration.helpers.makeSignedError
+import club.subjugated.tartarus_coordinator.services.ContractService
 import club.subjugated.tartarus_coordinator.services.LockSessionService
 import club.subjugated.tartarus_coordinator.util.derToRawSignature
 import club.subjugated.tartarus_coordinator.util.encodePublicKeySecp1
@@ -38,6 +43,7 @@ class CommandControllerTest {
     @Autowired lateinit var contractController: ContractController
     @Autowired lateinit var lockUserSessionController: LockUserSessionController
     @Autowired lateinit var commandController: CommandController
+    @Autowired lateinit var contractService: ContractService
     @org.springframework.beans.factory.annotation.Value("\${tartarus.login_token_private_key}")
     lateinit var tokenPrivateKey: String
 
@@ -260,5 +266,231 @@ class CommandControllerTest {
                 )
             }
         assertThat(ex2.statusCode).isEqualTo(org.springframework.http.HttpStatus.FORBIDDEN)
+    }
+
+    @Test
+    fun testSignedAcknowledgementViaWiredSerial() {
+        val sessionToken = "QAAAW1"
+        val lockKeyPair = generateECKeyPair()
+        val lockPubKey = encodePublicKeySecp1(lockKeyPair.public as ECPublicKey)
+        val lockPubKeyBase64 = Base64.getEncoder().encodeToString(lockPubKey)
+
+        val nlsm =
+            NewLockSessionMessage(
+                publicKey = lockPubKeyBase64,
+                sessionToken = sessionToken,
+                userSessionPublicKey = "",
+            )
+
+        val lockSession = lockSessionService.createLockSession(nlsm)
+
+        val keyPair = generateECKeyPair()
+        val compressedPubKeyInBase64 =
+            Base64.getEncoder().encodeToString(encodePublicKeySecp1(keyPair.public as ECPublicKey))
+
+        val authorSessionToken = generateId()
+        val signature =
+            derToRawSignature(signEcdsaSha256(keyPair.private, authorSessionToken.toByteArray()))
+
+        val newAuthorSessionMessage =
+            NewAuthorSessionMessage(
+                publicKey = compressedPubKeyInBase64,
+                sessionToken = authorSessionToken,
+                signature = Base64.getEncoder().encodeToString(signature),
+            )
+        val response = authorSessionController.saveAuthorSession(newAuthorSessionMessage)
+
+        val pubKey = encodePublicKeySecp1(keyPair.public as ECPublicKey)
+
+        val contract =
+            makeCreateContractCommand(
+                response.body!!.name!!,
+                lockSession.shareToken!!,
+                "Test terms",
+                false,
+                keyPair.private.encoded,
+                pubKey,
+                false,
+            )
+
+        val ncm =
+            NewContractMessage(
+                shareableToken = lockSession.shareToken!!,
+                authorName = response.body!!.name,
+                signedMessage = Base64.getEncoder().encodeToString(contract.messageBytes),
+                notes = "Notes",
+            )
+
+        val (nonce, cipher) =
+            makeLoginCryptogram(
+                tokenPrivateKey,
+                lockSession.decodePublicKey(),
+                sessionToken,
+            )
+        val userKeyPair = generateECKeyPair()
+        val userPubKey =
+            Base64.getEncoder()
+                .encodeToString(encodePublicKeySecp1(userKeyPair.public as ECPublicKey))
+        val newLockUserSessionMessage =
+            NewLockUserSessionMessage(
+                sessionToken = sessionToken,
+                nonce = nonce,
+                cipher = cipher,
+                lockUserSessionPublicKey = userPubKey,
+            )
+
+        val response2 = lockUserSessionController.createLockUserSession(newLockUserSessionMessage)
+
+        val lockUser = User.withUsername(response2.body!!.name).password("asdf").build()
+        val contractResponse = contractController.saveContract(lockUser, ncm)
+
+        val contractApprovalResponse =
+            contractController.approve(lockUser, contractResponse.body!!.name)
+        assertThat(contractApprovalResponse.body!!.state).isEqualTo("ACCEPTED")
+
+        val commands =
+            commandController.getCommandsForContractForLockUser(
+                lockUser,
+                contractResponse.body!!.name,
+            )
+        assertThat(commands.body!!.size).isEqualTo(1)
+
+        val acceptContractCommand = commands.body!!.first()
+
+        val signedAckBytes =
+            makeSignedAcknowledgement(
+                sessionToken = sessionToken,
+                serialNumber = acceptContractCommand.serialNumber!!,
+                counter = 0,
+                privateKey = lockKeyPair.private.encoded,
+                publicKey = lockPubKey,
+            )
+        val signedAckBase64 = Base64.getEncoder().encodeToString(signedAckBytes)
+
+        val ackMessage = AcknowledgeCommandMessage(signedAcknowledgement = signedAckBase64)
+        val updatedCommandsResponse =
+            commandController.manuallyAcknowledgeCommand(
+                lockUser,
+                contractResponse.body!!.name,
+                acceptContractCommand.name,
+                ackMessage,
+            )
+
+        val updatedCmd = updatedCommandsResponse.body!!.first { it.name == acceptContractCommand.name }
+        assertThat(updatedCmd.state).isEqualTo("ACKNOWLEDGED")
+        assertThat(updatedCmd.isManuallyAcknowledged).isFalse()
+
+        val updatedContract = contractService.getByNameForAuthor(contractResponse.body!!.name)
+        assertThat(updatedContract.state.name).isEqualTo("CONFIRMED")
+    }
+
+    @Test
+    fun testSignedErrorViaWiredSerial() {
+        val sessionToken = "QAAAE1"
+        val lockKeyPair = generateECKeyPair()
+        val lockPubKey = encodePublicKeySecp1(lockKeyPair.public as ECPublicKey)
+        val lockPubKeyBase64 = Base64.getEncoder().encodeToString(lockPubKey)
+
+        val nlsm =
+            NewLockSessionMessage(
+                publicKey = lockPubKeyBase64,
+                sessionToken = sessionToken,
+                userSessionPublicKey = "",
+            )
+
+        val lockSession = lockSessionService.createLockSession(nlsm)
+
+        val keyPair = generateECKeyPair()
+        val compressedPubKeyInBase64 =
+            Base64.getEncoder().encodeToString(encodePublicKeySecp1(keyPair.public as ECPublicKey))
+
+        val authorSessionToken = generateId()
+        val signature =
+            derToRawSignature(signEcdsaSha256(keyPair.private, authorSessionToken.toByteArray()))
+
+        val newAuthorSessionMessage =
+            NewAuthorSessionMessage(
+                publicKey = compressedPubKeyInBase64,
+                sessionToken = authorSessionToken,
+                signature = Base64.getEncoder().encodeToString(signature),
+            )
+        val response = authorSessionController.saveAuthorSession(newAuthorSessionMessage)
+
+        val pubKey = encodePublicKeySecp1(keyPair.public as ECPublicKey)
+
+        val contract =
+            makeCreateContractCommand(
+                response.body!!.name!!,
+                lockSession.shareToken!!,
+                "Test terms",
+                false,
+                keyPair.private.encoded,
+                pubKey,
+                false,
+            )
+
+        val ncm =
+            NewContractMessage(
+                shareableToken = lockSession.shareToken!!,
+                authorName = response.body!!.name,
+                signedMessage = Base64.getEncoder().encodeToString(contract.messageBytes),
+                notes = "Notes",
+            )
+
+        val (nonce, cipher) =
+            makeLoginCryptogram(
+                tokenPrivateKey,
+                lockSession.decodePublicKey(),
+                sessionToken,
+            )
+        val userKeyPair = generateECKeyPair()
+        val userPubKey =
+            Base64.getEncoder()
+                .encodeToString(encodePublicKeySecp1(userKeyPair.public as ECPublicKey))
+        val newLockUserSessionMessage =
+            NewLockUserSessionMessage(
+                sessionToken = sessionToken,
+                nonce = nonce,
+                cipher = cipher,
+                lockUserSessionPublicKey = userPubKey,
+            )
+
+        val response2 = lockUserSessionController.createLockUserSession(newLockUserSessionMessage)
+
+        val lockUser = User.withUsername(response2.body!!.name).password("asdf").build()
+        val contractResponse = contractController.saveContract(lockUser, ncm)
+
+        contractController.approve(lockUser, contractResponse.body!!.name)
+
+        val commands =
+            commandController.getCommandsForContractForLockUser(
+                lockUser,
+                contractResponse.body!!.name,
+            )
+        val acceptContractCommand = commands.body!!.first()
+
+        val signedErrBytes =
+            makeSignedError(
+                sessionToken = sessionToken,
+                serialNumber = acceptContractCommand.serialNumber!!,
+                counter = 0,
+                errorMessage = "Servo jammed",
+                privateKey = lockKeyPair.private.encoded,
+                publicKey = lockPubKey,
+            )
+        val signedErrBase64 = Base64.getEncoder().encodeToString(signedErrBytes)
+
+        val ackMessage = AcknowledgeCommandMessage(signedAcknowledgement = signedErrBase64)
+        val updatedCommandsResponse =
+            commandController.manuallyAcknowledgeCommand(
+                lockUser,
+                contractResponse.body!!.name,
+                acceptContractCommand.name,
+                ackMessage,
+            )
+
+        val updatedCmd = updatedCommandsResponse.body!!.first { it.name == acceptContractCommand.name }
+        assertThat(updatedCmd.state).isEqualTo("ERROR")
+        assertThat(updatedCmd.message).isEqualTo("Servo jammed")
     }
 }

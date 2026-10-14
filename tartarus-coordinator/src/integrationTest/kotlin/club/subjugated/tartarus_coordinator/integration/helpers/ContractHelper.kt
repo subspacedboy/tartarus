@@ -158,3 +158,111 @@ fun makeLoginCryptogram(
     return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(nonce) to
         java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(cipherText)
 }
+
+fun makeSignedAcknowledgement(
+    sessionToken: String,
+    serialNumber: Int,
+    counter: Int,
+    privateKey: ByteArray,
+    publicKey: ByteArray,
+): ByteArray {
+    val builder = FlatBufferBuilder(1024)
+    val pubKeyOffset = builder.createByteVector(publicKey)
+    val sessionOffset = builder.createString(sessionToken)
+
+    club.subjugated.fb.message.Acknowledgement.startAcknowledgement(builder)
+    club.subjugated.fb.message.Acknowledgement.addPublicKey(builder, pubKeyOffset)
+    club.subjugated.fb.message.Acknowledgement.addSession(builder, sessionOffset)
+    club.subjugated.fb.message.Acknowledgement.addSerialNumber(builder, serialNumber.toUShort())
+    club.subjugated.fb.message.Acknowledgement.addCounter(builder, counter.toUShort())
+    val ackOffset = club.subjugated.fb.message.Acknowledgement.endAcknowledgement(builder)
+
+    builder.finish(ackOffset)
+    val ackBytes = builder.sizedByteArray()
+
+    val start = ackBytes[0].toInt() and 0xFF
+    val ackStart = ackBytes[start].toInt() and 0xFF
+    val vtableStart = start - ackStart
+    val payloadToHash = ackBytes.copyOfRange(vtableStart, ackBytes.size)
+    val hash = MessageDigest.getInstance("SHA-256").digest(payloadToHash)
+
+    val keySpec = PKCS8EncodedKeySpec(privateKey)
+    val keyFactory = KeyFactory.getInstance("EC", "BC")
+    val privKey = keyFactory.generatePrivate(keySpec)
+
+    var signature =
+        Signature.getInstance("SHA256withECDSA", "BC")
+            .apply {
+                initSign(privKey)
+                update(hash)
+            }
+            .sign()
+    signature = derToRawSignature(signature)
+
+    val signatureOffset = builder.createByteVector(signature)
+
+    SignedMessage.startSignedMessage(builder)
+    SignedMessage.addSignature(builder, signatureOffset)
+    SignedMessage.addPayload(builder, ackOffset)
+    SignedMessage.addPayloadType(builder, club.subjugated.fb.message.MessagePayload.Acknowledgement)
+    val signedMessageOffset = SignedMessage.endSignedMessage(builder)
+
+    builder.finish(signedMessageOffset)
+    return builder.sizedByteArray()
+}
+
+fun makeSignedError(
+    sessionToken: String,
+    serialNumber: Int,
+    counter: Int,
+    errorMessage: String,
+    privateKey: ByteArray,
+    publicKey: ByteArray,
+): ByteArray {
+    val builder = FlatBufferBuilder(1024)
+    val pubKeyOffset = builder.createByteVector(publicKey)
+    val sessionOffset = builder.createString(sessionToken)
+    val messageOffset = builder.createString(errorMessage)
+
+    club.subjugated.fb.message.Error.startError(builder)
+    club.subjugated.fb.message.Error.addPublicKey(builder, pubKeyOffset)
+    club.subjugated.fb.message.Error.addSession(builder, sessionOffset)
+    club.subjugated.fb.message.Error.addSerialNumber(builder, serialNumber.toUShort())
+    club.subjugated.fb.message.Error.addCounter(builder, counter.toUShort())
+    club.subjugated.fb.message.Error.addMessage(builder, messageOffset)
+    val errorOffset = club.subjugated.fb.message.Error.endError(builder)
+
+    builder.finish(errorOffset)
+    val errorBytes = builder.sizedByteArray()
+
+    val start = errorBytes[0].toInt() and 0xFF
+    val errStart = errorBytes[start].toInt() and 0xFF
+    val vtableStart = start - errStart
+    val payloadToHash = errorBytes.copyOfRange(vtableStart, errorBytes.size)
+    val hash = MessageDigest.getInstance("SHA-256").digest(payloadToHash)
+
+    val keySpec = PKCS8EncodedKeySpec(privateKey)
+    val keyFactory = KeyFactory.getInstance("EC", "BC")
+    val privKey = keyFactory.generatePrivate(keySpec)
+
+    var signature =
+        Signature.getInstance("SHA256withECDSA", "BC")
+            .apply {
+                initSign(privKey)
+                update(hash)
+            }
+            .sign()
+    signature = derToRawSignature(signature)
+
+    val signatureOffset = builder.createByteVector(signature)
+
+    SignedMessage.startSignedMessage(builder)
+    SignedMessage.addSignature(builder, signatureOffset)
+    SignedMessage.addPayload(builder, errorOffset)
+    SignedMessage.addPayloadType(builder, club.subjugated.fb.message.MessagePayload.Error)
+    val signedMessageOffset = SignedMessage.endSignedMessage(builder)
+
+    builder.finish(signedMessageOffset)
+    return builder.sizedByteArray()
+}
+

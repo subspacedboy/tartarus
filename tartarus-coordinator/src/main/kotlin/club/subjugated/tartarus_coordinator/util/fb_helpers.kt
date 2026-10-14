@@ -96,6 +96,17 @@ fun signedMessageBytesValidator(buf: ByteBuffer): ValidatedPayload {
         }
     }
 
+    if (signedMessage.payloadType == MessagePayload.Error) {
+        val error = Error()
+        signedMessage.payload(error)
+        if (error.publicKeyLength > 0) {
+            val key = ByteArray(error.publicKeyLength) { error.publicKey(it).toByte() }
+            if (verifySignedMessageSignature(error, key, signatureBytes)) {
+                return ValidatedPayload.ErrorPayload(error)
+            }
+        }
+    }
+
     return ValidatedPayload.UnknownPayload
 }
 

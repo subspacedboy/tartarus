@@ -1,11 +1,14 @@
 package club.subjugated.tartarus_coordinator.api
 
+import club.subjugated.tartarus_coordinator.api.messages.AcknowledgeCommandMessage
 import club.subjugated.tartarus_coordinator.api.messages.CommandMessage
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
 import club.subjugated.tartarus_coordinator.services.CommandQueueService
 import club.subjugated.tartarus_coordinator.services.ContractService
 import club.subjugated.tartarus_coordinator.services.LockSessionService
 import club.subjugated.tartarus_coordinator.services.LockUserSessionService
+import club.subjugated.tartarus_coordinator.util.ValidatedPayload
+import club.subjugated.tartarus_coordinator.util.signedMessageBytesValidator
 import jakarta.ws.rs.core.MediaType
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -16,10 +19,13 @@ import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import java.nio.ByteBuffer
+import java.util.Base64
 
 @RestController
 @RequestMapping("/contracts/{contractName}/commands")
@@ -74,6 +80,7 @@ class CommandController {
         @AuthenticationPrincipal lockUser: UserDetails,
         @PathVariable contractName: String,
         @PathVariable commandName: String,
+        @RequestBody(required = false) body: AcknowledgeCommandMessage? = null,
     ): ResponseEntity<List<CommandMessage>> {
         val lockSessionUser = lockUserSessionService.findByName(lockUser.username)
         val contract = this.contractService.getByNameForAuthor(contractName)
@@ -89,10 +96,55 @@ class CommandController {
         val command =
             commands.firstOrNull { it.name == commandName }
                 ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Command not found")
-        this.commandQueueService.manuallyAcknowledgeCommand(command)
-        contract.nextCounter = command.counter!! + 1
-        this.contractService.save(contract)
 
-        return ResponseEntity.ok(commands.map { CommandMessage.fromCommand(it) })
+        if (!body?.signedAcknowledgement.isNullOrBlank()) {
+            val signedAckBase64 = body!!.signedAcknowledgement!!.trim()
+            val ackBytes = try {
+                Base64.getDecoder().decode(signedAckBase64)
+            } catch (e: Exception) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid Base64 payload", e)
+            }
+
+            val validatedPayload = try {
+                signedMessageBytesValidator(ByteBuffer.wrap(ackBytes))
+            } catch (e: Exception) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Failed to parse signed message", e)
+            }
+
+            when (validatedPayload) {
+                is ValidatedPayload.AcknowledgementPayload -> {
+                    val ack = validatedPayload.acknowledgement
+                    if (ack.session != contract.lockSession.sessionToken) {
+                        throw ResponseStatusException(HttpStatus.FORBIDDEN, "Session token does not match lock")
+                    }
+                    val expectedSerial = command.serialNumber ?: contract.serialNumber
+                    if (ack.serialNumber.toInt() != expectedSerial) {
+                        throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Serial number does not match command")
+                    }
+                    this.commandQueueService.acknowledgeCommand(command, ack)
+                }
+                is ValidatedPayload.ErrorPayload -> {
+                    val err = validatedPayload.error
+                    if (err.session != contract.lockSession.sessionToken) {
+                        throw ResponseStatusException(HttpStatus.FORBIDDEN, "Session token does not match lock")
+                    }
+                    val expectedSerial = command.serialNumber ?: contract.serialNumber
+                    if (err.serialNumber.toInt() != 0 && err.serialNumber.toInt() != expectedSerial) {
+                        throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Serial number does not match command")
+                    }
+                    this.commandQueueService.errorCommand(command, err.message)
+                }
+                else -> {
+                    throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid payload or signature verification failed")
+                }
+            }
+        } else {
+            this.commandQueueService.manuallyAcknowledgeCommand(command)
+            contract.nextCounter = command.counter!! + 1
+            this.contractService.save(contract)
+        }
+
+        val updatedCommands = this.commandQueueService.getByContract(contract)
+        return ResponseEntity.ok(updatedCommands.map { CommandMessage.fromCommand(it) })
     }
 }
