@@ -347,7 +347,9 @@ impl LockCtx {
 
         while !commands.is_empty() {
             let buffer = commands.pop_front().unwrap();
-            let verifier = SignedMessageVerifier::new();
+            let verifier = SignedMessageVerifier::from_safety_keys(
+                self.configuration.safety_keys.as_deref(),
+            );
 
             let (min_counter, contract_serial_number) =
                 if let Some(internal_contract) = &self.contract {
@@ -556,7 +558,9 @@ impl LockCtx {
             return;
         }
 
-        let verifier = SignedMessageVerifier::new();
+        let verifier = SignedMessageVerifier::from_safety_keys(
+            self.configuration.safety_keys.as_deref(),
+        );
         let keys = self.get_keyring();
         let decoded = BASE64.decode(clean_qr_data).ok();
         let payload = decoded.as_deref().unwrap_or(clean_qr_data);
@@ -734,7 +738,6 @@ impl LockCtx {
 
     fn validate_abort_authority(&self, authority: Option<&str>) -> Result<(), String> {
         match authority {
-            None => Ok(()), // Contract holder can abort
             Some(auth_name) => {
                 // Safety keys can abort
                 if let Some(safety_keys) = &self.configuration.safety_keys {
@@ -750,6 +753,7 @@ impl LockCtx {
                 }
                 Err(format!("Authority '{}' is not recognized to abort contract", auth_name))
             }
+            None => Err("AbortCommand requires a recognized safety key authority".to_string()),
         }
     }
 

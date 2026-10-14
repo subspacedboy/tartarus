@@ -2,6 +2,7 @@ use crate::contract_generated::club::subjugated::fb::message::{
     AbortCommand, Contract, LockCommand, MessagePayload, ReleaseCommand, ResetCommand,
     UnlockCommand,
 };
+use crate::internal_config::InternalSafetyKey;
 use crate::internal_contract::{
     InternalAbortCommand, InternalContract, InternalLockCommand, InternalReleaseCommand,
     InternalResetCommand, InternalUnlockCommand,
@@ -14,7 +15,10 @@ use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::io::Read;
 
-pub(crate) struct SignedMessageVerifier;
+#[derive(Debug, Clone, Default)]
+pub(crate) struct SignedMessageVerifier {
+    pub(crate) safety_key_names: Vec<String>,
+}
 
 #[derive(Debug, Clone)]
 pub enum VerifiedType {
@@ -107,9 +111,32 @@ impl<T: HasTable> HashTableBytes<T> for T {
     }
 }
 
+#[allow(dead_code)]
 impl SignedMessageVerifier {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            safety_key_names: Vec::new(),
+        }
+    }
+
+    pub fn from_safety_keys(safety_keys: Option<&[InternalSafetyKey]>) -> Self {
+        Self {
+            safety_key_names: safety_keys
+                .map(|keys| keys.iter().map(|k| k.name.clone()).collect())
+                .unwrap_or_default(),
+        }
+    }
+
+    pub fn with_safety_keys(mut self, safety_keys: Option<&[InternalSafetyKey]>) -> Self {
+        self.safety_key_names = safety_keys
+            .map(|keys| keys.iter().map(|k| k.name.clone()).collect())
+            .unwrap_or_default();
+        self
+    }
+
+    pub fn with_safety_key_names<S: AsRef<str>>(mut self, names: &[S]) -> Self {
+        self.safety_key_names = names.iter().map(|s| s.as_ref().to_string()).collect();
+        self
     }
 
     pub fn verify(
@@ -137,16 +164,54 @@ impl SignedMessageVerifier {
                 let verifying_key: Option<_> = if let Some(authority) =
                     signed_msg.authority_identifier()
                 {
+                    if signed_msg.payload_type() == MessagePayload::AbortCommand {
+                        if !self.safety_key_names.iter().any(|k| k == authority) {
+                            log::error!(
+                                "Received abort command with non-safety key authority '{}'",
+                                authority
+                            );
+                            let abort = signed_msg.payload_as_abort_command();
+                            let serial = abort.as_ref().map(|a| a.serial_number()).unwrap_or(0);
+                            let counter = abort.as_ref().map(|a| a.counter()).unwrap_or(0);
+                            return Err(VerificationError {
+                                serial_number: serial,
+                                counter,
+                                message: format!(
+                                    "Authority '{}' is not recognized as a safety key to verify abort command",
+                                    authority
+                                ),
+                            });
+                        }
+                    }
                     if let Some(other_key) = verifying_keys.get(authority) {
                         Some(other_key)
                     } else {
                         log::error!("We received a message that specifies an authority we don't have a key for");
+                        let (serial, counter) = if signed_msg.payload_type() == MessagePayload::AbortCommand {
+                            let abort = signed_msg.payload_as_abort_command();
+                            (
+                                abort.as_ref().map(|a| a.serial_number()).unwrap_or(0),
+                                abort.as_ref().map(|a| a.counter()).unwrap_or(0),
+                            )
+                        } else {
+                            (0, 0)
+                        };
                         return Err(VerificationError {
-                            serial_number: 0,
-                            counter: 0,
+                            serial_number: serial,
+                            counter,
                             message: "Required a key but it wasn't available".to_string(),
                         });
                     }
+                } else if signed_msg.payload_type() == MessagePayload::AbortCommand {
+                    log::error!("Received abort command without a safety key authority identifier");
+                    let abort = signed_msg.payload_as_abort_command();
+                    let serial = abort.as_ref().map(|a| a.serial_number()).unwrap_or(0);
+                    let counter = abort.as_ref().map(|a| a.counter()).unwrap_or(0);
+                    return Err(VerificationError {
+                        serial_number: serial,
+                        counter,
+                        message: "AbortCommand requires a recognized safety key authority".to_string(),
+                    });
                 } else if let Some(contract_key) = verifying_keys.get("contract") {
                     Some(contract_key)
                 } else {
@@ -369,10 +434,21 @@ impl SignedMessageVerifier {
                         log::info!("Processing abort command");
                         let abort = signed_msg.payload_as_abort_command().unwrap();
 
+                        let auth_name = match authority_id.as_deref() {
+                            Some(name) if self.safety_key_names.iter().any(|k| k == name) => name,
+                            _ => {
+                                return Err(VerificationError {
+                                    serial_number: abort.serial_number(),
+                                    counter: abort.counter(),
+                                    message: "AbortCommand requires a recognized safety key authority".to_string(),
+                                });
+                            }
+                        };
+
                         let hash = abort.calculate_hash(incoming_data);
                         match verifying_key.unwrap().verify(&hash, &signature) {
                             Ok(_) => {
-                                log::debug!("Signature verified!");
+                                log::debug!("Signature verified with safety key '{}'!", auth_name);
                                 if abort.contract_serial_number() != contract_serial_number {
                                     return Err(VerificationError {
                                         serial_number: abort.serial_number(),
@@ -435,3 +511,113 @@ impl SignedMessageVerifier {
         }
     }
 }
+
+#[cfg(test)]
+#[allow(dead_code, unused_imports)]
+mod tests {
+    use super::*;
+    use crate::contract_generated::club::subjugated::fb::message::{
+        AbortCommand, AbortCommandArgs, SignedMessage, SignedMessageArgs,
+    };
+    use crate::fb_helper::calculate_signature;
+    use flatbuffers::FlatBufferBuilder;
+    use rand_core::OsRng;
+
+    fn build_signed_abort(
+        contract_serial: u16,
+        serial: u16,
+        counter: u16,
+        authority: Option<&str>,
+        signing_key: &p256::ecdsa::SigningKey,
+    ) -> Vec<u8> {
+        let mut builder1 = FlatBufferBuilder::with_capacity(1024);
+        let abort = AbortCommand::create(
+            &mut builder1,
+            &AbortCommandArgs {
+                contract_serial_number: contract_serial,
+                serial_number: serial,
+                counter,
+            },
+        );
+        builder1.finish(abort, None);
+        let sig = calculate_signature(builder1.finished_data(), signing_key);
+
+        let mut builder2 = FlatBufferBuilder::with_capacity(1024);
+        let abort2 = AbortCommand::create(
+            &mut builder2,
+            &AbortCommandArgs {
+                contract_serial_number: contract_serial,
+                serial_number: serial,
+                counter,
+            },
+        );
+        let sig_vec = builder2.create_vector(&sig.to_bytes());
+        let auth_str = authority.map(|a| builder2.create_string(a));
+        let signed_msg = SignedMessage::create(
+            &mut builder2,
+            &SignedMessageArgs {
+                signature: Some(sig_vec),
+                payload_type: MessagePayload::AbortCommand,
+                payload: Some(abort2.as_union_value()),
+                authority_identifier: auth_str,
+            },
+        );
+        builder2.finish(signed_msg, None);
+        builder2.finished_data().to_vec()
+    }
+
+    #[test]
+    fn test_abort_without_authority_fails_verification() {
+        let contract_key = p256::ecdsa::SigningKey::random(&mut OsRng);
+        let contract_vk = *contract_key.verifying_key();
+        let mut keyring = HashMap::new();
+        keyring.insert("contract", &contract_vk);
+
+        let verifier = SignedMessageVerifier::new().with_safety_key_names(&["safety1"]);
+        let data = build_signed_abort(1, 10, 5, None, &contract_key);
+
+        let result = verifier.verify(&data, &keyring, 1, 1);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.message, "AbortCommand requires a recognized safety key authority");
+    }
+
+    #[test]
+    fn test_abort_with_non_safety_key_fails_verification() {
+        let bot_key = p256::ecdsa::SigningKey::random(&mut OsRng);
+        let bot_vk = *bot_key.verifying_key();
+        let mut keyring = HashMap::new();
+        keyring.insert("bot1", &bot_vk);
+
+        let verifier = SignedMessageVerifier::new().with_safety_key_names(&["safety1"]);
+        let data = build_signed_abort(1, 10, 5, Some("bot1"), &bot_key);
+
+        let result = verifier.verify(&data, &keyring, 1, 1);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("not recognized as a safety key"));
+    }
+
+    #[test]
+    fn test_abort_with_safety_key_succeeds_verification() {
+        let safety_key = p256::ecdsa::SigningKey::random(&mut OsRng);
+        let safety_vk = *safety_key.verifying_key();
+        let mut keyring = HashMap::new();
+        keyring.insert("safety1", &safety_vk);
+
+        let verifier = SignedMessageVerifier::new().with_safety_key_names(&["safety1"]);
+        let data = build_signed_abort(1, 10, 5, Some("safety1"), &safety_key);
+
+        let result = verifier.verify(&data, &keyring, 1, 1);
+        assert!(result.is_ok());
+        if let VerifiedType::AbortCommand(cmd) = result.unwrap() {
+            assert_eq!(cmd.authority.as_deref(), Some("safety1"));
+            assert_eq!(cmd.contract_serial_number, 1);
+            assert_eq!(cmd.serial_number, 10);
+            assert_eq!(cmd.counter, 5);
+        } else {
+            panic!("Expected AbortCommand");
+        }
+    }
+}
+
