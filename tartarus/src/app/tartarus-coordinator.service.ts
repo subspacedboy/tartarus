@@ -308,14 +308,19 @@ export class TartarusCoordinatorService {
     }));
   }
 
-  public manuallyAcknowledgeCommand(contractName: string, commandName: string) : Observable<Command> {
+  public manuallyAcknowledgeCommand(contractName: string, commandName: string, signedAcknowledgement?: string) : Observable<Command> {
     const acknowledge_uri = `${this.baseUrl}/contracts/${contractName}/commands/forLockUser/command/${commandName}/acknowledge`;
     const body = JSON.stringify({
+      signedAcknowledgement: signedAcknowledgement || null
     });
     const headers = new HttpHeaders({ 'Content-Type': 'application/json', 'X-Require-LockUser': 'requires authorization tokens' });
     return this.http.post(acknowledge_uri, body, {headers} ).pipe(map((res:any) => {
+      if (Array.isArray(res)) {
+        const found = res.find((c: any) => c.name === commandName) || res[0];
+        return new Command(found);
+      }
       return new Command(res);
-    }),  catchError(error => {
+    }), catchError(error => {
       return this.handleError(error);
     }));
   }

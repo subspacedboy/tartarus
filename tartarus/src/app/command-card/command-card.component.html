@@ -6,8 +6,21 @@
         <div class="card-body">
           <h4 class="card-title">⏳Pending</h4>
           @if(showQrCodeCommands) {
-            <p class="card-text"><button type="button" class="btn btn-info" (click)="drawQrCode($event)">Show QR Code</button></p>
-            <p class="card-text"><button #ackBtn id="hidden" type="button" class="btn btn-warning" [hidden]="true" (click)="manuallyAcknowledge($event)">Manually Acknowledge</button></p>
+            <div class="d-grid gap-2 mb-2">
+              <button type="button" class="btn btn-info btn-sm" (click)="drawQrCode($event)">Show QR Code</button>
+              <button type="button" class="btn btn-dark btn-sm" [disabled]="isSendingSerial" (click)="sendViaSerial()">
+                @if(isSendingSerial) {
+                  <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                  Processing...
+                } @else {
+                  🔌 Send via Serial
+                }
+              </button>
+              <button #ackBtn id="hidden" type="button" class="btn btn-warning btn-sm" [hidden]="true" (click)="manuallyAcknowledge($event)">Manually Acknowledge</button>
+            </div>
+            @if(serialError) {
+              <div class="alert alert-danger py-1 px-2 small mb-2 text-wrap">{{ serialError }}</div>
+            }
           }
 <!--          <p class="card-text"><a routerLink="{{basePath}}contract/{{contract.name}}">Details</a></p>-->
         </div>

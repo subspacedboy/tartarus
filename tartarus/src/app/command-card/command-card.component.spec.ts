@@ -1,11 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
 
 import { CommandCardComponent } from './command-card.component';
 import { Command } from '../models/command';
+import { SerialDeviceService } from '../serial-device.service';
+import { TartarusCoordinatorService } from '../tartarus-coordinator.service';
+import { ToastService } from '../toast.service';
 
 describe('CommandCardComponent', () => {
   let component: CommandCardComponent;
   let fixture: ComponentFixture<CommandCardComponent>;
+  let serialDeviceService: SerialDeviceService;
+  let coordinatorService: TartarusCoordinatorService;
+  let toastService: ToastService;
 
   beforeEach(async () => {
     HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue({
@@ -23,6 +30,9 @@ describe('CommandCardComponent', () => {
 
     fixture = TestBed.createComponent(CommandCardComponent);
     component = fixture.componentInstance;
+    serialDeviceService = TestBed.inject(SerialDeviceService);
+    coordinatorService = TestBed.inject(TartarusCoordinatorService);
+    toastService = TestBed.inject(ToastService);
     fixture.detectChanges();
   });
 
@@ -85,5 +95,47 @@ describe('CommandCardComponent', () => {
 
     expect(consoleSpy).toHaveBeenCalledWith(base64Body);
   });
-});
 
+  it('should send payload over serial and acknowledge command when serial returns ack', async () => {
+    const base64Body = btoa('command-payload');
+    component.command = new Command({
+      name: 'cmd-1',
+      contractName: 'contract-1',
+      state: 'PENDING',
+      type: 'UNLOCK',
+      body: base64Body
+    });
+
+    const mockResult = { type: 'ack' as const, resultBase64: 'mock-ack-base64' };
+    vi.spyOn(serialDeviceService, 'sendCommand').mockResolvedValue(mockResult);
+    const ackSpy = vi.spyOn(coordinatorService, 'manuallyAcknowledgeCommand').mockReturnValue(
+      of(new Command({ name: 'cmd-1', contractName: 'contract-1', state: 'ACKNOWLEDGED', type: 'UNLOCK' }))
+    );
+
+    await component.sendViaSerial();
+
+    expect(serialDeviceService.sendCommand).toHaveBeenCalledWith(base64Body);
+    expect(ackSpy).toHaveBeenCalledWith('contract-1', 'cmd-1', 'mock-ack-base64');
+    expect(component.command.state).toBe('ACKNOWLEDGED');
+  });
+
+  it('should display error message when serial returns error result', async () => {
+    const toastSpy = vi.spyOn(toastService, 'showError');
+
+    component.command = new Command({
+      name: 'cmd-2',
+      contractName: 'contract-1',
+      state: 'PENDING',
+      type: 'UNLOCK',
+      body: btoa('payload')
+    });
+
+    const mockErrorResult = { type: 'error' as const, resultBase64: 'err-b64', errorMessage: 'Lock error' };
+    vi.spyOn(serialDeviceService, 'sendCommand').mockResolvedValue(mockErrorResult);
+
+    await component.sendViaSerial();
+
+    expect(component.serialError).toBe('Lock error');
+    expect(toastSpy).toHaveBeenCalledWith('Device error: Lock error');
+  });
+});
