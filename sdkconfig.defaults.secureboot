@@ -1,0 +1,11 @@
+# Enable Secure Boot v2
+CONFIG_SECURE_BOOT=y
+CONFIG_SECURE_BOOT_V2_ENABLED=y
+
+# Select Reflashable mode (explicitly NOT one-time flash)
+CONFIG_SECURE_BOOT_BUILD_SIGNED_BINARIES=y
+CONFIG_SECURE_BOOTLOADER_MODE_REFLASHABLE=y
+# CONFIG_SECURE_BOOTLOADER_MODE_ONE_TIME_FLASH is not set
+
+# Provide path to the signing key (relative to the project root)
+CONFIG_SECURE_BOOT_SIGNING_KEY="secure_boot_signing_key.pem"

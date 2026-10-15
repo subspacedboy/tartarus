@@ -4,12 +4,12 @@ supported_apps = ["TartarusLock-Update", "TartarusLock-Full"]
 
 [TartarusLock-Update]
 chipsets = ["ESP32-S3"]
-description = "Tartarus Lock Firmware Update (Unsigned, preserves NVS)"
-image.esp32-s3 = "app.bin"
+description = "Tartarus Lock Firmware Update v1.1.0 (Signed, preserves NVS)"
+image.esp32-s3 = "app-1.1.0-signed.bin"
 offset = "0x10000"
 
 [TartarusLock-Full]
 chipsets = ["ESP32-S3"]
-description = "Tartarus Lock Full Provisioning (Bootloader + Partitions + App)"
-image.esp32-s3 = "image.bin"
+description = "Tartarus Lock Full Provisioning v1.1.0 (Signed Bootloader + Partitions + App)"
+image.esp32-s3 = "image-1.1.0-signed.bin"
 offset = "0x0000"
