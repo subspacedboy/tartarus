@@ -7,6 +7,8 @@
   font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 0.825rem;
   line-height: 1.45;
+  position: relative;
+  z-index: 1;
 }
 
 .log-line {
@@ -15,4 +17,15 @@
 
 .card {
   border-radius: 0.5rem;
+}
+
+/* Ensure main controls have higher stacking than the status console */
+.col-lg-7 .card {
+  position: relative;
+  z-index: 2;
+}
+
+/* Keep sticky status console below main app windows and dropdown navigation */
+.card.sticky-top {
+  z-index: 1;
 }

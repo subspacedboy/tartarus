@@ -262,7 +262,7 @@
       <!-- 4. Arbitrary Command Card -->
       <div class="card mb-4 shadow-sm">
         <div class="card-header bg-dark text-white">
-          <span class="fw-bold">4. Send Arbitrary Base64 Command</span>
+          <span class="fw-bold">4. Send Arbitrary Commands</span>
         </div>
         <div class="card-body">
           <form [formGroup]="commandForm" (ngSubmit)="sendCommand()">
@@ -276,9 +276,6 @@
                 placeholder="Paste signed Base64 command string here..."
                 [disabled]="connectionState() !== 'connected' || isSendingCommand()"
               ></textarea>
-              <div class="form-text">
-                Input is transmitted directly to Tartarus and decoded via <code>process_qr_payload()</code>.
-              </div>
             </div>
 
             <button

@@ -1,3 +1,8 @@
+.card {
+  position: relative;
+  z-index: 1;
+}
+
 .terminal-screen {
   min-height: 520px;
   max-height: calc(100vh - 250px);
@@ -10,6 +15,8 @@
   background-color: #0b0f19 !important;
   white-space: pre-wrap;
   word-break: break-all;
+  position: relative;
+  z-index: 1;
 }
 
 .terminal-content {

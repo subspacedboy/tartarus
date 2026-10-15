@@ -1,0 +1,9 @@
+.navbar {
+  position: relative;
+  z-index: 1050;
+}
+
+.dropdown-menu,
+:host ::ng-deep .dropdown-menu {
+  z-index: 1060;
+}

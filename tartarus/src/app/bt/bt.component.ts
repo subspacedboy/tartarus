@@ -74,7 +74,7 @@ export class BtComponent implements OnInit, OnDestroy {
       wsUri: ['', [Validators.required]],
       apiUri: ['', [Validators.required]],
       mqttUri: ['', [Validators.required]],
-      includeSafetyKeys: [false],
+      includeSafetyKeys: [true],
     });
 
     if (!this.isBluetoothSupported()) {

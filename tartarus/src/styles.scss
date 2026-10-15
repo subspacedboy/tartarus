@@ -16,3 +16,19 @@
 .row {
   margin-top: 1em;
 }
+
+/* Ensure navbar and dropdown menus are always on top of page content and consoles */
+.navbar {
+  position: relative;
+  z-index: 1050;
+}
+
+.dropdown-menu {
+  z-index: 1060;
+}
+
+/* Ensure sticky status consoles and sidebars stay below main navigation and dropdowns */
+.sticky-top {
+  z-index: 10;
+}
+
