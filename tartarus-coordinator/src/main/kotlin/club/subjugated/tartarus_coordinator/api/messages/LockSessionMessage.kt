@@ -44,7 +44,11 @@ data class LockSessionMessage(
                 shareToken = lockSession.shareToken!!,
                 lockState =
                     if (lockSessionArgs.contains(LockSessionArgs.SUPPRESS_LOCK_STATE)) null
-                    else LockStateMessage(lockSession.isLocked),
+                    else
+                        LockStateMessage(
+                            isLocked = lockSession.isLocked,
+                            emergencyUnlocked = lockSession.emergencyUnlocked,
+                        ),
                 totalControlToken =
                     if (lockSessionArgs.contains(LockSessionArgs.SUPPRESS_TC_TOKEN)) ""
                     else lockSession.totalControlToken,

@@ -21,6 +21,7 @@ rm tartarus/src/app/club/subjugated/fb/message.ts
 flatc --kotlin flatbuffers/*.fbs
 rsync -av club/ tartarus-coordinator/src/main/kotlin/club/
 rsync -av club/ overlord_exe/src/main/kotlin/club/
+find tartarus-coordinator/src/main/kotlin/club overlord_exe/src/main/kotlin/club -type f -name "*.kt" -exec sed -i '' 's/FLATBUFFERS_[0-9_]*/FLATBUFFERS_24_3_25/g' {} +
 
 # Remove the temp directory
 rm -rf club

@@ -37,8 +37,8 @@ class BotApiMessage : Table() {
                 null
             }
         }
-    val nameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun nameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val nameAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(4, 1)
+    fun nameInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 4, 1)
     val payloadType : UByte
         get() {
             val o = __offset(6)

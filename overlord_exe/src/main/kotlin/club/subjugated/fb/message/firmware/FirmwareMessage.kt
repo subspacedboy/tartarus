@@ -50,8 +50,8 @@ class FirmwareMessage : Table() {
                 null
             }
         }
-    val sessionTokenAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(10, 1)
-    fun sessionTokenInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 10, 1)
+    val sessionTokenAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(10, 1)
+    fun sessionTokenInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 10, 1)
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsFirmwareMessage(_bb: ByteBuffer): FirmwareMessage = getRootAsFirmwareMessage(_bb, FirmwareMessage())

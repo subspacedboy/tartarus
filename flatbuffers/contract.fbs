@@ -20,6 +20,8 @@ table Contract {
   terms: string;
   // If true, subject can freely cycle the lock.
   is_temporary_unlock_allowed: bool;
+  // If true, subject can emergency unlock the lock. Defaults to true.
+  is_emergency_unlock_allowed: bool = true;
 }
 
 table StartedUpdate {
@@ -39,6 +41,8 @@ table PeriodicUpdate {
 
   local_unlock: bool;
   local_lock: bool;
+
+  emergency_unlocked: bool = false;
 }
 
 table Acknowledgement {

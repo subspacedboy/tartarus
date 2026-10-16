@@ -37,8 +37,8 @@ class Version : Table() {
                 null
             }
         }
-    val nameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun nameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val nameAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(4, 1)
+    fun nameInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 4, 1)
     val versionName : String?
         get() {
             val o = __offset(6)
@@ -48,8 +48,8 @@ class Version : Table() {
                 null
             }
         }
-    val versionNameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
-    fun versionNameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
+    val versionNameAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(6, 1)
+    fun versionNameInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 6, 1)
     fun signature(j: Int) : UByte {
         val o = __offset(8)
         return if (o != 0) {
@@ -62,8 +62,8 @@ class Version : Table() {
         get() {
             val o = __offset(8); return if (o != 0) __vector_len(o) else 0
         }
-    val signatureAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(8, 1)
-    fun signatureInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 8, 1)
+    val signatureAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(8, 1)
+    fun signatureInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 8, 1)
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsVersion(_bb: ByteBuffer): Version = getRootAsVersion(_bb, Version())

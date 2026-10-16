@@ -40,8 +40,8 @@ class CreateCommandRequest : Table() {
         get() {
             val o = __offset(4); return if (o != 0) __vector_len(o) else 0
         }
-    val commandBodyAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun commandBodyInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val commandBodyAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(4, 1)
+    fun commandBodyInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 4, 1)
     val shareableToken : String?
         get() {
             val o = __offset(6)
@@ -51,8 +51,8 @@ class CreateCommandRequest : Table() {
                 null
             }
         }
-    val shareableTokenAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
-    fun shareableTokenInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
+    val shareableTokenAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(6, 1)
+    fun shareableTokenInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 6, 1)
     val contractName : String?
         get() {
             val o = __offset(8)
@@ -62,8 +62,8 @@ class CreateCommandRequest : Table() {
                 null
             }
         }
-    val contractNameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(8, 1)
-    fun contractNameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 8, 1)
+    val contractNameAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(8, 1)
+    fun contractNameInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 8, 1)
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsCreateCommandRequest(_bb: ByteBuffer): CreateCommandRequest = getRootAsCreateCommandRequest(_bb, CreateCommandRequest())

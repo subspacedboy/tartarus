@@ -37,8 +37,8 @@ class ResetCommand : Table() {
                 null
             }
         }
-    val sessionAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun sessionInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val sessionAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(4, 1)
+    fun sessionInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 4, 1)
     val serialNumber : UShort
         get() {
             val o = __offset(6)

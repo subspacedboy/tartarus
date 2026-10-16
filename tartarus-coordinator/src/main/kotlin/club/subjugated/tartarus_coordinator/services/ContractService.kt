@@ -277,6 +277,7 @@ class ContractService {
                 )
         if (contract.state == ContractState.CONFIRMED) {
             contract.lockState = contract.lockSession.isLocked
+            contract.emergencyUnlocked = contract.lockSession.emergencyUnlocked
             contract.lockLastUpdate = contract.lockSession.updatedAt
         }
         return contract
@@ -349,6 +350,7 @@ class ContractService {
                 )
         if (contract.state == ContractState.CONFIRMED) {
             contract.lockState = contract.lockSession.isLocked
+            contract.emergencyUnlocked = contract.lockSession.emergencyUnlocked
             contract.lockLastUpdate = contract.lockSession.updatedAt
         }
         return contract

@@ -60,6 +60,7 @@ class LockSessionService {
         val lockSession = findBySessionToken(periodicUpdate.session!!)!!
 
         lockSession.isLocked = periodicUpdate.isLocked
+        lockSession.emergencyUnlocked = periodicUpdate.emergencyUnlocked
         saveLockSession(lockSession)
         val internalUpdate =
             if (periodicUpdate.currentContractSerial.toInt() != 0) {

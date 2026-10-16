@@ -96,6 +96,7 @@ export class AdminContractDetailComponent implements OnInit {
     const serialNumber = contract.serialNumber();
     const publicKey = contract.publicKeyArray(); // Uint8Array
     const isTemporaryUnlockAllowed = contract.isTemporaryUnlockAllowed();
+    const isEmergencyUnlockAllowed = contract.isEmergencyUnlockAllowed();
 
     // There's really only the one type.
     let endDescription= "When I Say So 😈";
@@ -118,7 +119,7 @@ export class AdminContractDetailComponent implements OnInit {
 
     console.log(bots);
 
-    this.contractDescription = new ContractDescription(isTemporaryUnlockAllowed, contract.terms(), endDescription, bots);
+    this.contractDescription = new ContractDescription(isTemporaryUnlockAllowed, contract.terms(), endDescription, bots, isEmergencyUnlockAllowed);
   }
 
   protected readonly JSON = JSON;

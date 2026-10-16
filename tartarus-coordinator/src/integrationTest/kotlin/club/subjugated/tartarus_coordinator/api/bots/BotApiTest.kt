@@ -4,9 +4,18 @@ import club.subjugated.fb.bots.BotApiMessage
 import club.subjugated.fb.bots.CreateContractRequest
 import club.subjugated.fb.bots.CreateContractResponse
 import club.subjugated.fb.bots.MessagePayload
+import club.subjugated.fb.event.CommonMetadata
+import club.subjugated.fb.event.Event
+import club.subjugated.fb.event.EventType
+import club.subjugated.fb.event.SignedEvent
 import club.subjugated.fb.message.Bot
 import club.subjugated.fb.message.Permission
 import club.subjugated.fb.message.SignedMessage
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
+import org.eclipse.paho.client.mqttv3.MqttClient
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions
+import org.eclipse.paho.client.mqttv3.MqttMessage
 import club.subjugated.tartarus_coordinator.TartarusCoordinatorApplication
 import club.subjugated.tartarus_coordinator.api.BotController
 import club.subjugated.tartarus_coordinator.api.messages.NewBotMessage
@@ -34,6 +43,7 @@ import org.springframework.http.HttpStatusCode
 import org.springframework.test.annotation.Commit
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.TestPropertySource
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 
 @SpringBootTest(classes = [TartarusCoordinatorApplication::class])
@@ -105,6 +115,115 @@ class BotApiTest {
 
         assertThat(response2.contractName).isNotEmpty()
     }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    fun testEmergencyUnlockEventPropagation() {
+        // 1. Create a bot
+        val keyPair = generateECKeyPair()
+        val compressedPubKeyInBase64 =
+            Base64.getEncoder().encodeToString(encodePublicKeySecp1(keyPair.public as ECPublicKey))
+
+        val newBotMessage =
+            NewBotMessage(
+                publicKey = compressedPubKeyInBase64,
+                description = "emergency unlock test bot",
+            )
+        val botResponse = botController.newBot(newBotMessage)
+        assertThat(botResponse.statusCode).isEqualTo(HttpStatusCode.valueOf(200))
+        val botName = botResponse.body!!.name!!
+        val botPassword = botResponse.body!!.clearTextPassword!!
+
+        // 2. Create a lock session
+        val sessionToken = "EMG001"
+        val nlsm =
+            NewLockSessionMessage(
+                publicKey =
+                    "BPNK1yPUgv8o6P3Y/e82FyrjlNfzcoA5OWZW/7vAxK3if7HC/tIy5jyMWXUCLxTpSpFlAxy9fcmEh0hcZN4ocgY=",
+                sessionToken = sessionToken,
+                userSessionPublicKey = "",
+            )
+        lockSessionService.createLockSession(nlsm)
+
+        // 3. Connect bot MQTT client and subscribe to inbox_events
+        val brokerUrl = "tcp://localhost:1884"
+        val botClient = MqttClient(brokerUrl, botName, null)
+        val botOptions =
+            MqttConnectOptions().apply {
+                userName = botName
+                password = botPassword.toCharArray()
+                isCleanSession = true
+            }
+        botClient.connect(botOptions)
+
+        val receivedEventFuture = CompletableFuture<SignedEvent>()
+        val eventsTopic = "bots/inbox_events_${botName}"
+        botClient.subscribe(eventsTopic) { _, message ->
+            try {
+                val signedEvent = SignedEvent.getRootAsSignedEvent(ByteBuffer.wrap(message.payload))
+                receivedEventFuture.complete(signedEvent)
+            } catch (t: Throwable) {
+                receivedEventFuture.completeExceptionally(t)
+            }
+        }
+
+        // 4. Connect lock MQTT client
+        val lockClient = MqttClient(brokerUrl, sessionToken, null)
+        val lockOptions =
+            MqttConnectOptions().apply {
+                userName = sessionToken
+                password = sessionToken.toCharArray()
+                isCleanSession = true
+            }
+        lockClient.connect(lockOptions)
+
+        // 5. Build SignedEvent with EventType.EmergencyUnlock
+        val contractSerial = 42.toUShort()
+        val builder = FlatBufferBuilder(1024)
+        val lockSessionOffset = builder.createString(sessionToken)
+        val metadataOffset =
+            CommonMetadata.createCommonMetadata(
+                builder,
+                lockSessionOffset,
+                contractSerial,
+                0.toUShort(),
+                0.toUShort(),
+            )
+        val eventOffset =
+            Event.createEvent(
+                builder,
+                metadataOffset,
+                EventType.EmergencyUnlock,
+            )
+        val dummySig = ByteArray(64)
+        val sigOffset = builder.createByteVector(dummySig)
+        val signedEventOffset =
+            SignedEvent.createSignedEvent(
+                builder,
+                sigOffset,
+                eventOffset,
+            )
+        builder.finish(signedEventOffset)
+        val payloadBytes = builder.sizedByteArray()
+
+        // 6. Lock publishes to bot's inbox_events topic
+        lockClient.publish(eventsTopic, MqttMessage(payloadBytes))
+
+        // 7. Await bot receiving the event and assert payload
+        val receivedSignedEvent = receivedEventFuture.get(5, TimeUnit.SECONDS)
+        assertThat(receivedSignedEvent).isNotNull
+        assertThat(receivedSignedEvent.payload).isNotNull
+        assertThat(receivedSignedEvent.payload!!.eventType).isEqualTo(EventType.EmergencyUnlock)
+        assertThat(receivedSignedEvent.payload!!.metadata).isNotNull
+        assertThat(receivedSignedEvent.payload!!.metadata!!.lockSession).isEqualTo(sessionToken)
+        assertThat(receivedSignedEvent.payload!!.metadata!!.contractSerialNumber).isEqualTo(contractSerial)
+
+        // Clean up
+        lockClient.disconnect()
+        lockClient.close()
+        botClient.disconnect()
+        botClient.close()
+    }
 }
 
 class Helper {
@@ -117,6 +236,7 @@ class Helper {
             privateKey: ByteArray,
             publicKey: ByteArray,
             public: Boolean,
+            emergencyUnlock: Boolean = true,
         ): ByteArray {
             val builder = FlatBufferBuilder(1024)
 
@@ -183,6 +303,10 @@ class Helper {
             club.subjugated.fb.message.Contract.addIsTemporaryUnlockAllowed(
                 builder,
                 temporaryUnlock,
+            )
+            club.subjugated.fb.message.Contract.addIsEmergencyUnlockAllowed(
+                builder,
+                emergencyUnlock,
             )
             club.subjugated.fb.message.Contract.addBots(builder, botsVectorOffset)
             val contractOffset = club.subjugated.fb.message.Contract.endContract(builder)

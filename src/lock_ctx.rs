@@ -37,6 +37,7 @@ use std::rc::Rc;
 use std::time::Duration;
 use anyhow::anyhow;
 use crate::wifi_manager::WIFI_MANAGER;
+use crate::screen_ids::ScreenId;
 
 #[derive(Debug, Clone)]
 pub struct TickUpdate {
@@ -64,7 +65,9 @@ pub struct LockCtx {
 
     schedule_next_update: Option<u64>,
     mqtt_service: Option<Rc<RefCell<MqttService>>>,
-    pub active_screen_idx: usize,
+    pub current_screen: ScreenId,
+    pub emergency_unlocked: bool,
+    pub emergency_press_count: u8,
 
     login_cryptogram: Option<String>,
     login_cryptogram_nonce: Option<String>,
@@ -92,7 +95,9 @@ impl LockCtx {
             firmware_manager: FirmwareManager::new(),
             schedule_next_update: None,
             mqtt_service: None,
-            active_screen_idx: 0,
+            current_screen: ScreenId::QrCode,
+            emergency_unlocked: false,
+            emergency_press_count: 0,
             login_cryptogram: None,
             login_cryptogram_nonce: None,
             lock_url: None,
@@ -121,20 +126,23 @@ impl LockCtx {
         if let Ok(Some(state)) = maybe_state {
             log::info!("Restoring contract state.");
             lck.contract = Some(state.internal_contract);
-            log::info!("Contract {:?}", lck.contract);
+            lck.emergency_unlocked = state.emergency_unlocked;
+            log::info!("Contract {:?}, emergency_unlocked: {}", lck.contract, lck.emergency_unlocked);
             if state.is_locked {
                 lck.lock_without_update();
+            } else {
+                lck.unlock_without_update();
             }
 
             // Start on the lock screen
-            lck.active_screen_idx = 1;
+            lck.current_screen = ScreenId::LockState;
         } else {
             // No state. Set as unlocked.
             log::info!("No previous state.");
             lck.unlock_without_update();
 
             // Use normal qr screen since we don't have state.
-            lck.active_screen_idx = 0;
+            lck.current_screen = ScreenId::QrCode;
         }
 
         // This must come after key loading and contract state restoration
@@ -456,14 +464,17 @@ impl LockCtx {
 
         // D2 button cycles through screens
         if update.d2_pressed {
-            self.active_screen_idx = (self.active_screen_idx + 1) % 5;
-            log::info!("Active screen now idx -> {}", self.active_screen_idx);
+            self.emergency_press_count = 0;
+            self.current_screen = self.current_screen.next(self.is_emergency_unlock_available());
+            log::info!("Active screen now -> {:?}", self.current_screen);
         }
 
         // D1 button action
         if update.d1_pressed {
             self.handle_d1_action();
         }
+
+        self.sanitize_current_screen();
 
         // If MQTT is running, run its tick to process all message queues.
         // Also schedule next periodic update.
@@ -493,9 +504,24 @@ impl LockCtx {
         self.save_state_if_dirty();
     } // end tick
 
+    pub fn is_emergency_unlock_available(&self) -> bool {
+        self.is_locked() && self.contract.as_ref().map_or(false, |c| c.emergency_unlock_allowed)
+    }
+
+    pub fn sanitize_current_screen(&mut self) {
+        if self.current_screen == ScreenId::EmergencyUnlock && !self.is_emergency_unlock_available() {
+            self.current_screen = ScreenId::LockState;
+            self.emergency_press_count = 0;
+        }
+    }
+
     pub fn handle_d1_action(&mut self) {
-        match self.active_screen_idx {
-            1 => {
+        match self.current_screen {
+            ScreenId::LockState => {
+                if self.emergency_unlocked {
+                    log::warn!("Local lock/unlock ignored: explicit LOCK command required after emergency unlock");
+                    return;
+                }
                 let allowed = match &self.contract {
                     Some(c) => c.temporary_unlock_allowed,
                     None => true,
@@ -509,13 +535,28 @@ impl LockCtx {
                     self.save_state_if_dirty();
                 }
             }
-            2 => {
+            ScreenId::EmergencyUnlock => {
+                if !self.is_emergency_unlock_available() {
+                    self.sanitize_current_screen();
+                    return;
+                }
+                self.emergency_press_count += 1;
+                log::info!("Emergency unlock D1 pressed: count={}/5", self.emergency_press_count);
+                if self.emergency_press_count >= 5 {
+                    log::info!("Emergency unlock triggered! Unlocking device and setting emergency_unlocked flag");
+                    self.emergency_unlock();
+                    self.emergency_press_count = 0;
+                    self.current_screen = ScreenId::LockState;
+                    self.save_state_if_dirty();
+                }
+            }
+            ScreenId::BlePin => {
                 let new_pin_num = unsafe { esp_idf_svc::sys::esp_random() } % 1_000_000;
                 let new_pin = format!("{:06}", new_pin_num);
                 log::info!("D1 pressed on BLE PIN screen: regenerating PIN to {}", new_pin);
                 crate::ble_server::reset_auth_pin(&new_pin);
             }
-            4 => {
+            ScreenId::FirmwareInfo => {
                 if self.firmware_manager.is_update_available() {
                     log::info!("User initiated a firmware update via D1");
                     self.firmware_manager.initiate_firmware_update();
@@ -652,6 +693,22 @@ impl LockCtx {
     pub fn process_command(&mut self, command: VerifiedType) -> Result<bool, String> {
         self.check_permission(&command)?;
 
+        if self.emergency_unlocked {
+            match command {
+                VerifiedType::LockCommand(_) => {
+                    log::info!("Received explicit LOCK command; clearing emergency_unlocked state");
+                    self.emergency_unlocked = false;
+                    self.lock();
+                    self.current_screen = ScreenId::LockState;
+                    self.save_state_if_dirty();
+                    return Ok(true);
+                }
+                _ => {
+                    return Err("Lock requires an explicit LOCK command following emergency unlock".to_string());
+                }
+            }
+        }
+
         match command {
             VerifiedType::Contract(contract) => {
                 if self.contract.is_some() {
@@ -659,38 +716,38 @@ impl LockCtx {
                 }
                 self.accept_contract(&contract);
                 self.contract = Some(contract);
-                self.active_screen_idx = 1;
+                self.current_screen = ScreenId::LockState;
                 self.save_state_if_dirty();
                 Ok(true)
             }
             VerifiedType::UnlockCommand(_) => {
                 self.unlock();
                 self.unlock_event_pending = true;
-                self.active_screen_idx = 1;
+                self.current_screen = ScreenId::LockState;
                 self.save_state_if_dirty();
                 Ok(true)
             }
             VerifiedType::LockCommand(_) => {
                 self.lock();
-                self.active_screen_idx = 1;
+                self.current_screen = ScreenId::LockState;
                 self.save_state_if_dirty();
                 Ok(true)
             }
             VerifiedType::ReleaseCommand(_) => {
                 self.end_contract();
-                self.active_screen_idx = 0;
+                self.current_screen = ScreenId::QrCode;
                 self.save_state_if_dirty();
                 Ok(true)
             }
             VerifiedType::AbortCommand(_) => {
                 self.end_contract();
-                self.active_screen_idx = 0;
+                self.current_screen = ScreenId::QrCode;
                 self.save_state_if_dirty();
                 Ok(true)
             }
             VerifiedType::ResetCommand(reset) => {
                 self.full_reset(&reset);
-                self.active_screen_idx = 0;
+                self.current_screen = ScreenId::QrCode;
                 self.save_state_if_dirty();
                 Ok(true)
             }
@@ -847,6 +904,16 @@ impl LockCtx {
         self.dirty = true;
     }
 
+    pub fn emergency_unlock(&mut self) {
+        log::info!("Emergency unlocking");
+        self.is_locked = false;
+        self.emergency_unlocked = true;
+        self.servo.open_position();
+        self.enqueue_periodic_update_message(true, false);
+        self.enqueue_bot_event(EventType::EmergencyUnlock);
+        self.dirty = true;
+    }
+
     pub fn unlock(&mut self) {
         log::info!("Unlocking");
         self.is_locked = false;
@@ -947,6 +1014,7 @@ impl LockCtx {
                 let save_state = SaveState {
                     internal_contract: internal_contract.clone(),
                     is_locked: self.is_locked,
+                    emergency_unlocked: self.emergency_unlocked,
                 };
 
                 let mut bytes = Vec::new();
@@ -1031,6 +1099,8 @@ impl LockCtx {
             log::info!("Contract removed");
         }
         self.contract = None;
+        self.emergency_unlocked = false;
+        self.emergency_press_count = 0;
     }
 
     fn get_signing_key(&self) -> SigningKey {
@@ -1139,6 +1209,7 @@ impl LockCtx {
                 current_contract_serial,
                 local_unlock,
                 local_lock,
+                emergency_unlocked: self.emergency_unlocked,
             },
         );
 
@@ -1162,6 +1233,7 @@ impl LockCtx {
                 current_contract_serial,
                 local_unlock,
                 local_lock,
+                emergency_unlocked: self.emergency_unlocked,
             },
         );
 

@@ -2,7 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
-export { CommonMetadata } from './subjugated/fb/event/common-metadata.js';
-export { Event } from './subjugated/fb/event/event.js';
-export { EventType } from './subjugated/fb/event/event-type.js';
-export { SignedEvent } from './subjugated/fb/event/signed-event.js';
+export { CommonMetadata } from './event/common-metadata.js';
+export { Event } from './event/event.js';
+export { EventType } from './event/event-type.js';
+export { SignedEvent } from './event/signed-event.js';

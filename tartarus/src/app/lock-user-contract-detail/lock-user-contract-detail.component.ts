@@ -152,6 +152,7 @@ export class LockUserContractDetailComponent implements OnInit {
     const serialNumber = contract.serialNumber();
     const publicKey = contract.publicKeyArray(); // Uint8Array
     const isTemporaryUnlockAllowed = contract.isTemporaryUnlockAllowed();
+    const isEmergencyUnlockAllowed = contract.isEmergencyUnlockAllowed();
 
     let endDescription= "When I Say So 😈";
 
@@ -186,7 +187,8 @@ export class LockUserContractDetailComponent implements OnInit {
       isTemporaryUnlockAllowed,
       contract.terms() ?? '',
       endDescription,
-      bots
+      bots,
+      isEmergencyUnlockAllowed
     );
   }
 }

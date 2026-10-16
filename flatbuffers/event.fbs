@@ -7,7 +7,7 @@ table CommonMetadata {
     counter: ushort;
 }
 
-enum EventType : byte { Undefined = 0, AcceptContract, LocalLock, LocalUnlock, Lock, Unlock, ReleaseContract }
+enum EventType : byte { Undefined = 0, AcceptContract, LocalLock, LocalUnlock, Lock, Unlock, ReleaseContract, EmergencyUnlock }
 
 table Event {
   metadata: CommonMetadata;

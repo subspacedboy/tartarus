@@ -9,5 +9,6 @@ export enum EventType {
   LocalUnlock = 3,
   Lock = 4,
   Unlock = 5,
-  ReleaseContract = 6
+  ReleaseContract = 6,
+  EmergencyUnlock = 7
 }

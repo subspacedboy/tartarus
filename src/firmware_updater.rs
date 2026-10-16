@@ -118,7 +118,7 @@ pub fn read_as_firmware_message(data: &[u8]) -> Result<FirmwareMessageType, Stri
                         InternalFirmwareResponse::new(
                             response.firmware_name().unwrap().to_string(),
                             response.version_name().unwrap().to_string(),
-                            response.size_() as usize,
+                            response.size() as usize,
                         ),
                     ))
                 } else {
@@ -133,7 +133,7 @@ pub fn read_as_firmware_message(data: &[u8]) -> Result<FirmwareMessageType, Stri
                     Ok(FirmwareMessageType::FirmwareChunk(
                         InternalFirmwareChunk::new(
                             b,
-                            chunk.size_() as usize,
+                            chunk.size() as usize,
                             chunk.offset() as usize,
                         ),
                     ))
@@ -388,7 +388,7 @@ impl FirmwareManager {
             &GetFirmwareChunkRequestArgs {
                 firmware_name: Some(firmware_name_offset),
                 offset: request_offset as i32,
-                size_: 16 * 1024,
+                size: 16 * 1024,
             },
         );
 

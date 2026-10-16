@@ -12,5 +12,6 @@ class EventType private constructor() {
         const val Lock: Byte = 4
         const val Unlock: Byte = 5
         const val ReleaseContract: Byte = 6
+        const val EmergencyUnlock: Byte = 7
     }
 }

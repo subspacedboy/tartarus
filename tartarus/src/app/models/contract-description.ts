@@ -18,6 +18,7 @@ export class ContractDescription {
     public isTemporaryUnlockAllowed: boolean,
     public terms: string,
     public endCondition: string,
-    public bots?: ContractBot[]) {}
+    public bots?: ContractBot[],
+    public isEmergencyUnlockAllowed: boolean = true) {}
 }
 

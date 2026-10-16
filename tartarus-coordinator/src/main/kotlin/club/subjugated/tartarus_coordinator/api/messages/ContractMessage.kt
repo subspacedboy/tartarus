@@ -28,14 +28,18 @@ data class ContractMessage(
                 shareableToken = contract.shareableToken,
                 state = contract.state.toString(),
                 authorSessionName = contract.authorSession.name,
-                body = Base64.getEncoder().encodeToString(contract.body),
+                body = contract.body?.let { Base64.getEncoder().encodeToString(it) },
                 notes = contract.notes,
                 messages =
                     if (skipMessages) null
                     else contract.messages.map { BotMessageMessage.fromMessage(it) },
                 lockState =
                     if (contract.lockState == null) null
-                    else LockStateMessage(contract.lockState!!),
+                    else
+                        LockStateMessage(
+                            isLocked = contract.lockState!!,
+                            emergencyUnlocked = contract.emergencyUnlocked ?: false,
+                        ),
                 lockLastUpdate = contract.lockLastUpdate,
                 nextCounter = contract.nextCounter,
                 serialNumber = contract.serialNumber,

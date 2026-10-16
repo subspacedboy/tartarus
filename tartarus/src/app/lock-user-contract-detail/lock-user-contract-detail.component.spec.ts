@@ -17,6 +17,7 @@ describe('LockUserContractDetailComponent', () => {
     serialNumber?: number;
     terms?: string;
     isTempUnlockAllowed?: boolean;
+    isEmergencyUnlockAllowed?: boolean;
     bots?: Array<{
       name: string;
       publicKeyBytes: Uint8Array;
@@ -56,6 +57,9 @@ describe('LockUserContractDetailComponent', () => {
     Contract.addSerialNumber(builder, options?.serialNumber ?? 1234);
     Contract.addTerms(builder, termsStr);
     Contract.addIsTemporaryUnlockAllowed(builder, options?.isTempUnlockAllowed ?? false);
+    if (options?.isEmergencyUnlockAllowed !== undefined) {
+      Contract.addIsEmergencyUnlockAllowed(builder, options.isEmergencyUnlockAllowed);
+    }
     if (botsVectorOffset !== null) {
       Contract.addBots(builder, botsVectorOffset);
     }
@@ -101,12 +105,36 @@ describe('LockUserContractDetailComponent', () => {
     expect(component.contractDescription).toBeDefined();
     expect(component.contractDescription?.terms).toBe('No bots here');
     expect(component.contractDescription?.isTemporaryUnlockAllowed).toBe(true);
+    expect(component.contractDescription?.isEmergencyUnlockAllowed).toBe(true);
     expect(component.contractDescription?.bots).toEqual([]);
 
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('.bot-card')).toBeNull();
     expect(compiled.textContent).not.toContain('Attached Bots');
+    expect(compiled.textContent).toContain('Emergency unlock allowed: true');
+  });
+
+  it('should parse contract with emergency unlock disabled', () => {
+    const rawBody = createSignedContractBuffer({
+      terms: 'Disabled emergency unlock terms',
+      isTempUnlockAllowed: false,
+      isEmergencyUnlockAllowed: false
+    });
+    component.contract = new ContractModel({
+      name: 'contract-no-emergency',
+      state: 'CREATED',
+      body: rawBody
+    });
+
+    component.parseContract();
+
+    expect(component.contractDescription).toBeDefined();
+    expect(component.contractDescription?.isEmergencyUnlockAllowed).toBe(false);
+
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).toContain('Emergency unlock allowed: false');
   });
 
   it('should parse contract with bots, permissions, and public key', () => {

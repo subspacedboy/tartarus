@@ -22,6 +22,7 @@ mod lock_ctx;
 mod mqtt_service;
 mod prelude;
 mod screen_ids;
+use screen_ids::ScreenId;
 mod servo;
 mod slint_platform;
 mod verifier;
@@ -373,7 +374,11 @@ fn main() {
         }
 
         // Sync state to Slint UI
-        ui.set_active_screen(lock_ctx.active_screen_idx as i32);
+        ui.set_active_screen(lock_ctx.current_screen as i32);
+        ui.set_screen_title(lock_ctx.current_screen.title().into());
+        ui.set_is_emergency_screen_available(lock_ctx.is_emergency_unlock_available());
+        ui.set_emergency_unlocked(lock_ctx.emergency_unlocked);
+        ui.set_emergency_press_count(lock_ctx.emergency_press_count as i32);
         ui.set_is_locked(lock_ctx.is_locked());
         ui.set_needs_config(lock_ctx.needs_configuration());
         ui.set_ble_pin(ble_server::get_auth_pin().into());
@@ -428,7 +433,7 @@ fn main() {
         ui.set_button_indicator(btn_indicator);
 
         // Refresh QR code if needed
-        if lock_ctx.active_screen_idx == 0 && !lock_ctx.needs_configuration() {
+        if lock_ctx.current_screen == ScreenId::QrCode && !lock_ctx.needs_configuration() {
             if let Ok(url) = lock_ctx.get_lock_url() {
                 if last_rendered_qr_url.as_deref() != Some(url) {
                     if let Some(qr_img) = slint_platform::generate_qr_image(url) {

@@ -37,8 +37,8 @@ class Bot : Table() {
                 null
             }
         }
-    val nameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun nameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val nameAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(4, 1)
+    fun nameInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 4, 1)
     fun publicKey(j: Int) : UByte {
         val o = __offset(6)
         return if (o != 0) {
@@ -51,8 +51,8 @@ class Bot : Table() {
         get() {
             val o = __offset(6); return if (o != 0) __vector_len(o) else 0
         }
-    val publicKeyAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
-    fun publicKeyInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
+    val publicKeyAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(6, 1)
+    fun publicKeyInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 6, 1)
     val permissions : club.subjugated.fb.message.Permission? get() = permissions(club.subjugated.fb.message.Permission())
     fun permissions(obj: club.subjugated.fb.message.Permission) : club.subjugated.fb.message.Permission? {
         val o = __offset(8)

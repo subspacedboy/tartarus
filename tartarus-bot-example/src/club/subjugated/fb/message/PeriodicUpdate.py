@@ -59,8 +59,15 @@ class PeriodicUpdate(object):
             return bool(self._tab.Get(flatbuffers.number_types.BoolFlags, o + self._tab.Pos))
         return False
 
+    # PeriodicUpdate
+    def EmergencyUnlocked(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
+        if o != 0:
+            return bool(self._tab.Get(flatbuffers.number_types.BoolFlags, o + self._tab.Pos))
+        return False
+
 def PeriodicUpdateStart(builder):
-    builder.StartObject(5)
+    builder.StartObject(6)
 
 def Start(builder):
     PeriodicUpdateStart(builder)
@@ -94,6 +101,12 @@ def PeriodicUpdateAddLocalLock(builder, localLock):
 
 def AddLocalLock(builder, localLock):
     PeriodicUpdateAddLocalLock(builder, localLock)
+
+def PeriodicUpdateAddEmergencyUnlocked(builder, emergencyUnlocked):
+    builder.PrependBoolSlot(5, emergencyUnlocked, 0)
+
+def AddEmergencyUnlocked(builder, emergencyUnlocked):
+    PeriodicUpdateAddEmergencyUnlocked(builder, emergencyUnlocked)
 
 def PeriodicUpdateEnd(builder):
     return builder.EndObject()

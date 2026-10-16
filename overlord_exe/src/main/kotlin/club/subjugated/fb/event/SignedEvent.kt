@@ -40,8 +40,8 @@ class SignedEvent : Table() {
         get() {
             val o = __offset(4); return if (o != 0) __vector_len(o) else 0
         }
-    val signatureAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun signatureInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val signatureAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(4, 1)
+    fun signatureInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 4, 1)
     val payload : club.subjugated.fb.event.Event? get() = payload(club.subjugated.fb.event.Event())
     fun payload(obj: club.subjugated.fb.event.Event) : club.subjugated.fb.event.Event? {
         val o = __offset(6)

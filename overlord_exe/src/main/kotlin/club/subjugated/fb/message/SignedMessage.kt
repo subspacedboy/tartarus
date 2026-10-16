@@ -40,8 +40,8 @@ class SignedMessage : Table() {
         get() {
             val o = __offset(4); return if (o != 0) __vector_len(o) else 0
         }
-    val signatureAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun signatureInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val signatureAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(4, 1)
+    fun signatureInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 4, 1)
     val payloadType : UByte
         get() {
             val o = __offset(6)
@@ -59,8 +59,8 @@ class SignedMessage : Table() {
                 null
             }
         }
-    val authorityIdentifierAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(10, 1)
-    fun authorityIdentifierInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 10, 1)
+    val authorityIdentifierAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(10, 1)
+    fun authorityIdentifierInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 10, 1)
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsSignedMessage(_bb: ByteBuffer): SignedMessage = getRootAsSignedMessage(_bb, SignedMessage())

@@ -49,8 +49,13 @@ localLock():boolean {
   return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
 }
 
+emergencyUnlocked():boolean {
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
+}
+
 static startPeriodicUpdate(builder:flatbuffers.Builder) {
-  builder.startObject(5);
+  builder.startObject(6);
 }
 
 static addSession(builder:flatbuffers.Builder, sessionOffset:flatbuffers.Offset) {
@@ -73,18 +78,23 @@ static addLocalLock(builder:flatbuffers.Builder, localLock:boolean) {
   builder.addFieldInt8(4, +localLock, +false);
 }
 
+static addEmergencyUnlocked(builder:flatbuffers.Builder, emergencyUnlocked:boolean) {
+  builder.addFieldInt8(5, +emergencyUnlocked, +false);
+}
+
 static endPeriodicUpdate(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   return offset;
 }
 
-static createPeriodicUpdate(builder:flatbuffers.Builder, sessionOffset:flatbuffers.Offset, isLocked:boolean, currentContractSerial:number, localUnlock:boolean, localLock:boolean):flatbuffers.Offset {
+static createPeriodicUpdate(builder:flatbuffers.Builder, sessionOffset:flatbuffers.Offset, isLocked:boolean, currentContractSerial:number, localUnlock:boolean, localLock:boolean, emergencyUnlocked:boolean):flatbuffers.Offset {
   PeriodicUpdate.startPeriodicUpdate(builder);
   PeriodicUpdate.addSession(builder, sessionOffset);
   PeriodicUpdate.addIsLocked(builder, isLocked);
   PeriodicUpdate.addCurrentContractSerial(builder, currentContractSerial);
   PeriodicUpdate.addLocalUnlock(builder, localUnlock);
   PeriodicUpdate.addLocalLock(builder, localLock);
+  PeriodicUpdate.addEmergencyUnlocked(builder, emergencyUnlocked);
   return PeriodicUpdate.endPeriodicUpdate(builder);
 }
 }

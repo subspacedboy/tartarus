@@ -8,4 +8,5 @@ interface MessageHandler {
     fun handleRelease(contract : Contract)
     fun handleLock(contract: Contract)
     fun handleUnlock(contract: Contract)
+    fun handleEmergencyUnlock(contract: Contract) {}
 }

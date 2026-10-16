@@ -22,6 +22,7 @@ fun makeCreateContractCommand(
     privateKey: ByteArray,
     publicKey: ByteArray,
     public: Boolean,
+    emergencyUnlock: Boolean = true,
 ): ContractCommandWrapper {
     val builder = FlatBufferBuilder(1024)
 
@@ -63,6 +64,7 @@ fun makeCreateContractCommand(
     club.subjugated.fb.message.Contract.addPublicKey(builder, publicKeyOffset)
     club.subjugated.fb.message.Contract.addTerms(builder, termsOffset)
     club.subjugated.fb.message.Contract.addIsTemporaryUnlockAllowed(builder, temporaryUnlock)
+    club.subjugated.fb.message.Contract.addIsEmergencyUnlockAllowed(builder, emergencyUnlock)
     club.subjugated.fb.message.Contract.addBots(builder, botsVectorOffset)
     val contractOffset = club.subjugated.fb.message.Contract.endContract(builder)
 

@@ -67,8 +67,13 @@ isTemporaryUnlockAllowed():boolean {
   return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
 }
 
+isEmergencyUnlockAllowed():boolean {
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : true;
+}
+
 static startContract(builder:flatbuffers.Builder) {
-  builder.startObject(5);
+  builder.startObject(6);
 }
 
 static addSerialNumber(builder:flatbuffers.Builder, serialNumber:number) {
@@ -115,18 +120,23 @@ static addIsTemporaryUnlockAllowed(builder:flatbuffers.Builder, isTemporaryUnloc
   builder.addFieldInt8(4, +isTemporaryUnlockAllowed, +false);
 }
 
+static addIsEmergencyUnlockAllowed(builder:flatbuffers.Builder, isEmergencyUnlockAllowed:boolean) {
+  builder.addFieldInt8(5, +isEmergencyUnlockAllowed, +true);
+}
+
 static endContract(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   return offset;
 }
 
-static createContract(builder:flatbuffers.Builder, serialNumber:number, publicKeyOffset:flatbuffers.Offset, botsOffset:flatbuffers.Offset, termsOffset:flatbuffers.Offset, isTemporaryUnlockAllowed:boolean):flatbuffers.Offset {
+static createContract(builder:flatbuffers.Builder, serialNumber:number, publicKeyOffset:flatbuffers.Offset, botsOffset:flatbuffers.Offset, termsOffset:flatbuffers.Offset, isTemporaryUnlockAllowed:boolean, isEmergencyUnlockAllowed:boolean):flatbuffers.Offset {
   Contract.startContract(builder);
   Contract.addSerialNumber(builder, serialNumber);
   Contract.addPublicKey(builder, publicKeyOffset);
   Contract.addBots(builder, botsOffset);
   Contract.addTerms(builder, termsOffset);
   Contract.addIsTemporaryUnlockAllowed(builder, isTemporaryUnlockAllowed);
+  Contract.addIsEmergencyUnlockAllowed(builder, isEmergencyUnlockAllowed);
   return Contract.endContract(builder);
 }
 }

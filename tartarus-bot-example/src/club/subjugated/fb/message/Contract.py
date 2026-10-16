@@ -97,8 +97,15 @@ class Contract(object):
             return bool(self._tab.Get(flatbuffers.number_types.BoolFlags, o + self._tab.Pos))
         return False
 
+    # Contract
+    def IsEmergencyUnlockAllowed(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
+        if o != 0:
+            return bool(self._tab.Get(flatbuffers.number_types.BoolFlags, o + self._tab.Pos))
+        return True
+
 def ContractStart(builder):
-    builder.StartObject(5)
+    builder.StartObject(6)
 
 def Start(builder):
     ContractStart(builder)
@@ -144,6 +151,12 @@ def ContractAddIsTemporaryUnlockAllowed(builder, isTemporaryUnlockAllowed):
 
 def AddIsTemporaryUnlockAllowed(builder, isTemporaryUnlockAllowed):
     ContractAddIsTemporaryUnlockAllowed(builder, isTemporaryUnlockAllowed)
+
+def ContractAddIsEmergencyUnlockAllowed(builder, isEmergencyUnlockAllowed):
+    builder.PrependBoolSlot(5, isEmergencyUnlockAllowed, 1)
+
+def AddIsEmergencyUnlockAllowed(builder, isEmergencyUnlockAllowed):
+    ContractAddIsEmergencyUnlockAllowed(builder, isEmergencyUnlockAllowed)
 
 def ContractEnd(builder):
     return builder.EndObject()

@@ -10,3 +10,4 @@ class EventType(object):
     Lock = 4
     Unlock = 5
     ReleaseContract = 6
+    EmergencyUnlock = 7

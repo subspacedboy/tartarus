@@ -37,8 +37,8 @@ class CreateContractRequest : Table() {
                 null
             }
         }
-    val shareableTokenAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun shareableTokenInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val shareableTokenAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(4, 1)
+    fun shareableTokenInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 4, 1)
     fun contract(j: Int) : UByte {
         val o = __offset(6)
         return if (o != 0) {
@@ -51,8 +51,8 @@ class CreateContractRequest : Table() {
         get() {
             val o = __offset(6); return if (o != 0) __vector_len(o) else 0
         }
-    val contractAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
-    fun contractInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
+    val contractAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(6, 1)
+    fun contractInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 6, 1)
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsCreateContractRequest(_bb: ByteBuffer): CreateContractRequest = getRootAsCreateContractRequest(_bb, CreateContractRequest())

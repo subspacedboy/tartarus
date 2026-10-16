@@ -2,12 +2,12 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
-export { FirmwareChallengeRequest } from './subjugated/fb/message/firmware/firmware-challenge-request.js';
-export { FirmwareChallengeResponse } from './subjugated/fb/message/firmware/firmware-challenge-response.js';
-export { FirmwareMessage } from './subjugated/fb/message/firmware/firmware-message.js';
-export { GetFirmwareChunkRequest } from './subjugated/fb/message/firmware/get-firmware-chunk-request.js';
-export { GetFirmwareChunkResponse } from './subjugated/fb/message/firmware/get-firmware-chunk-response.js';
-export { GetLatestFirmwareRequest } from './subjugated/fb/message/firmware/get-latest-firmware-request.js';
-export { GetLatestFirmwareResponse } from './subjugated/fb/message/firmware/get-latest-firmware-response.js';
-export { MessagePayload } from './subjugated/fb/message/firmware/message-payload.js';
-export { Version } from './subjugated/fb/message/firmware/version.js';
+export { FirmwareChallengeRequest } from './firmware/firmware-challenge-request.js';
+export { FirmwareChallengeResponse } from './firmware/firmware-challenge-response.js';
+export { FirmwareMessage } from './firmware/firmware-message.js';
+export { GetFirmwareChunkRequest } from './firmware/get-firmware-chunk-request.js';
+export { GetFirmwareChunkResponse } from './firmware/get-firmware-chunk-response.js';
+export { GetLatestFirmwareRequest } from './firmware/get-latest-firmware-request.js';
+export { GetLatestFirmwareResponse } from './firmware/get-latest-firmware-response.js';
+export { MessagePayload } from './firmware/message-payload.js';
+export { Version } from './firmware/version.js';

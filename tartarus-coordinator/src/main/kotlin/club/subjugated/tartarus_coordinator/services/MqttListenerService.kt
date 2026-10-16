@@ -270,7 +270,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
         val update = signedMessage.periodicUpdate
 
         println(
-            "👀 Periodic update from ${update.session} -> Locked? ${update.isLocked}, Local Lock -> ${update.localLock}, Local Unlock -> ${update.localUnlock}"
+            "👀 Periodic update from ${update.session} -> Locked? ${update.isLocked}, Local Lock -> ${update.localLock}, Local Unlock -> ${update.localUnlock}, Emergency unlocked? -> ${update.emergencyUnlocked}"
         )
         this.lockSessionService.handlePeriodicUpdate(update)
     }

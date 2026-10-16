@@ -167,6 +167,9 @@ class BotComponent(
                                     EventType.Unlock -> {
                                         handleUnlock(botMap, signedEvent)
                                     }
+                                    EventType.EmergencyUnlock -> {
+                                        handleEmergencyUnlock(botMap, signedEvent)
+                                    }
                                 }
                             }
 
@@ -288,6 +291,17 @@ class BotComponent(
 
         val handler = handlers.get(botMap)!!
         handler.handleUnlock(contract)
+    }
+
+    fun handleEmergencyUnlock(botMap: BotMap, signedEvent: SignedEvent) {
+        logger.info("Handle Emergency Unlock")
+        val e = signedEvent.payload!!
+        val commonMetadata = e.metadata!!
+
+        val contract = contractService.getContract(botMap.externalName, commonMetadata.contractSerialNumber.toInt())
+
+        val handler = handlers.get(botMap)
+        handler?.handleEmergencyUnlock(contract)
     }
 
     @EventListener

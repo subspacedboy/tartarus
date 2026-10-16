@@ -16,6 +16,7 @@ class LockSession(
     var shareToken: String?,
     var totalControlToken: String?,
     var isLocked: Boolean = false,
+    var emergencyUnlocked: Boolean = false,
     var availableForContract: Boolean = true,
     var validatedFirmware: Boolean = false,
     var mqttPassword: String? = null,

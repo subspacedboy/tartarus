@@ -40,8 +40,8 @@ class GetLatestFirmwareResponse : Table() {
         get() {
             val o = __offset(4); return if (o != 0) __vector_len(o) else 0
         }
-    val digestAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun digestInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val digestAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(4, 1)
+    fun digestInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 4, 1)
     val firmwareName : String?
         get() {
             val o = __offset(6)
@@ -51,8 +51,8 @@ class GetLatestFirmwareResponse : Table() {
                 null
             }
         }
-    val firmwareNameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
-    fun firmwareNameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
+    val firmwareNameAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(6, 1)
+    fun firmwareNameInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 6, 1)
     val versionName : String?
         get() {
             val o = __offset(8)
@@ -62,8 +62,8 @@ class GetLatestFirmwareResponse : Table() {
                 null
             }
         }
-    val versionNameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(8, 1)
-    fun versionNameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 8, 1)
+    val versionNameAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(8, 1)
+    fun versionNameInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 8, 1)
     val size : Int
         get() {
             val o = __offset(10)

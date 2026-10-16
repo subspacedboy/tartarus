@@ -5,16 +5,24 @@ use crate::contract_generated::club::subjugated::fb::message::{
 use p256::ecdsa::VerifyingKey;
 use serde::{Deserialize, Serialize};
 
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SaveState {
     pub(crate) internal_contract: InternalContract,
     pub(crate) is_locked: bool,
+    #[serde(default)]
+    pub(crate) emergency_unlocked: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InternalContract {
     pub serial_number: u16,
     pub temporary_unlock_allowed: bool,
+    #[serde(default = "default_true")]
+    pub emergency_unlock_allowed: bool,
     #[serde(with = "verifying_key_serde")]
     pub public_key: Option<VerifyingKey>,
     #[serde(default, skip_serializing)]
@@ -142,6 +150,7 @@ impl From<Contract<'_>> for InternalContract {
         Self {
             serial_number: contract.serial_number(),
             temporary_unlock_allowed: contract.is_temporary_unlock_allowed(),
+            emergency_unlock_allowed: contract.is_emergency_unlock_allowed(),
             public_key: Some(verifying_key),
             original_bytes: Vec::new(),
             command_counter: 0,
@@ -264,5 +273,72 @@ pub mod verifying_key_serde {
             }
             None => Ok(None),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_internal_contract_serde_backward_compatibility() {
+        // Simulating JSON without emergency_unlock_allowed field (legacy saved state)
+        let legacy_json = r#"{
+            "serial_number": 42,
+            "temporary_unlock_allowed": false,
+            "public_key": null,
+            "command_counter": 1,
+            "bots": []
+        }"#;
+
+        let parsed: InternalContract = serde_json::from_str(legacy_json).unwrap();
+        assert_eq!(parsed.serial_number, 42);
+        assert_eq!(parsed.temporary_unlock_allowed, false);
+        // Should default to true!
+        assert_eq!(parsed.emergency_unlock_allowed, true);
+    }
+
+    #[test]
+    fn test_save_state_serde_backward_compatibility() {
+        // Simulating legacy SaveState JSON without emergency_unlocked field
+        let legacy_save_state_json = r#"{
+            "internal_contract": {
+                "serial_number": 100,
+                "temporary_unlock_allowed": true,
+                "public_key": null,
+                "command_counter": 5,
+                "bots": []
+            },
+            "is_locked": true
+        }"#;
+
+        let state: SaveState = serde_json::from_str(legacy_save_state_json).unwrap();
+        assert_eq!(state.is_locked, true);
+        assert_eq!(state.internal_contract.emergency_unlock_allowed, true);
+        // emergency_unlocked should default to false!
+        assert_eq!(state.emergency_unlocked, false);
+    }
+
+    #[test]
+    fn test_save_state_serde_roundtrip_with_emergency_unlocked() {
+        let save_state = SaveState {
+            internal_contract: InternalContract {
+                serial_number: 101,
+                temporary_unlock_allowed: false,
+                emergency_unlock_allowed: true,
+                public_key: None,
+                original_bytes: Vec::new(),
+                command_counter: 0,
+                bots: Vec::new(),
+            },
+            is_locked: false,
+            emergency_unlocked: true,
+        };
+
+        let json = serde_json::to_string(&save_state).unwrap();
+        let restored: SaveState = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.is_locked, false);
+        assert_eq!(restored.emergency_unlocked, true);
+        assert_eq!(restored.internal_contract.emergency_unlock_allowed, true);
     }
 }

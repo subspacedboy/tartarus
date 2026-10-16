@@ -42,8 +42,8 @@ class GetContractResponse : Table() {
                 null
             }
         }
-    val stateAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
-    fun stateInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
+    val stateAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(6, 1)
+    fun stateInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 6, 1)
     val name : String?
         get() {
             val o = __offset(8)
@@ -53,8 +53,8 @@ class GetContractResponse : Table() {
                 null
             }
         }
-    val nameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(8, 1)
-    fun nameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 8, 1)
+    val nameAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(8, 1)
+    fun nameInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 8, 1)
     val shareableToken : String?
         get() {
             val o = __offset(10)
@@ -64,8 +64,8 @@ class GetContractResponse : Table() {
                 null
             }
         }
-    val shareableTokenAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(10, 1)
-    fun shareableTokenInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 10, 1)
+    val shareableTokenAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(10, 1)
+    fun shareableTokenInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 10, 1)
     val authorName : String?
         get() {
             val o = __offset(12)
@@ -75,8 +75,8 @@ class GetContractResponse : Table() {
                 null
             }
         }
-    val authorNameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(12, 1)
-    fun authorNameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 12, 1)
+    val authorNameAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(12, 1)
+    fun authorNameInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 12, 1)
     fun signedMessage(j: Int) : Byte {
         val o = __offset(14)
         return if (o != 0) {
@@ -89,8 +89,8 @@ class GetContractResponse : Table() {
         get() {
             val o = __offset(14); return if (o != 0) __vector_len(o) else 0
         }
-    val signedMessageAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(14, 1)
-    fun signedMessageInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 14, 1)
+    val signedMessageAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(14, 1)
+    fun signedMessageInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 14, 1)
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsGetContractResponse(_bb: ByteBuffer): GetContractResponse = getRootAsGetContractResponse(_bb, GetContractResponse())

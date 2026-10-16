@@ -67,7 +67,7 @@ export class UpdaterComponent implements OnInit, OnDestroy {
   manifestError = signal<string | null>(null);
 
   // Selection state
-  selectedTrack = signal<FirmwareTrack>('signed');
+  selectedTrack = signal<FirmwareTrack>('arbitrary');
   selectedVersion = signal<string | null>(null);
   selectedFlashScope = signal<FlashTargetMode>('app_only');
   arbitrarySource = signal<ArbitrarySource>('manifest');
@@ -188,6 +188,13 @@ export class UpdaterComponent implements OnInit, OnDestroy {
       this.manifest.set(data);
       this.manifestLoading.set(false);
       this.addLog(`Successfully loaded manifest with ${data.releases.length} total releases.`, 'success');
+
+      // Prefer arbitrary/unsigned releases if available; fallback to signed if only signed exist
+      if (this.arbitraryReleases().length > 0) {
+        this.selectedTrack.set('arbitrary');
+      } else if (this.signedReleases().length > 0) {
+        this.selectedTrack.set('signed');
+      }
 
       // Auto-select latest version in current track
       this.syncSelectedVersion();

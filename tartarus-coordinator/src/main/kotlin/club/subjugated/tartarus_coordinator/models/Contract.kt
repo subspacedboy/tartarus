@@ -26,6 +26,7 @@ class Contract(
     var nextCounter: Int = 0,
     var serialNumber: Int = 0,
     @Transient var lockState: Boolean? = null,
+    @Transient var emergencyUnlocked: Boolean? = null,
     @Transient
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     var lockLastUpdate: OffsetDateTime? = null,
@@ -38,13 +39,20 @@ class Contract(
         }
     }
 
-    fun getEmbeddedBots(): List<Bot> {
-        val byteBuffer = ByteBuffer.wrap(body)
-
-        // Parse the FlatBuffer object
+    fun getEmbeddedContract(): Contract? {
+        val b = body ?: return null
+        val byteBuffer = ByteBuffer.wrap(b)
         val sm = SignedMessage.getRootAsSignedMessage(byteBuffer)
         val contract = Contract()
-        sm.payload(contract)
+        return if (sm.payload(contract) != null) contract else null
+    }
+
+    fun isEmergencyUnlockAllowed(): Boolean {
+        return getEmbeddedContract()?.isEmergencyUnlockAllowed ?: true
+    }
+
+    fun getEmbeddedBots(): List<Bot> {
+        val contract = getEmbeddedContract() ?: return emptyList()
 
         val botList = mutableListOf<club.subjugated.fb.message.Bot>()
         for (i in 0 until contract.botsLength) {

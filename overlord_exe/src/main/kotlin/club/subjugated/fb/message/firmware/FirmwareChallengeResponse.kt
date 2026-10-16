@@ -40,8 +40,8 @@ class FirmwareChallengeResponse : Table() {
         get() {
             val o = __offset(4); return if (o != 0) __vector_len(o) else 0
         }
-    val signatureAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun signatureInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val signatureAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(4, 1)
+    fun signatureInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 4, 1)
     val version : club.subjugated.fb.message.firmware.Version? get() = version(club.subjugated.fb.message.firmware.Version())
     fun version(obj: club.subjugated.fb.message.firmware.Version) : club.subjugated.fb.message.firmware.Version? {
         val o = __offset(6)

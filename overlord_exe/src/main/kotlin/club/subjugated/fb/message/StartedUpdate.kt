@@ -40,8 +40,8 @@ class StartedUpdate : Table() {
         get() {
             val o = __offset(4); return if (o != 0) __vector_len(o) else 0
         }
-    val publicKeyAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun publicKeyInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val publicKeyAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(4, 1)
+    fun publicKeyInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 4, 1)
     val session : String?
         get() {
             val o = __offset(6)
@@ -51,8 +51,8 @@ class StartedUpdate : Table() {
                 null
             }
         }
-    val sessionAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
-    fun sessionInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
+    val sessionAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(6, 1)
+    fun sessionInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 6, 1)
     val startedWithLocalContract : Boolean
         get() {
             val o = __offset(8)

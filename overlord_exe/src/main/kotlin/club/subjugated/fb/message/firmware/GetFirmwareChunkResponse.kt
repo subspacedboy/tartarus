@@ -50,8 +50,8 @@ class GetFirmwareChunkResponse : Table() {
         get() {
             val o = __offset(8); return if (o != 0) __vector_len(o) else 0
         }
-    val chunkAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(8, 1)
-    fun chunkInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 8, 1)
+    val chunkAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(8, 1)
+    fun chunkInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 8, 1)
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsGetFirmwareChunkResponse(_bb: ByteBuffer): GetFirmwareChunkResponse = getRootAsGetFirmwareChunkResponse(_bb, GetFirmwareChunkResponse())

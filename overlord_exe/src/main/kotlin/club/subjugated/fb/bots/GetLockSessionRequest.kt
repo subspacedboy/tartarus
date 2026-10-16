@@ -37,8 +37,8 @@ class GetLockSessionRequest : Table() {
                 null
             }
         }
-    val shareableTokenAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun shareableTokenInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val shareableTokenAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(4, 1)
+    fun shareableTokenInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 4, 1)
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsGetLockSessionRequest(_bb: ByteBuffer): GetLockSessionRequest = getRootAsGetLockSessionRequest(_bb, GetLockSessionRequest())

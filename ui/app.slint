@@ -7,6 +7,10 @@ export component AppWindow inherits Window {
     default-font-family: "DejaVu Sans";
 
     in-out property <int> active_screen: 0;
+    in-out property <string> screen_title: "PAIRING / QR";
+    in-out property <int> emergency_press_count: 0;
+    in-out property <bool> emergency_unlocked: false;
+    in-out property <bool> is_emergency_screen_available: false;
     in-out property <bool> is_locked: false;
     in-out property <string> contract_id: "";
     in-out property <string> wifi_ssid: "";
@@ -76,55 +80,117 @@ export component AppWindow inherits Window {
         Text {
             x: 24px;
             y: 2px;
-            text: root.active_screen == 0 ? "PAIRING / QR" :
-                  root.active_screen == 1 ? "LOCK STATUS" :
-                  root.active_screen == 2 ? "BLE PIN" :
-                  root.active_screen == 3 ? "NETWORK" : "SYSTEM";
+            text: root.screen_title;
             font-size: 11px;
             font-weight: 700;
-            color: #e0e0e0;
+            color: root.active_screen == 2 ? #ff5252 : #e0e0e0;
         }
 
         // Screen indicators (dots in top right)
-        Rectangle {
+        if root.is_emergency_screen_available : Rectangle {
+            x: 160px;
+            y: 0px;
+            width: 76px;
+            height: 20px;
+            background: transparent;
+
+            Rectangle {
+                x: 0px;
+                y: 6px;
+                width: 8px;
+                height: 8px;
+                border-radius: 4px;
+                background: root.active_screen == 0 ? #00e676 : #444455;
+            }
+            Rectangle {
+                x: 12px;
+                y: 6px;
+                width: 8px;
+                height: 8px;
+                border-radius: 4px;
+                background: root.active_screen == 1 ? #00e676 : #444455;
+            }
+            Rectangle {
+                x: 24px;
+                y: 6px;
+                width: 8px;
+                height: 8px;
+                border-radius: 4px;
+                background: root.active_screen == 2 ? #ff1744 : #553333;
+            }
+            Rectangle {
+                x: 36px;
+                y: 6px;
+                width: 8px;
+                height: 8px;
+                border-radius: 4px;
+                background: root.active_screen == 3 ? #00e676 : #444455;
+            }
+            Rectangle {
+                x: 48px;
+                y: 6px;
+                width: 8px;
+                height: 8px;
+                border-radius: 4px;
+                background: root.active_screen == 4 ? #00e676 : #444455;
+            }
+            Rectangle {
+                x: 60px;
+                y: 6px;
+                width: 8px;
+                height: 8px;
+                border-radius: 4px;
+                background: root.active_screen == 5 ? #00e676 : #444455;
+            }
+        }
+
+        if !root.is_emergency_screen_available : Rectangle {
             x: 172px;
-            y: 6px;
-            width: 8px;
-            height: 8px;
-            border-radius: 4px;
-            background: root.active_screen == 0 ? #00e676 : #444455;
-        }
-        Rectangle {
-            x: 184px;
-            y: 6px;
-            width: 8px;
-            height: 8px;
-            border-radius: 4px;
-            background: root.active_screen == 1 ? #00e676 : #444455;
-        }
-        Rectangle {
-            x: 196px;
-            y: 6px;
-            width: 8px;
-            height: 8px;
-            border-radius: 4px;
-            background: root.active_screen == 2 ? #00e676 : #444455;
-        }
-        Rectangle {
-            x: 208px;
-            y: 6px;
-            width: 8px;
-            height: 8px;
-            border-radius: 4px;
-            background: root.active_screen == 3 ? #00e676 : #444455;
-        }
-        Rectangle {
-            x: 220px;
-            y: 6px;
-            width: 8px;
-            height: 8px;
-            border-radius: 4px;
-            background: root.active_screen == 4 ? #00e676 : #444455;
+            y: 0px;
+            width: 64px;
+            height: 20px;
+            background: transparent;
+
+            Rectangle {
+                x: 0px;
+                y: 6px;
+                width: 8px;
+                height: 8px;
+                border-radius: 4px;
+                background: root.active_screen == 0 ? #00e676 : #444455;
+            }
+            Rectangle {
+                x: 12px;
+                y: 6px;
+                width: 8px;
+                height: 8px;
+                border-radius: 4px;
+                background: root.active_screen == 1 ? #00e676 : #444455;
+            }
+            Rectangle {
+                x: 24px;
+                y: 6px;
+                width: 8px;
+                height: 8px;
+                border-radius: 4px;
+                background: root.active_screen == 3 ? #00e676 : #444455;
+            }
+            Rectangle {
+                x: 36px;
+                y: 6px;
+                width: 8px;
+                height: 8px;
+                border-radius: 4px;
+                background: root.active_screen == 4 ? #00e676 : #444455;
+            }
+            Rectangle {
+                x: 48px;
+                y: 6px;
+                width: 8px;
+                height: 8px;
+                border-radius: 4px;
+                background: root.active_screen == 5 ? #00e676 : #444455;
+            }
         }
     }
 
@@ -215,20 +281,24 @@ export component AppWindow inherits Window {
                 alignment: center;
 
                 Rectangle {
-                    width: 150px;
+                    width: root.emergency_unlocked ? 190px : 150px;
                     height: 36px;
                     border-radius: 6px;
-                    background: root.is_locked ? #003314 : #331100;
+                    background: root.emergency_unlocked ? #330000 :
+                                root.is_locked ? #003314 : #331100;
                     border-width: 1px;
-                    border-color: root.is_locked ? #00e676 : #ff9100;
+                    border-color: root.emergency_unlocked ? #ff1744 :
+                                  root.is_locked ? #00e676 : #ff9100;
 
                     Text {
                         width: 100%;
                         height: 100%;
-                        text: root.is_locked ? "LOCKED" : "UNLOCKED";
-                        font-size: 18px;
+                        text: root.emergency_unlocked ? "EMERGENCY UNLOCKED" :
+                              root.is_locked ? "LOCKED" : "UNLOCKED";
+                        font-size: root.emergency_unlocked ? 13px : 18px;
                         font-weight: 700;
-                        color: root.is_locked ? #00e676 : #ff9100;
+                        color: root.emergency_unlocked ? #ff5252 :
+                               root.is_locked ? #00e676 : #ff9100;
                         horizontal-alignment: center;
                         vertical-alignment: center;
                     }
@@ -243,16 +313,116 @@ export component AppWindow inherits Window {
             }
 
             Text {
-                text: "D1: Toggle Lock";
+                text: root.emergency_unlocked ? "Awaiting explicit LOCK command" : "D1: Toggle Lock";
                 font-size: 9px;
-                color: #607d8b;
+                color: root.emergency_unlocked ? #ff5252 : #607d8b;
                 horizontal-alignment: center;
             }
         }
     }
 
-    // Screen 2: BLE PIN
+    // Screen 2: Emergency Unlock
     if root.active_screen == 2 : Rectangle {
+        x: 0px;
+        y: 20px;
+        width: 240px;
+        height: 97px;
+
+        VerticalLayout {
+            alignment: center;
+            spacing: 5px;
+
+            // Warning Badge
+            HorizontalLayout {
+                alignment: center;
+
+                Rectangle {
+                    width: 170px;
+                    height: 32px;
+                    border-radius: 6px;
+                    background: #330000;
+                    border-width: 1px;
+                    border-color: #ff1744;
+
+                    Text {
+                        width: 100%;
+                        height: 100%;
+                        text: "EMERGENCY UNLOCK";
+                        font-size: 13px;
+                        font-weight: 700;
+                        color: #ff5252;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+
+            Text {
+                text: "Press D1 5 times to unlock";
+                font-size: 11px;
+                font-weight: 600;
+                color: #ffffff;
+                horizontal-alignment: center;
+            }
+
+            // Visual Progress Dots (5 dots)
+            HorizontalLayout {
+                alignment: center;
+                spacing: 8px;
+
+                Rectangle {
+                    width: 12px;
+                    height: 12px;
+                    border-radius: 6px;
+                    background: root.emergency_press_count >= 1 ? #ff1744 : #333344;
+                    border-width: 1px;
+                    border-color: root.emergency_press_count >= 1 ? #ff5252 : #555566;
+                }
+                Rectangle {
+                    width: 12px;
+                    height: 12px;
+                    border-radius: 6px;
+                    background: root.emergency_press_count >= 2 ? #ff1744 : #333344;
+                    border-width: 1px;
+                    border-color: root.emergency_press_count >= 2 ? #ff5252 : #555566;
+                }
+                Rectangle {
+                    width: 12px;
+                    height: 12px;
+                    border-radius: 6px;
+                    background: root.emergency_press_count >= 3 ? #ff1744 : #333344;
+                    border-width: 1px;
+                    border-color: root.emergency_press_count >= 3 ? #ff5252 : #555566;
+                }
+                Rectangle {
+                    width: 12px;
+                    height: 12px;
+                    border-radius: 6px;
+                    background: root.emergency_press_count >= 4 ? #ff1744 : #333344;
+                    border-width: 1px;
+                    border-color: root.emergency_press_count >= 4 ? #ff5252 : #555566;
+                }
+                Rectangle {
+                    width: 12px;
+                    height: 12px;
+                    border-radius: 6px;
+                    background: root.emergency_press_count >= 5 ? #00e676 : #333344;
+                    border-width: 1px;
+                    border-color: root.emergency_press_count >= 5 ? #00e676 : #555566;
+                }
+            }
+
+            Text {
+                text: "Progress: " + root.emergency_press_count + " / 5";
+                font-size: 9px;
+                color: #b0bec5;
+                horizontal-alignment: center;
+            }
+        }
+    }
+
+    // Screen 3: BLE PIN
+    if root.active_screen == 3 : Rectangle {
         x: 0px;
         y: 20px;
         width: 240px;
@@ -311,8 +481,8 @@ export component AppWindow inherits Window {
         }
     }
 
-    // Screen 3: WiFi Info
-    if root.active_screen == 3 : Rectangle {
+    // Screen 4: WiFi Info
+    if root.active_screen == 4 : Rectangle {
         x: 0px;
         y: 20px;
         width: 240px;
@@ -361,8 +531,8 @@ export component AppWindow inherits Window {
         }
     }
 
-    // Screen 4: Firmware Info
-    if root.active_screen == 4 : Rectangle {
+    // Screen 5: Firmware Info
+    if root.active_screen == 5 : Rectangle {
         x: 0px;
         y: 20px;
         width: 240px;

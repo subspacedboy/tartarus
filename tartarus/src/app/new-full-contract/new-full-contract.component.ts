@@ -57,6 +57,7 @@ export class NewFullContractComponent implements OnInit {
       terms: new FormControl('', []),
       bots: this.fb.array([]),
       isTempUnlockAllowed: new FormControl(false),
+      isEmergencyUnlockAllowed: new FormControl(true),
     });
   }
 
@@ -153,6 +154,7 @@ export class NewFullContractComponent implements OnInit {
     Contract.addSerialNumber(builder, serialNumber);
     Contract.addPublicKey(builder, publicKeyOffset);
     Contract.addIsTemporaryUnlockAllowed(builder, this.contractForm.get('isTempUnlockAllowed')!.value!);
+    Contract.addIsEmergencyUnlockAllowed(builder, this.contractForm.get('isEmergencyUnlockAllowed')!.value!);
     Contract.addBots(builder, botsVector);
     Contract.addTerms(builder, termsStringOffset);
     let fullContractOffset = Contract.endContract(builder);

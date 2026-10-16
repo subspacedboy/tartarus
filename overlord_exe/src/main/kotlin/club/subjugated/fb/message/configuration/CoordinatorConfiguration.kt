@@ -37,8 +37,8 @@ class CoordinatorConfiguration : Table() {
                 null
             }
         }
-    val webUriAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun webUriInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val webUriAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(4, 1)
+    fun webUriInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 4, 1)
     val wsUri : String?
         get() {
             val o = __offset(6)
@@ -48,8 +48,8 @@ class CoordinatorConfiguration : Table() {
                 null
             }
         }
-    val wsUriAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
-    fun wsUriInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
+    val wsUriAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(6, 1)
+    fun wsUriInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 6, 1)
     val mqttUri : String?
         get() {
             val o = __offset(8)
@@ -59,8 +59,8 @@ class CoordinatorConfiguration : Table() {
                 null
             }
         }
-    val mqttUriAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(8, 1)
-    fun mqttUriInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 8, 1)
+    val mqttUriAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(8, 1)
+    fun mqttUriInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 8, 1)
     val apiUri : String?
         get() {
             val o = __offset(10)
@@ -70,8 +70,8 @@ class CoordinatorConfiguration : Table() {
                 null
             }
         }
-    val apiUriAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(10, 1)
-    fun apiUriInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 10, 1)
+    val apiUriAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(10, 1)
+    fun apiUriInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 10, 1)
     fun safetyKeys(j: Int) : club.subjugated.fb.message.configuration.Key? = safetyKeys(club.subjugated.fb.message.configuration.Key(), j)
     fun safetyKeys(obj: club.subjugated.fb.message.configuration.Key, j: Int) : club.subjugated.fb.message.configuration.Key? {
         val o = __offset(12)
@@ -125,8 +125,8 @@ class CoordinatorConfiguration : Table() {
         get() {
             val o = __offset(22); return if (o != 0) __vector_len(o) else 0
         }
-    val loginTokenPublicKeyAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(22, 1)
-    fun loginTokenPublicKeyInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 22, 1)
+    val loginTokenPublicKeyAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(22, 1)
+    fun loginTokenPublicKeyInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 22, 1)
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsCoordinatorConfiguration(_bb: ByteBuffer): CoordinatorConfiguration = getRootAsCoordinatorConfiguration(_bb, CoordinatorConfiguration())

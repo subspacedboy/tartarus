@@ -37,8 +37,8 @@ class CreateMessageRequest : Table() {
                 null
             }
         }
-    val contractNameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun contractNameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val contractNameAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(4, 1)
+    fun contractNameInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 4, 1)
     val message : String?
         get() {
             val o = __offset(6)
@@ -48,8 +48,8 @@ class CreateMessageRequest : Table() {
                 null
             }
         }
-    val messageAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
-    fun messageInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
+    val messageAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(6, 1)
+    fun messageInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 6, 1)
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsCreateMessageRequest(_bb: ByteBuffer): CreateMessageRequest = getRootAsCreateMessageRequest(_bb, CreateMessageRequest())

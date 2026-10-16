@@ -89,6 +89,10 @@ class AsyncTartarusClient:
                     print("Event -> Unlocked via command")
                     if has_callable(self.callback_obj, 'on_unlock'):
                         asyncio.run_coroutine_threadsafe(self.callback_obj.on_unlock(self, se), self.loop)
+                case EventType.EmergencyUnlock:
+                    print("Event -> Emergency unlocked")
+                    if has_callable(self.callback_obj, 'on_emergency_unlock'):
+                        asyncio.run_coroutine_threadsafe(self.callback_obj.on_emergency_unlock(self, se), self.loop)
         if "api" in msg.topic:
             api_message = BotApiMessage.GetRootAsBotApiMessage(msg.payload)
 

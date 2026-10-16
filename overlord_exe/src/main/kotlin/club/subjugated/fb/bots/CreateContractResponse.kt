@@ -37,8 +37,8 @@ class CreateContractResponse : Table() {
                 null
             }
         }
-    val contractNameAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(4, 1)
-    fun contractNameInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 4, 1)
+    val contractNameAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(4, 1)
+    fun contractNameInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 4, 1)
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsCreateContractResponse(_bb: ByteBuffer): CreateContractResponse = getRootAsCreateContractResponse(_bb, CreateContractResponse())

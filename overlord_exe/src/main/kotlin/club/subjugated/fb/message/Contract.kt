@@ -45,8 +45,8 @@ class Contract : Table() {
         get() {
             val o = __offset(6); return if (o != 0) __vector_len(o) else 0
         }
-    val publicKeyAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(6, 1)
-    fun publicKeyInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 6, 1)
+    val publicKeyAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(6, 1)
+    fun publicKeyInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 6, 1)
     fun bots(j: Int) : club.subjugated.fb.message.Bot? = bots(club.subjugated.fb.message.Bot(), j)
     fun bots(obj: club.subjugated.fb.message.Bot, j: Int) : club.subjugated.fb.message.Bot? {
         val o = __offset(8)
@@ -69,12 +69,17 @@ class Contract : Table() {
                 null
             }
         }
-    val termsAsByteBuffer : ByteBuffer get() = __vector_as_bytebuffer(10, 1)
-    fun termsInByteBuffer(_bb: ByteBuffer) : ByteBuffer = __vector_in_bytebuffer(_bb, 10, 1)
+    val termsAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(10, 1)
+    fun termsInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 10, 1)
     val isTemporaryUnlockAllowed : Boolean
         get() {
             val o = __offset(12)
             return if(o != 0) 0.toByte() != bb.get(o + bb_pos) else false
+        }
+    val isEmergencyUnlockAllowed : Boolean
+        get() {
+            val o = __offset(14)
+            return if(o != 0) 0.toByte() != bb.get(o + bb_pos) else true
         }
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
@@ -83,16 +88,17 @@ class Contract : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createContract(builder: FlatBufferBuilder, serialNumber: UShort, publicKeyOffset: Int, botsOffset: Int, termsOffset: Int, isTemporaryUnlockAllowed: Boolean) : Int {
-            builder.startTable(5)
+        fun createContract(builder: FlatBufferBuilder, serialNumber: UShort, publicKeyOffset: Int, botsOffset: Int, termsOffset: Int, isTemporaryUnlockAllowed: Boolean, isEmergencyUnlockAllowed: Boolean) : Int {
+            builder.startTable(6)
             addTerms(builder, termsOffset)
             addBots(builder, botsOffset)
             addPublicKey(builder, publicKeyOffset)
             addSerialNumber(builder, serialNumber)
+            addIsEmergencyUnlockAllowed(builder, isEmergencyUnlockAllowed)
             addIsTemporaryUnlockAllowed(builder, isTemporaryUnlockAllowed)
             return endContract(builder)
         }
-        fun startContract(builder: FlatBufferBuilder) = builder.startTable(5)
+        fun startContract(builder: FlatBufferBuilder) = builder.startTable(6)
         fun addSerialNumber(builder: FlatBufferBuilder, serialNumber: UShort) = builder.addShort(0, serialNumber.toShort(), 0)
         fun addPublicKey(builder: FlatBufferBuilder, publicKey: Int) = builder.addOffset(1, publicKey, 0)
         @kotlin.ExperimentalUnsignedTypes
@@ -115,6 +121,7 @@ class Contract : Table() {
         fun startBotsVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(4, numElems, 4)
         fun addTerms(builder: FlatBufferBuilder, terms: Int) = builder.addOffset(3, terms, 0)
         fun addIsTemporaryUnlockAllowed(builder: FlatBufferBuilder, isTemporaryUnlockAllowed: Boolean) = builder.addBoolean(4, isTemporaryUnlockAllowed, false)
+        fun addIsEmergencyUnlockAllowed(builder: FlatBufferBuilder, isEmergencyUnlockAllowed: Boolean) = builder.addBoolean(5, isEmergencyUnlockAllowed, true)
         fun endContract(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o
