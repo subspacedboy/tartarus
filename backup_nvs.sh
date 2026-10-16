@@ -2,14 +2,14 @@
 # ==============================================================================
 # Tartarus Lock - NVS Partition Backup Script
 # ==============================================================================
-# Reads the 16 KiB NVS partition (contains cryptographic keys, WiFi credentials,
+# Reads the 24 KiB NVS partition (contains cryptographic keys, WiFi credentials,
 # and device state) from the attached ESP32-S3 Tartarus lock and saves it to a
 # binary file with a timestamp.
 #
 # Partition layout reference (from partitions.csv):
 #   - Name:   nvs
 #   - Offset: 0x9000
-#   - Size:   0x4000 (16 KiB / 16,384 bytes)
+#   - Size:   0x6000 (24 KiB / 24,576 bytes)
 #   - Chip:   ESP32-S3
 #
 # Usage:
@@ -24,8 +24,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 NVS_OFFSET="0x9000"
-NVS_SIZE="0x4000"
-EXPECTED_BYTES=16384
+NVS_SIZE="0x6000"
+EXPECTED_BYTES=24576
 DEFAULT_CHIP="esp32s3"
 
 CHIP="${CHIP:-$DEFAULT_CHIP}"
@@ -38,7 +38,7 @@ show_help() {
     cat <<EOF
 Usage: $(basename "$0") [OPTIONS] [PORT_OR_OUTPUT]
 
-Backs up the Tartarus lock NVS partition (0x9000 - 0xD000, 16 KiB) with a timestamp.
+Backs up the Tartarus lock NVS partition (0x9000 - 0xF000, 24 KiB) with a timestamp.
 
 Options:
   -p, --port <PORT>        Serial port connected to the lock (auto-detected if omitted)

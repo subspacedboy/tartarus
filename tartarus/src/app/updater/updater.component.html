@@ -9,7 +9,7 @@
     </div>
     <div class="d-flex align-items-center gap-2">
       <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2">
-        🛡️ NVS Protected (0x9000-0xD000)
+        🛡️ NVS Protected (0x9000-0xF000)
       </span>
       @if (connectionState() === 'flashing') {
         <span class="badge bg-warning text-dark fs-6 px-3 py-2">
@@ -550,7 +550,7 @@
             <span class="fs-5 me-2">🛡️</span>
             <div>
               <strong>Strict NVS Preservation Active:</strong>
-              Sector erase mode is strictly enforced and full chip erase is disabled. Sector ranges overlapping NVS (<code>0x9000</code>&ndash;<code>0xD000</code>) are mathematically blocked from being written to ensure device credentials, keys, and state are preserved.
+              Sector erase mode is strictly enforced and full chip erase is disabled. Sector ranges overlapping NVS (<code>0x9000</code>&ndash;<code>0xF000</code>) are mathematically blocked from being written to ensure device credentials, keys, and state are preserved.
             </div>
           </div>
 

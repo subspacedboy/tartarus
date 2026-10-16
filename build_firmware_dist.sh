@@ -8,7 +8,7 @@ set -e
 # Partition layout (4 MB Flash):
 #   - 0x0000  - 0x8000  : Bootloader (32 KiB)
 #   - 0x8000  - 0x9000  : Partition Table (4 KiB)
-#   - 0x9000  - 0xD000  : NVS (16 KiB) [PRESERVED - contains device state]
+#   - 0x9000  - 0xF000  : NVS (24 KiB) [PRESERVED - contains device state]
 #   - 0xF000  - 0x10000 : PHY init (4 KiB)
 #   - 0x10000 - 0x400000: Factory App (4032 KiB)
 #
@@ -85,6 +85,9 @@ fi
 
 export ESP_IDF_GLOB_COREROOT_BASE="."
 export ESP_IDF_GLOB_COREROOT_PARTITIONS="partitions.csv"
+if [ -f "$KEY_FILE" ]; then
+    export ESP_IDF_GLOB_COREROOT_KEY="$KEY_FILE"
+fi
 
 # Ensure partitions.csv is available in any existing esp-idf-sys build directories
 for d in $(find target/xtensa-esp32s3-espidf -type d -name "esp-idf-sys-*" 2>/dev/null); do
@@ -163,30 +166,7 @@ ln -sf "/tmp/${BOOTLOADER_IMAGE}" /tmp/bootloader.bin
 ln -sf "/tmp/${PARTITIONS_IMAGE}" /tmp/partitions.bin
 ln -sf "/tmp/${UPDATE_IMAGE}" /tmp/app.bin
 ln -sf "/tmp/${FULL_IMAGE}" /tmp/image.bin
-
-# Generate ESP Launchpad TOML manifest (Standard single-file format)
-FIRMWARE_BASE_URL="${FIRMWARE_BASE_URL:-https://tartarus.subjugated.club/firmware2/}"
-echo "Generating ESP Launchpad manifest (/tmp/manifest.toml)..."
-cat << EOF > /tmp/manifest.toml
-esp_toml_version = 1.0
-firmware_images_url = "${FIRMWARE_BASE_URL}"
-supported_apps = ["TartarusLock-Update", "TartarusLock-Full"]
-
-[TartarusLock-Update]
-chipsets = ["ESP32-S3"]
-description = "${UPDATE_DESC}"
-image.esp32-s3 = "${UPDATE_IMAGE}"
-offset = "0x10000"
-
-[TartarusLock-Full]
-chipsets = ["ESP32-S3"]
-description = "${FULL_DESC}"
-image.esp32-s3 = "${FULL_IMAGE}"
-offset = "0x0000"
-EOF
-
-# Also keep root manifest.toml in sync
-cp /tmp/manifest.toml ./manifest.toml
+ln -sf "/tmp/${FULL_IMAGE}" /tmp/image.bin
 
 # Generate or update firmware.json for Tartarus Web Updater
 TODAY=$(date +%Y-%m-%d)
@@ -248,7 +228,6 @@ echo "  - Full merged image:   /tmp/${FULL_IMAGE} (flash at 0x0)"
 echo "  - Bootloader:          /tmp/${BOOTLOADER_IMAGE} (flash at 0x0)"
 echo "  - Partition table:     /tmp/${PARTITIONS_IMAGE} (flash at 0x8000)"
 echo "  - Standalone app:      /tmp/${UPDATE_IMAGE} (flash at 0x10000)"
-echo "  - Launchpad manifest:  /tmp/manifest.toml and ./manifest.toml"
 echo "  - Web Updater manifest:/tmp/firmware.json and ./firmware.json"
 echo ""
 echo "Ready for upload to S3 (${FIRMWARE_BASE_URL})."

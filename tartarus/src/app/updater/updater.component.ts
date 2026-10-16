@@ -35,9 +35,9 @@ export interface CustomFileSlot {
   useUpload: boolean;
 }
 
-// Protected NVS flash range (0x9000 to 0xD000)
+// Protected NVS flash range (0x9000 to 0xF000, 24 KiB)
 const NVS_START_ADDR = 0x9000;
-const NVS_END_ADDR = 0xD000;
+const NVS_END_ADDR = 0xF000;
 
 @Component({
   selector: 'app-updater',
@@ -391,21 +391,6 @@ export class UpdaterComponent implements OnInit, OnDestroy {
         }
       }
 
-      // ======================================================================
-      // CRITICAL NVS INTEGRITY SAFETY ENFORCEMENT
-      // Under no circumstances should NVS (0x9000 - 0xD000) be written or erased!
-      // ======================================================================
-      this.assertNvsSafety(filesToFlash);
-      this.addLog('🛡️ NVS Safety Check PASSED: Flash ranges verified completely outside NVS partition (0x9000 - 0xD000).', 'success');
-
-      this.addLog(`Prepared ${filesToFlash.length} binary part(s) for flashing:`, 'info');
-      for (const item of filesToFlash) {
-        this.addLog(
-          `  -> ${item.name}: ${item.data.length.toLocaleString()} bytes at offset 0x${item.address.toString(16)}`,
-          'info'
-        );
-      }
-
       // Determine if compression can be used (only supported by RAM stub; ROM bootloader in Secure Download Mode requires uncompressed)
       const isStub = (this.esploader as any)?.IS_STUB === true;
       const isSdm = (this.esploader as any)?.secureDownloadMode === true;
@@ -422,6 +407,31 @@ export class UpdaterComponent implements OnInit, OnDestroy {
 
         // Explicitly attach SPI flash and configure parameters in ROM bootloader (matches esptool.py --no-stub)
         await this.configureRomSpiFlash(this.esploader, 4 * 1024 * 1024);
+      } else {
+        // CRITICAL NVS PROTECTION:
+        // esptool-js defaults FLASH_WRITE_SIZE to 0x4000 (16 KiB).
+        // If an uncompressed file or small block (like the 4 KiB partition table at 0x8000)
+        // is written, esptool-js pads it up to FLASH_WRITE_SIZE with 0xFF.
+        // With a 16 KiB write size, writing 4 KiB at 0x8000 writes 16 KiB (0x8000 - 0xC000),
+        // which overwrites the first 12 KiB of the NVS partition (0x9000 - 0xF000) with 0xFF!
+        // Setting FLASH_WRITE_SIZE to 0x1000 (4 KiB = 1 SPI flash sector) ensures all block
+        // writes and padding strictly respect 4 KiB sector boundaries and never bleed into NVS.
+        (this.esploader as any).FLASH_WRITE_SIZE = 0x1000;
+      }
+
+      // ======================================================================
+      // CRITICAL NVS INTEGRITY SAFETY ENFORCEMENT
+      // Under no circumstances should NVS (0x9000 - 0xF000) be written or erased!
+      // ======================================================================
+      this.assertNvsSafety(filesToFlash);
+      this.addLog('🛡️ NVS Safety Check PASSED: Flash ranges verified completely outside NVS partition (0x9000 - 0xF000).', 'success');
+
+      this.addLog(`Prepared ${filesToFlash.length} binary part(s) for flashing:`, 'info');
+      for (const item of filesToFlash) {
+        this.addLog(
+          `  -> ${item.name}: ${item.data.length.toLocaleString()} bytes at offset 0x${item.address.toString(16)}`,
+          'info'
+        );
       }
 
       // Configure FlashOptions
@@ -476,17 +486,22 @@ export class UpdaterComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Mathematically verifies that none of the target flash writes intersect the NVS partition (0x9000 - 0xD000).
+   * Mathematically verifies that none of the target flash writes intersect the NVS partition (0x9000 - 0xF000),
+   * taking into account any block padding that esptool-js might apply.
    * Throws an exception and terminates the flash procedure if an overlap is detected.
    */
   private assertNvsSafety(files: { data: Uint8Array; address: number; name: string }[]): void {
+    const writeBlockSize = (this.esploader as any)?.FLASH_WRITE_SIZE || 0x1000;
     for (const f of files) {
       const start = f.address;
-      const end = f.address + f.data.length;
+      const rawEnd = f.address + f.data.length;
+      // Account for block padding applied to the final block of a write
+      const paddedLength = Math.ceil(f.data.length / writeBlockSize) * writeBlockSize;
+      const paddedEnd = f.address + paddedLength;
 
       // Check for overlap: [start, end) intersects [NVS_START_ADDR, NVS_END_ADDR)
-      if (start < NVS_END_ADDR && end > NVS_START_ADDR) {
-        const errorMsg = `CRITICAL SAFETY ABORT: Binary "${f.name}" target range (0x${start.toString(16)} - 0x${end.toString(16)}) overlaps the protected NVS partition (0x${NVS_START_ADDR.toString(16)} - 0x${NVS_END_ADDR.toString(16)}). Flashing halted to protect device keys and state!`;
+      if ((start < NVS_END_ADDR && rawEnd > NVS_START_ADDR) || (start < NVS_END_ADDR && paddedEnd > NVS_START_ADDR)) {
+        const errorMsg = `CRITICAL SAFETY ABORT: Binary "${f.name}" target range (0x${start.toString(16)} - 0x${paddedEnd.toString(16)}, padded to 0x${writeBlockSize.toString(16)} blocks) overlaps the protected NVS partition (0x${NVS_START_ADDR.toString(16)} - 0x${NVS_END_ADDR.toString(16)}). Flashing halted to protect device keys and state!`;
         this.addLog(errorMsg, 'error');
         throw new Error(errorMsg);
       }

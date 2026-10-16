@@ -55,7 +55,10 @@ use esp_idf_hal::units::KiloHertz;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::hal::delay;
 use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs, NvsDefault};
-use esp_idf_svc::sys::esp_random;
+use esp_idf_svc::sys::{
+    esp_efuse_read_field_bit, esp_random, ESP_EFUSE_DIS_PAD_JTAG,
+    ESP_EFUSE_DIS_USB_SERIAL_JTAG_DOWNLOAD_MODE, ESP_EFUSE_SECURE_BOOT_EN,
+};
 
 use crate::lock_ctx::{LockCtx, TickUpdate};
 
@@ -112,6 +115,9 @@ fn main() {
 
     log::info!("Tartarus Lock V2.0");
 
+    // Runtime sanity check: Verify partition table and NVS geometry before touching storage
+    verify_partition_table_and_nvs();
+
     let peripherals = Peripherals::take().expect("Peripherals to be available");
 
     // Declare all the pins in one spot.
@@ -141,6 +147,7 @@ fn main() {
     // Warm up NVS (non-volatile storage)
     let nvs_partition =
         EspDefaultNvsPartition::take().expect("EspDefaultNvsPartition to be available");
+    log_nvs_health_stats();
     let nvs: EspNvs<NvsDefault> = EspNvs::new(nvs_partition.clone(), "storage", true).unwrap();
 
     let sys_loop = EspSystemEventLoop::take().expect("EspSystemEventLoop to be available");
@@ -221,6 +228,7 @@ fn main() {
 
     // Checking eFuses
 
+    log::info!("Secure boot enabled: {}", is_secure_boot_enabled());
     log::info!("JTAG disabled: {}", is_jtag_disabled());
     log::info!("USB download disabled: {}", is_usb_download_disabled());
 
@@ -434,16 +442,142 @@ fn main() {
     }
 }
 
+fn verify_partition_table_and_nvs() {
+    const EXPECTED_NVS_OFFSET: u32 = 0x9000;
+    const EXPECTED_NVS_SIZE: u32 = 0x6000; // 24 KiB
+
+    log::info!("=== Partition Table Sanity Check ===");
+
+    // Enumerate and log all partitions in flash
+    let mut it = unsafe {
+        esp_idf_svc::sys::esp_partition_find(
+            esp_idf_svc::sys::esp_partition_type_t_ESP_PARTITION_TYPE_ANY,
+            esp_idf_svc::sys::esp_partition_subtype_t_ESP_PARTITION_SUBTYPE_ANY,
+            core::ptr::null(),
+        )
+    };
+
+    while !it.is_null() {
+        let p_ptr = unsafe { esp_idf_svc::sys::esp_partition_get(it) };
+        if !p_ptr.is_null() {
+            let p = unsafe { &*p_ptr };
+            let p_label = unsafe {
+                core::ffi::CStr::from_ptr(p.label.as_ptr())
+                    .to_str()
+                    .unwrap_or("<unknown>")
+            };
+            log::info!(
+                "  |-- [{:<10}] offset: 0x{:05x} - 0x{:05x} ({:>4} KiB) [type=0x{:02x}, subtype=0x{:02x}, enc={}]",
+                p_label,
+                p.address,
+                p.address + p.size,
+                p.size / 1024,
+                p.type_,
+                p.subtype,
+                p.encrypted,
+            );
+        }
+        // In ESP-IDF, esp_partition_next() automatically releases and frees
+        // the iterator when reaching the end of the list and returning NULL.
+        it = unsafe { esp_idf_svc::sys::esp_partition_next(it) };
+    }
+
+    // Verify NVS partition specifically
+    let nvs_ptr = unsafe {
+        esp_idf_svc::sys::esp_partition_find_first(
+            esp_idf_svc::sys::esp_partition_type_t_ESP_PARTITION_TYPE_DATA,
+            esp_idf_svc::sys::esp_partition_subtype_t_ESP_PARTITION_SUBTYPE_DATA_NVS,
+            core::ptr::null(),
+        )
+    };
+
+    if nvs_ptr.is_null() {
+        log::error!("CRITICAL: NVS partition not found in active partition table!");
+        panic!("FATAL: NVS partition not found in partition table");
+    }
+
+    let nvs = unsafe { &*nvs_ptr };
+    let nvs_label = unsafe {
+        core::ffi::CStr::from_ptr(nvs.label.as_ptr())
+            .to_str()
+            .unwrap_or("<unknown>")
+    };
+
+    if nvs.address != EXPECTED_NVS_OFFSET || nvs.size != EXPECTED_NVS_SIZE {
+        log::error!(
+            "FATAL GEOMETRY MISMATCH: NVS partition '{}' is at offset 0x{:05x} with size 0x{:x} ({} KiB)!",
+            nvs_label,
+            nvs.address,
+            nvs.size,
+            nvs.size / 1024,
+        );
+        log::error!(
+            "Expected exactly 24 KiB (0x{:x}) at offset 0x{:05x}.",
+            EXPECTED_NVS_SIZE,
+            EXPECTED_NVS_OFFSET
+        );
+        log::error!("Halting boot immediately to prevent NVS reformat/wipe and credential loss!");
+        panic!(
+            "NVS geometry mismatch: found {} KiB at 0x{:05x}, expected 24 KiB at 0x{:05x}",
+            nvs.size / 1024,
+            nvs.address,
+            EXPECTED_NVS_OFFSET
+        );
+    }
+
+    log::info!(
+        "✅ NVS partition geometry verified OK: '{}' at 0x{:05x} ({} KiB)",
+        nvs_label,
+        nvs.address,
+        nvs.size / 1024
+    );
+}
+
+fn log_nvs_health_stats() {
+    let mut stats = esp_idf_svc::sys::nvs_stats_t {
+        used_entries: 0,
+        free_entries: 0,
+        available_entries: 0,
+        total_entries: 0,
+        namespace_count: 0,
+    };
+
+    let err = unsafe {
+        esp_idf_svc::sys::nvs_get_stats(core::ptr::null(), &mut stats as *mut _)
+    };
+
+    if err == esp_idf_svc::sys::ESP_OK {
+        log::info!(
+            "NVS Health Stats: used={}/{} entries, free={}, available={}, namespaces={}",
+            stats.used_entries,
+            stats.total_entries,
+            stats.free_entries,
+            stats.available_entries,
+            stats.namespace_count,
+        );
+    } else {
+        log::warn!("Could not query NVS health stats: ESP-IDF error 0x{:x}", err);
+    }
+}
+
+fn is_secure_boot_enabled() -> bool {
+    unsafe {
+        esp_efuse_read_field_bit(core::ptr::addr_of_mut!(ESP_EFUSE_SECURE_BOOT_EN) as *mut _)
+    }
+}
+
 fn is_jtag_disabled() -> bool {
-    const JTAG_DISABLE_BIT: u32 = 1 << 24;
-    let val = unsafe { core::ptr::read_volatile(0x6001A008 as *const u32) };
-    (val & JTAG_DISABLE_BIT) != 0
+    unsafe {
+        esp_efuse_read_field_bit(core::ptr::addr_of_mut!(ESP_EFUSE_DIS_PAD_JTAG) as *mut _)
+    }
 }
 
 fn is_usb_download_disabled() -> bool {
-    const USB_DISABLE_BIT: u32 = 1 << 11;
-    let val = unsafe { core::ptr::read_volatile(0x6001A008 as *const u32) };
-    (val & USB_DISABLE_BIT) != 0
+    unsafe {
+        esp_efuse_read_field_bit(
+            core::ptr::addr_of_mut!(ESP_EFUSE_DIS_USB_SERIAL_JTAG_DOWNLOAD_MODE) as *mut _,
+        )
+    }
 }
 
 fn start_stdin_reader() -> Receiver<Vec<u8>> {
