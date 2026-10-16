@@ -270,6 +270,13 @@ fn main() {
     let mut last_wifi_connected: Option<bool> = None;
     let mut last_update_avail: Option<bool> = None;
 
+    // Generate initial random 6-digit PIN for BLE authentication
+    let initial_pin_num = unsafe { esp_random() } % 1_000_000;
+    let initial_pin = format!("{:06}", initial_pin_num);
+    ble_server::set_auth_pin(&initial_pin);
+    ui.set_ble_pin(initial_pin.into());
+    log::info!("Initial BLE pairing PIN generated: {}", ble_server::get_auth_pin());
+
     // Initialize Tartarus BLE GATT Server
     if let Err(e) = ble_server::init_ble_server() {
         log::error!("Failed to initialize Tartarus BLE GATT server: {:?}", e);
@@ -369,6 +376,9 @@ fn main() {
         ui.set_active_screen(lock_ctx.active_screen_idx as i32);
         ui.set_is_locked(lock_ctx.is_locked());
         ui.set_needs_config(lock_ctx.needs_configuration());
+        ui.set_ble_pin(ble_server::get_auth_pin().into());
+        ui.set_ble_authenticated(ble_server::is_authenticated());
+        ui.set_ble_locked_out(ble_server::is_locked_out());
 
         let current_contract_serial = lock_ctx.contract.as_ref().map(|c| c.serial_number);
         if current_contract_serial != last_contract_serial {

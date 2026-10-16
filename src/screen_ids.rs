@@ -1,9 +1,11 @@
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(usize)]
 pub enum ScreenId {
     QrCode = 0,
     LockState = 1,
-    WifiInfo = 2,
-    FirmwareInfo = 3,
+    BlePin = 2,
+    WifiInfo = 3,
+    FirmwareInfo = 4,
 }
 
 impl From<usize> for ScreenId {
@@ -11,8 +13,9 @@ impl From<usize> for ScreenId {
         match value {
             0 => ScreenId::QrCode,
             1 => ScreenId::LockState,
-            2 => ScreenId::WifiInfo,
-            3 => ScreenId::FirmwareInfo,
+            2 => ScreenId::BlePin,
+            3 => ScreenId::WifiInfo,
+            4 => ScreenId::FirmwareInfo,
             _ => unreachable!(),
         }
     }
@@ -23,8 +26,9 @@ impl From<ScreenId> for usize {
         match value {
             ScreenId::QrCode => 0,
             ScreenId::LockState => 1,
-            ScreenId::WifiInfo => 2,
-            ScreenId::FirmwareInfo => 3,
+            ScreenId::BlePin => 2,
+            ScreenId::WifiInfo => 3,
+            ScreenId::FirmwareInfo => 4,
         }
     }
 }

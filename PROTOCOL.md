@@ -277,3 +277,33 @@ fun <T : Table> getVTableStart(table: T): Int {
 3. **VTable Deduplication:** Do not build other tables in the same builder prior to the payload if they share the payload's shape; otherwise, the builder might reuse an earlier vtable outside the payload's slice.
 4. **Signature Encoding on JVM / Android:** If using Java/Kotlin, always ensure signatures sent to the lock are converted from DER to 64-byte raw format via `derToRawSignature()`, and received signatures are converted to DER via `rawToDerSignature()`.
 5. **Compressed Public Keys:** Public keys stored in `Contract.public_key` must be 33 bytes in SEC1 compressed form (`0x02` for even Y, `0x03` for odd Y). If your crypto library exports uncompressed 65-byte keys (`0x04 || X || Y`), compress them before storing in the FlatBuffer.
+
+---
+
+## 8. BLE GATT Server & Authentication Protocol
+
+The Tartarus device provides a Bluetooth Low Energy (BLE) GATT server for configuration and out-of-band commands (Wi-Fi credential transmission, coordinator URI configuration, and arbitrary command execution).
+
+### 8.1 GATT Service and Characteristics
+
+| Component | UUID | Properties | Permissions & Access |
+|---|---|---|---|
+| **Tartarus Primary Service** | `da0c2439-e9f6-4aac-8948-33031d7ef384` | — | Primary Tartarus service advertised as `"Tartarus"` |
+| **Authentication Characteristic** | `a79b2001-f012-4c8d-b3ef-88267df8461a` | `WRITE` | **Write-only** (never reveals PIN over BLE). Expects 6-digit UTF-8 PIN (e.g., `"123456"`). |
+| **Authentication Level** | `a79b2002-f012-4c8d-b3ef-88267df8461a` | `READ \| NOTIFY` | Returns UTF-8 status: `"unauthenticated"`, `"authenticated"`, or `"locked_out"`. Emits notification on changes. |
+| **WiFi SSID Characteristic** | `5d288ec6-65bc-47a6-b4f0-ea4e28547951` | `READ \| WRITE` | Writes are **rejected** until client is authenticated. |
+| **WiFi Password Characteristic** | `73ced3a6-b6c8-48b4-ab9e-4cec6a83a46e` | `WRITE` | Writes are **rejected** until client is authenticated. |
+| **Command Characteristic** | `fc57b56e-fb30-4227-8a88-cf2b80ccced0` | `READ \| WRITE \| NOTIFY` | Writes are **rejected** until client is authenticated. |
+| **Status Characteristic** | `f41280b4-af44-4b14-b5eb-83d4b2a78f35` | `READ \| NOTIFY` | Public readable status (`idle`, `ready`, `locked_out`). |
+
+### 8.2 Security Architecture
+
+1. **Random PIN Generation:** On boot, the Tartarus device generates a cryptographically random 6-digit PIN (`000000`–`999999`) using hardware RNG (`esp_random()`).
+2. **On-Screen Display:** The PIN is rendered prominently on Screen 2 (`BLE PIN`), placed immediately before the Network (`WiFiInfo`) tab.
+3. **Write Protection:** Any attempt to write to `WiFi SSID`, `WiFi Password`, or `Command` characteristics before successful authentication is silently dropped with a security warning logged on the device.
+4. **Brute Force Lockout & D1 Reset:**
+   - If a client supplies 5 consecutive incorrect PINs, the server transitions to the `locked_out` state.
+   - All subsequent authentication attempts are immediately rejected.
+   - To clear the lockout, a physical button press (`D1`) on the device's `BLE PIN` screen is strictly required. Pressing `D1` generates a brand new 6-digit random PIN and resets the attempt counter.
+5. **Session Invalidation on Disconnect:** Disconnection of the BLE link immediately clears authenticated session state on the device. Any subsequent client reconnect must authenticate with the PIN.
+

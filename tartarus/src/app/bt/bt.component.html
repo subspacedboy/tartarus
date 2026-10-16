@@ -5,11 +5,24 @@
       <h2 class="mb-1">Tartarus Bluetooth Manager 📡</h2>
       <p class="text-muted mb-0">Configure Wi-Fi, set coordinator endpoints, and send commands over Web Bluetooth (BLE).</p>
     </div>
-    <div>
+    <div class="d-flex gap-2">
       @if (connectionState() === 'connected') {
         <span class="badge bg-success fs-6 px-3 py-2">
-          <i class="bi bi-bluetooth"></i> Connected: {{ connectedDeviceName() }}
+          Connected: {{ connectedDeviceName() }}
         </span>
+        @if (isAuthenticated()) {
+          <span class="badge bg-success fs-6 px-3 py-2">
+            ✓ Authenticated
+          </span>
+        } @else if (isLockedOut()) {
+          <span class="badge bg-danger fs-6 px-3 py-2">
+            Locked Out
+          </span>
+        } @else {
+          <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+            PIN Required
+          </span>
+        }
       } @else if (connectionState() === 'connecting') {
         <span class="badge bg-warning text-dark fs-6 px-3 py-2">
           Connecting...
@@ -88,12 +101,90 @@
         </div>
       </div>
 
-      <!-- 2. Wi-Fi Configuration Card -->
-      <div class="card mb-4 shadow-sm">
+      <!-- 2. Device Authentication Card -->
+      @if (connectionState() === 'connected') {
+        <div class="card mb-4 shadow-sm" [class.border-success]="isAuthenticated()" [class.border-danger]="isLockedOut()">
+          <div
+            class="card-header d-flex justify-content-between align-items-center"
+            [ngClass]="isAuthenticated() ? 'bg-success text-white' : isLockedOut() ? 'bg-danger text-white' : 'bg-dark text-white'"
+          >
+            <span class="fw-bold">2. Device Authentication</span>
+            @if (isAuthenticated()) {
+              <span class="badge bg-light text-success fs-7">Authenticated</span>
+            } @else if (isLockedOut()) {
+              <span class="badge bg-light text-danger fs-7">Locked Out</span>
+            } @else {
+              <span class="badge bg-warning text-dark fs-7">PIN Required</span>
+            }
+          </div>
+          <div class="card-body">
+            @if (isAuthenticated()) {
+              <div class="d-flex align-items-center text-success">
+                <div>
+                  <h6 class="mb-1 fw-bold">Session Authenticated</h6>
+                  <p class="mb-0 text-muted small">You have verified device ownership. Device configuration and commands are unlocked.</p>
+                </div>
+              </div>
+            } @else if (isLockedOut()) {
+              <div class="alert alert-danger mb-0" role="alert">
+                <h6 class="alert-heading fw-bold mb-1">Tartarus Locked Out</h6>
+                <p class="small mb-0">Too many failed PIN attempts. For security, attempts are blocked. Please press <strong>D1</strong> on the Tartarus screen (screen: <strong>BLE PIN</strong>) to generate a new PIN and reset the lockout.</p>
+              </div>
+            } @else {
+              <p class="card-text text-muted small mb-3">
+                Look at the Tartarus screen (tab: <strong>BLE PIN</strong>) for the randomly generated 6-digit PIN and enter it below to unlock access.
+              </p>
+
+              <form [formGroup]="authForm" (ngSubmit)="authenticate()">
+                <div class="mb-3">
+                  <label for="pin" class="form-label fw-bold">6-Digit PIN</label>
+                  <input
+                    id="pin"
+                    type="text"
+                    maxlength="6"
+                    pattern="[0-9]*"
+                    inputmode="numeric"
+                    class="form-control form-control-lg font-monospace text-center fs-3"
+                    style="letter-spacing: 0.35rem;"
+                    formControlName="pin"
+                    placeholder="000000"
+                    [disabled]="isAuthenticating()"
+                  />
+                  @if (authError()) {
+                    <div class="text-danger small mt-2 fw-semibold">{{ authError() }}</div>
+                  }
+                </div>
+
+                <button
+                  type="submit"
+                  class="btn btn-warning w-100 fw-bold"
+                  [disabled]="authForm.invalid || isAuthenticating()"
+                >
+                  @if (isAuthenticating()) {
+                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    Authenticating PIN...
+                  } @else {
+                    Unlock Device Controls
+                  }
+                </button>
+              </form>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- 3. Wi-Fi Configuration Card -->
+      <div class="card mb-4 shadow-sm" [class.opacity-75]="connectionState() === 'connected' && !isAuthenticated()">
         <div class="card-header bg-dark text-white">
-          <span class="fw-bold">2. Wi-Fi Configuration</span>
+          <span class="fw-bold">3. Wi-Fi Configuration</span>
         </div>
         <div class="card-body">
+          @if (connectionState() === 'connected' && !isAuthenticated()) {
+            <div class="alert alert-secondary py-2 small mb-3">
+              🔒 Authenticate with the 6-digit PIN above to configure Wi-Fi.
+            </div>
+          }
+
           <form [formGroup]="wifiForm" (ngSubmit)="sendWifi()">
             <div class="mb-3">
               <label for="ssid" class="form-label fw-bold">Network Name (SSID)</label>
@@ -103,7 +194,7 @@
                 class="form-control"
                 formControlName="ssid"
                 placeholder="e.g. MyHomeNetwork"
-                [disabled]="connectionState() !== 'connected' || isSendingWifi()"
+                [disabled]="connectionState() !== 'connected' || !isAuthenticated() || isSendingWifi()"
               />
             </div>
 
@@ -116,13 +207,13 @@
                   class="form-control"
                   formControlName="password"
                   placeholder="Enter Wi-Fi password"
-                  [disabled]="connectionState() !== 'connected' || isSendingWifi()"
+                  [disabled]="connectionState() !== 'connected' || !isAuthenticated() || isSendingWifi()"
                 />
                 <button
                   class="btn btn-outline-secondary"
                   type="button"
                   (click)="toggleShowPassword()"
-                  [disabled]="connectionState() !== 'connected' || isSendingWifi()"
+                  [disabled]="connectionState() !== 'connected' || !isAuthenticated() || isSendingWifi()"
                 >
                   {{ showPassword() ? 'Hide' : 'Show' }}
                 </button>
@@ -132,7 +223,7 @@
             <button
               type="submit"
               class="btn btn-success w-100"
-              [disabled]="connectionState() !== 'connected' || wifiForm.invalid || isSendingWifi()"
+              [disabled]="connectionState() !== 'connected' || !isAuthenticated() || wifiForm.invalid || isSendingWifi()"
             >
               @if (isSendingWifi()) {
                 <span class="spinner-border spinner-border-sm me-1" role="status"></span>
@@ -145,10 +236,10 @@
         </div>
       </div>
 
-      <!-- 3. Coordinator Configuration Card -->
-      <div class="card mb-4 shadow-sm">
+      <!-- 4. Coordinator Configuration Card -->
+      <div class="card mb-4 shadow-sm" [class.opacity-75]="connectionState() === 'connected' && !isAuthenticated()">
         <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-          <span class="fw-bold">3. Coordinator Configuration</span>
+          <span class="fw-bold">4. Coordinator Configuration</span>
           <button
             class="btn btn-sm btn-outline-light"
             type="button"
@@ -164,6 +255,12 @@
           </button>
         </div>
         <div class="card-body">
+          @if (connectionState() === 'connected' && !isAuthenticated()) {
+            <div class="alert alert-secondary py-2 small mb-3">
+              🔒 Authenticate with the 6-digit PIN above to configure coordinator endpoints.
+            </div>
+          }
+
           <p class="text-muted small mb-3">
             Sets the server endpoints where Tartarus connects. Transmitted as FlatBuffers data directly to the device.
           </p>
@@ -178,7 +275,7 @@
                   class="form-control form-control-sm"
                   formControlName="webUri"
                   placeholder="http://..."
-                  [disabled]="connectionState() !== 'connected' || isSendingConfig()"
+                  [disabled]="connectionState() !== 'connected' || !isAuthenticated() || isSendingConfig()"
                 />
               </div>
               <div class="col-md-6">
@@ -189,7 +286,7 @@
                   class="form-control form-control-sm"
                   formControlName="wsUri"
                   placeholder="ws://..."
-                  [disabled]="connectionState() !== 'connected' || isSendingConfig()"
+                  [disabled]="connectionState() !== 'connected' || !isAuthenticated() || isSendingConfig()"
                 />
               </div>
             </div>
@@ -203,7 +300,7 @@
                   class="form-control form-control-sm"
                   formControlName="apiUri"
                   placeholder="http://.../api"
-                  [disabled]="connectionState() !== 'connected' || isSendingConfig()"
+                  [disabled]="connectionState() !== 'connected' || !isAuthenticated() || isSendingConfig()"
                 />
               </div>
               <div class="col-md-6">
@@ -214,7 +311,7 @@
                   class="form-control form-control-sm"
                   formControlName="mqttUri"
                   placeholder="mqtt://..."
-                  [disabled]="connectionState() !== 'connected' || isSendingConfig()"
+                  [disabled]="connectionState() !== 'connected' || !isAuthenticated() || isSendingConfig()"
                 />
               </div>
             </div>
@@ -225,7 +322,7 @@
                 class="form-check-input"
                 type="checkbox"
                 formControlName="includeSafetyKeys"
-                [disabled]="connectionState() !== 'connected' || isSendingConfig()"
+                [disabled]="connectionState() !== 'connected' || !isAuthenticated() || isSendingConfig()"
               />
               <label class="form-check-label small" for="includeSafetyKeys">
                 Include Safety Keys in configuration payload
@@ -236,7 +333,7 @@
               <button
                 type="submit"
                 class="btn btn-primary flex-grow-1"
-                [disabled]="connectionState() !== 'connected' || coordinatorConfigForm.invalid || isSendingConfig()"
+                [disabled]="connectionState() !== 'connected' || !isAuthenticated() || coordinatorConfigForm.invalid || isSendingConfig()"
               >
                 @if (isSendingConfig()) {
                   <span class="spinner-border spinner-border-sm me-1" role="status"></span>
@@ -259,12 +356,18 @@
         </div>
       </div>
 
-      <!-- 4. Arbitrary Command Card -->
-      <div class="card mb-4 shadow-sm">
+      <!-- 5. Arbitrary Command Card -->
+      <div class="card mb-4 shadow-sm" [class.opacity-75]="connectionState() === 'connected' && !isAuthenticated()">
         <div class="card-header bg-dark text-white">
-          <span class="fw-bold">4. Send Arbitrary Commands</span>
+          <span class="fw-bold">5. Send Arbitrary Commands</span>
         </div>
         <div class="card-body">
+          @if (connectionState() === 'connected' && !isAuthenticated()) {
+            <div class="alert alert-secondary py-2 small mb-3">
+              🔒 Authenticate with the 6-digit PIN above to execute commands.
+            </div>
+          }
+
           <form [formGroup]="commandForm" (ngSubmit)="sendCommand()">
             <div class="mb-3">
               <label for="command" class="form-label fw-bold">Base64 Command String</label>
@@ -274,14 +377,14 @@
                 rows="4"
                 formControlName="command"
                 placeholder="Paste signed Base64 command string here..."
-                [disabled]="connectionState() !== 'connected' || isSendingCommand()"
+                [disabled]="connectionState() !== 'connected' || !isAuthenticated() || isSendingCommand()"
               ></textarea>
             </div>
 
             <button
               type="submit"
               class="btn btn-outline-primary w-100"
-              [disabled]="connectionState() !== 'connected' || commandForm.invalid || isSendingCommand()"
+              [disabled]="connectionState() !== 'connected' || !isAuthenticated() || commandForm.invalid || isSendingCommand()"
             >
               @if (isSendingCommand()) {
                 <span class="spinner-border spinner-border-sm me-1" role="status"></span>

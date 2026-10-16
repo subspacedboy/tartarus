@@ -14,6 +14,8 @@ export const WIFI_SSID_CHAR_UUID = '5d288ec6-65bc-47a6-b4f0-ea4e28547951';
 export const WIFI_PASSWORD_CHAR_UUID = '73ced3a6-b6c8-48b4-ab9e-4cec6a83a46e';
 export const COMMAND_CHAR_UUID = 'fc57b56e-fb30-4227-8a88-cf2b80ccced0';
 export const STATUS_CHAR_UUID = 'f41280b4-af44-4b14-b5eb-83d4b2a78f35';
+export const AUTH_CHAR_UUID = 'a79b2001-f012-4c8d-b3ef-88267df8461a';
+export const AUTH_LEVEL_CHAR_UUID = 'a79b2002-f012-4c8d-b3ef-88267df8461a';
 
 interface LogEntry {
   timestamp: string;
@@ -41,8 +43,16 @@ export class BtComponent implements OnInit, OnDestroy {
   isSendingConfig = signal<boolean>(false);
   isLoadingConfig = signal<boolean>(false);
 
+  // Authentication Signals
+  isAuthenticated = signal<boolean>(false);
+  authLevel = signal<string>('unauthenticated');
+  isAuthenticating = signal<boolean>(false);
+  authError = signal<string | null>(null);
+  isLockedOut = signal<boolean>(false);
+
   scanAllDevices = signal<boolean>(false);
 
+  authForm: FormGroup;
   wifiForm: FormGroup;
   commandForm: FormGroup;
   coordinatorConfigForm: FormGroup;
@@ -54,12 +64,18 @@ export class BtComponent implements OnInit, OnDestroy {
   private passwordChar: any = null;
   private commandChar: any = null;
   private statusChar: any = null;
+  private authChar: any = null;
+  private authLevelChar: any = null;
 
   constructor(
     private fb: FormBuilder,
     private configService: ConfigService,
     private tartarusCoordinatorService: TartarusCoordinatorService
   ) {
+    this.authForm = this.fb.group({
+      pin: ['', [Validators.required, Validators.pattern('^[0-9]{6}$')]],
+    });
+
     this.wifiForm = this.fb.group({
       ssid: ['', [Validators.required]],
       password: ['', [Validators.required]],
@@ -189,6 +205,30 @@ export class BtComponent implements OnInit, OnDestroy {
       this.commandChar = await service.getCharacteristic(COMMAND_CHAR_UUID);
 
       try {
+        this.authChar = await service.getCharacteristic(AUTH_CHAR_UUID);
+      } catch (e) {
+        this.addLog('warn', 'Authentication characteristic not found on device.');
+      }
+
+      try {
+        this.authLevelChar = await service.getCharacteristic(AUTH_LEVEL_CHAR_UUID);
+        await this.checkAuthLevel();
+
+        // Subscribe to notifications on authLevelChar if supported
+        try {
+          await this.authLevelChar.startNotifications();
+          this.authLevelChar.addEventListener('characteristicvaluechanged', (event: any) => {
+            const val = new TextDecoder().decode(event.target.value);
+            this.handleAuthLevelUpdate(val);
+          });
+        } catch {
+          // Notifications might not be supported or required
+        }
+      } catch (e) {
+        this.addLog('warn', 'Authentication level characteristic not found on device.');
+      }
+
+      try {
         this.statusChar = await service.getCharacteristic(STATUS_CHAR_UUID);
         const statusVal = await this.statusChar.readValue();
         const statusStr = new TextDecoder().decode(statusVal);
@@ -211,7 +251,11 @@ export class BtComponent implements OnInit, OnDestroy {
       }
 
       this.connectionState.set('connected');
-      this.addLog('success', 'Tartarus ready for configuration and commands!');
+      if (this.isAuthenticated()) {
+        this.addLog('success', 'Tartarus connected and authenticated!');
+      } else {
+        this.addLog('info', 'Tartarus connected. Please enter device PIN to authenticate.');
+      }
     } catch (err: any) {
       this.connectionState.set('disconnected');
       if (err.name === 'NotFoundError') {
@@ -219,6 +263,84 @@ export class BtComponent implements OnInit, OnDestroy {
       } else {
         this.addLog('error', `Bluetooth connection error: ${err.message || err}`);
       }
+    }
+  }
+
+  handleAuthLevelUpdate(level: string): void {
+    const trimmed = level.trim();
+    this.authLevel.set(trimmed);
+    if (trimmed === 'authenticated') {
+      this.isAuthenticated.set(true);
+      this.isLockedOut.set(false);
+      this.authError.set(null);
+      this.addLog('success', 'Device is now authenticated!');
+    } else if (trimmed === 'locked_out') {
+      this.isAuthenticated.set(false);
+      this.isLockedOut.set(true);
+      this.authError.set('Tartarus is locked out after failed attempts. Press D1 on the Tartarus screen to regenerate PIN.');
+      this.addLog('error', 'Tartarus authentication locked out. Press D1 on device to reset PIN.');
+    } else {
+      this.isAuthenticated.set(false);
+      this.isLockedOut.set(false);
+    }
+  }
+
+  async checkAuthLevel(): Promise<void> {
+    if (!this.authLevelChar) return;
+    try {
+      const val = await this.authLevelChar.readValue();
+      const level = new TextDecoder().decode(val);
+      this.handleAuthLevelUpdate(level);
+    } catch (err: any) {
+      this.addLog('warn', `Failed to read authentication level: ${err.message || err}`);
+    }
+  }
+
+  async authenticate(): Promise<void> {
+    if (this.connectionState() !== 'connected' || !this.authChar) {
+      this.addLog('error', 'Cannot authenticate: Device is not connected.');
+      return;
+    }
+
+    if (this.authForm.invalid) {
+      this.authForm.markAllAsTouched();
+      this.authError.set('Please enter a valid 6-digit PIN.');
+      this.addLog('warn', 'Invalid PIN format: must be 6 numeric digits.');
+      return;
+    }
+
+    const pin = (this.authForm.get('pin')?.value || '').trim();
+
+    try {
+      this.isAuthenticating.set(true);
+      this.authError.set(null);
+      this.addLog('info', 'Sending authentication PIN to Tartarus...');
+
+      const encoder = new TextEncoder();
+      const payload = encoder.encode(pin);
+
+      if (this.authChar.writeValueWithResponse) {
+        await this.authChar.writeValueWithResponse(payload);
+      } else {
+        await this.authChar.writeValue(payload);
+      }
+
+      // Query authLevel to verify result
+      await this.checkAuthLevel();
+
+      if (this.isAuthenticated()) {
+        this.addLog('success', 'Authentication accepted! Controls unlocked.');
+      } else if (this.isLockedOut()) {
+        this.addLog('error', 'Authentication failed: Device is locked out after multiple failed attempts. Press D1 on device to reset PIN.');
+      } else {
+        this.authError.set('Incorrect PIN. Please check the Tartarus display and try again.');
+        this.addLog('error', 'Authentication failed: Incorrect PIN.');
+      }
+    } catch (err: any) {
+      this.authError.set(`Authentication transmission error: ${err.message || err}`);
+      this.addLog('error', `Authentication error: ${err.message || err}`);
+    } finally {
+      this.isAuthenticating.set(false);
     }
   }
 
@@ -238,12 +360,23 @@ export class BtComponent implements OnInit, OnDestroy {
     this.passwordChar = null;
     this.commandChar = null;
     this.statusChar = null;
+    this.authChar = null;
+    this.authLevelChar = null;
+    this.isAuthenticated.set(false);
+    this.isLockedOut.set(false);
+    this.authLevel.set('unauthenticated');
+    this.authError.set(null);
     this.addLog('warn', 'Tartarus disconnected.');
   }
 
   async sendWifi(): Promise<void> {
     if (this.connectionState() !== 'connected' || !this.ssidChar || !this.passwordChar) {
       this.addLog('error', 'Cannot send Wi-Fi: Device is not connected.');
+      return;
+    }
+
+    if (!this.isAuthenticated()) {
+      this.addLog('error', 'Cannot send Wi-Fi: Device is not authenticated. Please enter PIN first.');
       return;
     }
 
@@ -340,6 +473,11 @@ export class BtComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (!this.isAuthenticated()) {
+      this.addLog('error', 'Cannot send configuration: Device is not authenticated. Please enter PIN first.');
+      return;
+    }
+
     if (this.coordinatorConfigForm.invalid) {
       this.coordinatorConfigForm.markAllAsTouched();
       this.addLog('warn', 'Please fill in all required URI fields.');
@@ -385,6 +523,11 @@ export class BtComponent implements OnInit, OnDestroy {
   async sendCommand(): Promise<void> {
     if (this.connectionState() !== 'connected' || !this.commandChar) {
       this.addLog('error', 'Cannot send command: Device is not connected.');
+      return;
+    }
+
+    if (!this.isAuthenticated()) {
+      this.addLog('error', 'Cannot send command: Device is not authenticated. Please enter PIN first.');
       return;
     }
 

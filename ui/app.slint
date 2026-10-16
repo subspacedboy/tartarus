@@ -17,6 +17,9 @@ export component AppWindow inherits Window {
     in-out property <image> qr_code_image;
     in-out property <int> button_indicator: 0; // 0=none, 1=D0, 2=D1, 3=D2
     in-out property <bool> needs_config: false;
+    in-out property <string> ble_pin: "000000";
+    in-out property <bool> ble_authenticated: false;
+    in-out property <bool> ble_locked_out: false;
 
     callback trigger_unlock_blink();
 
@@ -75,7 +78,8 @@ export component AppWindow inherits Window {
             y: 2px;
             text: root.active_screen == 0 ? "PAIRING / QR" :
                   root.active_screen == 1 ? "LOCK STATUS" :
-                  root.active_screen == 2 ? "NETWORK" : "SYSTEM";
+                  root.active_screen == 2 ? "BLE PIN" :
+                  root.active_screen == 3 ? "NETWORK" : "SYSTEM";
             font-size: 11px;
             font-weight: 700;
             color: #e0e0e0;
@@ -83,7 +87,7 @@ export component AppWindow inherits Window {
 
         // Screen indicators (dots in top right)
         Rectangle {
-            x: 180px;
+            x: 172px;
             y: 6px;
             width: 8px;
             height: 8px;
@@ -91,7 +95,7 @@ export component AppWindow inherits Window {
             background: root.active_screen == 0 ? #00e676 : #444455;
         }
         Rectangle {
-            x: 192px;
+            x: 184px;
             y: 6px;
             width: 8px;
             height: 8px;
@@ -99,7 +103,7 @@ export component AppWindow inherits Window {
             background: root.active_screen == 1 ? #00e676 : #444455;
         }
         Rectangle {
-            x: 204px;
+            x: 196px;
             y: 6px;
             width: 8px;
             height: 8px;
@@ -107,12 +111,20 @@ export component AppWindow inherits Window {
             background: root.active_screen == 2 ? #00e676 : #444455;
         }
         Rectangle {
-            x: 216px;
+            x: 208px;
             y: 6px;
             width: 8px;
             height: 8px;
             border-radius: 4px;
             background: root.active_screen == 3 ? #00e676 : #444455;
+        }
+        Rectangle {
+            x: 220px;
+            y: 6px;
+            width: 8px;
+            height: 8px;
+            border-radius: 4px;
+            background: root.active_screen == 4 ? #00e676 : #444455;
         }
     }
 
@@ -239,8 +251,68 @@ export component AppWindow inherits Window {
         }
     }
 
-    // Screen 2: WiFi Info
+    // Screen 2: BLE PIN
     if root.active_screen == 2 : Rectangle {
+        x: 0px;
+        y: 20px;
+        width: 240px;
+        height: 97px;
+
+        VerticalLayout {
+            alignment: center;
+            spacing: 5px;
+
+            // PIN Badge
+            HorizontalLayout {
+                alignment: center;
+
+                Rectangle {
+                    width: 150px;
+                    height: 38px;
+                    border-radius: 6px;
+                    background: root.ble_locked_out ? #330000 :
+                                root.ble_authenticated ? #003314 : #1a1a24;
+                    border-width: 1px;
+                    border-color: root.ble_locked_out ? #ff1744 :
+                                  root.ble_authenticated ? #00e676 : #2979ff;
+
+                    Text {
+                        width: 100%;
+                        height: 100%;
+                        text: root.ble_locked_out ? "LOCKED OUT" : root.ble_pin;
+                        font-size: root.ble_locked_out ? 15px : 22px;
+                        font-weight: 700;
+                        letter-spacing: root.ble_locked_out ? 0px : 3px;
+                        color: root.ble_locked_out ? #ff5252 :
+                               root.ble_authenticated ? #00e676 : #ffffff;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+
+            Text {
+                text: root.ble_locked_out ? "Press D1 to reset PIN" :
+                      root.ble_authenticated ? "Authenticated via Bluetooth" :
+                      "Bluetooth Pairing PIN";
+                font-size: 11px;
+                font-weight: 500;
+                color: root.ble_locked_out ? #ff5252 :
+                       root.ble_authenticated ? #00e676 : #b0bec5;
+                horizontal-alignment: center;
+            }
+
+            Text {
+                text: "D1: Regenerate PIN";
+                font-size: 9px;
+                color: #607d8b;
+                horizontal-alignment: center;
+            }
+        }
+    }
+
+    // Screen 3: WiFi Info
+    if root.active_screen == 3 : Rectangle {
         x: 0px;
         y: 20px;
         width: 240px;
@@ -289,8 +361,8 @@ export component AppWindow inherits Window {
         }
     }
 
-    // Screen 3: Firmware Info
-    if root.active_screen == 3 : Rectangle {
+    // Screen 4: Firmware Info
+    if root.active_screen == 4 : Rectangle {
         x: 0px;
         y: 20px;
         width: 240px;

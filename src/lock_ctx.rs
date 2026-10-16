@@ -456,7 +456,7 @@ impl LockCtx {
 
         // D2 button cycles through screens
         if update.d2_pressed {
-            self.active_screen_idx = (self.active_screen_idx + 1) % 4;
+            self.active_screen_idx = (self.active_screen_idx + 1) % 5;
             log::info!("Active screen now idx -> {}", self.active_screen_idx);
         }
 
@@ -509,7 +509,13 @@ impl LockCtx {
                     self.save_state_if_dirty();
                 }
             }
-            3 => {
+            2 => {
+                let new_pin_num = unsafe { esp_idf_svc::sys::esp_random() } % 1_000_000;
+                let new_pin = format!("{:06}", new_pin_num);
+                log::info!("D1 pressed on BLE PIN screen: regenerating PIN to {}", new_pin);
+                crate::ble_server::reset_auth_pin(&new_pin);
+            }
+            4 => {
                 if self.firmware_manager.is_update_available() {
                     log::info!("User initiated a firmware update via D1");
                     self.firmware_manager.initiate_firmware_update();
