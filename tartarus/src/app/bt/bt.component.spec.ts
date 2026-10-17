@@ -70,4 +70,47 @@ describe('BtComponent', () => {
     expect(component.isAuthenticated()).toBe(false);
     expect(component.isLockedOut()).toBe(false);
   });
+
+  it('should initialize event queue signals with empty defaults', () => {
+    expect(component.eventQueueCount()).toBeNull();
+    expect(component.eventQueueItems()).toEqual([]);
+    expect(component.eventQueueCtrlStatus()).toBe('idle');
+    expect(component.showRawEventQueue()).toBe(false);
+  });
+
+  it('should parse event queue JSON list correctly', () => {
+    const jsonStr = JSON.stringify([
+      { slot: 0, contract: 1, counter: 0, type: 'AcceptContract' },
+      { slot: 1, contract: 1, counter: 1, type: 'Lock' },
+      { slot: 2, contract: 1, counter: 2, type: 'Unlock' },
+    ]);
+
+    component.parseEventQueueList(jsonStr);
+    expect(component.eventQueueItems().length).toBe(3);
+    expect(component.eventQueueItems()[0]).toEqual({
+      slot: 0,
+      contract: 1,
+      counter: 0,
+      type: 'AcceptContract',
+    });
+    expect(component.eventQueueItems()[1].type).toBe('Lock');
+    expect(component.eventQueueItems()[2].type).toBe('Unlock');
+    expect(component.eventQueueRaw()).toBe(jsonStr);
+  });
+
+  it('should handle invalid or non-array event queue JSON gracefully', () => {
+    component.parseEventQueueList('not-json');
+    expect(component.eventQueueItems()).toEqual([]);
+
+    component.parseEventQueueList('{"error":"not-array"}');
+    expect(component.eventQueueItems()).toEqual([]);
+  });
+
+  it('should toggle show raw event queue signal', () => {
+    expect(component.showRawEventQueue()).toBe(false);
+    component.toggleShowRawEventQueue();
+    expect(component.showRawEventQueue()).toBe(true);
+    component.toggleShowRawEventQueue();
+    expect(component.showRawEventQueue()).toBe(false);
+  });
 });

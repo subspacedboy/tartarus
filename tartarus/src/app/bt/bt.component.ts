@@ -16,6 +16,16 @@ export const COMMAND_CHAR_UUID = 'fc57b56e-fb30-4227-8a88-cf2b80ccced0';
 export const STATUS_CHAR_UUID = 'f41280b4-af44-4b14-b5eb-83d4b2a78f35';
 export const AUTH_CHAR_UUID = 'a79b2001-f012-4c8d-b3ef-88267df8461a';
 export const AUTH_LEVEL_CHAR_UUID = 'a79b2002-f012-4c8d-b3ef-88267df8461a';
+export const EVENT_QUEUE_COUNT_CHAR_UUID = 'a79b2003-f012-4c8d-b3ef-88267df8461a';
+export const EVENT_QUEUE_LIST_CHAR_UUID = 'a79b2004-f012-4c8d-b3ef-88267df8461a';
+export const EVENT_QUEUE_CTRL_CHAR_UUID = 'a79b2005-f012-4c8d-b3ef-88267df8461a';
+
+export interface EventQueueItem {
+  slot: number;
+  contract: number;
+  counter: number;
+  type: string;
+}
 
 interface LogEntry {
   timestamp: string;
@@ -50,6 +60,16 @@ export class BtComponent implements OnInit, OnDestroy {
   authError = signal<string | null>(null);
   isLockedOut = signal<boolean>(false);
 
+  // Event Queue Signals
+  eventQueueCount = signal<number | null>(null);
+  eventQueueItems = signal<EventQueueItem[]>([]);
+  eventQueueRaw = signal<string>('');
+  eventQueueCtrlStatus = signal<string>('idle');
+  isEventQueueLoading = signal<boolean>(false);
+  isClearingQueue = signal<boolean>(false);
+  isReenqueuing = signal<boolean>(false);
+  showRawEventQueue = signal<boolean>(false);
+
   scanAllDevices = signal<boolean>(false);
 
   authForm: FormGroup;
@@ -66,6 +86,9 @@ export class BtComponent implements OnInit, OnDestroy {
   private statusChar: any = null;
   private authChar: any = null;
   private authLevelChar: any = null;
+  private eventQueueCountChar: any = null;
+  private eventQueueListChar: any = null;
+  private eventQueueCtrlChar: any = null;
 
   constructor(
     private fb: FormBuilder,
@@ -250,6 +273,56 @@ export class BtComponent implements OnInit, OnDestroy {
         // SSID characteristic may be write-only or empty initially
       }
 
+      // Discover Event Queue Characteristics
+      try {
+        this.eventQueueCountChar = await service.getCharacteristic(EVENT_QUEUE_COUNT_CHAR_UUID);
+        await this.readEventQueueCount();
+        try {
+          await this.eventQueueCountChar.startNotifications();
+          this.eventQueueCountChar.addEventListener('characteristicvaluechanged', (e: any) => {
+            const val = new TextDecoder().decode(e.target.value);
+            const count = parseInt(val.trim(), 10);
+            this.eventQueueCount.set(isNaN(count) ? 0 : count);
+          });
+        } catch {
+          // Notifications might not be supported
+        }
+      } catch {
+        this.addLog('info', 'Event Queue Count characteristic ready.');
+      }
+
+      try {
+        this.eventQueueListChar = await service.getCharacteristic(EVENT_QUEUE_LIST_CHAR_UUID);
+        await this.readEventQueueList();
+        try {
+          await this.eventQueueListChar.startNotifications();
+          this.eventQueueListChar.addEventListener('characteristicvaluechanged', (e: any) => {
+            const val = new TextDecoder().decode(e.target.value);
+            this.parseEventQueueList(val);
+          });
+        } catch {
+          // Notifications might not be supported
+        }
+      } catch {
+        this.addLog('info', 'Event Queue List characteristic ready.');
+      }
+
+      try {
+        this.eventQueueCtrlChar = await service.getCharacteristic(EVENT_QUEUE_CTRL_CHAR_UUID);
+        try {
+          await this.eventQueueCtrlChar.startNotifications();
+          this.eventQueueCtrlChar.addEventListener('characteristicvaluechanged', (e: any) => {
+            const val = new TextDecoder().decode(e.target.value);
+            this.eventQueueCtrlStatus.set(val);
+            this.addLog('info', `Event Queue Control: ${val}`);
+          });
+        } catch {
+          // Notifications might not be supported
+        }
+      } catch {
+        this.addLog('info', 'Event Queue Control characteristic ready.');
+      }
+
       this.connectionState.set('connected');
       if (this.isAuthenticated()) {
         this.addLog('success', 'Tartarus connected and authenticated!');
@@ -362,6 +435,16 @@ export class BtComponent implements OnInit, OnDestroy {
     this.statusChar = null;
     this.authChar = null;
     this.authLevelChar = null;
+    this.eventQueueCountChar = null;
+    this.eventQueueListChar = null;
+    this.eventQueueCtrlChar = null;
+    this.eventQueueCount.set(null);
+    this.eventQueueItems.set([]);
+    this.eventQueueRaw.set('');
+    this.eventQueueCtrlStatus.set('idle');
+    this.isEventQueueLoading.set(false);
+    this.isClearingQueue.set(false);
+    this.isReenqueuing.set(false);
     this.isAuthenticated.set(false);
     this.isLockedOut.set(false);
     this.authLevel.set('unauthenticated');
@@ -557,5 +640,143 @@ export class BtComponent implements OnInit, OnDestroy {
     } finally {
       this.isSendingCommand.set(false);
     }
+  }
+
+  parseEventQueueList(raw: string): void {
+    const trimmed = raw.trim();
+    this.eventQueueRaw.set(trimmed);
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        this.eventQueueItems.set(parsed);
+      } else {
+        this.eventQueueItems.set([]);
+      }
+    } catch {
+      this.eventQueueItems.set([]);
+    }
+  }
+
+  async readEventQueueList(): Promise<void> {
+    if (!this.eventQueueListChar) return;
+    try {
+      const val = await this.eventQueueListChar.readValue();
+      const str = new TextDecoder().decode(val);
+      this.parseEventQueueList(str);
+    } catch (err: any) {
+      this.addLog('warn', `Failed to read event queue list: ${err.message || err}`);
+    }
+  }
+
+  async readEventQueueCount(): Promise<void> {
+    if (!this.eventQueueCountChar) return;
+    try {
+      const val = await this.eventQueueCountChar.readValue();
+      const str = new TextDecoder().decode(val);
+      const count = parseInt(str.trim(), 10);
+      this.eventQueueCount.set(isNaN(count) ? 0 : count);
+    } catch (err: any) {
+      this.addLog('warn', `Failed to read event queue count: ${err.message || err}`);
+    }
+  }
+
+  async refreshEventQueue(): Promise<void> {
+    if (this.connectionState() !== 'connected') {
+      this.addLog('error', 'Cannot refresh event queue: Device is not connected.');
+      return;
+    }
+
+    try {
+      this.isEventQueueLoading.set(true);
+      this.addLog('info', 'Refreshing event queue from Tartarus...');
+
+      if (this.eventQueueCtrlChar && this.isAuthenticated()) {
+        try {
+          const payload = new TextEncoder().encode('refresh');
+          if (this.eventQueueCtrlChar.writeValueWithResponse) {
+            await this.eventQueueCtrlChar.writeValueWithResponse(payload);
+          } else {
+            await this.eventQueueCtrlChar.writeValue(payload);
+          }
+          await new Promise((r) => setTimeout(r, 100));
+        } catch {}
+      }
+
+      await this.readEventQueueCount();
+      await this.readEventQueueList();
+      this.addLog('success', `Event queue refreshed: ${this.eventQueueCount() ?? 0} events in flash.`);
+    } catch (err: any) {
+      this.addLog('error', `Failed to refresh event queue: ${err.message || err}`);
+    } finally {
+      this.isEventQueueLoading.set(false);
+    }
+  }
+
+  async clearEventQueue(): Promise<void> {
+    if (this.connectionState() !== 'connected' || !this.eventQueueCtrlChar) {
+      this.addLog('error', 'Cannot clear event queue: Device is not connected.');
+      return;
+    }
+
+    if (!this.isAuthenticated()) {
+      this.addLog('error', 'Cannot clear event queue: Device is not authenticated. Please enter PIN first.');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to clear all unacknowledged events from flash storage?')) {
+      return;
+    }
+
+    try {
+      this.isClearingQueue.set(true);
+      this.addLog('info', 'Sending command to clear event queue...');
+      const payload = new TextEncoder().encode('clear');
+      if (this.eventQueueCtrlChar.writeValueWithResponse) {
+        await this.eventQueueCtrlChar.writeValueWithResponse(payload);
+      } else {
+        await this.eventQueueCtrlChar.writeValue(payload);
+      }
+
+      await new Promise((r) => setTimeout(r, 200));
+      await this.readEventQueueCount();
+      await this.readEventQueueList();
+      this.addLog('success', 'Event queue successfully cleared from Tartarus flash.');
+    } catch (err: any) {
+      this.addLog('error', `Failed to clear event queue: ${err.message || err}`);
+    } finally {
+      this.isClearingQueue.set(false);
+    }
+  }
+
+  async reenqueueEventQueue(): Promise<void> {
+    if (this.connectionState() !== 'connected' || !this.eventQueueCtrlChar) {
+      this.addLog('error', 'Cannot re-enqueue events: Device is not connected.');
+      return;
+    }
+
+    if (!this.isAuthenticated()) {
+      this.addLog('error', 'Cannot re-enqueue events: Device is not authenticated. Please enter PIN first.');
+      return;
+    }
+
+    try {
+      this.isReenqueuing.set(true);
+      this.addLog('info', 'Sending command to force re-enqueue unacknowledged events...');
+      const payload = new TextEncoder().encode('reenqueue');
+      if (this.eventQueueCtrlChar.writeValueWithResponse) {
+        await this.eventQueueCtrlChar.writeValueWithResponse(payload);
+      } else {
+        await this.eventQueueCtrlChar.writeValue(payload);
+      }
+      this.addLog('success', 'Force re-enqueue command sent. Events will be transmitted over MQTT.');
+    } catch (err: any) {
+      this.addLog('error', `Failed to re-enqueue events: ${err.message || err}`);
+    } finally {
+      this.isReenqueuing.set(false);
+    }
+  }
+
+  toggleShowRawEventQueue(): void {
+    this.showRawEventQueue.update((v) => !v);
   }
 }
