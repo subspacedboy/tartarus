@@ -5,24 +5,26 @@ import { LockSessionsComponent } from './lock-sessions.component';
 import { TartarusCoordinatorService } from '../tartarus-coordinator.service';
 import { ToastService } from '../toast.service';
 import { KnownToken } from '../models/known-token';
+import { vi } from 'vitest';
 
 describe('LockSessionsComponent', () => {
   let component: LockSessionsComponent;
   let fixture: ComponentFixture<LockSessionsComponent>;
-  let coordinatorServiceSpy: jasmine.SpyObj<TartarusCoordinatorService>;
-  let toastServiceSpy: jasmine.SpyObj<ToastService>;
+  let coordinatorServiceSpy: any;
+  let toastServiceSpy: any;
 
   beforeEach(async () => {
-    coordinatorServiceSpy = jasmine.createSpyObj('TartarusCoordinatorService', [
-      'getKnownTokensForAuthor',
-      'deleteKnownToken'
-    ]);
-    coordinatorServiceSpy.getKnownTokensForAuthor.and.returnValue(of([
-      new KnownToken({ name: 'kt-1', shareableToken: 'tok-1', notes: 'Lock 1' })
-    ]));
-    coordinatorServiceSpy.deleteKnownToken.and.returnValue(of(true));
+    coordinatorServiceSpy = {
+      getKnownTokensForAuthor: vi.fn().mockReturnValue(of([
+        new KnownToken({ name: 'kt-1', shareableToken: 'tok-1', notes: 'Lock 1' })
+      ])),
+      deleteKnownToken: vi.fn().mockReturnValue(of(true))
+    };
 
-    toastServiceSpy = jasmine.createSpyObj('ToastService', ['showSuccess', 'showError']);
+    toastServiceSpy = {
+      showSuccess: vi.fn(),
+      showError: vi.fn()
+    };
 
     await TestBed.configureTestingModule({
       imports: [LockSessionsComponent],

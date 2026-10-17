@@ -12,6 +12,8 @@ export class Contract {
   updatedAt?: string | null;
   nextCounter?: number;
   serialNumber?: number;
+  lockSessionName?: string | null;
+  lockSessionToken?: string | null;
   lockState?: LockState;
   lockLastUpdate?: Date | null;
   notes?: string;

@@ -338,7 +338,13 @@ class ContractService {
     }
 
     fun getByStateAdminOnly(states: List<ContractState>): List<Contract> {
-        return contractRepository.findByStateInOrderByUpdatedAtDesc(states)
+        val contracts = contractRepository.findByStateInOrderByUpdatedAtDesc(states)
+        for (contract in contracts) {
+            contract.lockState = contract.lockSession.isLocked
+            contract.emergencyUnlocked = contract.lockSession.emergencyUnlocked
+            contract.lockLastUpdate = contract.lockSession.updatedAt
+        }
+        return contracts
     }
 
     fun getByNameAdminOnly(name: String): Contract {
@@ -348,11 +354,9 @@ class ContractService {
                     org.springframework.http.HttpStatus.NOT_FOUND,
                     "Contract not found",
                 )
-        if (contract.state == ContractState.CONFIRMED) {
-            contract.lockState = contract.lockSession.isLocked
-            contract.emergencyUnlocked = contract.lockSession.emergencyUnlocked
-            contract.lockLastUpdate = contract.lockSession.updatedAt
-        }
+        contract.lockState = contract.lockSession.isLocked
+        contract.emergencyUnlocked = contract.lockSession.emergencyUnlocked
+        contract.lockLastUpdate = contract.lockSession.updatedAt
         return contract
     }
 

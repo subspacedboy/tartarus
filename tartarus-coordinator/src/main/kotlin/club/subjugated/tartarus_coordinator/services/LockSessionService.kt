@@ -87,6 +87,18 @@ class LockSessionService {
         return maybeSession
     }
 
+    fun findByName(name: String): LockSession? {
+        return this.lockSessionRepository.findByName(name)
+    }
+
+    fun findByTokenOrName(identifier: String): LockSession? {
+        return findBySessionToken(identifier) ?: findByName(identifier)
+    }
+
+    fun findContractsForLockSession(lockSession: LockSession): List<Contract> {
+        return contractService.findByLockSessionId(lockSession)
+    }
+
     fun findAllForAdmin(): List<LockSession> {
         return lockSessionRepository.findAll()
     }

@@ -23,6 +23,7 @@ import {adminGuard} from "./admin.guard";
 import {LogoutLockUserComponent} from "./logout-lock-user/logout-lock-user.component";
 import {AdminLandingPageComponent} from './admin/admin-landing-page/admin-landing-page.component';
 import {AdminLockSessionsComponent} from './admin/admin-lock-sessions/admin-lock-sessions.component';
+import {AdminLockSessionDetailComponent} from './admin/admin-lock-session-detail/admin-lock-session-detail.component';
 import {UpdaterComponent} from './updater/updater.component';
 import {ConsoleComponent} from './console/console.component';
 
@@ -117,7 +118,18 @@ export const routes: Routes = [
     component: AdminContractsComponent
   },
   {
+    path: 'admin/lock_sessions/:sessionToken',
+    canActivate: [adminGuard],
+    component: AdminLockSessionDetailComponent
+  },
+  {
+    path: 'admin/lock_session/:sessionToken',
+    canActivate: [adminGuard],
+    component: AdminLockSessionDetailComponent
+  },
+  {
     path: 'admin/lock_sessions',
+    pathMatch: 'full',
     canActivate: [adminGuard],
     component: AdminLockSessionsComponent
   },

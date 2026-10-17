@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { LockSessionCardComponent } from './lock-session-card.component';
 import { KnownToken } from '../models/known-token';
+import { vi } from 'vitest';
 
 describe('LockSessionCardComponent', () => {
   let component: LockSessionCardComponent;
@@ -26,11 +27,11 @@ describe('LockSessionCardComponent', () => {
   it('should emit delete event with token when onDelete is called', () => {
     const token = new KnownToken({ name: 'kt-123', shareableToken: 'QAAAB3', notes: 'My Lock' });
     component.knownToken = token;
-    spyOn(component.delete, 'emit');
+    vi.spyOn(component.delete, 'emit');
 
     const fakeEvent = new MouseEvent('click');
-    spyOn(fakeEvent, 'stopPropagation');
-    spyOn(fakeEvent, 'preventDefault');
+    vi.spyOn(fakeEvent, 'stopPropagation');
+    vi.spyOn(fakeEvent, 'preventDefault');
 
     component.onDelete(fakeEvent);
 

@@ -8,6 +8,8 @@ import {CryptoService} from '../../crypto.service';
 import {WebsocketService} from '../../websocket.service';
 import {ToastService} from '../../toast.service';
 import {CommandCardComponent} from '../../command-card/command-card.component';
+import {RouterLink} from '@angular/router';
+import {DateAgoPipe} from '../../date-ago.pipe';
 import * as flatbuffers from 'flatbuffers';
 import {SignedMessage} from '../../club/subjugated/fb/message/signed-message';
 import {MessagePayload} from '../../club/subjugated/fb/message/message-payload';
@@ -17,7 +19,9 @@ import {ContractDescription} from '../../models/contract-description';
 @Component({
   selector: 'app-admin-contract-detail',
   imports: [
-    CommandCardComponent
+    CommandCardComponent,
+    RouterLink,
+    DateAgoPipe,
   ],
   templateUrl: './admin-contract-detail.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

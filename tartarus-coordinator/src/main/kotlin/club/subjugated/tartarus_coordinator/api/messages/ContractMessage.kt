@@ -15,6 +15,8 @@ data class ContractMessage(
     val notes: String? = null,
     val nextCounter: Int? = null,
     val serialNumber: Int? = null,
+    val lockSessionName: String? = null,
+    val lockSessionToken: String? = null,
     val lockState: LockStateMessage? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) val lockLastUpdate: OffsetDateTime? = null,
     val messages: List<BotMessageMessage>? = mutableListOf(),
@@ -33,6 +35,8 @@ data class ContractMessage(
                 messages =
                     if (skipMessages) null
                     else contract.messages.map { BotMessageMessage.fromMessage(it) },
+                lockSessionName = contract.lockSession.name,
+                lockSessionToken = contract.lockSession.sessionToken,
                 lockState =
                     if (contract.lockState == null) null
                     else
@@ -40,7 +44,7 @@ data class ContractMessage(
                             isLocked = contract.lockState!!,
                             emergencyUnlocked = contract.emergencyUnlocked ?: false,
                         ),
-                lockLastUpdate = contract.lockLastUpdate,
+                lockLastUpdate = contract.lockLastUpdate ?: contract.lockSession.updatedAt,
                 nextCounter = contract.nextCounter,
                 serialNumber = contract.serialNumber,
                 createdAt = contract.createdAt,

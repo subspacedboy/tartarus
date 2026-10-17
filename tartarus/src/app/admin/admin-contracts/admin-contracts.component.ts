@@ -6,7 +6,7 @@ import {AsyncPipe, DatePipe} from '@angular/common';
 import {Observable} from 'rxjs';
 import {RouterLink} from '@angular/router';
 import {FormsModule} from '@angular/forms';
-
+import {DateAgoPipe} from '../../date-ago.pipe';
 
 @Component({
   selector: 'app-admin-contracts',
@@ -15,7 +15,8 @@ import {FormsModule} from '@angular/forms';
     AsyncPipe,
     RouterLink,
     FormsModule,
-    DatePipe
+    DatePipe,
+    DateAgoPipe,
   ],
   templateUrl: './admin-contracts.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

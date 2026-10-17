@@ -1,5 +1,6 @@
 package club.subjugated.tartarus_coordinator.api.messages
 
+import club.subjugated.tartarus_coordinator.models.ContractState
 import club.subjugated.tartarus_coordinator.models.KnownToken
 import club.subjugated.tartarus_coordinator.models.LockSession
 import club.subjugated.tartarus_coordinator.models.LockUserSession
@@ -19,6 +20,9 @@ data class LockSessionMessage(
     var knownToken: KnownTokenMessage? = null,
     var lockState: LockStateMessage? = null,
     var availableForContract: Boolean? = null,
+    var activeContractName: String? = null,
+    var activeContractSerial: Int? = null,
+    var contractCount: Int = 0,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
 ) {
@@ -33,6 +37,8 @@ data class LockSessionMessage(
             // a PEM encoded version of the public key.
             val ecKey = getECPublicKeyFromCompressedKeyByteArray(lockSession.decodePublicKey())
             val pemKey = getPemEncoding(ecKey)
+            val confirmedContract =
+                lockSession.contracts.firstOrNull { it.state == ContractState.CONFIRMED }
             return LockSessionMessage(
                 name = lockSession.name,
                 sessionToken =
@@ -61,6 +67,9 @@ data class LockSessionMessage(
                     else lockSession.availableForContract,
                 knownToken =
                     if (knownToken == null) null else KnownTokenMessage.fromKnownToken(knownToken),
+                activeContractName = confirmedContract?.name,
+                activeContractSerial = confirmedContract?.serialNumber,
+                contractCount = lockSession.contracts.size,
                 updatedAt = lockSession.updatedAt,
                 createdAt = lockSession.createdAt,
             )

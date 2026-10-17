@@ -456,6 +456,32 @@ export class TartarusCoordinatorService {
     }));
   }
 
+  public getLockSessionForAdmin(sessionToken: string) : Observable<LockSession> {
+    const get_lock_session_uri = `${this.baseUrl}/admin/lock_sessions/${sessionToken}`;
+    return this.http.get(get_lock_session_uri, {
+      headers: new HttpHeaders({ 'X-Require-Admin': 'requires authorization tokens' }),
+    }).pipe(map((res:any) => {
+      return new LockSession(res);
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public getContractsForLockSessionForAdmin(sessionToken: string) : Observable<Contract[]> {
+    const get_contracts_uri = `${this.baseUrl}/admin/lock_sessions/${sessionToken}/contracts`;
+    return this.http.get(get_contracts_uri, {
+      headers: new HttpHeaders({ 'X-Require-Admin': 'requires authorization tokens' }),
+    }).pipe(map((res:any) => {
+      const contracts : Contract[] = res.map((datum: any) => {
+        return new Contract(datum);
+      });
+
+      return contracts;
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
   // Admin firmware
 
   public addFirmware(firmwareBytes : string) : Observable<boolean> {

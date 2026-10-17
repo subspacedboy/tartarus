@@ -2,14 +2,17 @@ import {Component, OnInit, ChangeDetectionStrategy} from '@angular/core';
 import {Observable} from 'rxjs';
 import {LockSession} from '../../models/lock-session';
 import {TartarusCoordinatorService} from '../../tartarus-coordinator.service';
-import {AsyncPipe, DatePipe} from '@angular/common';
+import {AsyncPipe} from '@angular/common';
+import {RouterLink} from '@angular/router';
+import {DateAgoPipe} from '../../date-ago.pipe';
 import {NgbdSortableHeader} from '../../sortable.directive';
 
 @Component({
   selector: 'app-admin-lock-sessions',
   imports: [
     AsyncPipe,
-    DatePipe
+    RouterLink,
+    DateAgoPipe,
   ],
   templateUrl: './admin-lock-sessions.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

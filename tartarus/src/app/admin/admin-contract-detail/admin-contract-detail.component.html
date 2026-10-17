@@ -1,13 +1,48 @@
 @if(contract) {
   <div class="row">
-    <div class="col-lg-4">
+    <div class="col-lg-6 col-md-8 col-12">
       <div class="bs-component">
+        <p><a routerLink="/admin/contracts">&larr; Back to Live Contracts</a></p>
         <h2>Contract Details for {{contract.name}}</h2>
-        <h3>What is this for?</h3>
-        <p>Manage your contract.</p>
+        <p class="text-muted">Manage contract.</p>
+
+        <div class="card mb-3">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span class="fw-bold">Associated Lock</span>
+            @if (contract.lockSessionToken) {
+              <a class="btn btn-sm btn-outline-primary" [routerLink]="['/admin/lock_sessions', contract.lockSessionToken]">
+                View Lock Session &rarr;
+              </a>
+            }
+          </div>
+          <div class="card-body">
+            @if (contract.lockSessionName) {
+              <p class="mb-1"><strong>Lock Session:</strong> {{contract.lockSessionName}}</p>
+            }
+            @if (contract.lockSessionToken) {
+              <p class="mb-1"><strong>Session Token:</strong> <code>{{contract.lockSessionToken}}</code></p>
+            }
+            @if (contract.lockLastUpdate) {
+              <p class="mb-1"><strong>Last update:</strong> {{contract.lockLastUpdate | dateAgo}}</p>
+            }
+            @if (contract.lockState) {
+              <div class="mt-1">
+                <strong>Physical Lock State: </strong>
+                @if (contract.lockState.isLocked) {
+                  <span class="badge bg-danger">Locked</span>
+                } @else {
+                  <span class="badge bg-success">Unlocked</span>
+                }
+                @if (contract.lockState.emergencyUnlocked) {
+                  <span class="badge bg-warning text-dark ms-1">Emergency Unlocked</span>
+                }
+              </div>
+            }
+          </div>
+        </div>
 
         <p>
-          State: {{contract.state}}
+          State: <span class="badge bg-info text-dark">{{contract.state}}</span>
         </p>
 
         <p>

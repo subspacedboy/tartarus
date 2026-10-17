@@ -14,6 +14,11 @@ export class LockSession {
   knownToken?: KnownToken;
   lockState?: LockState;
   availableForContract? : boolean;
+  validatedFirmware?: boolean;
+  lastValidated?: Date;
+  activeContractName?: string | null;
+  activeContractSerial?: number | null;
+  contractCount?: number;
   createdAt?: Date;
   updatedAt?: Date;
 

@@ -26,11 +26,12 @@
     <tr>
       <th scope="col">#</th>
       <th scope="col" sortable="name" (sort)="onSort($event)">Name</th>
-      <th scope="col" sortable="serialNumber" (sort)="onSort($event)">Serial Number</th>
-      <th scope="col" sortable="shareableToken" (sort)="onSort($event)">Shareable Token</th>
+      <th scope="col" sortable="serialNumber" (sort)="onSort($event)">Serial</th>
+      <th scope="col">Lock Session</th>
+      <th scope="col">Lock Last Update</th>
       <th scope="col" sortable="state" (sort)="onSort($event)">State</th>
       <th scope="col" sortable="authorSessionName" (sort)="onSort($event)">Author</th>
-      <th scope="col" sortable="updatedAt" (sort)="onSort($event)">Updated At</th>
+      <th scope="col" sortable="updatedAt" (sort)="onSort($event)">Contract Updated</th>
     </tr>
     </thead>
     <tbody>
@@ -41,7 +42,22 @@
             <a routerLink="/admin/contract/{{c.name}}">{{c.name}}</a>
           </td>
           <td>{{c.serialNumber}}</td>
-          <td>{{c.shareableToken}}</td>
+          <td>
+            @if (c.lockSessionToken) {
+              <a [routerLink]="['/admin/lock_sessions', c.lockSessionToken]">
+                {{ c.lockSessionName || c.lockSessionToken }}
+              </a>
+            } @else {
+              <span class="text-muted">—</span>
+            }
+          </td>
+          <td>
+            @if (c.lockLastUpdate) {
+              <span>{{ c.lockLastUpdate | dateAgo }}</span>
+            } @else {
+              <span class="text-muted">—</span>
+            }
+          </td>
           <td>
             {{c.state}}
           </td>
@@ -54,7 +70,7 @@
         </tr>
       } @empty {
         <tr>
-          <td colspan="4" style="text-align: center">No contracts</td>
+          <td colspan="8" style="text-align: center">No contracts</td>
         </tr>
       }
     </tbody>
