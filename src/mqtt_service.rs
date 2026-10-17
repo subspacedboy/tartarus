@@ -1,5 +1,3 @@
-#[allow(deprecated)]
-use crate::firmware_updater::MessageAssembler;
 use crate::internal_config::InternalConfig;
 use embedded_svc::mqtt::client::EventPayload::Received;
 use embedded_svc::mqtt::client::{Details, EventPayload, QoS};
@@ -10,6 +8,39 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
+
+/// Reassembles chunked MQTT messages received across multiple packets.
+pub struct MessageAssembler {
+    pub current_message: Vec<u8>,
+    pub started: bool,
+}
+
+impl MessageAssembler {
+    #[allow(dead_code)]
+    pub fn new() -> Self {
+        Self {
+            current_message: vec![],
+            started: false,
+        }
+    }
+
+    pub fn new_with_size(size: usize) -> Self {
+        Self {
+            current_message: Vec::with_capacity(size),
+            started: false,
+        }
+    }
+
+    pub fn current_size(&self) -> usize {
+        self.current_message.len()
+    }
+
+    pub fn add_to_current_message(&mut self, mut data: Vec<u8>) {
+        self.started = true;
+        self.current_message.extend(data.drain(0..));
+        log::info!("Message size up to {:?}", self.current_message.len());
+    }
+}
 
 pub struct MqttService {
     mqtt_state_machine: Arc<Mutex<MqttStateMachine>>,
@@ -39,22 +70,6 @@ impl SignedMessageTransport {
         }
     }
 
-    pub fn new_for_bot(buffer: Vec<u8>, bot_name: String) -> Self {
-        SignedMessageTransport {
-            buffer,
-            topic: TopicType::BotMessage,
-            bot_name: Some(bot_name),
-        }
-    }
-
-    pub fn buffer(&self) -> Vec<u8> {
-        self.buffer.clone()
-    }
-
-    pub fn as_slice(&self) -> &[u8] {
-        &self.buffer
-    }
-
     pub fn into_buffer(self) -> Vec<u8> {
         self.buffer
     }
@@ -74,7 +89,6 @@ pub enum TopicType {
     SignedMessages,
     ConfigurationData,
     Acknowledgments,
-    BotMessage,
     FirmwareMessage,
     LockEvents,
 }
@@ -510,15 +524,6 @@ fn publish_outgoing_messages(
                 let topic = format!("locks/{}/events", session_token);
                 client.publish(
                     topic.as_str(),
-                    QoS::AtLeastOnce,
-                    false,
-                    msg.buffer.as_ref(),
-                )
-            }
-            TopicType::BotMessage => {
-                let bot_name = msg.bot_name.as_deref().unwrap_or("unknown");
-                client.publish(
-                    format!("bots/inbox_events_{}", bot_name).as_str(),
                     QoS::AtLeastOnce,
                     false,
                     msg.buffer.as_ref(),

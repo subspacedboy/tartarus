@@ -138,9 +138,9 @@ fn main() {
     let qr_reader_sda: AnyIOPin = peripherals.pins.gpio3.into();
     let qr_reader_scl: AnyIOPin = peripherals.pins.gpio4.into();
 
-    let mut d0_button = PinDriver::input(peripherals.pins.gpio0, Pull::Up).expect("pin to be available");
-    let mut d1_button = PinDriver::input(peripherals.pins.gpio1, Pull::Down).expect("pin to be available");
-    let mut d2_button = PinDriver::input(peripherals.pins.gpio2, Pull::Down).expect("pin to be available");
+    let d0_button = PinDriver::input(peripherals.pins.gpio0, Pull::Up).expect("pin to be available");
+    let d1_button = PinDriver::input(peripherals.pins.gpio1, Pull::Down).expect("pin to be available");
+    let d2_button = PinDriver::input(peripherals.pins.gpio2, Pull::Down).expect("pin to be available");
 
     // Make sure to configure WiFi before enabling the TFT backlight.
     // Warming up wifi
@@ -170,8 +170,21 @@ fn main() {
     )
     .expect("SpiDeviceDriver to work");
 
+    // SPI display buffer for the ST7789 display interface.
+    //
+    // CONTEXT & MEMORY ARCHITECTURE:
+    // This buffer is deliberately allocated as a static array in `.bss` rather than
+    // via heap allocation (`Box::leak`). On ESP32-S3 systems with PSRAM enabled:
+    // 1. General heap allocations can be placed in external PSRAM, but SPI peripheral
+    //    hardware and high-speed display transmission pipelines require buffers to reside
+    //    in internal SRAM (DRAM). Placing it in `.bss` guarantees internal SRAM placement.
+    // 2. Pre-allocating at link-time avoids runtime heap fragmentation on embedded boots.
+    //
+    // In Rust 1.84+ and the Rust 2024 edition, taking a direct mutable reference (`&mut SPI_BUFFER`)
+    // triggers `static_mut_refs`. We use `addr_of_mut!` to construct a raw pointer and dereference
+    // it once into the required `&'static mut [u8; 512]` reference without aliasing hazards.
     static mut SPI_BUFFER: [u8; 512] = [0; 512];
-    let buffer: &'static mut [u8; 512] = unsafe { &mut SPI_BUFFER };
+    let buffer: &'static mut [u8; 512] = unsafe { &mut *core::ptr::addr_of_mut!(SPI_BUFFER) };
     let di = SpiInterface::new(spi, tft_dc, buffer);
 
     let mut display: crate::prelude::MyDisplay = Builder::new(ST7789, di)

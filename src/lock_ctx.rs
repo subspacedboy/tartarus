@@ -42,6 +42,7 @@ use crate::screen_ids::ScreenId;
 
 #[derive(Debug, Clone)]
 pub struct TickUpdate {
+    #[allow(dead_code)]
     pub d0_pressed: bool,
     pub d1_pressed: bool,
     pub d2_pressed: bool,
@@ -339,7 +340,7 @@ impl LockCtx {
         // Firmware we might need to apply or challenge to respond to
         let mut firmware: VecDeque<Vec<u8>> = VecDeque::new();
 
-        let mut message_queue =
+        let message_queue =
             if let Some(mut mqtt_service) = self.mqtt_service.as_ref().map(|m| m.borrow_mut()) {
                 mqtt_service.get_incoming_messages()
             } else {

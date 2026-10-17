@@ -26,6 +26,7 @@ pub struct InternalContract {
     #[serde(with = "verifying_key_serde")]
     pub public_key: Option<VerifyingKey>,
     #[serde(default, skip_serializing)]
+    #[allow(dead_code)]
     pub original_bytes: Vec<u8>,
     pub command_counter: u16,
     pub bots: Vec<InternalBot>,
@@ -277,6 +278,7 @@ pub mod verifying_key_serde {
 }
 
 #[cfg(test)]
+#[allow(unused_imports)]
 mod tests {
     use super::*;
 

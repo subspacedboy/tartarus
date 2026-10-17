@@ -65,39 +65,6 @@ pub fn get_challenge_key() -> Option<SigningKey> {
 
 
 
-#[deprecated(note = "OTA updates are deprecated; firmware updates are done via wired connection")]
-pub struct MessageAssembler {
-    pub current_message: Vec<u8>,
-    pub started: bool,
-}
-
-impl MessageAssembler {
-    #[allow(dead_code)]
-    pub fn new() -> Self {
-        Self {
-            current_message: vec![],
-            started: false,
-        }
-    }
-
-    pub fn new_with_size(size: usize) -> Self {
-        Self {
-            current_message: Vec::with_capacity(size),
-            started: false,
-        }
-    }
-
-    pub fn current_size(&self) -> usize {
-        self.current_message.len()
-    }
-
-    pub fn add_to_current_message(&mut self, mut data: Vec<u8>) {
-        self.started = true;
-        self.current_message.extend(data.drain(0..));
-        log::info!("Message size up to {:?}", self.current_message.len());
-    }
-}
-
 pub fn read_as_firmware_message(data: &[u8]) -> Result<FirmwareMessageType, String> {
     match club::subjugated::fb::message::firmware::root_as_firmware_message(data) {
         Ok(firmware_message) => match firmware_message.payload_type() {
@@ -150,7 +117,6 @@ pub fn read_as_firmware_message(data: &[u8]) -> Result<FirmwareMessageType, Stri
     }
 }
 
-#[deprecated(note = "OTA updates are deprecated; firmware updates are done via wired connection")]
 pub struct FirmwareManager {
     pub total_size: usize,
     pub acked_size: usize,
@@ -467,7 +433,6 @@ impl FirmwareManager {
         self.next_firmware_version.as_ref().unwrap().clone()
     }
 
-    #[deprecated(note = "OTA updates are deprecated; firmware updates are done via wired connection")]
     pub fn sanity_check_or_abort(&self) -> anyhow::Result<()> {
         let mut ota = match EspOta::new() {
             Ok(ota) => ota,
@@ -506,7 +471,6 @@ impl FirmwareManager {
         Ok(())
     }
 
-    #[deprecated(note = "OTA updates are deprecated; firmware updates are done via wired connection")]
     pub fn get_running_version(&mut self) -> anyhow::Result<String> {
         if self.current_running_firmware.is_none() {
             if let Ok(ota) = EspOta::new() {
