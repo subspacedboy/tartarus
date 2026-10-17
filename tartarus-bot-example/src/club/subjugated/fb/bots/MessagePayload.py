@@ -14,3 +14,5 @@ class MessagePayload(object):
     GetLockSessionResponse = 8
     CreateMessageRequest = 9
     CreateMessageResponse = 10
+    GetEventsRequest = 11
+    GetEventsResponse = 12

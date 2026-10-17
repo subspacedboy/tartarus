@@ -89,8 +89,7 @@ detekt {
 }
 
 tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
-    // include("**/special/package/**") // only analyze a sub package inside src/main/kotlin
-    exclude("**/club/subjugated/fb/message/**") // but exclude our legacy internal package
+    exclude("**/club/subjugated/fb/**")
 }
 
 allOpen {

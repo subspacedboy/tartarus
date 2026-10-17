@@ -44,8 +44,22 @@ counter():number {
   return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
 }
 
+eventId():string|null
+eventId(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+eventId(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 12);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
+correlationId():string|null
+correlationId(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+correlationId(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
 static startCommonMetadata(builder:flatbuffers.Builder) {
-  builder.startObject(4);
+  builder.startObject(6);
 }
 
 static addLockSession(builder:flatbuffers.Builder, lockSessionOffset:flatbuffers.Offset) {
@@ -64,17 +78,27 @@ static addCounter(builder:flatbuffers.Builder, counter:number) {
   builder.addFieldInt16(3, counter, 0);
 }
 
+static addEventId(builder:flatbuffers.Builder, eventIdOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(4, eventIdOffset, 0);
+}
+
+static addCorrelationId(builder:flatbuffers.Builder, correlationIdOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(5, correlationIdOffset, 0);
+}
+
 static endCommonMetadata(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   return offset;
 }
 
-static createCommonMetadata(builder:flatbuffers.Builder, lockSessionOffset:flatbuffers.Offset, contractSerialNumber:number, serialNumber:number, counter:number):flatbuffers.Offset {
+static createCommonMetadata(builder:flatbuffers.Builder, lockSessionOffset:flatbuffers.Offset, contractSerialNumber:number, serialNumber:number, counter:number, eventIdOffset:flatbuffers.Offset, correlationIdOffset:flatbuffers.Offset):flatbuffers.Offset {
   CommonMetadata.startCommonMetadata(builder);
   CommonMetadata.addLockSession(builder, lockSessionOffset);
   CommonMetadata.addContractSerialNumber(builder, contractSerialNumber);
   CommonMetadata.addSerialNumber(builder, serialNumber);
   CommonMetadata.addCounter(builder, counter);
+  CommonMetadata.addEventId(builder, eventIdOffset);
+  CommonMetadata.addCorrelationId(builder, correlationIdOffset);
   return CommonMetadata.endCommonMetadata(builder);
 }
 }

@@ -7,7 +7,8 @@ import com.nimbusds.jose.crypto.ECDSAVerifier
 import com.nimbusds.jwt.SignedJWT
 import org.slf4j.LoggerFactory
 
-private val jwtLogger = LoggerFactory.getLogger("club.subjugated.tartarus_coordinator.util.jwt_helpers")
+private val jwtLogger =
+    LoggerFactory.getLogger("club.subjugated.tartarus_coordinator.util.jwt_helpers")
 
 sealed class JwtValidationResult {
     data class AuthorSession(val value: String) : JwtValidationResult()

@@ -116,16 +116,10 @@ class AuthorSessionService {
         return knownToken
     }
 
-    fun deleteKnownToken(
-        authorSessionName: String,
-        tokenName: String,
-    ) {
+    fun deleteKnownToken(authorSessionName: String, tokenName: String) {
         val authorSession = findByName(authorSessionName)
         val knownToken =
-            knownTokenRepository.findByAuthorSessionIdAndName(
-                authorSession.id,
-                tokenName,
-            ) ?: return
+            knownTokenRepository.findByAuthorSessionIdAndName(authorSession.id, tokenName) ?: return
         require(authorSession == knownToken.authorSession) {
             "Token does not belong to this author"
         }

@@ -1,11 +1,11 @@
 package club.subjugated.tartarus_coordinator.api
 
 import club.subjugated.tartarus_coordinator.TartarusCoordinatorApplication
+import club.subjugated.tartarus_coordinator.api.messages.AcknowledgeCommandMessage
 import club.subjugated.tartarus_coordinator.api.messages.NewAuthorSessionMessage
 import club.subjugated.tartarus_coordinator.api.messages.NewContractMessage
 import club.subjugated.tartarus_coordinator.api.messages.NewLockSessionMessage
 import club.subjugated.tartarus_coordinator.api.messages.NewLockUserSessionMessage
-import club.subjugated.tartarus_coordinator.api.messages.AcknowledgeCommandMessage
 import club.subjugated.tartarus_coordinator.integration.config.IntegrationTestConfig
 import club.subjugated.tartarus_coordinator.integration.helpers.makeCreateContractCommand
 import club.subjugated.tartarus_coordinator.integration.helpers.makeLoginCryptogram
@@ -322,11 +322,7 @@ class CommandControllerTest {
             )
 
         val (nonce, cipher) =
-            makeLoginCryptogram(
-                tokenPrivateKey,
-                lockSession.decodePublicKey(),
-                sessionToken,
-            )
+            makeLoginCryptogram(tokenPrivateKey, lockSession.decodePublicKey(), sessionToken)
         val userKeyPair = generateECKeyPair()
         val userPubKey =
             Base64.getEncoder()
@@ -376,7 +372,8 @@ class CommandControllerTest {
                 ackMessage,
             )
 
-        val updatedCmd = updatedCommandsResponse.body!!.first { it.name == acceptContractCommand.name }
+        val updatedCmd =
+            updatedCommandsResponse.body!!.first { it.name == acceptContractCommand.name }
         assertThat(updatedCmd.state).isEqualTo("ACKNOWLEDGED")
         assertThat(updatedCmd.isManuallyAcknowledged).isFalse()
 
@@ -438,11 +435,7 @@ class CommandControllerTest {
             )
 
         val (nonce, cipher) =
-            makeLoginCryptogram(
-                tokenPrivateKey,
-                lockSession.decodePublicKey(),
-                sessionToken,
-            )
+            makeLoginCryptogram(tokenPrivateKey, lockSession.decodePublicKey(), sessionToken)
         val userKeyPair = generateECKeyPair()
         val userPubKey =
             Base64.getEncoder()
@@ -489,7 +482,8 @@ class CommandControllerTest {
                 ackMessage,
             )
 
-        val updatedCmd = updatedCommandsResponse.body!!.first { it.name == acceptContractCommand.name }
+        val updatedCmd =
+            updatedCommandsResponse.body!!.first { it.name == acceptContractCommand.name }
         assertThat(updatedCmd.state).isEqualTo("ERROR")
         assertThat(updatedCmd.message).isEqualTo("Servo jammed")
     }

@@ -2,33 +2,25 @@
 
 package club.subjugated.fb.event
 
-import com.google.flatbuffers.BaseVector
-import com.google.flatbuffers.BooleanVector
-import com.google.flatbuffers.ByteVector
 import com.google.flatbuffers.Constants
-import com.google.flatbuffers.DoubleVector
 import com.google.flatbuffers.FlatBufferBuilder
-import com.google.flatbuffers.FloatVector
-import com.google.flatbuffers.LongVector
-import com.google.flatbuffers.StringVector
-import com.google.flatbuffers.Struct
 import com.google.flatbuffers.Table
-import com.google.flatbuffers.UnionVector
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.math.sign
 
 @Suppress("unused")
 class CommonMetadata : Table() {
 
-    fun __init(_i: Int, _bb: ByteBuffer)  {
+    fun __init(_i: Int, _bb: ByteBuffer) {
         __reset(_i, _bb)
     }
-    fun __assign(_i: Int, _bb: ByteBuffer) : CommonMetadata {
+
+    fun __assign(_i: Int, _bb: ByteBuffer): CommonMetadata {
         __init(_i, _bb)
         return this
     }
-    val lockSession : String?
+
+    val lockSession: String?
         get() {
             val o = __offset(4)
             return if (o != 0) {
@@ -37,44 +29,110 @@ class CommonMetadata : Table() {
                 null
             }
         }
-    val lockSessionAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(4, 1)
-    fun lockSessionInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 4, 1)
-    val contractSerialNumber : UShort
+
+    val lockSessionAsByteBuffer: ByteBuffer?
+        get() = __vector_as_bytebuffer(4, 1)
+
+    fun lockSessionInByteBuffer(_bb: ByteBuffer): ByteBuffer? = __vector_in_bytebuffer(_bb, 4, 1)
+
+    val contractSerialNumber: UShort
         get() {
             val o = __offset(6)
-            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+            return if (o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
         }
-    val serialNumber : UShort
+
+    val serialNumber: UShort
         get() {
             val o = __offset(8)
-            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+            return if (o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
         }
-    val counter : UShort
+
+    val counter: UShort
         get() {
             val o = __offset(10)
-            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+            return if (o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
         }
+
+    val eventId: String?
+        get() {
+            val o = __offset(12)
+            return if (o != 0) {
+                __string(o + bb_pos)
+            } else {
+                null
+            }
+        }
+
+    val eventIdAsByteBuffer: ByteBuffer?
+        get() = __vector_as_bytebuffer(12, 1)
+
+    fun eventIdInByteBuffer(_bb: ByteBuffer): ByteBuffer? = __vector_in_bytebuffer(_bb, 12, 1)
+
+    val correlationId: String?
+        get() {
+            val o = __offset(14)
+            return if (o != 0) {
+                __string(o + bb_pos)
+            } else {
+                null
+            }
+        }
+
+    val correlationIdAsByteBuffer: ByteBuffer?
+        get() = __vector_as_bytebuffer(14, 1)
+
+    fun correlationIdInByteBuffer(_bb: ByteBuffer): ByteBuffer? = __vector_in_bytebuffer(_bb, 14, 1)
+
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
-        fun getRootAsCommonMetadata(_bb: ByteBuffer): CommonMetadata = getRootAsCommonMetadata(_bb, CommonMetadata())
+
+        fun getRootAsCommonMetadata(_bb: ByteBuffer): CommonMetadata =
+            getRootAsCommonMetadata(_bb, CommonMetadata())
+
         fun getRootAsCommonMetadata(_bb: ByteBuffer, obj: CommonMetadata): CommonMetadata {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createCommonMetadata(builder: FlatBufferBuilder, lockSessionOffset: Int, contractSerialNumber: UShort, serialNumber: UShort, counter: UShort) : Int {
-            builder.startTable(4)
+
+        fun createCommonMetadata(
+            builder: FlatBufferBuilder,
+            lockSessionOffset: Int,
+            contractSerialNumber: UShort,
+            serialNumber: UShort,
+            counter: UShort,
+            eventIdOffset: Int,
+            correlationIdOffset: Int,
+        ): Int {
+            builder.startTable(6)
+            addCorrelationId(builder, correlationIdOffset)
+            addEventId(builder, eventIdOffset)
             addLockSession(builder, lockSessionOffset)
             addCounter(builder, counter)
             addSerialNumber(builder, serialNumber)
             addContractSerialNumber(builder, contractSerialNumber)
             return endCommonMetadata(builder)
         }
-        fun startCommonMetadata(builder: FlatBufferBuilder) = builder.startTable(4)
-        fun addLockSession(builder: FlatBufferBuilder, lockSession: Int) = builder.addOffset(0, lockSession, 0)
-        fun addContractSerialNumber(builder: FlatBufferBuilder, contractSerialNumber: UShort) = builder.addShort(1, contractSerialNumber.toShort(), 0)
-        fun addSerialNumber(builder: FlatBufferBuilder, serialNumber: UShort) = builder.addShort(2, serialNumber.toShort(), 0)
-        fun addCounter(builder: FlatBufferBuilder, counter: UShort) = builder.addShort(3, counter.toShort(), 0)
-        fun endCommonMetadata(builder: FlatBufferBuilder) : Int {
+
+        fun startCommonMetadata(builder: FlatBufferBuilder) = builder.startTable(6)
+
+        fun addLockSession(builder: FlatBufferBuilder, lockSession: Int) =
+            builder.addOffset(0, lockSession, 0)
+
+        fun addContractSerialNumber(builder: FlatBufferBuilder, contractSerialNumber: UShort) =
+            builder.addShort(1, contractSerialNumber.toShort(), 0)
+
+        fun addSerialNumber(builder: FlatBufferBuilder, serialNumber: UShort) =
+            builder.addShort(2, serialNumber.toShort(), 0)
+
+        fun addCounter(builder: FlatBufferBuilder, counter: UShort) =
+            builder.addShort(3, counter.toShort(), 0)
+
+        fun addEventId(builder: FlatBufferBuilder, eventId: Int) = builder.addOffset(4, eventId, 0)
+
+        fun addCorrelationId(builder: FlatBufferBuilder, correlationId: Int) =
+            builder.addOffset(5, correlationId, 0)
+
+        fun endCommonMetadata(builder: FlatBufferBuilder): Int {
             val o = builder.endTable()
             return o
         }

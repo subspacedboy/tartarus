@@ -11,11 +11,6 @@ import club.subjugated.fb.event.SignedEvent
 import club.subjugated.fb.message.Bot
 import club.subjugated.fb.message.Permission
 import club.subjugated.fb.message.SignedMessage
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.TimeUnit
-import org.eclipse.paho.client.mqttv3.MqttClient
-import org.eclipse.paho.client.mqttv3.MqttConnectOptions
-import org.eclipse.paho.client.mqttv3.MqttMessage
 import club.subjugated.tartarus_coordinator.TartarusCoordinatorApplication
 import club.subjugated.tartarus_coordinator.api.BotController
 import club.subjugated.tartarus_coordinator.api.messages.NewBotMessage
@@ -33,9 +28,14 @@ import java.security.Signature
 import java.security.interfaces.ECPublicKey
 import java.security.spec.PKCS8EncodedKeySpec
 import java.util.Base64
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 import kotlin.test.Test
 import org.assertj.core.api.Assertions.assertThat
+import org.eclipse.paho.client.mqttv3.MqttClient
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions
+import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Configuration
@@ -114,6 +114,37 @@ class BotApiTest {
             }
 
         assertThat(response2.contractName).isNotEmpty()
+
+        // Test GetEventsRequest FlatBuffers API routing
+        val builder = FlatBufferBuilder(1024)
+        val contractNameOffset = builder.createString(response2.contractName)
+        val reqOffset =
+            club.subjugated.fb.bots.GetEventsRequest.createGetEventsRequest(
+                builder,
+                contractNameOffset,
+                0.toUShort(),
+                50.toUShort(),
+            )
+        val botNameOffset = builder.createString(botName)
+        val requestId = Random.nextLong(Long.MAX_VALUE)
+
+        BotApiMessage.startBotApiMessage(builder)
+        BotApiMessage.addName(builder, botNameOffset)
+        BotApiMessage.addPayloadType(builder, MessagePayload.GetEventsRequest)
+        BotApiMessage.addPayload(builder, reqOffset)
+        BotApiMessage.addRequestId(builder, requestId)
+        val botApiMessageOffset = BotApiMessage.endBotApiMessage(builder)
+        builder.finish(botApiMessageOffset)
+
+        val getEventsApiMessage =
+            BotApiMessage.getRootAsBotApiMessage(ByteBuffer.wrap(builder.sizedByteArray()))
+        val getEventsApiResponse = botApiController.routeRequest(getEventsApiMessage)
+
+        assertThat(getEventsApiResponse.payloadType).isEqualTo(MessagePayload.GetEventsResponse)
+        val getEventsResponse = club.subjugated.fb.bots.GetEventsResponse()
+        getEventsApiResponse.payload(getEventsResponse)
+        assertThat(getEventsResponse.eventsLength).isEqualTo(0)
+        assertThat(getEventsResponse.hasMore).isFalse()
     }
 
     @Test
@@ -188,21 +219,13 @@ class BotApiTest {
                 contractSerial,
                 0.toUShort(),
                 0.toUShort(),
+                0,
+                0,
             )
-        val eventOffset =
-            Event.createEvent(
-                builder,
-                metadataOffset,
-                EventType.EmergencyUnlock,
-            )
+        val eventOffset = Event.createEvent(builder, metadataOffset, EventType.EmergencyUnlock)
         val dummySig = ByteArray(64)
         val sigOffset = builder.createByteVector(dummySig)
-        val signedEventOffset =
-            SignedEvent.createSignedEvent(
-                builder,
-                sigOffset,
-                eventOffset,
-            )
+        val signedEventOffset = SignedEvent.createSignedEvent(builder, sigOffset, eventOffset)
         builder.finish(signedEventOffset)
         val payloadBytes = builder.sizedByteArray()
 
@@ -216,7 +239,8 @@ class BotApiTest {
         assertThat(receivedSignedEvent.payload!!.eventType).isEqualTo(EventType.EmergencyUnlock)
         assertThat(receivedSignedEvent.payload!!.metadata).isNotNull
         assertThat(receivedSignedEvent.payload!!.metadata!!.lockSession).isEqualTo(sessionToken)
-        assertThat(receivedSignedEvent.payload!!.metadata!!.contractSerialNumber).isEqualTo(contractSerial)
+        assertThat(receivedSignedEvent.payload!!.metadata!!.contractSerialNumber)
+            .isEqualTo(contractSerial)
 
         // Clean up
         lockClient.disconnect()

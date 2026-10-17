@@ -2,33 +2,25 @@
 
 package club.subjugated.fb.message
 
-import com.google.flatbuffers.BaseVector
-import com.google.flatbuffers.BooleanVector
-import com.google.flatbuffers.ByteVector
 import com.google.flatbuffers.Constants
-import com.google.flatbuffers.DoubleVector
 import com.google.flatbuffers.FlatBufferBuilder
-import com.google.flatbuffers.FloatVector
-import com.google.flatbuffers.LongVector
-import com.google.flatbuffers.StringVector
-import com.google.flatbuffers.Struct
 import com.google.flatbuffers.Table
-import com.google.flatbuffers.UnionVector
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.math.sign
 
 @Suppress("unused")
 class PeriodicUpdate : Table() {
 
-    fun __init(_i: Int, _bb: ByteBuffer)  {
+    fun __init(_i: Int, _bb: ByteBuffer) {
         __reset(_i, _bb)
     }
-    fun __assign(_i: Int, _bb: ByteBuffer) : PeriodicUpdate {
+
+    fun __assign(_i: Int, _bb: ByteBuffer): PeriodicUpdate {
         __init(_i, _bb)
         return this
     }
-    val session : String?
+
+    val session: String?
         get() {
             val o = __offset(4)
             return if (o != 0) {
@@ -37,41 +29,62 @@ class PeriodicUpdate : Table() {
                 null
             }
         }
-    val sessionAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(4, 1)
-    fun sessionInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 4, 1)
-    val isLocked : Boolean
+
+    val sessionAsByteBuffer: ByteBuffer?
+        get() = __vector_as_bytebuffer(4, 1)
+
+    fun sessionInByteBuffer(_bb: ByteBuffer): ByteBuffer? = __vector_in_bytebuffer(_bb, 4, 1)
+
+    val isLocked: Boolean
         get() {
             val o = __offset(6)
-            return if(o != 0) 0.toByte() != bb.get(o + bb_pos) else false
+            return if (o != 0) 0.toByte() != bb.get(o + bb_pos) else false
         }
-    val currentContractSerial : UShort
+
+    val currentContractSerial: UShort
         get() {
             val o = __offset(8)
-            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+            return if (o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
         }
-    val localUnlock : Boolean
+
+    val localUnlock: Boolean
         get() {
             val o = __offset(10)
-            return if(o != 0) 0.toByte() != bb.get(o + bb_pos) else false
+            return if (o != 0) 0.toByte() != bb.get(o + bb_pos) else false
         }
-    val localLock : Boolean
+
+    val localLock: Boolean
         get() {
             val o = __offset(12)
-            return if(o != 0) 0.toByte() != bb.get(o + bb_pos) else false
+            return if (o != 0) 0.toByte() != bb.get(o + bb_pos) else false
         }
-    val emergencyUnlocked : Boolean
+
+    val emergencyUnlocked: Boolean
         get() {
             val o = __offset(14)
-            return if(o != 0) 0.toByte() != bb.get(o + bb_pos) else false
+            return if (o != 0) 0.toByte() != bb.get(o + bb_pos) else false
         }
+
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
-        fun getRootAsPeriodicUpdate(_bb: ByteBuffer): PeriodicUpdate = getRootAsPeriodicUpdate(_bb, PeriodicUpdate())
+
+        fun getRootAsPeriodicUpdate(_bb: ByteBuffer): PeriodicUpdate =
+            getRootAsPeriodicUpdate(_bb, PeriodicUpdate())
+
         fun getRootAsPeriodicUpdate(_bb: ByteBuffer, obj: PeriodicUpdate): PeriodicUpdate {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createPeriodicUpdate(builder: FlatBufferBuilder, sessionOffset: Int, isLocked: Boolean, currentContractSerial: UShort, localUnlock: Boolean, localLock: Boolean, emergencyUnlocked: Boolean) : Int {
+
+        fun createPeriodicUpdate(
+            builder: FlatBufferBuilder,
+            sessionOffset: Int,
+            isLocked: Boolean,
+            currentContractSerial: UShort,
+            localUnlock: Boolean,
+            localLock: Boolean,
+            emergencyUnlocked: Boolean,
+        ): Int {
             builder.startTable(6)
             addSession(builder, sessionOffset)
             addCurrentContractSerial(builder, currentContractSerial)
@@ -81,14 +94,27 @@ class PeriodicUpdate : Table() {
             addIsLocked(builder, isLocked)
             return endPeriodicUpdate(builder)
         }
+
         fun startPeriodicUpdate(builder: FlatBufferBuilder) = builder.startTable(6)
+
         fun addSession(builder: FlatBufferBuilder, session: Int) = builder.addOffset(0, session, 0)
-        fun addIsLocked(builder: FlatBufferBuilder, isLocked: Boolean) = builder.addBoolean(1, isLocked, false)
-        fun addCurrentContractSerial(builder: FlatBufferBuilder, currentContractSerial: UShort) = builder.addShort(2, currentContractSerial.toShort(), 0)
-        fun addLocalUnlock(builder: FlatBufferBuilder, localUnlock: Boolean) = builder.addBoolean(3, localUnlock, false)
-        fun addLocalLock(builder: FlatBufferBuilder, localLock: Boolean) = builder.addBoolean(4, localLock, false)
-        fun addEmergencyUnlocked(builder: FlatBufferBuilder, emergencyUnlocked: Boolean) = builder.addBoolean(5, emergencyUnlocked, false)
-        fun endPeriodicUpdate(builder: FlatBufferBuilder) : Int {
+
+        fun addIsLocked(builder: FlatBufferBuilder, isLocked: Boolean) =
+            builder.addBoolean(1, isLocked, false)
+
+        fun addCurrentContractSerial(builder: FlatBufferBuilder, currentContractSerial: UShort) =
+            builder.addShort(2, currentContractSerial.toShort(), 0)
+
+        fun addLocalUnlock(builder: FlatBufferBuilder, localUnlock: Boolean) =
+            builder.addBoolean(3, localUnlock, false)
+
+        fun addLocalLock(builder: FlatBufferBuilder, localLock: Boolean) =
+            builder.addBoolean(4, localLock, false)
+
+        fun addEmergencyUnlocked(builder: FlatBufferBuilder, emergencyUnlocked: Boolean) =
+            builder.addBoolean(5, emergencyUnlocked, false)
+
+        fun endPeriodicUpdate(builder: FlatBufferBuilder): Int {
             val o = builder.endTable()
             return o
         }

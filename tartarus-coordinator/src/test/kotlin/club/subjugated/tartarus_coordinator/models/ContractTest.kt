@@ -17,7 +17,10 @@ class ContractTest {
         club.subjugated.fb.message.Contract.addTerms(builder, termsOffset)
         club.subjugated.fb.message.Contract.addIsTemporaryUnlockAllowed(builder, false)
         if (isEmergencyAllowed != null) {
-            club.subjugated.fb.message.Contract.addIsEmergencyUnlockAllowed(builder, isEmergencyAllowed)
+            club.subjugated.fb.message.Contract.addIsEmergencyUnlockAllowed(
+                builder,
+                isEmergencyAllowed,
+            )
         }
         val contractOffset = club.subjugated.fb.message.Contract.endContract(builder)
 
@@ -32,12 +35,18 @@ class ContractTest {
 
     private fun makeContract(body: ByteArray?): Contract {
         val author = AuthorSession(publicKey = "pk")
-        val lock = LockSession(publicKey = "pk", sessionToken = "tok", shareToken = "sh", totalControlToken = "tc")
+        val lock =
+            LockSession(
+                publicKey = "pk",
+                sessionToken = "tok",
+                shareToken = "sh",
+                totalControlToken = "tc",
+            )
         return Contract(
             shareableToken = "tok",
             authorSession = author,
             lockSession = lock,
-            body = body
+            body = body,
         )
     }
 
@@ -74,7 +83,8 @@ class ContractTest {
         contract.lockState = false
         contract.emergencyUnlocked = true
 
-        val msg = club.subjugated.tartarus_coordinator.api.messages.ContractMessage.fromContract(contract)
+        val msg =
+            club.subjugated.tartarus_coordinator.api.messages.ContractMessage.fromContract(contract)
         assertThat(msg.lockState).isNotNull
         assertThat(msg.lockState?.isLocked).isFalse()
         assertThat(msg.lockState?.emergencyUnlocked).isTrue()

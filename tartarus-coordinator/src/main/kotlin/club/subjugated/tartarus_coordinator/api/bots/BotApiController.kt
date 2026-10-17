@@ -8,8 +8,11 @@ import club.subjugated.fb.bots.CreateContractResponse
 import club.subjugated.fb.bots.CreateMessageRequest
 import club.subjugated.fb.bots.CreateMessageResponse
 import club.subjugated.fb.bots.Error
+import club.subjugated.fb.bots.EventItem
 import club.subjugated.fb.bots.GetContractRequest
 import club.subjugated.fb.bots.GetContractResponse
+import club.subjugated.fb.bots.GetEventsRequest
+import club.subjugated.fb.bots.GetEventsResponse
 import club.subjugated.fb.bots.GetLockSessionRequest
 import club.subjugated.fb.bots.GetLockSessionResponse
 import club.subjugated.fb.bots.MessagePayload
@@ -17,6 +20,7 @@ import club.subjugated.tartarus_coordinator.api.messages.NewContractMessage
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
 import club.subjugated.tartarus_coordinator.services.BotService
 import club.subjugated.tartarus_coordinator.services.ContractService
+import club.subjugated.tartarus_coordinator.services.EventService
 import club.subjugated.tartarus_coordinator.services.LockSessionService
 import club.subjugated.tartarus_coordinator.util.ValidatedPayload
 import club.subjugated.tartarus_coordinator.util.encodePublicKeySecp1
@@ -37,6 +41,11 @@ class BotApiController {
     @Autowired lateinit var lockSessionService: LockSessionService
     @Autowired lateinit var authorSessionService: AuthorSessionService
     @Autowired lateinit var botService: BotService
+    @Autowired lateinit var eventService: EventService
+
+    companion object {
+        private const val DEFAULT_EVENT_LIMIT = 50
+    }
 
     fun routeRequest(message: BotApiMessage): BotApiMessage {
         when (message.payloadType) {
@@ -88,6 +97,16 @@ class BotApiController {
                     handleCreateMessageRequest(message.name!!, createMessageRequest)
                 return buildResponse(
                     MessagePayload.CreateMessageResponse,
+                    message.requestId,
+                    builderContext,
+                )
+            }
+            MessagePayload.GetEventsRequest -> {
+                val getEventsRequest = GetEventsRequest()
+                message.payload(getEventsRequest)
+                val builderContext = handleGetEventsRequest(message.name!!, getEventsRequest)
+                return buildResponse(
+                    MessagePayload.GetEventsResponse,
                     message.requestId,
                     builderContext,
                 )
@@ -287,6 +306,45 @@ class BotApiController {
         val builder = FlatBufferBuilder(1024)
         CreateMessageResponse.startCreateMessageResponse(builder)
         val offset = CreateMessageResponse.endCreateMessageResponse(builder)
+        return ResponseBuilderContext(builder, offset)
+    }
+
+    fun handleGetEventsRequest(
+        botName: String,
+        getEventsRequest: GetEventsRequest,
+    ): ResponseBuilderContext<GetEventsResponse> {
+        val contractName = getEventsRequest.contractName ?: ""
+        val sinceCounter = getEventsRequest.sinceCounter.toInt()
+        val limit =
+            if (getEventsRequest.limit.toInt() > 0) getEventsRequest.limit.toInt()
+            else DEFAULT_EVENT_LIMIT
+
+        val missedDeliveries =
+            eventService.getMissedEventsForBot(botName, contractName, sinceCounter).take(limit)
+
+        val builder = FlatBufferBuilder(1024)
+
+        val eventItemOffsets =
+            IntArray(missedDeliveries.size) { i ->
+                val eventBytes = missedDeliveries[i].event.body ?: ByteArray(0)
+                val rawOffset = builder.createByteVector(eventBytes)
+                EventItem.createEventItem(builder, rawOffset)
+            }
+
+        val eventsVectorOffset = GetEventsResponse.createEventsVector(builder, eventItemOffsets)
+        val latestCounter =
+            if (missedDeliveries.isNotEmpty()) {
+                missedDeliveries.last().event.counter
+            } else {
+                sinceCounter
+            }
+
+        GetEventsResponse.startGetEventsResponse(builder)
+        GetEventsResponse.addEvents(builder, eventsVectorOffset)
+        GetEventsResponse.addLatestCounter(builder, latestCounter.toUShort())
+        GetEventsResponse.addHasMore(builder, false)
+        val offset = GetEventsResponse.endGetEventsResponse(builder)
+
         return ResponseBuilderContext(builder, offset)
     }
 }

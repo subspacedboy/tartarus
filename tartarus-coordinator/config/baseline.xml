@@ -2,6 +2,8 @@
 <SmellBaseline>
   <ManuallySuppressedIssues/>
   <CurrentIssues>
+    <ID>CyclomaticComplexMethod:CommandController.kt$CommandController$@PostMapping( "/forLockUser/command/{commandName}/acknowledge", produces = [MediaType.APPLICATION_JSON], ) @ResponseBody fun manuallyAcknowledgeCommand( @AuthenticationPrincipal lockUser: UserDetails, @PathVariable contractName: String, @PathVariable commandName: String, @RequestBody(required = false) body: AcknowledgeCommandMessage? = null, ): ResponseEntity&lt;List&lt;CommandMessage&gt;&gt;</ID>
+    <ID>CyclomaticComplexMethod:EventService.kt$EventService$fun processIncomingLockEvent(sessionToken: String, payloadBytes: ByteArray): Event?</ID>
     <ID>CyclomaticComplexMethod:MqttListenerService.kt$MqttListenerService$@PostConstruct fun start()</ID>
     <ID>CyclomaticComplexMethod:fb_helpers.kt$fun signedMessageBytesValidatorWithExternalKey(buf: ByteBuffer, key: ByteArray): ValidatedPayload</ID>
     <ID>EmptyClassBlock:ContractChangeEvent.kt$ContractChangeEvent${}</ID>
@@ -43,6 +45,8 @@
     <ID>FunctionNaming:Error.kt$Error$fun __init(_i: Int, _bb: ByteBuffer)</ID>
     <ID>FunctionNaming:Event.kt$Event$fun __assign(_i: Int, _bb: ByteBuffer): Event</ID>
     <ID>FunctionNaming:Event.kt$Event$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:EventItem.kt$EventItem$fun __assign(_i: Int, _bb: ByteBuffer): EventItem</ID>
+    <ID>FunctionNaming:EventItem.kt$EventItem$fun __init(_i: Int, _bb: ByteBuffer)</ID>
     <ID>FunctionNaming:FirmwareChallengeRequest.kt$FirmwareChallengeRequest$fun __assign(_i: Int, _bb: ByteBuffer): FirmwareChallengeRequest</ID>
     <ID>FunctionNaming:FirmwareChallengeRequest.kt$FirmwareChallengeRequest$fun __init(_i: Int, _bb: ByteBuffer)</ID>
     <ID>FunctionNaming:FirmwareChallengeResponse.kt$FirmwareChallengeResponse$fun __assign(_i: Int, _bb: ByteBuffer): FirmwareChallengeResponse</ID>
@@ -53,6 +57,10 @@
     <ID>FunctionNaming:GetContractRequest.kt$GetContractRequest$fun __init(_i: Int, _bb: ByteBuffer)</ID>
     <ID>FunctionNaming:GetContractResponse.kt$GetContractResponse$fun __assign(_i: Int, _bb: ByteBuffer): GetContractResponse</ID>
     <ID>FunctionNaming:GetContractResponse.kt$GetContractResponse$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:GetEventsRequest.kt$GetEventsRequest$fun __assign(_i: Int, _bb: ByteBuffer): GetEventsRequest</ID>
+    <ID>FunctionNaming:GetEventsRequest.kt$GetEventsRequest$fun __init(_i: Int, _bb: ByteBuffer)</ID>
+    <ID>FunctionNaming:GetEventsResponse.kt$GetEventsResponse$fun __assign(_i: Int, _bb: ByteBuffer): GetEventsResponse</ID>
+    <ID>FunctionNaming:GetEventsResponse.kt$GetEventsResponse$fun __init(_i: Int, _bb: ByteBuffer)</ID>
     <ID>FunctionNaming:GetFirmwareChunkRequest.kt$GetFirmwareChunkRequest$fun __assign(_i: Int, _bb: ByteBuffer): GetFirmwareChunkRequest</ID>
     <ID>FunctionNaming:GetFirmwareChunkRequest.kt$GetFirmwareChunkRequest$fun __init(_i: Int, _bb: ByteBuffer)</ID>
     <ID>FunctionNaming:GetFirmwareChunkResponse.kt$GetFirmwareChunkResponse$fun __assign(_i: Int, _bb: ByteBuffer): GetFirmwareChunkResponse</ID>
@@ -143,6 +151,9 @@
     <ID>FunctionParameterNaming:Event.kt$Event$_bb: ByteBuffer</ID>
     <ID>FunctionParameterNaming:Event.kt$Event$_i: Int</ID>
     <ID>FunctionParameterNaming:Event.kt$Event.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:EventItem.kt$EventItem$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:EventItem.kt$EventItem$_i: Int</ID>
+    <ID>FunctionParameterNaming:EventItem.kt$EventItem.Companion$_bb: ByteBuffer</ID>
     <ID>FunctionParameterNaming:FirmwareChallengeRequest.kt$FirmwareChallengeRequest$_bb: ByteBuffer</ID>
     <ID>FunctionParameterNaming:FirmwareChallengeRequest.kt$FirmwareChallengeRequest$_i: Int</ID>
     <ID>FunctionParameterNaming:FirmwareChallengeRequest.kt$FirmwareChallengeRequest.Companion$_bb: ByteBuffer</ID>
@@ -158,6 +169,12 @@
     <ID>FunctionParameterNaming:GetContractResponse.kt$GetContractResponse$_bb: ByteBuffer</ID>
     <ID>FunctionParameterNaming:GetContractResponse.kt$GetContractResponse$_i: Int</ID>
     <ID>FunctionParameterNaming:GetContractResponse.kt$GetContractResponse.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:GetEventsRequest.kt$GetEventsRequest$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:GetEventsRequest.kt$GetEventsRequest$_i: Int</ID>
+    <ID>FunctionParameterNaming:GetEventsRequest.kt$GetEventsRequest.Companion$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:GetEventsResponse.kt$GetEventsResponse$_bb: ByteBuffer</ID>
+    <ID>FunctionParameterNaming:GetEventsResponse.kt$GetEventsResponse$_i: Int</ID>
+    <ID>FunctionParameterNaming:GetEventsResponse.kt$GetEventsResponse.Companion$_bb: ByteBuffer</ID>
     <ID>FunctionParameterNaming:GetFirmwareChunkRequest.kt$GetFirmwareChunkRequest$_bb: ByteBuffer</ID>
     <ID>FunctionParameterNaming:GetFirmwareChunkRequest.kt$GetFirmwareChunkRequest$_i: Int</ID>
     <ID>FunctionParameterNaming:GetFirmwareChunkRequest.kt$GetFirmwareChunkRequest.Companion$_bb: ByteBuffer</ID>
@@ -221,9 +238,13 @@
     <ID>FunctionParameterNaming:WhenISaySo.kt$WhenISaySo$_bb: ByteBuffer</ID>
     <ID>FunctionParameterNaming:WhenISaySo.kt$WhenISaySo$_i: Int</ID>
     <ID>FunctionParameterNaming:WhenISaySo.kt$WhenISaySo.Companion$_bb: ByteBuffer</ID>
+    <ID>LongMethod:BotApiController.kt$BotApiController$fun routeRequest(message: BotApiMessage): BotApiMessage</ID>
+    <ID>LongMethod:CommandController.kt$CommandController$@PostMapping( "/forLockUser/command/{commandName}/acknowledge", produces = [MediaType.APPLICATION_JSON], ) @ResponseBody fun manuallyAcknowledgeCommand( @AuthenticationPrincipal lockUser: UserDetails, @PathVariable contractName: String, @PathVariable commandName: String, @RequestBody(required = false) body: AcknowledgeCommandMessage? = null, ): ResponseEntity&lt;List&lt;CommandMessage&gt;&gt;</ID>
     <ID>LongMethod:ContractService.kt$ContractService$fun abortContractWithSafetyKey(contract: Contract, safetyKey: SafetyKey): Contract</ID>
     <ID>LongMethod:ContractService.kt$ContractService$fun resetWithSafetyKey(contract: Contract, safetyKey: SafetyKey): Contract</ID>
     <ID>LongMethod:ContractService.kt$ContractService$fun saveCommand( authorSession: AuthorSession, lockSession: LockSession, contract: Contract, signedMessage: String, )</ID>
+    <ID>LongMethod:EventService.kt$EventService$fun processIncomingLockEvent(sessionToken: String, payloadBytes: ByteArray): Event?</ID>
+    <ID>LongMethod:JwtHandshakeInterceptor.kt$JwtHandshakeInterceptor$override fun beforeHandshake( request: org.springframework.http.server.ServerHttpRequest, response: org.springframework.http.server.ServerHttpResponse, wsHandler: WebSocketHandler, attributes: MutableMap&lt;String, Any&gt;, ): Boolean</ID>
     <ID>LongMethod:MqttListenerService.kt$MqttListenerService$@PostConstruct fun start()</ID>
     <ID>LongMethod:fb_helpers.kt$fun signedMessageBytesValidatorWithExternalKey(buf: ByteBuffer, key: ByteArray): ValidatedPayload</ID>
     <ID>MagicNumber:AbortCommand.kt$AbortCommand$4</ID>
@@ -251,22 +272,28 @@
     <ID>MagicNumber:BotApiMessage.kt$BotApiMessage.Companion$3</ID>
     <ID>MagicNumber:BotApiMessage.kt$BotApiMessage.Companion$4</ID>
     <ID>MagicNumber:CommonMetadata.kt$CommonMetadata$10</ID>
+    <ID>MagicNumber:CommonMetadata.kt$CommonMetadata$12</ID>
+    <ID>MagicNumber:CommonMetadata.kt$CommonMetadata$14</ID>
     <ID>MagicNumber:CommonMetadata.kt$CommonMetadata$4</ID>
     <ID>MagicNumber:CommonMetadata.kt$CommonMetadata$6</ID>
     <ID>MagicNumber:CommonMetadata.kt$CommonMetadata$8</ID>
     <ID>MagicNumber:CommonMetadata.kt$CommonMetadata.Companion$3</ID>
     <ID>MagicNumber:CommonMetadata.kt$CommonMetadata.Companion$4</ID>
+    <ID>MagicNumber:CommonMetadata.kt$CommonMetadata.Companion$5</ID>
+    <ID>MagicNumber:CommonMetadata.kt$CommonMetadata.Companion$6</ID>
     <ID>MagicNumber:Configuration.kt$Configuration$4</ID>
     <ID>MagicNumber:Configuration.kt$Configuration$6</ID>
     <ID>MagicNumber:ConfigurationService.kt$ConfigurationService$1024</ID>
     <ID>MagicNumber:Contract.kt$Contract$10</ID>
     <ID>MagicNumber:Contract.kt$Contract$12</ID>
+    <ID>MagicNumber:Contract.kt$Contract$14</ID>
     <ID>MagicNumber:Contract.kt$Contract$4</ID>
     <ID>MagicNumber:Contract.kt$Contract$6</ID>
     <ID>MagicNumber:Contract.kt$Contract$8</ID>
     <ID>MagicNumber:Contract.kt$Contract.Companion$3</ID>
     <ID>MagicNumber:Contract.kt$Contract.Companion$4</ID>
     <ID>MagicNumber:Contract.kt$Contract.Companion$5</ID>
+    <ID>MagicNumber:Contract.kt$Contract.Companion$6</ID>
     <ID>MagicNumber:ContractService.kt$ContractService$0xFF</ID>
     <ID>MagicNumber:ContractService.kt$ContractService$1024</ID>
     <ID>MagicNumber:ContractService.kt$ContractService$45</ID>
@@ -310,6 +337,7 @@
     <ID>MagicNumber:Error.kt$Error.Companion$5</ID>
     <ID>MagicNumber:Event.kt$Event$4</ID>
     <ID>MagicNumber:Event.kt$Event$6</ID>
+    <ID>MagicNumber:EventItem.kt$EventItem$4</ID>
     <ID>MagicNumber:FirmwareApiController.kt$FirmwareApiController$1024</ID>
     <ID>MagicNumber:FirmwareChallengeRequest.kt$FirmwareChallengeRequest$4</ID>
     <ID>MagicNumber:FirmwareChallengeRequest.kt$FirmwareChallengeRequest$6</ID>
@@ -339,6 +367,16 @@
     <ID>MagicNumber:GetContractResponse.kt$GetContractResponse.Companion$4</ID>
     <ID>MagicNumber:GetContractResponse.kt$GetContractResponse.Companion$5</ID>
     <ID>MagicNumber:GetContractResponse.kt$GetContractResponse.Companion$6</ID>
+    <ID>MagicNumber:GetEventsRequest.kt$GetEventsRequest$4</ID>
+    <ID>MagicNumber:GetEventsRequest.kt$GetEventsRequest$6</ID>
+    <ID>MagicNumber:GetEventsRequest.kt$GetEventsRequest$8</ID>
+    <ID>MagicNumber:GetEventsRequest.kt$GetEventsRequest.Companion$3</ID>
+    <ID>MagicNumber:GetEventsRequest.kt$GetEventsRequest.Companion$50</ID>
+    <ID>MagicNumber:GetEventsResponse.kt$GetEventsResponse$4</ID>
+    <ID>MagicNumber:GetEventsResponse.kt$GetEventsResponse$6</ID>
+    <ID>MagicNumber:GetEventsResponse.kt$GetEventsResponse$8</ID>
+    <ID>MagicNumber:GetEventsResponse.kt$GetEventsResponse.Companion$3</ID>
+    <ID>MagicNumber:GetEventsResponse.kt$GetEventsResponse.Companion$4</ID>
     <ID>MagicNumber:GetFirmwareChunkRequest.kt$GetFirmwareChunkRequest$4</ID>
     <ID>MagicNumber:GetFirmwareChunkRequest.kt$GetFirmwareChunkRequest$6</ID>
     <ID>MagicNumber:GetFirmwareChunkRequest.kt$GetFirmwareChunkRequest$8</ID>
@@ -374,12 +412,14 @@
     <ID>MagicNumber:MqttListenerService.kt$MqttListenerService$5</ID>
     <ID>MagicNumber:PeriodicUpdate.kt$PeriodicUpdate$10</ID>
     <ID>MagicNumber:PeriodicUpdate.kt$PeriodicUpdate$12</ID>
+    <ID>MagicNumber:PeriodicUpdate.kt$PeriodicUpdate$14</ID>
     <ID>MagicNumber:PeriodicUpdate.kt$PeriodicUpdate$4</ID>
     <ID>MagicNumber:PeriodicUpdate.kt$PeriodicUpdate$6</ID>
     <ID>MagicNumber:PeriodicUpdate.kt$PeriodicUpdate$8</ID>
     <ID>MagicNumber:PeriodicUpdate.kt$PeriodicUpdate.Companion$3</ID>
     <ID>MagicNumber:PeriodicUpdate.kt$PeriodicUpdate.Companion$4</ID>
     <ID>MagicNumber:PeriodicUpdate.kt$PeriodicUpdate.Companion$5</ID>
+    <ID>MagicNumber:PeriodicUpdate.kt$PeriodicUpdate.Companion$6</ID>
     <ID>MagicNumber:Permission.kt$Permission$10</ID>
     <ID>MagicNumber:Permission.kt$Permission$4</ID>
     <ID>MagicNumber:Permission.kt$Permission$6</ID>
@@ -429,19 +469,22 @@
     <ID>MagicNumber:crypto_helpers.kt$32</ID>
     <ID>MagicNumber:crypto_helpers.kt$8</ID>
     <ID>MagicNumber:id_helpers.kt$4</ID>
-    <ID>MatchingDeclarationName:jwt_helpers.kt$JwtValidationResult</ID>
     <ID>MaxLineLength:Command.kt$Command$return "Command(name='$name', state=$state, type=$type, serialNumber=$serialNumber, counter=$counter, authorSession=$authorSession)"</ID>
-    <ID>MaxLineLength:MqttListenerService.kt$MqttListenerService$"👀 Periodic update from ${update.session} -&gt; Locked? ${update.isLocked}, Local Lock -&gt; ${update.localLock}, Local Unlock -&gt; ${update.localUnlock}"</ID>
+    <ID>MaxLineLength:JwtHandshakeInterceptor.kt$JwtHandshakeInterceptor$"WebSocket handshake rejected: no valid credentials provided. lockUserJwt present: {}, authorJwt present: {}, adminJwt present: {}"</ID>
+    <ID>MaxLineLength:MqttListenerService.kt$MqttListenerService$"👀 Periodic update from ${update.session} -&gt; Locked? ${update.isLocked}, Local Lock -&gt; ${update.localLock}, Local Unlock -&gt; ${update.localUnlock}, Emergency unlocked? -&gt; ${update.emergencyUnlocked}"</ID>
+    <ID>NestedBlockDepth:EventService.kt$EventService$fun processIncomingLockEvent(sessionToken: String, payloadBytes: ByteArray): Event?</ID>
     <ID>ReturnCount:AdminSessionController.kt$AdminSessionController$@PostMapping("/") fun confirmAdminSession( @RequestBody confirmAdminSessionMessage: ConfirmAdminSessionMessage ): ResponseEntity&lt;AdminSessionMessage&gt;</ID>
     <ID>ReturnCount:AuthorSessionController.kt$AuthorSessionController$@PostMapping("/", produces = [MediaType.APPLICATION_JSON]) @ResponseBody fun saveAuthorSession( @RequestBody newAuthorSessionMessage: NewAuthorSessionMessage ): ResponseEntity&lt;AuthorSessionMessage&gt;</ID>
+    <ID>ReturnCount:AuthorSessionService.kt$AuthorSessionService$fun authorKnowsToken(authorSession: AuthorSession, shareableToken: String): KnownToken</ID>
     <ID>ReturnCount:BotApiController.kt$BotApiController$fun routeRequest(message: BotApiMessage): BotApiMessage</ID>
+    <ID>ReturnCount:EventService.kt$EventService$fun processIncomingLockEvent(sessionToken: String, payloadBytes: ByteArray): Event?</ID>
     <ID>ReturnCount:FirmwareApiController.kt$FirmwareApiController$fun routeRequest(message: FirmwareMessage): FirmwareMessage?</ID>
     <ID>ReturnCount:HiveMqMqttBroker.kt$AuthExtension.MyAuthenticator$override fun onConnect(input: SimpleAuthInput, output: SimpleAuthOutput)</ID>
     <ID>ReturnCount:HiveMqMqttBroker.kt$AuthExtension.MyAuthorizer$override fun authorizePublish(p0: PublishAuthorizerInput?, p1: PublishAuthorizerOutput?)</ID>
     <ID>ReturnCount:HiveMqMqttBroker.kt$AuthExtension.MyAuthorizer$override fun authorizeSubscribe( p0: SubscriptionAuthorizerInput?, p1: SubscriptionAuthorizerOutput?, )</ID>
     <ID>ReturnCount:crypto_helpers.kt$fun isDerEncoded(signature: ByteArray): Boolean</ID>
     <ID>ReturnCount:fb_helpers.kt$fun signedMessageBytesValidator(buf: ByteBuffer): ValidatedPayload</ID>
-    <ID>ReturnCount:jwt_helpers.kt$fun verifyJwt( authorSessionService: AuthorSessionService, lockUserSessionService: LockUserSessionService, jwt: String, ): JwtValidationResult</ID>
+    <ID>ReturnCount:jwt_helpers.kt$fun verifyJwt( authorSessionService: AuthorSessionService, lockUserSessionService: LockUserSessionService, jwt: String, adminSessionService: AdminSessionService? = null, ): JwtValidationResult</ID>
     <ID>SpreadOperator:TartarusCoordinatorApplication.kt$(*args)</ID>
     <ID>SwallowedException:AdminSessionController.kt$AdminSessionController$e: Exception</ID>
     <ID>SwallowedException:AuthorSessionController.kt$AuthorSessionController$e: CryptoException</ID>
@@ -449,15 +492,18 @@
     <ID>SwallowedException:AuthorSessionController.kt$AuthorSessionController$e: IllegalStateException</ID>
     <ID>SwallowedException:BotService.kt$BotService$cryptoException: CryptoException</ID>
     <ID>SwallowedException:LockSession.kt$LockSession$e: IllegalArgumentException</ID>
-    <ID>SwallowedException:jwt_helpers.kt$ex: Exception</ID>
     <ID>ThrowingExceptionsWithoutMessageOrCause:MqttListenerService.kt$MqttListenerService$IllegalStateException()</ID>
+    <ID>ThrowsCount:CommandController.kt$CommandController$@PostMapping( "/forLockUser/command/{commandName}/acknowledge", produces = [MediaType.APPLICATION_JSON], ) @ResponseBody fun manuallyAcknowledgeCommand( @AuthenticationPrincipal lockUser: UserDetails, @PathVariable contractName: String, @PathVariable commandName: String, @RequestBody(required = false) body: AcknowledgeCommandMessage? = null, ): ResponseEntity&lt;List&lt;CommandMessage&gt;&gt;</ID>
     <ID>TooGenericExceptionCaught:AdminSessionController.kt$AdminSessionController$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:CommandController.kt$CommandController$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:EventService.kt$EventService$e: Exception</ID>
     <ID>TooGenericExceptionCaught:MqttListenerService.kt$MqttListenerService$ex: Exception</ID>
     <ID>TooGenericExceptionCaught:WebUserAuthenticationFilter.kt$WebUserAuthenticationFilter$ex: Exception</ID>
     <ID>TooGenericExceptionCaught:jwt_helpers.kt$ex: Exception</ID>
     <ID>TooManyFunctions:Acknowledgement.kt$Acknowledgement$Companion</ID>
     <ID>TooManyFunctions:Bot.kt$Bot$Companion</ID>
     <ID>TooManyFunctions:BotApiMessage.kt$BotApiMessage$Companion</ID>
+    <ID>TooManyFunctions:CommonMetadata.kt$CommonMetadata$Companion</ID>
     <ID>TooManyFunctions:Contract.kt$Contract$Companion</ID>
     <ID>TooManyFunctions:ContractService.kt$ContractService</ID>
     <ID>TooManyFunctions:CoordinatorConfiguration.kt$CoordinatorConfiguration : Table</ID>
@@ -466,6 +512,7 @@
     <ID>TooManyFunctions:Error.kt$Error$Companion</ID>
     <ID>TooManyFunctions:FirmwareMessage.kt$FirmwareMessage$Companion</ID>
     <ID>TooManyFunctions:GetContractResponse.kt$GetContractResponse$Companion</ID>
+    <ID>TooManyFunctions:GetEventsResponse.kt$GetEventsResponse$Companion</ID>
     <ID>TooManyFunctions:GetFirmwareChunkResponse.kt$GetFirmwareChunkResponse$Companion</ID>
     <ID>TooManyFunctions:GetLatestFirmwareResponse.kt$GetLatestFirmwareResponse$Companion</ID>
     <ID>TooManyFunctions:GetLockSessionResponse.kt$GetLockSessionResponse$Companion</ID>

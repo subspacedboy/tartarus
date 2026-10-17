@@ -161,17 +161,20 @@ class JwtHelpersTest {
             Base64.getEncoder().encodeToString(encodePublicKeySecp1(keyPair.public as ECPublicKey))
         val tokenName = "ad-valid-admin"
 
-        val adminSession = club.subjugated.tartarus_coordinator.models.AdminSession(
-            name = tokenName,
-            publicKey = pubKeyBase64,
-        )
+        val adminSession =
+            club.subjugated.tartarus_coordinator.models.AdminSession(
+                name = tokenName,
+                publicKey = pubKeyBase64,
+            )
         val authorSessionService = mock(AuthorSessionService::class.java)
         val lockUserSessionService = mock(LockUserSessionService::class.java)
-        val adminSessionService = mock(club.subjugated.tartarus_coordinator.services.AdminSessionService::class.java)
+        val adminSessionService =
+            mock(club.subjugated.tartarus_coordinator.services.AdminSessionService::class.java)
         `when`(adminSessionService.findByName(tokenName)).thenReturn(adminSession)
 
         val jwt = createSignedJwt(tokenName, keyPair.private as ECPrivateKey)
-        val result = verifyJwt(authorSessionService, lockUserSessionService, jwt, adminSessionService)
+        val result =
+            verifyJwt(authorSessionService, lockUserSessionService, jwt, adminSessionService)
 
         assertThat(result).isInstanceOf(JwtValidationResult.AdminSession::class.java)
         assertThat((result as JwtValidationResult.AdminSession).value).isEqualTo(tokenName)

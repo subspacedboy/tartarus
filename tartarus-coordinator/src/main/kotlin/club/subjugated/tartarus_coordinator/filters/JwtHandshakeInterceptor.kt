@@ -34,7 +34,12 @@ class JwtHandshakeInterceptor(
             if (!lockUserJwt.isNullOrEmpty()) {
                 when (
                     val result =
-                        verifyJwt(authorSessionService, lockUserSessionService, lockUserJwt, adminSessionService)
+                        verifyJwt(
+                            authorSessionService,
+                            lockUserSessionService,
+                            lockUserJwt,
+                            adminSessionService,
+                        )
                 ) {
                     is JwtValidationResult.LockUserSession -> {
                         attributes["lockUserSession"] = result.value
@@ -46,7 +51,13 @@ class JwtHandshakeInterceptor(
 
             if (!authorJwt.isNullOrEmpty()) {
                 when (
-                    val result = verifyJwt(authorSessionService, lockUserSessionService, authorJwt, adminSessionService)
+                    val result =
+                        verifyJwt(
+                            authorSessionService,
+                            lockUserSessionService,
+                            authorJwt,
+                            adminSessionService,
+                        )
                 ) {
                     is JwtValidationResult.AuthorSession -> {
                         attributes["authorSession"] = result.value
@@ -58,7 +69,13 @@ class JwtHandshakeInterceptor(
 
             if (!adminJwt.isNullOrEmpty()) {
                 when (
-                    val result = verifyJwt(authorSessionService, lockUserSessionService, adminJwt, adminSessionService)
+                    val result =
+                        verifyJwt(
+                            authorSessionService,
+                            lockUserSessionService,
+                            adminJwt,
+                            adminSessionService,
+                        )
                 ) {
                     is JwtValidationResult.AdminSession -> {
                         attributes["adminSession"] = result.value

@@ -16,5 +16,7 @@ class MessagePayload private constructor() {
         const val GetLockSessionResponse: UByte = 8u
         const val CreateMessageRequest: UByte = 9u
         const val CreateMessageResponse: UByte = 10u
+        const val GetEventsRequest: UByte = 11u
+        const val GetEventsResponse: UByte = 12u
     }
 }

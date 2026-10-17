@@ -5,6 +5,8 @@ table CommonMetadata {
     contract_serial_number: ushort;
     serial_number: ushort;
     counter: ushort;
+    event_id: string;
+    correlation_id: string;
 }
 
 enum EventType : byte { Undefined = 0, AcceptContract, LocalLock, LocalUnlock, Lock, Unlock, ReleaseContract, EmergencyUnlock }

@@ -22,7 +22,13 @@ class WebsocketConfig(private val webSocketHandler: EventWebSocketHandler) : Web
     override fun registerWebSocketHandlers(registry: WebSocketHandlerRegistry) {
         registry
             .addHandler(webSocketHandler, "/ws/events")
-            .addInterceptors(JwtHandshakeInterceptor(authorSessionService, lockUserSessionService, adminSessionService))
+            .addInterceptors(
+                JwtHandshakeInterceptor(
+                    authorSessionService,
+                    lockUserSessionService,
+                    adminSessionService,
+                )
+            )
             .setAllowedOrigins("*")
     }
 }

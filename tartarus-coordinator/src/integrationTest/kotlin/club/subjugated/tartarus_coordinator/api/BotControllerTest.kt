@@ -43,5 +43,9 @@ class BotControllerTest() {
         assertThat(response.statusCode).isEqualTo(HttpStatusCode.valueOf(200))
         assertThat(response.body!!.publicKey).isEqualTo(compressedPubKeyInBase64)
         assertThat(response.body!!.clearTextPassword).isNotEmpty()
+
+        val eventsResponse = botController.getEvents(response.body!!.name!!, "test-contract", 0, 50)
+        assertThat(eventsResponse.statusCode).isEqualTo(HttpStatusCode.valueOf(200))
+        assertThat(eventsResponse.body!!.events).isEmpty()
     }
 }

@@ -267,4 +267,3 @@ fun makeSignedError(
     builder.finish(signedMessageOffset)
     return builder.sizedByteArray()
 }
-

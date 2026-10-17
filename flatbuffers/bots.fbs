@@ -52,6 +52,22 @@ table CreateMessageRequest {
 
 table CreateMessageResponse {}
 
+table GetEventsRequest {
+    contract_name: string;
+    since_counter: ushort;
+    limit: ushort = 50;
+}
+
+table EventItem {
+    raw_event: [ubyte];
+}
+
+table GetEventsResponse {
+    events: [EventItem];
+    latest_counter: ushort;
+    has_more: bool;
+}
+
 table Error {
     message: string;
 }
@@ -66,7 +82,9 @@ union MessagePayload {
   GetLockSessionRequest,
   GetLockSessionResponse,
   CreateMessageRequest,
-  CreateMessageResponse
+  CreateMessageResponse,
+  GetEventsRequest,
+  GetEventsResponse
 }
 
 table BotApiMessage {

@@ -10,6 +10,8 @@ import club.subjugated.tartarus_coordinator.services.LockUserSessionService
 import club.subjugated.tartarus_coordinator.util.ValidatedPayload
 import club.subjugated.tartarus_coordinator.util.signedMessageBytesValidator
 import jakarta.ws.rs.core.MediaType
+import java.nio.ByteBuffer
+import java.util.Base64
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -24,8 +26,6 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
-import java.nio.ByteBuffer
-import java.util.Base64
 
 @RestController
 @RequestMapping("/contracts/{contractName}/commands")
@@ -99,43 +99,70 @@ class CommandController {
 
         if (!body?.signedAcknowledgement.isNullOrBlank()) {
             val signedAckBase64 = body!!.signedAcknowledgement!!.trim()
-            val ackBytes = try {
-                Base64.getDecoder().decode(signedAckBase64)
-            } catch (e: Exception) {
-                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid Base64 payload", e)
-            }
+            val ackBytes =
+                try {
+                    Base64.getDecoder().decode(signedAckBase64)
+                } catch (e: Exception) {
+                    throw ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Invalid Base64 payload",
+                        e,
+                    )
+                }
 
-            val validatedPayload = try {
-                signedMessageBytesValidator(ByteBuffer.wrap(ackBytes))
-            } catch (e: Exception) {
-                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Failed to parse signed message", e)
-            }
+            val validatedPayload =
+                try {
+                    signedMessageBytesValidator(ByteBuffer.wrap(ackBytes))
+                } catch (e: Exception) {
+                    throw ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Failed to parse signed message",
+                        e,
+                    )
+                }
 
             when (validatedPayload) {
                 is ValidatedPayload.AcknowledgementPayload -> {
                     val ack = validatedPayload.acknowledgement
                     if (ack.session != contract.lockSession.sessionToken) {
-                        throw ResponseStatusException(HttpStatus.FORBIDDEN, "Session token does not match lock")
+                        throw ResponseStatusException(
+                            HttpStatus.FORBIDDEN,
+                            "Session token does not match lock",
+                        )
                     }
                     val expectedSerial = command.serialNumber ?: contract.serialNumber
                     if (ack.serialNumber.toInt() != expectedSerial) {
-                        throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Serial number does not match command")
+                        throw ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "Serial number does not match command",
+                        )
                     }
                     this.commandQueueService.acknowledgeCommand(command, ack)
                 }
                 is ValidatedPayload.ErrorPayload -> {
                     val err = validatedPayload.error
                     if (err.session != contract.lockSession.sessionToken) {
-                        throw ResponseStatusException(HttpStatus.FORBIDDEN, "Session token does not match lock")
+                        throw ResponseStatusException(
+                            HttpStatus.FORBIDDEN,
+                            "Session token does not match lock",
+                        )
                     }
                     val expectedSerial = command.serialNumber ?: contract.serialNumber
-                    if (err.serialNumber.toInt() != 0 && err.serialNumber.toInt() != expectedSerial) {
-                        throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Serial number does not match command")
+                    if (
+                        err.serialNumber.toInt() != 0 && err.serialNumber.toInt() != expectedSerial
+                    ) {
+                        throw ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "Serial number does not match command",
+                        )
                     }
                     this.commandQueueService.errorCommand(command, err.message)
                 }
                 else -> {
-                    throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid payload or signature verification failed")
+                    throw ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Invalid payload or signature verification failed",
+                    )
                 }
             }
         } else {

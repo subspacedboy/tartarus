@@ -181,6 +181,11 @@ class AuthExtension(
             }
 
             if (isLockUser(client.clientId)) {
+                if (topicName.toString() == "locks/${client.clientId}/events") {
+                    p1!!.authorizeSuccessfully()
+                    return
+                }
+
                 if (topicName!!.startsWith("bots/inbox_events_b-")) {
                     p1!!.authorizeSuccessfully()
                     return

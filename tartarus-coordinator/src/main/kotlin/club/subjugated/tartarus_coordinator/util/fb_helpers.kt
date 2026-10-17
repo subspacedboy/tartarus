@@ -236,3 +236,15 @@ fun <T : Table> getVTableStart(table: T): Int {
     val vtableOffset = byteBuffer.getShort(tableStart).toInt() // Offset to vtable
     return tableStart - vtableOffset
 }
+
+fun verifySignedEvent(buf: ByteBuffer, key: ByteArray): club.subjugated.fb.event.SignedEvent? {
+    val signedEvent = club.subjugated.fb.event.SignedEvent.getRootAsSignedEvent(buf)
+    val payload = signedEvent.payload ?: return null
+    val signatureBytes =
+        ByteArray(signedEvent.signatureLength) { signedEvent.signature(it).toByte() }
+    return if (verifySignedMessageSignature(payload, key, signatureBytes)) {
+        signedEvent
+    } else {
+        null
+    }
+}

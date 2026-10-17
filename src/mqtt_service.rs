@@ -76,6 +76,7 @@ pub enum TopicType {
     Acknowledgments,
     BotMessage,
     FirmwareMessage,
+    LockEvents,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -463,7 +464,7 @@ fn run_mqtt_publisher_worker(
         // Just to give a chance of our connection to get even the first published message
         std::thread::sleep(Duration::from_millis(800));
         loop {
-            publish_outgoing_messages(&mut client, &out_queue_ref);
+            publish_outgoing_messages(&mut client, &out_queue_ref, &session_token);
 
             if let Ok(state) = state_machine_ref.lock() {
                 if *state != MqttStateMachine::Connected {
@@ -481,55 +482,70 @@ fn run_mqtt_publisher_worker(
 fn publish_outgoing_messages(
     client: &mut EspMqttClient,
     out_queue_ref: &Arc<Mutex<VecDeque<SignedMessageTransport>>>,
+    session_token: &str,
 ) {
-    let messages: Vec<SignedMessageTransport> = if let Ok(mut message_queue) = out_queue_ref.lock() {
-        message_queue.drain(..).collect()
-    } else {
-        return;
-    };
+    loop {
+        let msg = {
+            let queue = match out_queue_ref.lock() {
+                Ok(q) => q,
+                Err(_) => break,
+            };
+            if let Some(msg) = queue.front().cloned() {
+                msg
+            } else {
+                break;
+            }
+        };
 
-    for message in messages {
-        match message.topic {
+        let result = match &msg.topic {
             TopicType::SignedMessages | TopicType::Acknowledgments => {
-                match client.publish(
+                client.publish(
                     "locks/updates",
                     QoS::AtLeastOnce,
                     false,
-                    message.buffer.as_ref(),
-                ) {
-                    Ok(id) => log::info!("Publish successful [{id:?}]"),
-                    Err(e) => {
-                        log::error!("Failed to publish topic: {e}, retrying...")
-                    }
-                }
+                    msg.buffer.as_ref(),
+                )
             }
-            TopicType::BotMessage => {
-                match client.publish(
-                    format!("bots/inbox_events_{}", message.bot_name.unwrap()).as_str(),
+            TopicType::LockEvents => {
+                let topic = format!("locks/{}/events", session_token);
+                client.publish(
+                    topic.as_str(),
                     QoS::AtLeastOnce,
                     false,
-                    message.buffer.as_ref(),
-                ) {
-                    Ok(id) => log::info!("Publish successful [{id:?}]"),
-                    Err(e) => {
-                        log::error!("Failed to publish topic: {e}, retrying...")
-                    }
-                }
+                    msg.buffer.as_ref(),
+                )
+            }
+            TopicType::BotMessage => {
+                let bot_name = msg.bot_name.as_deref().unwrap_or("unknown");
+                client.publish(
+                    format!("bots/inbox_events_{}", bot_name).as_str(),
+                    QoS::AtLeastOnce,
+                    false,
+                    msg.buffer.as_ref(),
+                )
             }
             TopicType::FirmwareMessage => {
-                match client.publish(
+                client.publish(
                     "locks/firmware",
                     QoS::AtLeastOnce,
                     false,
-                    message.buffer.as_ref(),
-                ) {
-                    Ok(id) => log::info!("Publish successful [{id:?}]"),
-                    Err(e) => {
-                        log::error!("Failed to publish topic: {e}, retrying...")
-                    }
+                    msg.buffer.as_ref(),
+                )
+            }
+            _ => Ok(0),
+        };
+
+        match result {
+            Ok(id) => {
+                log::info!("Publish successful [{id:?}]");
+                if let Ok(mut queue) = out_queue_ref.lock() {
+                    queue.pop_front();
                 }
             }
-            _ => {}
+            Err(e) => {
+                log::error!("Failed to publish topic: {e}, will retry...");
+                break;
+            }
         }
     }
 }

@@ -10,6 +10,8 @@ import { CreateMessageRequest } from '../../../../club/subjugated/fb/bots/create
 import { CreateMessageResponse } from '../../../../club/subjugated/fb/bots/create-message-response.js';
 import { GetContractRequest } from '../../../../club/subjugated/fb/bots/get-contract-request.js';
 import { GetContractResponse } from '../../../../club/subjugated/fb/bots/get-contract-response.js';
+import { GetEventsRequest } from '../../../../club/subjugated/fb/bots/get-events-request.js';
+import { GetEventsResponse } from '../../../../club/subjugated/fb/bots/get-events-response.js';
 import { GetLockSessionRequest } from '../../../../club/subjugated/fb/bots/get-lock-session-request.js';
 import { GetLockSessionResponse } from '../../../../club/subjugated/fb/bots/get-lock-session-response.js';
 
@@ -25,13 +27,15 @@ export enum MessagePayload {
   GetLockSessionRequest = 7,
   GetLockSessionResponse = 8,
   CreateMessageRequest = 9,
-  CreateMessageResponse = 10
+  CreateMessageResponse = 10,
+  GetEventsRequest = 11,
+  GetEventsResponse = 12
 }
 
 export function unionToMessagePayload(
   type: MessagePayload,
-  accessor: (obj:CreateCommandRequest|CreateCommandResponse|CreateContractRequest|CreateContractResponse|CreateMessageRequest|CreateMessageResponse|GetContractRequest|GetContractResponse|GetLockSessionRequest|GetLockSessionResponse) => CreateCommandRequest|CreateCommandResponse|CreateContractRequest|CreateContractResponse|CreateMessageRequest|CreateMessageResponse|GetContractRequest|GetContractResponse|GetLockSessionRequest|GetLockSessionResponse|null
-): CreateCommandRequest|CreateCommandResponse|CreateContractRequest|CreateContractResponse|CreateMessageRequest|CreateMessageResponse|GetContractRequest|GetContractResponse|GetLockSessionRequest|GetLockSessionResponse|null {
+  accessor: (obj:CreateCommandRequest|CreateCommandResponse|CreateContractRequest|CreateContractResponse|CreateMessageRequest|CreateMessageResponse|GetContractRequest|GetContractResponse|GetEventsRequest|GetEventsResponse|GetLockSessionRequest|GetLockSessionResponse) => CreateCommandRequest|CreateCommandResponse|CreateContractRequest|CreateContractResponse|CreateMessageRequest|CreateMessageResponse|GetContractRequest|GetContractResponse|GetEventsRequest|GetEventsResponse|GetLockSessionRequest|GetLockSessionResponse|null
+): CreateCommandRequest|CreateCommandResponse|CreateContractRequest|CreateContractResponse|CreateMessageRequest|CreateMessageResponse|GetContractRequest|GetContractResponse|GetEventsRequest|GetEventsResponse|GetLockSessionRequest|GetLockSessionResponse|null {
   switch(MessagePayload[type]) {
     case 'NONE': return null; 
     case 'GetContractRequest': return accessor(new GetContractRequest())! as GetContractRequest;
@@ -44,15 +48,17 @@ export function unionToMessagePayload(
     case 'GetLockSessionResponse': return accessor(new GetLockSessionResponse())! as GetLockSessionResponse;
     case 'CreateMessageRequest': return accessor(new CreateMessageRequest())! as CreateMessageRequest;
     case 'CreateMessageResponse': return accessor(new CreateMessageResponse())! as CreateMessageResponse;
+    case 'GetEventsRequest': return accessor(new GetEventsRequest())! as GetEventsRequest;
+    case 'GetEventsResponse': return accessor(new GetEventsResponse())! as GetEventsResponse;
     default: return null;
   }
 }
 
 export function unionListToMessagePayload(
   type: MessagePayload, 
-  accessor: (index: number, obj:CreateCommandRequest|CreateCommandResponse|CreateContractRequest|CreateContractResponse|CreateMessageRequest|CreateMessageResponse|GetContractRequest|GetContractResponse|GetLockSessionRequest|GetLockSessionResponse) => CreateCommandRequest|CreateCommandResponse|CreateContractRequest|CreateContractResponse|CreateMessageRequest|CreateMessageResponse|GetContractRequest|GetContractResponse|GetLockSessionRequest|GetLockSessionResponse|null, 
+  accessor: (index: number, obj:CreateCommandRequest|CreateCommandResponse|CreateContractRequest|CreateContractResponse|CreateMessageRequest|CreateMessageResponse|GetContractRequest|GetContractResponse|GetEventsRequest|GetEventsResponse|GetLockSessionRequest|GetLockSessionResponse) => CreateCommandRequest|CreateCommandResponse|CreateContractRequest|CreateContractResponse|CreateMessageRequest|CreateMessageResponse|GetContractRequest|GetContractResponse|GetEventsRequest|GetEventsResponse|GetLockSessionRequest|GetLockSessionResponse|null, 
   index: number
-): CreateCommandRequest|CreateCommandResponse|CreateContractRequest|CreateContractResponse|CreateMessageRequest|CreateMessageResponse|GetContractRequest|GetContractResponse|GetLockSessionRequest|GetLockSessionResponse|null {
+): CreateCommandRequest|CreateCommandResponse|CreateContractRequest|CreateContractResponse|CreateMessageRequest|CreateMessageResponse|GetContractRequest|GetContractResponse|GetEventsRequest|GetEventsResponse|GetLockSessionRequest|GetLockSessionResponse|null {
   switch(MessagePayload[type]) {
     case 'NONE': return null; 
     case 'GetContractRequest': return accessor(index, new GetContractRequest())! as GetContractRequest;
@@ -65,6 +71,8 @@ export function unionListToMessagePayload(
     case 'GetLockSessionResponse': return accessor(index, new GetLockSessionResponse())! as GetLockSessionResponse;
     case 'CreateMessageRequest': return accessor(index, new CreateMessageRequest())! as CreateMessageRequest;
     case 'CreateMessageResponse': return accessor(index, new CreateMessageResponse())! as CreateMessageResponse;
+    case 'GetEventsRequest': return accessor(index, new GetEventsRequest())! as GetEventsRequest;
+    case 'GetEventsResponse': return accessor(index, new GetEventsResponse())! as GetEventsResponse;
     default: return null;
   }
 }

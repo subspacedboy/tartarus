@@ -65,7 +65,8 @@ class LockSessionControllerTest {
         val lockSession = lockSessionService.createLockSession(nlsm)
 
         // Author discovers/visits the shareable token
-        val sessionResp = lockSessionController.findLockSession(authorUser, lockSession.shareToken!!)
+        val sessionResp =
+            lockSessionController.findLockSession(authorUser, lockSession.shareToken!!)
         assertThat(sessionResp.statusCode).isEqualTo(HttpStatus.OK)
 
         // Known tokens should contain this token
@@ -86,7 +87,8 @@ class LockSessionControllerTest {
         assertThat(afterDeleteResp.body!!).isEmpty()
 
         // If author visits the shareable token again, it is revived
-        val reVisitResp = lockSessionController.findLockSession(authorUser, lockSession.shareToken!!)
+        val reVisitResp =
+            lockSessionController.findLockSession(authorUser, lockSession.shareToken!!)
         assertThat(reVisitResp.statusCode).isEqualTo(HttpStatus.OK)
 
         val reRevivedResp = lockSessionController.findKnownTokens(authorUser)

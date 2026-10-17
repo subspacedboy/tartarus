@@ -65,6 +65,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
 
     @Autowired lateinit var botApiController: BotApiController
     @Autowired lateinit var firmwareApiController: FirmwareApiController
+    @Autowired lateinit var eventService: EventService
 
     @Autowired lateinit var internalMqttSubscriberPassword: String
 
@@ -220,6 +221,22 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                         }
                     } catch (ex: Exception) {
                         println("Encountered exception in processing Firmware MQTT")
+                        ex.printStackTrace()
+                        status.setRollbackOnly()
+                    }
+                }
+            }
+
+            client.subscribe("locks/+/events") { topic, message ->
+                transactionTemplate.execute { status ->
+                    try {
+                        val sessionToken = topic.removePrefix("locks/").removeSuffix("/events")
+                        println("📨 Got Lock Event on topic $topic for session $sessionToken")
+                        eventService.processIncomingLockEvent(sessionToken, message.payload)
+                    } catch (ex: Exception) {
+                        println(
+                            "Encountered exception in processing Lock Event MQTT: ${ex.message}"
+                        )
                         ex.printStackTrace()
                         status.setRollbackOnly()
                     }

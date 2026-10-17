@@ -52,8 +52,22 @@ class CommonMetadata(object):
             return self._tab.Get(flatbuffers.number_types.Uint16Flags, o + self._tab.Pos)
         return 0
 
+    # CommonMetadata
+    def EventId(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        if o != 0:
+            return self._tab.String(o + self._tab.Pos)
+        return None
+
+    # CommonMetadata
+    def CorrelationId(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
+        if o != 0:
+            return self._tab.String(o + self._tab.Pos)
+        return None
+
 def CommonMetadataStart(builder):
-    builder.StartObject(4)
+    builder.StartObject(6)
 
 def Start(builder):
     CommonMetadataStart(builder)
@@ -81,6 +95,18 @@ def CommonMetadataAddCounter(builder, counter):
 
 def AddCounter(builder, counter):
     CommonMetadataAddCounter(builder, counter)
+
+def CommonMetadataAddEventId(builder, eventId):
+    builder.PrependUOffsetTRelativeSlot(4, flatbuffers.number_types.UOffsetTFlags.py_type(eventId), 0)
+
+def AddEventId(builder, eventId):
+    CommonMetadataAddEventId(builder, eventId)
+
+def CommonMetadataAddCorrelationId(builder, correlationId):
+    builder.PrependUOffsetTRelativeSlot(5, flatbuffers.number_types.UOffsetTFlags.py_type(correlationId), 0)
+
+def AddCorrelationId(builder, correlationId):
+    CommonMetadataAddCorrelationId(builder, correlationId)
 
 def CommonMetadataEnd(builder):
     return builder.EndObject()

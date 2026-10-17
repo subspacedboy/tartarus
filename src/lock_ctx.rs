@@ -4,6 +4,7 @@ use crate::contract_generated::club::subjugated::fb::message::{
     MessagePayload, PeriodicUpdate, PeriodicUpdateArgs, SignedMessage, SignedMessageArgs,
     StartedUpdate, StartedUpdateArgs,
 };
+use crate::event_buffer::PersistentEventRingBuffer;
 use crate::event_generated::club::subjugated::fb::event::{
     CommonMetadata, CommonMetadataArgs, Event, EventArgs, EventType, SignedEvent, SignedEventArgs,
 };
@@ -73,6 +74,8 @@ pub struct LockCtx {
     login_cryptogram_nonce: Option<String>,
     lock_url: Option<String>,
     pub unlock_event_pending: bool,
+    pub(crate) event_ring: PersistentEventRingBuffer,
+    pub(crate) pending_correlation_id: Option<String>,
 }
 
 impl LockCtx {
@@ -80,6 +83,7 @@ impl LockCtx {
         nvs: EspNvs<NvsDefault>,
         servo: Servo<'static>,
     ) -> Self {
+        let event_ring = PersistentEventRingBuffer::load_or_init(&nvs);
         let mut lck = LockCtx {
             nvs,
             lock_secret_key: None,
@@ -102,6 +106,8 @@ impl LockCtx {
             login_cryptogram_nonce: None,
             lock_url: None,
             unlock_event_pending: false,
+            event_ring,
+            pending_correlation_id: None,
         };
 
         lck.session_token = lck.load_or_create_session_id();
@@ -143,6 +149,13 @@ impl LockCtx {
 
             // Use normal qr screen since we don't have state.
             lck.current_screen = ScreenId::QrCode;
+        }
+
+        // Re-enqueue any unacknowledged events persisted in flash from previous boots/sessions
+        let unacked = lck.event_ring.get_unacknowledged_events(&lck.nvs);
+        log::info!("Checking unacknowledged events from flash: {} found", unacked.len());
+        for evt_bytes in unacked {
+            lck.enqueue_message(SignedMessageTransport::new(evt_bytes, TopicType::LockEvents));
         }
 
         // This must come after key loading and contract state restoration
@@ -720,26 +733,30 @@ impl LockCtx {
                 self.save_state_if_dirty();
                 Ok(true)
             }
-            VerifiedType::UnlockCommand(_) => {
+            VerifiedType::UnlockCommand(c) => {
+                self.pending_correlation_id = Some(format!("cmd:{}", c.counter));
                 self.unlock();
                 self.unlock_event_pending = true;
                 self.current_screen = ScreenId::LockState;
                 self.save_state_if_dirty();
                 Ok(true)
             }
-            VerifiedType::LockCommand(_) => {
+            VerifiedType::LockCommand(c) => {
+                self.pending_correlation_id = Some(format!("cmd:{}", c.counter));
                 self.lock();
                 self.current_screen = ScreenId::LockState;
                 self.save_state_if_dirty();
                 Ok(true)
             }
-            VerifiedType::ReleaseCommand(_) => {
+            VerifiedType::ReleaseCommand(c) => {
+                self.pending_correlation_id = Some(format!("cmd:{}", c.counter));
                 self.end_contract();
                 self.current_screen = ScreenId::QrCode;
                 self.save_state_if_dirty();
                 Ok(true)
             }
-            VerifiedType::AbortCommand(_) => {
+            VerifiedType::AbortCommand(c) => {
+                self.pending_correlation_id = Some(format!("cmd:{}", c.counter));
                 self.end_contract();
                 self.current_screen = ScreenId::QrCode;
                 self.save_state_if_dirty();
@@ -1001,6 +1018,7 @@ impl LockCtx {
 
     pub fn accept_contract(&mut self, _contract: &InternalContract) {
         self.contract = Some(_contract.clone());
+        self.event_ring.reset_counter(&self.nvs);
         self.enqueue_bot_event(EventType::AcceptContract);
         self.lock();
         self.dirty = true;
@@ -1258,14 +1276,21 @@ impl LockCtx {
         self.enqueue_message(t);
     }
 
-    fn enqueue_bot_event(&self, event_type: EventType) {
+    fn enqueue_bot_event(&mut self, event_type: EventType) {
         let current_contract_serial = match &self.contract {
             Some(s) => s.serial_number,
             None => 0,
         };
 
+        let counter = self.event_ring.current_counter();
+        let event_id_str = format!("{}:{}:{}", self.session_token, current_contract_serial, counter);
+        let correlation_id_str = self.pending_correlation_id.take();
+
+        // 1. Build Event payload to hash and sign
         let mut builder = FlatBufferBuilder::with_capacity(1024);
         let session = builder.create_string(&self.session_token);
+        let event_id_off = builder.create_string(&event_id_str);
+        let corr_id_off = correlation_id_str.as_ref().map(|s| builder.create_string(s));
 
         let metadata = CommonMetadata::create(
             &mut builder,
@@ -1273,7 +1298,9 @@ impl LockCtx {
                 lock_session: Some(session),
                 contract_serial_number: current_contract_serial,
                 serial_number: 0,
-                counter: 0,
+                counter,
+                event_id: Some(event_id_off),
+                correlation_id: corr_id_off,
             },
         );
 
@@ -1290,8 +1317,11 @@ impl LockCtx {
 
         let signature = calculate_signature(buffer, &self.get_signing_key());
 
+        // 2. Re-serialize in fresh builder to create outer SignedEvent
         let mut builder = FlatBufferBuilder::with_capacity(1024);
         let session = builder.create_string(&self.session_token);
+        let event_id_off = builder.create_string(&event_id_str);
+        let corr_id_off = correlation_id_str.as_ref().map(|s| builder.create_string(s));
 
         let metadata = CommonMetadata::create(
             &mut builder,
@@ -1299,7 +1329,9 @@ impl LockCtx {
                 lock_session: Some(session),
                 contract_serial_number: current_contract_serial,
                 serial_number: 0,
-                counter: 0,
+                counter,
+                event_id: Some(event_id_off),
+                correlation_id: corr_id_off,
             },
         );
 
@@ -1324,14 +1356,12 @@ impl LockCtx {
         builder.finish(signed_event, None);
         let data = builder.finished_data().to_vec();
 
-        if let Some(contract) = &self.contract {
-            for b in &contract.bots {
-                if b.permission.receive_events {
-                    let t = SignedMessageTransport::new_for_bot(data.clone(), b.name.clone());
-                    self.enqueue_message(t);
-                }
-            }
-        }
+        // 3. Persist to NVS flash ring buffer (up to 20 events)
+        self.event_ring.append(&self.nvs, &data);
+
+        // 4. Enqueue single message to centralized locks/{session_token}/events topic
+        let t = SignedMessageTransport::new(data, TopicType::LockEvents);
+        self.enqueue_message(t);
     }
 
     pub(crate) fn enqueue_message(&self, message: SignedMessageTransport) {

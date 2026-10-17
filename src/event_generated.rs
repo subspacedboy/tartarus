@@ -144,6 +144,8 @@ impl<'a> CommonMetadata<'a> {
   pub const VT_CONTRACT_SERIAL_NUMBER: ::flatbuffers::VOffsetT = 6;
   pub const VT_SERIAL_NUMBER: ::flatbuffers::VOffsetT = 8;
   pub const VT_COUNTER: ::flatbuffers::VOffsetT = 10;
+  pub const VT_EVENT_ID: ::flatbuffers::VOffsetT = 12;
+  pub const VT_CORRELATION_ID: ::flatbuffers::VOffsetT = 14;
 
   #[inline]
   pub unsafe fn init_from_table(table: ::flatbuffers::Table<'a>) -> Self {
@@ -155,6 +157,8 @@ impl<'a> CommonMetadata<'a> {
     args: &'args CommonMetadataArgs<'args>
   ) -> ::flatbuffers::WIPOffset<CommonMetadata<'bldr>> {
     let mut builder = CommonMetadataBuilder::new(_fbb);
+    if let Some(x) = args.correlation_id { builder.add_correlation_id(x); }
+    if let Some(x) = args.event_id { builder.add_event_id(x); }
     if let Some(x) = args.lock_session { builder.add_lock_session(x); }
     builder.add_counter(args.counter);
     builder.add_serial_number(args.serial_number);
@@ -191,6 +195,20 @@ impl<'a> CommonMetadata<'a> {
     // which contains a valid value in this slot
     unsafe { self._tab.get::<u16>(CommonMetadata::VT_COUNTER, Some(0)).unwrap()}
   }
+  #[inline]
+  pub fn event_id(&self) -> Option<&'a str> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<::flatbuffers::ForwardsUOffset<&str>>(CommonMetadata::VT_EVENT_ID, None)}
+  }
+  #[inline]
+  pub fn correlation_id(&self) -> Option<&'a str> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<::flatbuffers::ForwardsUOffset<&str>>(CommonMetadata::VT_CORRELATION_ID, None)}
+  }
 }
 
 impl ::flatbuffers::Verifiable for CommonMetadata<'_> {
@@ -203,6 +221,8 @@ impl ::flatbuffers::Verifiable for CommonMetadata<'_> {
      .visit_field::<u16>("contract_serial_number", Self::VT_CONTRACT_SERIAL_NUMBER, false)?
      .visit_field::<u16>("serial_number", Self::VT_SERIAL_NUMBER, false)?
      .visit_field::<u16>("counter", Self::VT_COUNTER, false)?
+     .visit_field::<::flatbuffers::ForwardsUOffset<&str>>("event_id", Self::VT_EVENT_ID, false)?
+     .visit_field::<::flatbuffers::ForwardsUOffset<&str>>("correlation_id", Self::VT_CORRELATION_ID, false)?
      .finish();
     Ok(())
   }
@@ -212,6 +232,8 @@ pub struct CommonMetadataArgs<'a> {
     pub contract_serial_number: u16,
     pub serial_number: u16,
     pub counter: u16,
+    pub event_id: Option<::flatbuffers::WIPOffset<&'a str>>,
+    pub correlation_id: Option<::flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for CommonMetadataArgs<'a> {
   #[inline]
@@ -221,6 +243,8 @@ impl<'a> Default for CommonMetadataArgs<'a> {
       contract_serial_number: 0,
       serial_number: 0,
       counter: 0,
+      event_id: None,
+      correlation_id: None,
     }
   }
 }
@@ -247,6 +271,14 @@ impl<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> CommonMetadataBuilder<'a, 'b,
     self.fbb_.push_slot::<u16>(CommonMetadata::VT_COUNTER, counter, 0);
   }
   #[inline]
+  pub fn add_event_id(&mut self, event_id: ::flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<::flatbuffers::WIPOffset<_>>(CommonMetadata::VT_EVENT_ID, event_id);
+  }
+  #[inline]
+  pub fn add_correlation_id(&mut self, correlation_id: ::flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<::flatbuffers::WIPOffset<_>>(CommonMetadata::VT_CORRELATION_ID, correlation_id);
+  }
+  #[inline]
   pub fn new(_fbb: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>) -> CommonMetadataBuilder<'a, 'b, A> {
     let start = _fbb.start_table();
     CommonMetadataBuilder {
@@ -268,6 +300,8 @@ impl ::core::fmt::Debug for CommonMetadata<'_> {
       ds.field("contract_serial_number", &self.contract_serial_number());
       ds.field("serial_number", &self.serial_number());
       ds.field("counter", &self.counter());
+      ds.field("event_id", &self.event_id());
+      ds.field("correlation_id", &self.correlation_id());
       ds.finish()
   }
 }

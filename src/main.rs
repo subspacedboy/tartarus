@@ -7,6 +7,7 @@ mod config_verifier;
 mod configuration_generated;
 #[allow(unused_imports, mismatched_lifetime_syntaxes)]
 mod contract_generated;
+mod event_buffer;
 #[allow(unused_imports, mismatched_lifetime_syntaxes)]
 mod event_generated;
 mod fb_helper;

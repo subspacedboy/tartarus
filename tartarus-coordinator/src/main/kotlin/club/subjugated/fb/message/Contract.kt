@@ -2,38 +2,31 @@
 
 package club.subjugated.fb.message
 
-import com.google.flatbuffers.BaseVector
-import com.google.flatbuffers.BooleanVector
-import com.google.flatbuffers.ByteVector
 import com.google.flatbuffers.Constants
-import com.google.flatbuffers.DoubleVector
 import com.google.flatbuffers.FlatBufferBuilder
-import com.google.flatbuffers.FloatVector
-import com.google.flatbuffers.LongVector
-import com.google.flatbuffers.StringVector
-import com.google.flatbuffers.Struct
 import com.google.flatbuffers.Table
-import com.google.flatbuffers.UnionVector
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.math.sign
 
 @Suppress("unused")
 class Contract : Table() {
 
-    fun __init(_i: Int, _bb: ByteBuffer)  {
+    fun __init(_i: Int, _bb: ByteBuffer) {
         __reset(_i, _bb)
     }
-    fun __assign(_i: Int, _bb: ByteBuffer) : Contract {
+
+    fun __assign(_i: Int, _bb: ByteBuffer): Contract {
         __init(_i, _bb)
         return this
     }
-    val serialNumber : UShort
+
+    val serialNumber: UShort
         get() {
             val o = __offset(4)
-            return if(o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
+            return if (o != 0) bb.getShort(o + bb_pos).toUShort() else 0u
         }
-    fun publicKey(j: Int) : UByte {
+
+    fun publicKey(j: Int): UByte {
         val o = __offset(6)
         return if (o != 0) {
             bb.get(__vector(o) + j * 1).toUByte()
@@ -41,14 +34,21 @@ class Contract : Table() {
             0u
         }
     }
-    val publicKeyLength : Int
+
+    val publicKeyLength: Int
         get() {
-            val o = __offset(6); return if (o != 0) __vector_len(o) else 0
+            val o = __offset(6)
+            return if (o != 0) __vector_len(o) else 0
         }
-    val publicKeyAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(6, 1)
-    fun publicKeyInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 6, 1)
-    fun bots(j: Int) : club.subjugated.fb.message.Bot? = bots(club.subjugated.fb.message.Bot(), j)
-    fun bots(obj: club.subjugated.fb.message.Bot, j: Int) : club.subjugated.fb.message.Bot? {
+
+    val publicKeyAsByteBuffer: ByteBuffer?
+        get() = __vector_as_bytebuffer(6, 1)
+
+    fun publicKeyInByteBuffer(_bb: ByteBuffer): ByteBuffer? = __vector_in_bytebuffer(_bb, 6, 1)
+
+    fun bots(j: Int): club.subjugated.fb.message.Bot? = bots(club.subjugated.fb.message.Bot(), j)
+
+    fun bots(obj: club.subjugated.fb.message.Bot, j: Int): club.subjugated.fb.message.Bot? {
         val o = __offset(8)
         return if (o != 0) {
             obj.__assign(__indirect(__vector(o) + j * 4), bb)
@@ -56,11 +56,14 @@ class Contract : Table() {
             null
         }
     }
-    val botsLength : Int
+
+    val botsLength: Int
         get() {
-            val o = __offset(8); return if (o != 0) __vector_len(o) else 0
+            val o = __offset(8)
+            return if (o != 0) __vector_len(o) else 0
         }
-    val terms : String?
+
+    val terms: String?
         get() {
             val o = __offset(10)
             return if (o != 0) {
@@ -69,26 +72,43 @@ class Contract : Table() {
                 null
             }
         }
-    val termsAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(10, 1)
-    fun termsInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 10, 1)
-    val isTemporaryUnlockAllowed : Boolean
+
+    val termsAsByteBuffer: ByteBuffer?
+        get() = __vector_as_bytebuffer(10, 1)
+
+    fun termsInByteBuffer(_bb: ByteBuffer): ByteBuffer? = __vector_in_bytebuffer(_bb, 10, 1)
+
+    val isTemporaryUnlockAllowed: Boolean
         get() {
             val o = __offset(12)
-            return if(o != 0) 0.toByte() != bb.get(o + bb_pos) else false
+            return if (o != 0) 0.toByte() != bb.get(o + bb_pos) else false
         }
-    val isEmergencyUnlockAllowed : Boolean
+
+    val isEmergencyUnlockAllowed: Boolean
         get() {
             val o = __offset(14)
-            return if(o != 0) 0.toByte() != bb.get(o + bb_pos) else true
+            return if (o != 0) 0.toByte() != bb.get(o + bb_pos) else true
         }
+
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
+
         fun getRootAsContract(_bb: ByteBuffer): Contract = getRootAsContract(_bb, Contract())
+
         fun getRootAsContract(_bb: ByteBuffer, obj: Contract): Contract {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createContract(builder: FlatBufferBuilder, serialNumber: UShort, publicKeyOffset: Int, botsOffset: Int, termsOffset: Int, isTemporaryUnlockAllowed: Boolean, isEmergencyUnlockAllowed: Boolean) : Int {
+
+        fun createContract(
+            builder: FlatBufferBuilder,
+            serialNumber: UShort,
+            publicKeyOffset: Int,
+            botsOffset: Int,
+            termsOffset: Int,
+            isTemporaryUnlockAllowed: Boolean,
+            isEmergencyUnlockAllowed: Boolean,
+        ): Int {
             builder.startTable(6)
             addTerms(builder, termsOffset)
             addBots(builder, botsOffset)
@@ -98,31 +118,53 @@ class Contract : Table() {
             addIsTemporaryUnlockAllowed(builder, isTemporaryUnlockAllowed)
             return endContract(builder)
         }
+
         fun startContract(builder: FlatBufferBuilder) = builder.startTable(6)
-        fun addSerialNumber(builder: FlatBufferBuilder, serialNumber: UShort) = builder.addShort(0, serialNumber.toShort(), 0)
-        fun addPublicKey(builder: FlatBufferBuilder, publicKey: Int) = builder.addOffset(1, publicKey, 0)
+
+        fun addSerialNumber(builder: FlatBufferBuilder, serialNumber: UShort) =
+            builder.addShort(0, serialNumber.toShort(), 0)
+
+        fun addPublicKey(builder: FlatBufferBuilder, publicKey: Int) =
+            builder.addOffset(1, publicKey, 0)
+
         @kotlin.ExperimentalUnsignedTypes
-        fun createPublicKeyVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
+        fun createPublicKeyVector(builder: FlatBufferBuilder, data: UByteArray): Int {
             builder.startVector(1, data.size, 1)
             for (i in data.size - 1 downTo 0) {
                 builder.addByte(data[i].toByte())
             }
             return builder.endVector()
         }
-        fun startPublicKeyVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
+
+        fun startPublicKeyVector(builder: FlatBufferBuilder, numElems: Int) =
+            builder.startVector(1, numElems, 1)
+
         fun addBots(builder: FlatBufferBuilder, bots: Int) = builder.addOffset(2, bots, 0)
-        fun createBotsVector(builder: FlatBufferBuilder, data: IntArray) : Int {
+
+        fun createBotsVector(builder: FlatBufferBuilder, data: IntArray): Int {
             builder.startVector(4, data.size, 4)
             for (i in data.size - 1 downTo 0) {
                 builder.addOffset(data[i])
             }
             return builder.endVector()
         }
-        fun startBotsVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(4, numElems, 4)
+
+        fun startBotsVector(builder: FlatBufferBuilder, numElems: Int) =
+            builder.startVector(4, numElems, 4)
+
         fun addTerms(builder: FlatBufferBuilder, terms: Int) = builder.addOffset(3, terms, 0)
-        fun addIsTemporaryUnlockAllowed(builder: FlatBufferBuilder, isTemporaryUnlockAllowed: Boolean) = builder.addBoolean(4, isTemporaryUnlockAllowed, false)
-        fun addIsEmergencyUnlockAllowed(builder: FlatBufferBuilder, isEmergencyUnlockAllowed: Boolean) = builder.addBoolean(5, isEmergencyUnlockAllowed, true)
-        fun endContract(builder: FlatBufferBuilder) : Int {
+
+        fun addIsTemporaryUnlockAllowed(
+            builder: FlatBufferBuilder,
+            isTemporaryUnlockAllowed: Boolean,
+        ) = builder.addBoolean(4, isTemporaryUnlockAllowed, false)
+
+        fun addIsEmergencyUnlockAllowed(
+            builder: FlatBufferBuilder,
+            isEmergencyUnlockAllowed: Boolean,
+        ) = builder.addBoolean(5, isEmergencyUnlockAllowed, true)
+
+        fun endContract(builder: FlatBufferBuilder): Int {
             val o = builder.endTable()
             return o
         }
