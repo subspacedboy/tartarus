@@ -331,6 +331,26 @@ fn main() {
                     log::info!("BLE executing command ({} bytes)", cmd_str.len());
                     lock_ctx.process_qr_payload(cmd_str.as_bytes());
                 }
+                ble_server::BleEvent::ClearEventQueue => {
+                    log::info!("BLE request: clearing event queue");
+                    let cleared = lock_ctx.clear_event_queue();
+                    let msg = format!("cleared {} events", cleared);
+                    ble_server::set_event_queue_ctrl_status(&msg);
+                }
+                ble_server::BleEvent::ReenqueueEvents => {
+                    log::info!("BLE request: force re-enqueuing events from flash");
+                    let count = lock_ctx.force_reenqueue_events();
+                    let msg = format!("reenqueued {} events", count);
+                    ble_server::set_event_queue_ctrl_status(&msg);
+                    lock_ctx.update_ble_event_queue_status();
+                }
+                ble_server::BleEvent::RefreshEventQueue => {
+                    log::info!("BLE request: refreshing event queue status");
+                    let count = lock_ctx.event_ring.meta().count;
+                    let msg = format!("refreshed: {} events", count);
+                    ble_server::set_event_queue_ctrl_status(&msg);
+                    lock_ctx.update_ble_event_queue_status();
+                }
             }
         }
 

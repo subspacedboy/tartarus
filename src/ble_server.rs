@@ -17,12 +17,18 @@ pub const COMMAND_CHAR_UUID: BleUuid = uuid128!("fc57b56e-fb30-4227-8a88-cf2b80c
 pub const STATUS_CHAR_UUID: BleUuid = uuid128!("f41280b4-af44-4b14-b5eb-83d4b2a78f35");
 pub const AUTH_CHAR_UUID: BleUuid = uuid128!("a79b2001-f012-4c8d-b3ef-88267df8461a");
 pub const AUTH_LEVEL_CHAR_UUID: BleUuid = uuid128!("a79b2002-f012-4c8d-b3ef-88267df8461a");
+pub const EVENT_QUEUE_COUNT_CHAR_UUID: BleUuid = uuid128!("a79b2003-f012-4c8d-b3ef-88267df8461a");
+pub const EVENT_QUEUE_LIST_CHAR_UUID: BleUuid = uuid128!("a79b2004-f012-4c8d-b3ef-88267df8461a");
+pub const EVENT_QUEUE_CTRL_CHAR_UUID: BleUuid = uuid128!("a79b2005-f012-4c8d-b3ef-88267df8461a");
 
 #[derive(Debug, Clone)]
 pub enum BleEvent {
     SetWifiSsid(String),
     SetWifiPassword(String),
     Command(String), // Arbitrary Base64 command string
+    ClearEventQueue,
+    ReenqueueEvents,
+    RefreshEventQueue,
 }
 
 static EVENT_QUEUE: Mutex<VecDeque<BleEvent>> = Mutex::new(VecDeque::new());
@@ -38,6 +44,36 @@ static AUTH_PIN: Mutex<Option<String>> = Mutex::new(None);
 type BleCharRef = Arc<esp32_nimble::utilities::mutex::Mutex<BLECharacteristic>>;
 static AUTH_LEVEL_CHAR_REF: Mutex<Option<BleCharRef>> = Mutex::new(None);
 static STATUS_CHAR_REF: Mutex<Option<BleCharRef>> = Mutex::new(None);
+static EVENT_QUEUE_COUNT_CHAR_REF: Mutex<Option<BleCharRef>> = Mutex::new(None);
+static EVENT_QUEUE_LIST_CHAR_REF: Mutex<Option<BleCharRef>> = Mutex::new(None);
+static EVENT_QUEUE_CTRL_CHAR_REF: Mutex<Option<BleCharRef>> = Mutex::new(None);
+
+/// Update the Event Queue count and JSON list characteristics and notify connected clients.
+pub fn update_event_queue_status(count: usize, list_json: &str) {
+    let count_str = count.to_string();
+    if let Ok(guard) = EVENT_QUEUE_COUNT_CHAR_REF.lock() {
+        if let Some(ch) = guard.as_ref() {
+            ch.lock().set_value(count_str.as_bytes());
+            ch.lock().notify();
+        }
+    }
+    if let Ok(guard) = EVENT_QUEUE_LIST_CHAR_REF.lock() {
+        if let Some(ch) = guard.as_ref() {
+            ch.lock().set_value(list_json.as_bytes());
+            ch.lock().notify();
+        }
+    }
+}
+
+/// Update the Event Queue Control status message (e.g. "cleared 8 events") and notify.
+pub fn set_event_queue_ctrl_status(status: &str) {
+    if let Ok(guard) = EVENT_QUEUE_CTRL_CHAR_REF.lock() {
+        if let Some(ch) = guard.as_ref() {
+            ch.lock().set_value(status.as_bytes());
+            ch.lock().notify();
+        }
+    }
+}
 
 /// Check if a connected BLE client is currently authenticated.
 pub fn is_authenticated() -> bool {
@@ -340,6 +376,77 @@ pub fn init_ble_server() -> Result<()> {
             }
         } else {
             error!("BLE received invalid UTF-8 for authentication PIN");
+        }
+    });
+
+    // 7. Event Queue Count Characteristic (READ | NOTIFY)
+    let eq_count_char = service.lock().create_characteristic(
+        EVENT_QUEUE_COUNT_CHAR_UUID,
+        NimbleProperties::READ | NimbleProperties::NOTIFY,
+    );
+    eq_count_char.lock().set_value(b"0");
+    let eq_count_desc = eq_count_char
+        .lock()
+        .create_descriptor(USER_DESC_UUID, DescriptorProperties::READ);
+    eq_count_desc.lock().set_value(b"Event Queue Count");
+    if let Ok(mut guard) = EVENT_QUEUE_COUNT_CHAR_REF.lock() {
+        *guard = Some(eq_count_char.clone());
+    }
+
+    // 8. Event Queue List Characteristic (READ | NOTIFY)
+    let eq_list_char = service.lock().create_characteristic(
+        EVENT_QUEUE_LIST_CHAR_UUID,
+        NimbleProperties::READ | NimbleProperties::NOTIFY,
+    );
+    eq_list_char.lock().set_value(b"[]");
+    let eq_list_desc = eq_list_char
+        .lock()
+        .create_descriptor(USER_DESC_UUID, DescriptorProperties::READ);
+    eq_list_desc.lock().set_value(b"Event Queue List");
+    if let Ok(mut guard) = EVENT_QUEUE_LIST_CHAR_REF.lock() {
+        *guard = Some(eq_list_char.clone());
+    }
+
+    // 9. Event Queue Control Characteristic (WRITE | READ | NOTIFY - Write gated by authentication)
+    let eq_ctrl_char = service.lock().create_characteristic(
+        EVENT_QUEUE_CTRL_CHAR_UUID,
+        NimbleProperties::READ | NimbleProperties::WRITE | NimbleProperties::NOTIFY,
+    );
+    eq_ctrl_char.lock().set_value(b"ready");
+    let eq_ctrl_desc = eq_ctrl_char
+        .lock()
+        .create_descriptor(USER_DESC_UUID, DescriptorProperties::READ);
+    eq_ctrl_desc.lock().set_value(b"Event Queue Control");
+    if let Ok(mut guard) = EVENT_QUEUE_CTRL_CHAR_REF.lock() {
+        *guard = Some(eq_ctrl_char.clone());
+    }
+
+    eq_ctrl_char.lock().on_write(|args| {
+        if !is_authenticated() {
+            warn!("BLE write rejected on Event Queue Control: client is not authenticated");
+            return;
+        }
+        if let Ok(val) = core::str::from_utf8(args.recv_data()) {
+            let cmd = val.trim().to_lowercase();
+            match cmd.as_str() {
+                "clear" => {
+                    info!("BLE received command to clear event queue");
+                    enqueue_event(BleEvent::ClearEventQueue);
+                }
+                "reenqueue" => {
+                    info!("BLE received command to force re-enqueue events");
+                    enqueue_event(BleEvent::ReenqueueEvents);
+                }
+                "refresh" => {
+                    info!("BLE received command to refresh event queue");
+                    enqueue_event(BleEvent::RefreshEventQueue);
+                }
+                other => {
+                    warn!("BLE unknown Event Queue Control command: '{}'", other);
+                }
+            }
+        } else {
+            error!("BLE received invalid UTF-8 for Event Queue Control");
         }
     });
 

@@ -49,6 +49,7 @@ pub struct MqttService {
     mqtt_thread_2: Option<JoinHandle<()>>,
     incoming_messages: Arc<Mutex<VecDeque<SignedMessageTransport>>>,
     outgoing_message: Arc<Mutex<VecDeque<SignedMessageTransport>>>,
+    published_events: Arc<Mutex<Vec<(u16, u16)>>>,
     configuration: InternalConfig,
     session_token: String,
     password: String,
@@ -59,6 +60,7 @@ pub struct SignedMessageTransport {
     buffer: Vec<u8>,
     topic: TopicType,
     bot_name: Option<String>,
+    event_info: Option<(u16, u16)>,
 }
 
 impl SignedMessageTransport {
@@ -67,6 +69,16 @@ impl SignedMessageTransport {
             buffer,
             topic,
             bot_name: None,
+            event_info: None,
+        }
+    }
+
+    pub fn new_for_event(buffer: Vec<u8>, contract_serial: u16, counter: u16) -> Self {
+        SignedMessageTransport {
+            buffer,
+            topic: TopicType::LockEvents,
+            bot_name: None,
+            event_info: Some((contract_serial, counter)),
         }
     }
 
@@ -81,6 +93,11 @@ impl SignedMessageTransport {
     #[allow(dead_code)]
     pub fn bot_name(&self) -> Option<String> {
         self.bot_name.clone()
+    }
+
+    #[allow(dead_code)]
+    pub fn event_info(&self) -> Option<(u16, u16)> {
+        self.event_info
     }
 }
 
@@ -112,6 +129,7 @@ impl MqttService {
 
             incoming_messages: Arc::new(Mutex::new(Default::default())),
             outgoing_message: Arc::new(Mutex::new(Default::default())),
+            published_events: Arc::new(Mutex::new(Default::default())),
 
             configuration: config,
             session_token,
@@ -197,6 +215,7 @@ impl MqttService {
 
         let queue_ref = Arc::clone(&self.incoming_messages);
         let out_queue_ref = Arc::clone(&self.outgoing_message);
+        let published_events_ref = Arc::clone(&self.published_events);
 
         let state_machine_ref_1 = Arc::clone(&self.mqtt_state_machine);
         let state_machine_ref_2 = Arc::clone(&self.mqtt_state_machine);
@@ -228,6 +247,7 @@ impl MqttService {
                     client,
                     session_token,
                     out_queue_ref,
+                    published_events_ref,
                     state_machine_ref_2,
                 );
             })
@@ -240,6 +260,14 @@ impl MqttService {
     pub fn enqueue_message(&self, message: SignedMessageTransport) {
         if let Ok(mut message_queue) = self.outgoing_message.lock() {
             message_queue.push_back(message);
+        }
+    }
+
+    pub fn take_published_events(&self) -> Vec<(u16, u16)> {
+        if let Ok(mut events) = self.published_events.lock() {
+            std::mem::take(&mut *events)
+        } else {
+            Vec::new()
         }
     }
 }
@@ -426,6 +454,7 @@ fn run_mqtt_publisher_worker(
     mut client: EspMqttClient,
     session_token: String,
     out_queue_ref: Arc<Mutex<VecDeque<SignedMessageTransport>>>,
+    published_events_ref: Arc<Mutex<Vec<(u16, u16)>>>,
     state_machine_ref: Arc<Mutex<MqttStateMachine>>,
 ) {
     let inbound_queue = format!("locks/{}", &session_token);
@@ -478,7 +507,7 @@ fn run_mqtt_publisher_worker(
         // Just to give a chance of our connection to get even the first published message
         std::thread::sleep(Duration::from_millis(800));
         loop {
-            publish_outgoing_messages(&mut client, &out_queue_ref, &session_token);
+            publish_outgoing_messages(&mut client, &out_queue_ref, &published_events_ref, &session_token);
 
             if let Ok(state) = state_machine_ref.lock() {
                 if *state != MqttStateMachine::Connected {
@@ -496,6 +525,7 @@ fn run_mqtt_publisher_worker(
 fn publish_outgoing_messages(
     client: &mut EspMqttClient,
     out_queue_ref: &Arc<Mutex<VecDeque<SignedMessageTransport>>>,
+    published_events_ref: &Arc<Mutex<Vec<(u16, u16)>>>,
     session_token: &str,
 ) {
     loop {
@@ -545,6 +575,11 @@ fn publish_outgoing_messages(
                 log::info!("Publish successful [{id:?}]");
                 if let Ok(mut queue) = out_queue_ref.lock() {
                     queue.pop_front();
+                }
+                if let Some(event_info) = msg.event_info {
+                    if let Ok(mut published) = published_events_ref.lock() {
+                        published.push(event_info);
+                    }
                 }
             }
             Err(e) => {

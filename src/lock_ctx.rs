@@ -155,8 +155,12 @@ impl LockCtx {
         // Re-enqueue any unacknowledged events persisted in flash from previous boots/sessions
         let unacked = lck.event_ring.get_unacknowledged_events(&lck.nvs);
         log::info!("Checking unacknowledged events from flash: {} found", unacked.len());
-        for evt_bytes in unacked {
-            lck.enqueue_message(SignedMessageTransport::new(evt_bytes, TopicType::LockEvents));
+        for evt in unacked {
+            lck.enqueue_message(SignedMessageTransport::new_for_event(
+                evt.data,
+                evt.contract_serial,
+                evt.counter,
+            ));
         }
 
         // This must come after key loading and contract state restoration
@@ -170,6 +174,8 @@ impl LockCtx {
         lck.firmware_manager
             .sanity_check_or_abort()
             .expect("Sanity check failed");
+
+        lck.update_ble_event_queue_status();
 
         // Manually clear the dirty flag because we literally just loaded it.
         lck.dirty = false;
@@ -491,9 +497,17 @@ impl LockCtx {
         self.sanitize_current_screen();
 
         // If MQTT is running, run its tick to process all message queues.
-        // Also schedule next periodic update.
+        // Also drain published events to acknowledge them in flash.
         if let Some(mut mqtt_service) = self.mqtt_service.as_ref().map(|m| m.borrow_mut()) {
+            let published_events = mqtt_service.take_published_events();
             mqtt_service.tick(self.time_in_ticks);
+            drop(mqtt_service);
+            if !published_events.is_empty() {
+                for (contract_serial, counter) in published_events {
+                    self.event_ring.acknowledge_up_to(&self.nvs, contract_serial, counter);
+                }
+                self.update_ble_event_queue_status();
+            }
         }
 
         // We need to check that the MQTT service was started, but we don't try to lock/borrow it.
@@ -1359,9 +1373,10 @@ impl LockCtx {
 
         // 3. Persist to NVS flash ring buffer (up to 20 events)
         self.event_ring.append(&self.nvs, &data);
+        self.update_ble_event_queue_status();
 
         // 4. Enqueue single message to centralized locks/{session_token}/events topic
-        let t = SignedMessageTransport::new(data, TopicType::LockEvents);
+        let t = SignedMessageTransport::new_for_event(data, current_contract_serial, counter);
         self.enqueue_message(t);
     }
 
@@ -1389,5 +1404,31 @@ impl LockCtx {
             }
         }
         keys
+    }
+
+    pub fn update_ble_event_queue_status(&self) {
+        let count = self.event_ring.meta().count as usize;
+        let json = self.event_ring.inspect_events_json(&self.nvs);
+        crate::ble_server::update_event_queue_status(count, &json);
+    }
+
+    pub fn force_reenqueue_events(&mut self) -> usize {
+        let unacked = self.event_ring.get_unacknowledged_events(&self.nvs);
+        let count = unacked.len();
+        log::info!("Force re-enqueuing {} events from flash", count);
+        for evt in unacked {
+            self.enqueue_message(SignedMessageTransport::new_for_event(
+                evt.data,
+                evt.contract_serial,
+                evt.counter,
+            ));
+        }
+        count
+    }
+
+    pub fn clear_event_queue(&mut self) -> usize {
+        let cleared = self.event_ring.clear(&self.nvs);
+        self.update_ble_event_queue_status();
+        cleared
     }
 }
