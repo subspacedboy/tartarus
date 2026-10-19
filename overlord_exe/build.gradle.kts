@@ -55,13 +55,13 @@ dependencies {
 	implementation("org.bouncycastle:bcprov-jdk18on:1.80")
 	implementation("info.picocli:picocli:4.7.6")
 
-	implementation("work.socialhub.kbsky:core-jvm:0.4.0-SNAPSHOT") {
+	implementation("work.socialhub.kbsky:core-jvm:0.3.0") {
 		exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-serialization-json")
 	}
-	implementation("work.socialhub.kbsky:auth-jvm:0.4.0-SNAPSHOT") {
+	implementation("work.socialhub.kbsky:auth-jvm:0.3.0") {
 		exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-serialization-json")
 	}
-	implementation("work.socialhub.kbsky:stream-jvm:0.4.0-SNAPSHOT") {
+	implementation("work.socialhub.kbsky:stream-jvm:0.3.0") {
 		exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-serialization-json")
 	}
 

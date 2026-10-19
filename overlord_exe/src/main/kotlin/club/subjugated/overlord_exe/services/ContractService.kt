@@ -85,7 +85,7 @@ class ContractService(
     }
 
     fun updateContractWithGetContractResponse(contract: Contract, response: GetContractResponse) : Contract {
-        contract.signedMessage = response.signedMessageAsByteBuffer.moveToByteArray()
+        contract.signedMessage = response.signedMessageAsByteBuffer?.moveToByteArray()
 
         contract.state = ContractState.valueOf(response.state!!)
         contract.externalContractName = response.name

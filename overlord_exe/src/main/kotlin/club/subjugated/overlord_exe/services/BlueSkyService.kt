@@ -9,6 +9,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
 import work.socialhub.kbsky.BlueskyFactory
 import work.socialhub.kbsky.PLCDirectoryFactory
@@ -101,6 +102,7 @@ fun parseAtProto(input: String): AtUriParts? {
 }
 
 @Service
+@Profile("!test")
 class RealBlueSkyService(
     @Value("\${overlord.bsky.user}") private val bskyUser : String,
     @Value("\${overlord.bsky.password_file}") private val bskyPasswordFile : String,
@@ -287,9 +289,9 @@ class RealBlueSkyService(
     override fun sendDm(convoId: String, text: String) {
         refreshJwtIfNeeded()
 
-        val message = ConvoDefsMessageInput(
-            text = text
-        )
+        val message = ConvoDefsMessageInput().also {
+            it.text = text
+        }
 
         chatService.sendMessage(ConvoSendMessageRequest(accessJwt).also {
             it.convoId = convoId
