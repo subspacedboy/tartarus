@@ -23,11 +23,9 @@ create table event_delivery(
     contract_id bigint NOT NULL,
     delivered tinyint NOT NULL DEFAULT 0,
     delivered_at DATETIME DEFAULT NULL,
-    acknowledged tinyint NOT NULL DEFAULT 0,
-    acknowledged_at DATETIME DEFAULT NULL,
     created_at DATETIME,
     PRIMARY KEY (id),
     KEY idx_delivery_bot_contract (bot_id, contract_id),
-    KEY idx_delivery_status (bot_id, delivered, acknowledged),
+    KEY idx_delivery_status (bot_id, delivered),
     UNIQUE KEY uq_event_bot_delivery (event_id, bot_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

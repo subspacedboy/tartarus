@@ -181,22 +181,26 @@ class AuthExtension(
             }
 
             if (isLockUser(client.clientId)) {
+                // Hierarchical per-lock uplink topics: `locks/${client.clientId}/*`
+                // Restricting publishers strictly to their own clientId path enforces least-privilege
+                // access control. A rogue or malfunctioning lock cannot spoof state updates,
+                // forge firmware requests, or inject events into another lock's stream or a shared queue.
                 if (topicName.toString() == "locks/${client.clientId}/events") {
                     p1!!.authorizeSuccessfully()
                     return
                 }
 
+                if (topicName.toString() == "locks/${client.clientId}/updates") {
+                    p1!!.authorizeSuccessfully()
+                    return
+                }
+
+                if (topicName.toString() == "locks/${client.clientId}/firmware") {
+                    p1!!.authorizeSuccessfully()
+                    return
+                }
+
                 if (topicName!!.startsWith("bots/inbox_events_b-")) {
-                    p1!!.authorizeSuccessfully()
-                    return
-                }
-
-                if (topicName.toString() == "locks/updates") {
-                    p1!!.authorizeSuccessfully()
-                    return
-                }
-
-                if (topicName.toString() == "locks/firmware") {
                     p1!!.authorizeSuccessfully()
                     return
                 }

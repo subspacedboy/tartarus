@@ -541,17 +541,33 @@ fn publish_outgoing_messages(
             }
         };
 
+        // All uplink topics follow the hierarchical format `locks/{session_token}/{category}`:
+        // - `locks/{session_token}/updates`: Session updates, state reports, acknowledgments
+        // - `locks/{session_token}/events`: Monotonic contract & audit event stream
+        // - `locks/{session_token}/firmware`: Firmware challenge/response messages
+        //
+        // Architectural Rationale:
+        // 1. Topic-Level ACLs & Least Privilege: The MQTT broker can strictly enforce that a client
+        //    authenticated with session token X can only publish to `locks/X/#`. This prevents rogue
+        //    or compromised locks from publishing to other locks' namespaces or spamming a shared queue.
+        // 2. Transport-Level Identity: The coordinator receives the session token from the topic path,
+        //    enabling immediate key lookup for cryptographic verification before payload decoding.
+        // 3. Targeted Observability: Operators can monitor or debug an individual device by subscribing
+        //    to `locks/{session_token}/#` without ingesting traffic from all devices across the fleet.
+        // 4. Horizontal Scalability & Ordering: Device-keyed topic paths enable partition-based hashing
+        //    when scaling backend consumers or bridging to distributed stream brokers.
         let result = match &msg.topic {
             TopicType::SignedMessages | TopicType::Acknowledgments => {
+                let topic = format!("locks/{session_token}/updates");
                 client.publish(
-                    "locks/updates",
+                    topic.as_str(),
                     QoS::AtLeastOnce,
                     false,
                     msg.buffer.as_ref(),
                 )
             }
             TopicType::LockEvents => {
-                let topic = format!("locks/{}/events", session_token);
+                let topic = format!("locks/{session_token}/events");
                 client.publish(
                     topic.as_str(),
                     QoS::AtLeastOnce,
@@ -560,8 +576,9 @@ fn publish_outgoing_messages(
                 )
             }
             TopicType::FirmwareMessage => {
+                let topic = format!("locks/{session_token}/firmware");
                 client.publish(
-                    "locks/firmware",
+                    topic.as_str(),
                     QoS::AtLeastOnce,
                     false,
                     msg.buffer.as_ref(),

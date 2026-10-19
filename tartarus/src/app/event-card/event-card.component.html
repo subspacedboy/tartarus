@@ -39,10 +39,6 @@
                     } @else {
                       <span class="badge bg-secondary">Pending</span>
                     }
-
-                    @if (delivery.acknowledged) {
-                      <span class="badge bg-info text-dark" [title]="delivery.acknowledgedAt ? (delivery.acknowledgedAt | date: 'medium') : ''">Acked</span>
-                    }
                   </div>
                 </div>
               </div>

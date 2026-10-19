@@ -9,8 +9,6 @@ data class EventDeliveryMessage(
     val botName: String,
     val delivered: Boolean,
     @JsonFormat(shape = JsonFormat.Shape.STRING) val deliveredAt: OffsetDateTime? = null,
-    val acknowledged: Boolean,
-    @JsonFormat(shape = JsonFormat.Shape.STRING) val acknowledgedAt: OffsetDateTime? = null,
 ) {
     companion object {
         fun fromDelivery(delivery: EventDelivery): EventDeliveryMessage {
@@ -18,8 +16,6 @@ data class EventDeliveryMessage(
                 botName = delivery.bot.name,
                 delivered = delivery.delivered,
                 deliveredAt = delivery.deliveredAt,
-                acknowledged = delivery.acknowledged,
-                acknowledgedAt = delivery.acknowledgedAt,
             )
         }
     }

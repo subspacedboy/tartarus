@@ -2,8 +2,6 @@ export interface EventDelivery {
   botName: string;
   delivered: boolean;
   deliveredAt?: Date | null;
-  acknowledged: boolean;
-  acknowledgedAt?: Date | null;
 }
 
 export class LockEvent {
@@ -26,7 +24,6 @@ export class LockEvent {
       this.deliveries = this.deliveries.map(d => ({
         ...d,
         deliveredAt: d.deliveredAt ? new Date(d.deliveredAt) : null,
-        acknowledgedAt: d.acknowledgedAt ? new Date(d.acknowledgedAt) : null,
       }));
     }
   }

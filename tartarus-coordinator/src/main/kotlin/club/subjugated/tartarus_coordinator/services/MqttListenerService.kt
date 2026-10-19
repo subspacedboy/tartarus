@@ -50,7 +50,22 @@ class InternalMqttClient {
 @Transactional
 @Profile("!cli")
 class MqttListenerService(private val transactionManager: PlatformTransactionManager) {
-    private val lockUpdateTopic: String = "locks/updates"
+    /**
+     * Subscribes using "+" wildcard to per-lock hierarchical topics:
+     * - `locks/+/updates`: State reports, session starts, periodic updates, acks, errors
+     * - `locks/+/firmware`: Firmware challenge and integrity check requests
+     * - `locks/+/events`: Monotonic contract audit and lifecycle events
+     *
+     * Architectural Rationale:
+     * 1. Least-Privilege Broker ACLs: Locks authenticate with their session token and are restricted
+     *    to `locks/<client_id>/#`. They cannot publish to or tamper with other locks' topics or a shared global queue.
+     * 2. Transport-Level Identity: The session token is known immediately from the topic string before decoding/verifying.
+     * 3. Targeted Observability: Operations can subscribe to `locks/<session_token>/#` to inspect a single lock's full traffic.
+     * 4. Scalability: Enables partition-by-device sharding across backend worker instances.
+     */
+    private val lockUpdateTopic: String = "locks/+/updates"
+    private val lockFirmwareTopic: String = "locks/+/firmware"
+    private val lockEventsTopic: String = "locks/+/events"
 
     private val transactionTemplate = TransactionTemplate(transactionManager)
     @Autowired lateinit var client: MqttClient
@@ -143,9 +158,10 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
 
             client.connect(options)
 
-            client.subscribe(lockUpdateTopic) { _, message ->
+            client.subscribe(lockUpdateTopic) { topic, message ->
                 transactionTemplate.execute { status ->
                     try {
+                        val sessionToken = topic.removePrefix("locks/").removeSuffix("/updates")
                         val keyRequirement =
                             findVerificationKeyRequirement(ByteBuffer.wrap(message.payload))
                         val signedMessage =
@@ -156,7 +172,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                                 is ValidationKeyRequirement.LockSessionKey -> {
                                     val lockSession =
                                         this.lockSessionService.findBySessionToken(
-                                            keyRequirement.sessionToken
+                                            sessionToken
                                         )
                                     if (lockSession == null) {
                                         signedMessageBytesValidator(
@@ -174,7 +190,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                                 }
                             }
 
-                        println("✅ Signature is good -> $signedMessage")
+                        println("✅ Signature is good for $sessionToken -> $signedMessage")
 
                         when (signedMessage) {
                             is ValidatedPayload.StartedUpdatePayload -> {
@@ -202,20 +218,22 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                 }
             }
 
-            client.subscribe("locks/firmware") { _, message ->
+            client.subscribe(lockFirmwareTopic) { topic, message ->
                 transactionTemplate.execute { status ->
                     try {
+                        val sessionToken = topic.removePrefix("locks/").removeSuffix("/firmware")
                         val firmwareApiMessage =
                             FirmwareMessage.getRootAsFirmwareMessage(
                                 ByteBuffer.wrap(message.payload)
                             )
-                        println("🧱 Got Firmware API message -> ${firmwareApiMessage}")
+                        println("🧱 Got Firmware API message on $topic for session $sessionToken -> ${firmwareApiMessage}")
 
                         val response = firmwareApiController.routeRequest(firmwareApiMessage)
 
                         if (response != null) {
+                            val targetSession = response.sessionToken ?: sessionToken
                             client.publish(
-                                "firmware/${response.sessionToken!!}",
+                                "firmware/$targetSession",
                                 MqttMessage(response.byteBuffer.array()),
                             )
                         }
@@ -227,7 +245,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                 }
             }
 
-            client.subscribe("locks/+/events") { topic, message ->
+            client.subscribe(lockEventsTopic) { topic, message ->
                 transactionTemplate.execute { status ->
                     try {
                         val sessionToken = topic.removePrefix("locks/").removeSuffix("/events")

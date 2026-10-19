@@ -32,15 +32,11 @@ describe('EventCardComponent', () => {
           botName: 'TelegramBot',
           delivered: true,
           deliveredAt: new Date(),
-          acknowledged: true,
-          acknowledgedAt: new Date()
         },
         {
           botName: 'DiscordBot',
           delivered: false,
           deliveredAt: null,
-          acknowledged: false,
-          acknowledgedAt: null
         }
       ]
     });
