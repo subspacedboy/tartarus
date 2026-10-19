@@ -20,11 +20,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
 import org.eclipse.paho.client.mqttv3.MqttCallback
+import org.eclipse.paho.client.mqttv3.MqttCallbackExtended
 import org.eclipse.paho.client.mqttv3.MqttClient
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttMessage
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import org.ocpsoft.prettytime.PrettyTime
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -33,9 +36,11 @@ import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
 import org.springframework.transaction.support.TransactionTemplate
 import java.nio.ByteBuffer
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
+import kotlin.random.Random
 
 @Component
 class BotComponent(
@@ -47,7 +52,7 @@ class BotComponent(
 
     lateinit var botExecutorWatchdogService: ScheduledExecutorService
 
-    var responseFuture = CompletableDeferred<BotApiMessage>()
+    val pendingRequests = ConcurrentHashMap<Long, CompletableDeferred<BotApiMessage>>()
 
     var runningBots : HashMap<BotMap, ScheduledExecutorService> = HashMap()
     var handlers : HashMap<BotMap, MessageHandler> = HashMap()
@@ -55,6 +60,23 @@ class BotComponent(
 
     fun startBot(botMap : BotMap, handler : MessageHandler) {
         logger.info("Starting bot: ${botMap.internalName}")
+        botsToClients[botMap]?.let { existingClient ->
+            try {
+                if (existingClient.isConnected) {
+                    existingClient.disconnectForcibly(1000)
+                }
+                existingClient.close()
+            } catch (e: Exception) {
+                logger.warn("Error disconnecting old client for ${botMap.internalName}: $e")
+            }
+        }
+        runningBots[botMap]?.let { existingExecutor ->
+            try {
+                existingExecutor.shutdownNow()
+            } catch (e: Exception) {
+                logger.warn("Error shutting down old executor for ${botMap.internalName}: $e")
+            }
+        }
         var executor = createBotApiExecutor(botMap)
         runningBots.put(botMap, executor)
         handlers.put(botMap, handler)
@@ -67,6 +89,14 @@ class BotComponent(
             for ((bot, executor) in runningBots) {
                 if (executor.isTerminated || executor.isShutdown) {
                     logger.warn("Bot (${bot.name}) executor stopped unexpectedly, restarting...")
+                    botsToClients[bot]?.let { oldClient ->
+                        try {
+                            if (oldClient.isConnected) oldClient.disconnectForcibly(1000)
+                            oldClient.close()
+                        } catch (e: Exception) {
+                            logger.warn("Error closing old client during restart for ${bot.name}: $e")
+                        }
+                    }
                     runningBots[bot] = createBotApiExecutor(bot)
                 }
             }
@@ -120,12 +150,27 @@ class BotComponent(
             executor.awaitTermination(3, TimeUnit.SECONDS)
         }
 
+        botsToClients.forEach { (botMap, client) ->
+            try {
+                if (client.isConnected) {
+                    client.disconnectForcibly(1000)
+                }
+                client.close()
+            } catch (ex: Exception) {
+                logger.warn("Error closing client for ${botMap.internalName}: $ex")
+            }
+        }
+        botsToClients.clear()
+        runningBots.clear()
+        handlers.clear()
+        pendingRequests.clear()
+
         logger.info("All bots stopped")
     }
 
     fun createBotApiExecutor(botMap: BotMap): ScheduledExecutorService {
         return Executors.newSingleThreadScheduledExecutor().apply {
-            val client = MqttClient(mqttBrokerUrl, botMap.externalName, null)
+            val client = MqttClient(mqttBrokerUrl, botMap.externalName, MemoryPersistence())
             botsToClients.put(botMap, client)
 
             val options =
@@ -137,9 +182,19 @@ class BotComponent(
                     isAutomaticReconnect = true
                 }
 
-            client.setCallback(object : MqttCallback {
+            client.setCallback(object : MqttCallbackExtended {
+                override fun connectComplete(reconnect: Boolean, serverURI: String?) {
+                    logger.info("MQTT connect complete for ${botMap.internalName} / ${botMap.externalName} (reconnect=$reconnect)")
+                    try {
+                        client.subscribe("bots/inbox_events_${botMap.externalName}")
+                        client.subscribe("bots/inbox_api_${botMap.externalName}")
+                    } catch (e: Exception) {
+                        logger.error("Failed to subscribe on connectComplete for ${botMap.internalName}: $e")
+                    }
+                }
+
                 override fun connectionLost(cause: Throwable?) {
-                    logger.warn("Disconnected: $cause")
+                    logger.warn("Disconnected (${botMap.internalName} / ${botMap.externalName}): $cause")
                 }
 
                 override fun messageArrived(topic: String?, message: MqttMessage?) {
@@ -175,10 +230,15 @@ class BotComponent(
 
                             if (topic.contains("_api_")) {
                                 val botApiMessage = BotApiMessage.getRootAsBotApiMessage(ByteBuffer.wrap(message.payload))
-                                responseFuture.complete(botApiMessage)
+                                val deferred = pendingRequests.remove(botApiMessage.requestId)
+                                if (deferred != null) {
+                                    deferred.complete(botApiMessage)
+                                } else {
+                                    logger.warn("Received BotApiMessage for requestId ${botApiMessage.requestId} but no pending request found")
+                                }
                             }
                         } catch (ex : Exception) {
-                            logger.error("Encountered exception in processing MQTT")
+                            logger.error("Encountered exception in processing MQTT", ex)
                             ex.printStackTrace()
                             status.setRollbackOnly()
                         }
@@ -188,46 +248,59 @@ class BotComponent(
                 override fun deliveryComplete(token: IMqttDeliveryToken?) {}
             })
 
-            client.connectWithResult(options).also { connResult ->
+            try {
+                val connResult = client.connectWithResult(options)
                 val sessionPresent = connResult.sessionPresent
-                logger.debug("Session present: $sessionPresent")
+                logger.debug("Session present: $sessionPresent for ${botMap.internalName}")
 
-                // Only subscribe if there's no session already
-                if (!sessionPresent) {
-                    client.subscribe("bots/inbox_events_${botMap.externalName}")
-                    client.subscribe("bots/inbox_api_${botMap.externalName}")
-                }
+                client.subscribe("bots/inbox_events_${botMap.externalName}")
+                client.subscribe("bots/inbox_api_${botMap.externalName}")
+            } catch (e: Exception) {
+                logger.warn("Initial MQTT connect failed for ${botMap.internalName} (${botMap.externalName}): ${e.message}. Automatic reconnect will continue in background.")
             }
         }
     }
 
     suspend fun requestContract(botName : String, lockSession: String, serial : UShort, client : MqttClient) : GetContractResponse {
         val handler = CoroutineExceptionHandler { _, exception ->
-            logger.error("Request contract coroutine failed", exception)
+            logger.error("Request contract coroutine failed for $botName", exception)
         }
 
         return withContext(Dispatchers.IO + handler) {
-            responseFuture = CompletableDeferred()
-            val requestBody = contractService.makeContractRequest(
-                botName,
-                lockSession,
-                serial
-            )
-            client.publish("coordinator/inbox", MqttMessage(requestBody))
-            val botApiMessage = responseFuture.await()
+            val requestId = Random.nextLong(Long.MAX_VALUE)
+            val deferred = CompletableDeferred<BotApiMessage>()
+            pendingRequests[requestId] = deferred
 
-            val response : GetContractResponse = when(botApiMessage.payloadType){
-                MessagePayload.GetContractResponse -> {
-                    val response = GetContractResponse()
-                    botApiMessage.payload(response)
-                    response
+            try {
+                val requestBody = contractService.makeContractRequest(
+                    botName,
+                    lockSession,
+                    serial,
+                    requestId
+                )
+                if (!client.isConnected) {
+                    client.reconnect()
                 }
-                else -> {
-                    throw IllegalStateException()
+                client.publish("coordinator/inbox", MqttMessage(requestBody))
+                val botApiMessage = withTimeoutOrNull(10000) {
+                    deferred.await()
+                } ?: throw java.util.concurrent.TimeoutException("Timeout waiting for contract response for $botName (requestId=$requestId)")
+
+                val response : GetContractResponse = when(botApiMessage.payloadType){
+                    MessagePayload.GetContractResponse -> {
+                        val response = GetContractResponse()
+                        botApiMessage.payload(response)
+                        response
+                    }
+                    else -> {
+                        throw IllegalStateException("Unexpected payload type: ${botApiMessage.payloadType}")
+                    }
                 }
+
+                response
+            } finally {
+                pendingRequests.remove(requestId)
             }
-
-            response
         }
     }
 
@@ -306,8 +379,20 @@ class BotComponent(
 
     @EventListener
     fun handleSendMessage(event: SendBotBytes) {
-        val specificClient = this.botsToClients[event.botMap]!!
-        specificClient.publish("coordinator/inbox", event.message)
+        val specificClient = this.botsToClients[event.botMap]
+        if (specificClient == null) {
+            logger.error("No MQTT client found for bot ${event.botMap.internalName}")
+            return
+        }
+        try {
+            if (!specificClient.isConnected) {
+                logger.warn("Client for ${event.botMap.internalName} is not connected, attempting reconnect before publish")
+                specificClient.reconnect()
+            }
+            specificClient.publish("coordinator/inbox", event.message)
+        } catch (e: Exception) {
+            logger.error("Failed to publish SendBotBytes for ${event.botMap.internalName}: $e", e)
+        }
     }
 }
 

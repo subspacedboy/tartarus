@@ -10,6 +10,7 @@ import club.subjugated.overlord_exe.services.BSkyUserService
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.services.IntentService
 import com.github.benmanes.caffeine.cache.Caffeine
+import org.quartz.DisallowConcurrentExecution
 import org.quartz.Job
 import org.quartz.JobExecutionContext
 import org.slf4j.Logger
@@ -22,6 +23,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
 
 @Component
+@DisallowConcurrentExecution
 class BSkyDmMonitor(
     private val blueSkyService: BlueSkyService,
     private val logger: Logger = LoggerFactory.getLogger(BSkyDmMonitor::class.java),
@@ -48,6 +50,11 @@ class BSkyDmMonitor(
         .expireAfterAccess(10, TimeUnit.MINUTES)
         .build<String, ReentrantLock>()
 
+    val processedMessageIds = Caffeine.newBuilder()
+        .expireAfterWrite(1, TimeUnit.HOURS)
+        .maximumSize(5000)
+        .build<String, Boolean>()
+
     fun <T> withConversationLockIfAvailable(convoId: String, block: () -> T?): T? {
         val lock = lockMap.get(convoId) { ReentrantLock() }
         return if (lock.tryLock()) {
@@ -63,6 +70,14 @@ class BSkyDmMonitor(
     }
 
     fun handleDm(convoId: String, message :  ConvoDefsMessageView, ignoreSend : Boolean = false) {
+        val messageId: String? = message.id
+        if (!messageId.isNullOrEmpty()) {
+            if (processedMessageIds.getIfPresent(messageId) == true) {
+                logger.debug("Message $messageId in convo $convoId already processed, skipping")
+                return
+            }
+            processedMessageIds.put(messageId, true)
+        }
         val bskyUser = bSkyUserService.findOrCreateByDid(message.sender.did)
         val handle = blueSkyService.resolveDidToHandle(bskyUser.did)
         bskyUser.convoId = convoId
@@ -144,7 +159,7 @@ class BSkyDmMonitor(
                     ""
                 }
             }
-            if(!ignoreSend) {
+            if(!ignoreSend && response.isNotBlank()) {
                 blueSkyService.sendDm(convoId, response)
             }
         } else {
@@ -163,7 +178,7 @@ class BSkyDmMonitor(
                     response.chat!!
                 }
 
-                if(!ignoreSend) {
+                if(!ignoreSend && responseText.isNotBlank()) {
                     blueSkyService.sendDm(convoId, responseText)
                 }
             }

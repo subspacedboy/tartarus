@@ -163,7 +163,7 @@ class ContractService(
         ))
     }
 
-    fun makeContractRequest(botName : String, lockSession : String, contractSerialNumber : UShort) : ByteArray {
+    fun makeContractRequest(botName : String, lockSession : String, contractSerialNumber : UShort, requestId: Long = Random.nextLong()) : ByteArray {
         val builder = FlatBufferBuilder(1024)
 
         val lockSessionOffset = builder.createString(lockSession)
@@ -179,7 +179,7 @@ class ContractService(
         BotApiMessage.addName(builder, botNameOffset)
         BotApiMessage.addPayload(builder, contractRequestOffset)
         BotApiMessage.addPayloadType(builder, MessagePayload.GetContractRequest)
-        BotApiMessage.addRequestId(builder, Random.nextLong())
+        BotApiMessage.addRequestId(builder, requestId)
         val botApiMessageOffset = BotApiMessage.endBotApiMessage(builder)
 
         builder.finish(botApiMessageOffset)
