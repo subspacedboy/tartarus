@@ -146,6 +146,17 @@
         </div>
       }
 
+      @if(events.length > 0) {
+        <hr>
+        <h3>Events</h3>
+
+        <div class="bs-component">
+          @for(e of events; track e.name || e.counter) {
+            <app-event-card [event]="e"></app-event-card>
+          }
+        </div>
+      }
+
 <!--      <hr>-->
 <!--      <h3>Advanced Stuff</h3>-->
 <!--      <div class="d-grid gap-2">-->

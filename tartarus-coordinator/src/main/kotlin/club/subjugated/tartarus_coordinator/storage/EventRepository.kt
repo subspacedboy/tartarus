@@ -6,6 +6,8 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface EventRepository : JpaRepository<Event, Long> {
+    fun findByName(name: String): Event?
+
     fun findByContractIdAndCounter(contractId: Long, counter: Int): Event?
 
     fun findByContractIdOrderByCounterAsc(contractId: Long): List<Event>
@@ -15,6 +17,11 @@ interface EventRepository : JpaRepository<Event, Long> {
         contractSerialNumber: Int,
         counter: Int,
     ): Event?
+
+    fun findBySessionTokenAndContractSerialNumberOrderByCounterAsc(
+        sessionToken: String,
+        contractSerialNumber: Int,
+    ): List<Event>
 
     fun findBySessionTokenOrderByCreatedAtDesc(sessionToken: String): List<Event>
 }

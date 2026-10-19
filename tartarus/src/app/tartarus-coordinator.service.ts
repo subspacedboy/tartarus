@@ -13,6 +13,7 @@ import {Command} from './models/command';
 import {Bot} from './models/bot';
 import {AdminSession} from './models/admin-session';
 import {LockUserSession} from './models/lock-user-session';
+import {LockEvent} from './models/event';
 
 @Injectable({
   providedIn: 'root'
@@ -409,6 +410,21 @@ export class TartarusCoordinatorService {
       });
 
       return commands;
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public getEventsForContractForAdmin(contractName: string) : Observable<LockEvent[]> {
+    const get_events_uri = `${this.baseUrl}/admin/contracts/${contractName}/events/`;
+    return this.http.get(get_events_uri, {
+      headers: new HttpHeaders({ 'X-Require-Admin': 'requires authorization tokens' }),
+    }).pipe(map((res: any) => {
+      const events: LockEvent[] = res.map((datum: any) => {
+        return new LockEvent(datum);
+      });
+
+      return events;
     }), catchError(error => {
       return this.handleError(error);
     }));

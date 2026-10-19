@@ -2,9 +2,11 @@ package club.subjugated.tartarus_coordinator.api.admin
 
 import club.subjugated.tartarus_coordinator.api.messages.CommandMessage
 import club.subjugated.tartarus_coordinator.api.messages.ContractMessage
+import club.subjugated.tartarus_coordinator.api.messages.EventMessage
 import club.subjugated.tartarus_coordinator.models.ContractState
 import club.subjugated.tartarus_coordinator.services.CommandQueueService
 import club.subjugated.tartarus_coordinator.services.ContractService
+import club.subjugated.tartarus_coordinator.services.EventService
 import club.subjugated.tartarus_coordinator.services.SafetyKeyService
 import jakarta.ws.rs.core.MediaType
 import org.springframework.beans.factory.annotation.Autowired
@@ -30,6 +32,8 @@ class AdminContractController {
     @Autowired lateinit var commandQueueService: CommandQueueService
 
     @Autowired lateinit var safetyKeyService: SafetyKeyService
+
+    @Autowired lateinit var eventService: EventService
 
     @GetMapping("/", produces = [MediaType.APPLICATION_JSON])
     @ResponseBody
@@ -71,6 +75,22 @@ class AdminContractController {
         val commands = this.commandQueueService.getByContract(contract)
 
         return ResponseEntity.ok(commands.map { CommandMessage.fromCommand(it) })
+    }
+
+    @GetMapping(
+        value = ["/{someToken}/events/", "/{someToken}/events"],
+        produces = [MediaType.APPLICATION_JSON],
+    )
+    @ResponseBody
+    @PreAuthorize("hasAuthority('ADMIN')")
+    fun getEventsForName(
+        @AuthenticationPrincipal admin: UserDetails,
+        @PathVariable someToken: String,
+    ): ResponseEntity<List<EventMessage>> {
+        val contract = this.contractService.getByNameAdminOnly(someToken)
+        val events = this.eventService.getEventsForContract(contract)
+
+        return ResponseEntity.ok(events.map { EventMessage.fromEvent(it) })
     }
 
     @PostMapping("/{someToken}/abort")

@@ -8,6 +8,7 @@ import {CryptoService} from '../../crypto.service';
 import {WebsocketService} from '../../websocket.service';
 import {ToastService} from '../../toast.service';
 import {CommandCardComponent} from '../../command-card/command-card.component';
+import {EventCardComponent} from '../../event-card/event-card.component';
 import {RouterLink} from '@angular/router';
 import {DateAgoPipe} from '../../date-ago.pipe';
 import * as flatbuffers from 'flatbuffers';
@@ -15,11 +16,13 @@ import {SignedMessage} from '../../club/subjugated/fb/message/signed-message';
 import {MessagePayload} from '../../club/subjugated/fb/message/message-payload';
 import {Contract as FBContract} from '../../club/subjugated/fb/message/contract';
 import {ContractDescription} from '../../models/contract-description';
+import {LockEvent} from '../../models/event';
 
 @Component({
   selector: 'app-admin-contract-detail',
   imports: [
     CommandCardComponent,
+    EventCardComponent,
     RouterLink,
     DateAgoPipe,
   ],
@@ -33,6 +36,7 @@ export class AdminContractDetailComponent implements OnInit {
   contractDescription?: ContractDescription;
 
   commands : Command[];
+  events: LockEvent[];
 
   constructor(private tartarusCoordinatorService: TartarusCoordinatorService,
               private activatedRoute: ActivatedRoute,
@@ -42,6 +46,7 @@ export class AdminContractDetailComponent implements OnInit {
               private toastService: ToastService,) {
     this.contractName = String(this.activatedRoute.snapshot.paramMap.get('contractName'));
     this.commands = [];
+    this.events = [];
   }
 
   ngOnInit() {
@@ -67,7 +72,11 @@ export class AdminContractDetailComponent implements OnInit {
 
       this.tartarusCoordinatorService.getCommandsForContractForAdmin(this.contractName).subscribe(commands => {
         this.commands = commands;
-      })
+      });
+
+      this.tartarusCoordinatorService.getEventsForContractForAdmin(this.contractName).subscribe(events => {
+        this.events = events;
+      });
     });
   }
 

@@ -1,6 +1,7 @@
 package club.subjugated.tartarus_coordinator.services
 
 import club.subjugated.fb.event.EventType
+import club.subjugated.tartarus_coordinator.models.Contract
 import club.subjugated.tartarus_coordinator.models.Event
 import club.subjugated.tartarus_coordinator.models.EventDelivery
 import club.subjugated.tartarus_coordinator.storage.BotRepository
@@ -59,7 +60,6 @@ class EventService {
 
         val contractSerial = metadata.contractSerialNumber.toInt()
         val counter = metadata.counter.toInt()
-        val eventIdStr = metadata.eventId ?: "${sessionToken}:${contractSerial}:${counter}"
         val correlationId = metadata.correlationId
         val eventTypeStr =
             when (eventPayload.eventType) {
@@ -74,12 +74,11 @@ class EventService {
             }
 
         logger.info(
-            "Processing event: session={}, contractSerial={}, counter={}, type={}, eventId={}",
+            "Processing event: session={}, contractSerial={}, counter={}, type={}",
             sessionToken,
             contractSerial,
             counter,
             eventTypeStr,
-            eventIdStr,
         )
 
         val contract =
@@ -108,7 +107,6 @@ class EventService {
 
         val event =
             Event(
-                name = eventIdStr,
                 sessionToken = sessionToken,
                 contractSerialNumber = contractSerial,
                 counter = counter,
@@ -144,7 +142,7 @@ class EventService {
                         delivery.delivered = true
                         delivery.deliveredAt = OffsetDateTime.now()
                         eventDeliveryRepository.save(delivery)
-                        logger.info("Fanned out event {} to bot {}", eventIdStr, botName)
+                        logger.info("Fanned out event {} to bot {}", savedEvent.name, botName)
                     } catch (e: Exception) {
                         logger.error("Failed to publish event to bot {}: {}", botName, e.message)
                     }
@@ -162,5 +160,23 @@ class EventService {
         sinceCounter: Int,
     ): List<EventDelivery> {
         return eventDeliveryRepository.findMissedEventsForBot(botName, contractName, sinceCounter)
+    }
+
+    @Transactional(readOnly = true)
+    fun findByName(name: String): Event? {
+        return eventRepository.findByName(name)
+    }
+
+    @Transactional(readOnly = true)
+    fun getEventsForContract(contract: Contract): List<Event> {
+        val byContractId = eventRepository.findByContractIdOrderByCounterAsc(contract.id)
+        if (byContractId.isNotEmpty()) {
+            return byContractId
+        }
+        val sessionToken = contract.lockSession.sessionToken ?: ""
+        return eventRepository.findBySessionTokenAndContractSerialNumberOrderByCounterAsc(
+            sessionToken,
+            contract.serialNumber,
+        )
     }
 }
