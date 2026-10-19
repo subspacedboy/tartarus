@@ -1,0 +1,792 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../building_the_lock/">
+      
+      
+        <link rel="next" href="../setting_up_the_lock/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Release Notes - Tartarus Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#release-notes" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Tartarus Docs" class="md-header__button md-logo" aria-label="Tartarus Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tartarus Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Release Notes
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Tartarus Docs" class="md-nav__button md-logo" aria-label="Tartarus Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Tartarus Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tartarus Smart Lock V2 Guides
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Notes: How It All Works
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../building_the_lock/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building the Lock
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#v-111" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        V 1.1.1
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="V 1.1.1">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#user-interface-display" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User Interface &amp; Display
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bluetooth-low-energy-ble" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bluetooth Low Energy (BLE)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-system-offline-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Event System &amp; Offline Storage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#system-partitions-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System, Partitions &amp; Security
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#protocol-security-hardening" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protocol &amp; Security Hardening
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#networking-mqtt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Networking &amp; MQTT
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixes-performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixes &amp; Performance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setting_up_the_lock/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Initial Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sub_user_guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lock User Guide - So You Want Someone To Hold Your Keys
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage_guide_for_authors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Author Guide - So You Want To Hold Some Keys
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../what_is_tartarus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What is Tartarus?
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#v-111" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        V 1.1.1
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="V 1.1.1">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#user-interface-display" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User Interface &amp; Display
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bluetooth-low-energy-ble" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bluetooth Low Energy (BLE)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-system-offline-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Event System &amp; Offline Storage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#system-partitions-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System, Partitions &amp; Security
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#protocol-security-hardening" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protocol &amp; Security Hardening
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#networking-mqtt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Networking &amp; MQTT
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixes-performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixes &amp; Performance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="release-notes">Release Notes</h1>
+<h2 id="v-111">V 1.1.1</h2>
+<p>Release <code>1.1.1</code> represents a major architectural modernization and hardening of the Tartarus firmware since commit <code>d82e1d6d</code>. Highlights include a transition to Slint for the on-device user interface, on-board BLE GATT server integration, offline event buffering, Secure Boot support, and numerous protocol security enhancements.</p>
+<h3 id="user-interface-display">User Interface &amp; Display</h3>
+<ul>
+<li><strong>Migration to Slint UI</strong>: Replaced the legacy <code>embedded-graphics</code> screen engine with a modern declarative <a href="https://slint.dev/">Slint</a> UI framework (<code>ui/app.slint</code>), retiring the old static screen modules (<code>qr_screen</code>, <code>lock_state_screen</code>, <code>wifi_info_screen</code>, overlays).</li>
+<li><strong>Unlock Visual Feedback</strong>: Added an animated flashing screen indicator on unlock execution.</li>
+<li><strong>QR Display Optimization</strong>: Cached QR code rendering to eliminate display redraw lag and prevent screen tearing on large payload transfers.</li>
+</ul>
+<h3 id="bluetooth-low-energy-ble">Bluetooth Low Energy (BLE)</h3>
+<ul>
+<li><strong>On-Board BLE GATT Server</strong>: Implemented a full BLE GATT server (<code>ble_server.rs</code>) enabling direct communication with the lock without requiring Wi-Fi.</li>
+<li><strong>GATT Authentication &amp; Controls</strong>: Added challenge-response authentication over BLE and GATT characteristics for querying device status, issuing commands, and inspecting/draining the event queue.</li>
+</ul>
+<h3 id="event-system-offline-storage">Event System &amp; Offline Storage</h3>
+<ul>
+<li><strong>Dedicated Per-Lock Event Queues</strong>: Refactored event publishing so locks stream state updates and notifications directly to their own dedicated topics for coordinator fanout.</li>
+<li><strong>Offline Event Ring Buffer</strong>: Added a 20-event in-memory ring buffer (<code>event_buffer.rs</code>) that captures and preserves audit events when the lock is offline, flushing them automatically upon reconnection or via BLE.</li>
+</ul>
+<h3 id="system-partitions-security">System, Partitions &amp; Security</h3>
+<ul>
+<li><strong>ESP-IDF 5.5.4 Upgrade</strong>: Upgraded core framework and hal dependencies to ESP-IDF 5.5.4.</li>
+<li><strong>Secure Boot Support</strong>: Integrated Secure Boot v2 configuration (<code>sdkconfig.defaults.secureboot</code>) with ECDSA signature verification for bootloader and firmware images.</li>
+<li><strong>Partition Table Rework</strong>: Deprecated and removed legacy OTA partitions to maximize app binary space; standardized NVS storage at 24 KB.</li>
+<li><strong>Web Serial Flashing</strong>: Added distribution builds (<code>build_firmware_dist.sh</code>) and manifest generation (<code>firmware.json</code>) enabling in-browser flashing over Web Serial.</li>
+<li><strong>NVS Backup Utility</strong>: Added <code>backup_nvs.sh</code> to safely backup and restore lock credentials, identity, and contracts across firmware flashes.</li>
+<li><strong>USB Serial Command Input</strong>: Added STDIN command reading over USB with Base64 armoring for local recovery and diagnostics.</li>
+</ul>
+<h3 id="protocol-security-hardening">Protocol &amp; Security Hardening</h3>
+<ul>
+<li><strong>Emergency Unlock</strong>: Added support for protocol-level Emergency Unlock commands across FlatBuffers schemas and internal contract handlers.</li>
+<li><strong>Safety Key Enforcement</strong>: Enforced cryptographic validation ensuring only designated <code>SafetyKeys</code> can sign <code>AbortCommand</code> and <code>ResetCommand</code> payloads.</li>
+<li><strong>Bot Permission Checks</strong>: Enforced strict authorization checks (<code>can_lock</code>, <code>can_unlock</code>, <code>can_release</code>) on incoming bot commands and restricted outbound event dispatching to authorized bots.</li>
+<li><strong>Key Parsing</strong>: Hardened SEC1 elliptic curve public key parsing and challenge-response handling.</li>
+</ul>
+<h3 id="networking-mqtt">Networking &amp; MQTT</h3>
+<ul>
+<li><strong>Aggressive Asynchronous Wi-Fi</strong>: Overhauled <code>WifiManager</code> with an asynchronous connection strategy, better scan handling, DHCP delay accommodation, and aggressive reconnection logic.</li>
+<li><strong>Standardized MQTT Topics</strong>: Standardized per-lock topic paths for commands, updates, and event streams.</li>
+<li><strong>Multi-Chunk Message Reassembly</strong>: Replaced firmware-specific assemblers with a generalized <code>MessageAssembler</code> isolated per MQTT topic to prevent interleaved packet corruption.</li>
+<li><strong>Low-Latency Publisher</strong>: Reduced MQTT publisher worker polling latency from 2000 ms to 50 ms for responsive command acknowledgments.</li>
+</ul>
+<h3 id="fixes-performance">Fixes &amp; Performance</h3>
+<ul>
+<li><strong>Contract Command Counter Corruption</strong>: Fixed a bug where loading a secondary contract could corrupt the command counter in memory or cause a panic.</li>
+<li><strong>Large Contract Serialization</strong>: Resolved issues where large contracts could be stored in NVS but failed to re-load or caused boot panics.</li>
+<li><strong>Boot State Sync</strong>: Fixed boot order in <code>LockCtx</code> to ensure NVS contract state is restored prior to the initial <code>StartedUpdate</code> announcement.</li>
+<li><strong>LLVM Xtensa LTO Crash</strong>: Fixed a release-mode compiler crash (<code>XtensaISD::PCREL_WRAPPER</code>) under <code>opt-level = "z"</code> by refactoring MQTT worker closures into non-inlined routines.</li>
+<li><strong>Heap Allocation Reduction</strong>: Reworked memory layouts across <code>LockCtx</code>, verifiers, and network services to significantly reduce dynamic heap allocations.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
