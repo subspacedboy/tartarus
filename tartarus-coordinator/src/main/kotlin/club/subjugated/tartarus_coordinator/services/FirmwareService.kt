@@ -128,6 +128,7 @@ class FirmwareService(
         requestId: Long,
         sessionToken: String,
         data: ByteArray,
+        currentFirmware: String? = null,
     ): Boolean {
         val challengeKey =
             getECPublicKeyFromCompressedKeyByteArray(Base64.getDecoder().decode(challengeKey))
@@ -141,6 +142,7 @@ class FirmwareService(
                             this,
                             sessionToken = sessionToken,
                             validated = false,
+                            currentFirmware = currentFirmware,
                         )
                     publisher.publishEvent(event)
                     return false
@@ -157,7 +159,12 @@ class FirmwareService(
         val validated = verifier.verify(signature)
 
         val event =
-            FirmwareValidationEvent(this, sessionToken = sessionToken, validated = validated)
+            FirmwareValidationEvent(
+                this,
+                sessionToken = sessionToken,
+                validated = validated,
+                currentFirmware = currentFirmware,
+            )
         publisher.publishEvent(event)
 
         return validated

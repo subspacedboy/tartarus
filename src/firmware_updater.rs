@@ -241,7 +241,7 @@ impl FirmwareManager {
     }
 
     pub fn respond_to_challenge(
-        &self,
+        &mut self,
         challenge: &InternalChallenge,
         session_token: &str,
     ) -> Vec<u8> {
@@ -262,11 +262,25 @@ impl FirmwareManager {
 
         let session_offset = builder.create_string(session_token);
 
+        let current_version = self
+            .get_running_version()
+            .unwrap_or_else(|_| env!("CARGO_PKG_VERSION").to_string());
+        let current_version_offset = builder.create_string(current_version.as_str());
+
+        let version_offset = Version::create(
+            &mut builder,
+            &VersionArgs {
+                name: None,
+                signature: None,
+                version_name: Some(current_version_offset),
+            },
+        );
+
         let firmware_challenge_offset = FirmwareChallengeResponse::create(
             &mut builder,
             &FirmwareChallengeResponseArgs {
                 signature: signature_offset,
-                version: None,
+                version: Some(version_offset),
             },
         );
 

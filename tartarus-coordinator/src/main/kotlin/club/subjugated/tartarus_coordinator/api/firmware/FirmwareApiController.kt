@@ -151,9 +151,15 @@ class FirmwareApiController {
         message: FirmwareChallengeResponse,
     ) {
         val signatureBytes = ByteArray(message.signatureLength) { message.signature(it).toByte() }
+        val currentFirmware = message.version?.versionName
 
         val validated =
-            firmwareService.validateChallengeSignature(requestId, sessionToken, signatureBytes)
+            firmwareService.validateChallengeSignature(
+                requestId,
+                sessionToken,
+                signatureBytes,
+                currentFirmware,
+            )
         println("🧑‍🔬 Firmware validated as official? -> $validated")
     }
 }

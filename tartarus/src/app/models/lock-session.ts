@@ -15,6 +15,7 @@ export class LockSession {
   lockState?: LockState;
   availableForContract? : boolean;
   validatedFirmware?: boolean;
+  currentFirmware?: string;
   lastValidated?: Date;
   activeContractName?: string | null;
   activeContractSerial?: number | null;

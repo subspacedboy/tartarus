@@ -180,6 +180,48 @@ class FirmwareServiceTest {
         assertThat(eventCaptor.value.validated).isFalse()
     }
 
+    @Test
+    fun testValidateChallenge_PassesCurrentFirmware() {
+        val keyPair = generateECKeyPair()
+        val pubKeyBase64 =
+            Base64.getEncoder().encodeToString(encodePublicKeySecp1(keyPair.public as ECPublicKey))
+        firmwareService.challengeKey = pubKeyBase64
+
+        val challengeBytes = firmwareService.generateFirmwareChallenge("session-token-version")
+        val firmwareMessage =
+            FirmwareMessage.getRootAsFirmwareMessage(ByteBuffer.wrap(challengeBytes))
+        val requestId = firmwareMessage.requestId
+        val challengeRequest =
+            firmwareMessage.payload(FirmwareChallengeRequest()) as FirmwareChallengeRequest
+        val nonce = ByteArray(challengeRequest.nonceLength)
+        for (i in 0 until challengeRequest.nonceLength) {
+            nonce[i] = challengeRequest.nonce(i).toByte()
+        }
+
+        val signer =
+            Signature.getInstance("NonewithECDSA", "BC").apply {
+                initSign(keyPair.private)
+                update(nonce)
+            }
+        val derSig = signer.sign()
+        val rawSig = derToRawSignature(derSig)
+
+        val isValid =
+            firmwareService.validateChallengeSignature(
+                requestId,
+                "session-token-version",
+                rawSig,
+                currentFirmware = "0.1.2",
+            )
+        assertThat(isValid).isTrue()
+
+        val eventCaptor = ArgumentCaptor.forClass(FirmwareValidationEvent::class.java)
+        verify(eventPublisher).publishEvent(eventCaptor.capture())
+        assertThat(eventCaptor.value.sessionToken).isEqualTo("session-token-version")
+        assertThat(eventCaptor.value.validated).isTrue()
+        assertThat(eventCaptor.value.currentFirmware).isEqualTo("0.1.2")
+    }
+
     companion object {
         @JvmStatic
         @BeforeAll

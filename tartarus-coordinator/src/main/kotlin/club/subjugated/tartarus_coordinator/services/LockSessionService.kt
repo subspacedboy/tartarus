@@ -112,6 +112,9 @@ class LockSessionService {
     fun handleFirmwareValidation(firmwareValidationEvent: FirmwareValidationEvent) {
         val lockSession = findBySessionToken(firmwareValidationEvent.sessionToken)!!
         lockSession.validatedFirmware = firmwareValidationEvent.validated
+        if (firmwareValidationEvent.currentFirmware != null) {
+            lockSession.currentFirmware = firmwareValidationEvent.currentFirmware
+        }
         lockSession.lastValidated = timeSource.nowInUtc()
         lockSessionRepository.save(lockSession)
     }

@@ -23,6 +23,8 @@ data class LockSessionMessage(
     var activeContractName: String? = null,
     var activeContractSerial: Int? = null,
     var contractCount: Int = 0,
+    var validatedFirmware: Boolean = false,
+    var currentFirmware: String? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
 ) {
@@ -70,6 +72,8 @@ data class LockSessionMessage(
                 activeContractName = confirmedContract?.name,
                 activeContractSerial = confirmedContract?.serialNumber,
                 contractCount = lockSession.contracts.size,
+                validatedFirmware = lockSession.validatedFirmware,
+                currentFirmware = lockSession.currentFirmware,
                 updatedAt = lockSession.updatedAt,
                 createdAt = lockSession.createdAt,
             )

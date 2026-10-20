@@ -19,6 +19,7 @@ class LockSession(
     var emergencyUnlocked: Boolean = false,
     var availableForContract: Boolean = true,
     var validatedFirmware: Boolean = false,
+    var currentFirmware: String? = null,
     var mqttPassword: String? = null,
     var mqttSalt: String? = "",
     @JsonFormat(shape = JsonFormat.Shape.STRING) var lastValidated: OffsetDateTime? = null,
