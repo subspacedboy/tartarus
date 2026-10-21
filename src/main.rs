@@ -26,9 +26,12 @@ mod screen_ids;
 use screen_ids::ScreenId;
 mod servo;
 mod slint_platform;
+mod storage_backend;
 mod verifier;
 mod wifi_manager;
 mod wifi_util;
+
+pub use storage_backend::Esp32Rng;
 
 use crate::wifi_manager::WifiManager;
 use std::io::Read;
@@ -56,7 +59,7 @@ use esp_idf_hal::spi::{SpiDeviceDriver, SpiDriver};
 use esp_idf_hal::units::KiloHertz;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::hal::delay;
-use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs, NvsDefault};
+use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs};
 use esp_idf_svc::sys::{
     esp_efuse_read_field_bit, esp_random, ESP_EFUSE_DIS_PAD_JTAG,
     ESP_EFUSE_DIS_USB_SERIAL_JTAG_DOWNLOAD_MODE, ESP_EFUSE_SECURE_BOOT_EN,
@@ -74,37 +77,6 @@ use embedded_graphics::text::{Alignment, Text};
 use embedded_graphics_core::geometry::Point;
 use embedded_graphics_core::Drawable;
 use mipidsi::interface::SpiInterface;
-use rand_core::{CryptoRng, RngCore};
-
-struct Esp32Rng;
-
-impl RngCore for Esp32Rng {
-    fn next_u32(&mut self) -> u32 {
-        unsafe { esp_random() as u32 }
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        let mut bytes = [0u8; 8];
-        self.fill_bytes(&mut bytes);
-        u64::from_le_bytes(bytes)
-    }
-
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        for chunk in dest.chunks_mut(4) {
-            let rand = self.next_u32();
-            for (i, byte) in chunk.iter_mut().enumerate() {
-                *byte = (rand >> (i * 8)) as u8;
-            }
-        }
-    }
-
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
-        self.fill_bytes(dest);
-        Ok(())
-    }
-}
-
-impl CryptoRng for Esp32Rng {}
 
 //noinspection RsUnresolvedMethod
 fn main() {
@@ -150,12 +122,13 @@ fn main() {
     let nvs_partition =
         EspDefaultNvsPartition::take().expect("EspDefaultNvsPartition to be available");
     log_nvs_health_stats();
-    let nvs: EspNvs<NvsDefault> = EspNvs::new(nvs_partition.clone(), "storage", true).unwrap();
+    let nvs = std::rc::Rc::new(EspNvs::new(nvs_partition.clone(), "storage", true).unwrap());
 
     let sys_loop = EspSystemEventLoop::take().expect("EspSystemEventLoop to be available");
 
-    // Warm up display
+    // Warm up display and STEMMA QT power rail (GPIO 7)
     tft_power.set_high().expect("tft power to be high");
+    sleep(Duration::from_millis(100));
     tft_rst.set_low().expect("Reset to be low");
     tft_bl.set_high().expect("BL to be high");
 
@@ -247,12 +220,14 @@ fn main() {
     log::info!("JTAG disabled: {}", is_jtag_disabled());
     log::info!("USB download disabled: {}", is_usb_download_disabled());
 
-    log::info!("Initializing code reader");
+    log::info!("Initializing I2C bus on SDA=GPIO3, SCL=GPIO4 @ 100 kHz");
     const READER_ADDRESS: u8 = 0x0c;
 
-    let config = I2cConfig::new().baudrate(KiloHertz(400).into());
-    let mut i2c_driver = I2cDriver::new(peripherals.i2c0, qr_reader_sda, qr_reader_scl, &config)
+    let config = I2cConfig::new().baudrate(KiloHertz(100).into());
+    let i2c_driver = I2cDriver::new(peripherals.i2c0, qr_reader_sda, qr_reader_scl, &config)
         .expect("I2C to initialize");
+    let shared_i2c = storage_backend::SharedI2cBus::new(i2c_driver);
+    let security_backend = storage_backend::init_security_backend(shared_i2c.clone(), nvs.clone());
 
     // The maximum dataframe size from the tiny code reader is
     // 254 (size of rx_buf). The first byte in the message is the length
@@ -264,7 +239,7 @@ fn main() {
 
     let (window, ui) = slint_platform::init_slint_platform();
     let stdin_rx = start_stdin_reader();
-    let mut lock_ctx = LockCtx::new(nvs, servo);
+    let mut lock_ctx = LockCtx::new(nvs, security_backend, servo);
 
     // Initial QR code load
     let mut last_rendered_qr_url: Option<String> = None;
@@ -374,7 +349,7 @@ fn main() {
         if let Ok(stdin_payload) = stdin_rx.try_recv() {
             log::info!("Injecting STDIN payload into qr_data: {} bytes", stdin_payload.len());
             data = Some(stdin_payload);
-        } else if i2c_driver.read(READER_ADDRESS, &mut rx_buf, TickType::new_millis(25).ticks()).is_ok() {
+        } else if shared_i2c.read_with_timeout(READER_ADDRESS, &mut rx_buf, TickType::new_millis(25).ticks()).is_ok() {
             // 1. Read the 16-bit little-endian length properly
             let size = u16::from_le_bytes([rx_buf[0], rx_buf[1]]) as usize;
 

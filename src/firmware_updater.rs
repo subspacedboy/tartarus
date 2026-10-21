@@ -161,8 +161,9 @@ impl FirmwareManager {
             match msg {
                 FirmwareMessageType::Challenge(challenge) => {
                     log::info!("We got firmware challenge");
+                    let session_token = self.session_token.clone().unwrap();
                     let response_bytes =
-                        self.respond_to_challenge(&challenge, self.session_token.as_ref().unwrap());
+                        self.respond_to_challenge(&challenge, &session_token);
                     self.enqueue_message(SignedMessageTransport::new(
                         response_bytes,
                         crate::mqtt_service::TopicType::FirmwareMessage,

@@ -29,6 +29,8 @@ experimental = ["esp-idf-svc/experimental"]
 generated = []
 
 [dependencies]
+embedded-hal = "1.0"
+optiga-trust-m-rs = { git = "https://github.com/subspacedboy/optiga-trust-m-rs" }
 log = { version = "0.4", default-features = false }
 esp-idf-svc = { version = "0.53", features = ["critical-section"] }
 esp-idf-hal = "0.47"

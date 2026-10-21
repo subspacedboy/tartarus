@@ -207,8 +207,8 @@ impl WifiManager {
 
         // Fast timeouts per wifi_explanation.md to prevent blocking boot
         const MAX_ATTEMPTS: usize = 3;
-        const ASSOC_TIMEOUT: Duration = Duration::from_millis(4000);
-        const DHCP_TIMEOUT: Duration = Duration::from_millis(7000);
+        const ASSOC_TIMEOUT: Duration = Duration::from_millis(6000);
+        const DHCP_TIMEOUT: Duration = Duration::from_millis(8000);
 
         for attempt in 1..=MAX_ATTEMPTS {
             info!(

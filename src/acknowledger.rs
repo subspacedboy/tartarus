@@ -2,11 +2,10 @@ use crate::contract_generated::club::subjugated::fb::message::{
     Acknowledgement, AcknowledgementArgs, Error, ErrorArgs, MessagePayload, SignedMessage,
     SignedMessageArgs,
 };
-use crate::fb_helper::calculate_signature;
+use crate::fb_helper::calculate_signature_with_backend;
+use crate::storage_backend::SecurityBackend;
 use crate::verifier::{VerificationError, VerifiedType};
 use flatbuffers::FlatBufferBuilder;
-use p256::ecdsa::SigningKey;
-use p256::PublicKey;
 
 pub(crate) struct Acknowledger {}
 
@@ -19,9 +18,9 @@ impl Acknowledger {
         &self,
         command: VerifiedType,
         session_token: &str,
-        public_key: &PublicKey,
-        signing_key: &SigningKey,
+        backend: &mut dyn SecurityBackend,
     ) -> Vec<u8> {
+        let public_key = backend.public_key();
         let mut builder = FlatBufferBuilder::with_capacity(1024);
 
         let (serial_number, counter) = match command {
@@ -50,10 +49,11 @@ impl Acknowledger {
         builder.finish(ack, None);
         let buffer = builder.finished_data();
 
-        let signature = calculate_signature(buffer, signing_key);
+        let signature = calculate_signature_with_backend(buffer, backend)
+            .expect("Failed to sign acknowledgement message");
 
-        // // UGH. We have to build the whole message over again because of the way
-        // // Rust implements flatbuffers.
+        // UGH. We have to build the whole message over again because of the way
+        // Rust implements flatbuffers.
         let mut builder = FlatBufferBuilder::with_capacity(1024);
 
         let pub_key_holder = builder.create_vector(public_key.to_sec1_bytes().as_ref());
@@ -92,10 +92,10 @@ impl Acknowledger {
         &self,
         command: VerifiedType,
         session_token: &str,
-        public_key: &PublicKey,
-        signing_key: &SigningKey,
+        backend: &mut dyn SecurityBackend,
         message: &str,
     ) -> Vec<u8> {
+        let public_key = backend.public_key();
         let mut builder = FlatBufferBuilder::with_capacity(1024);
 
         log::info!("Building error for command: {command:?}");
@@ -126,10 +126,11 @@ impl Acknowledger {
         builder.finish(error_message, None);
         let buffer = builder.finished_data();
 
-        let signature = calculate_signature(buffer, signing_key);
+        let signature = calculate_signature_with_backend(buffer, backend)
+            .expect("Failed to sign error message");
 
-        // // UGH. We have to build the whole message over again because of the way
-        // // Rust implements flatbuffers.
+        // UGH. We have to build the whole message over again because of the way
+        // Rust implements flatbuffers.
         let mut builder = FlatBufferBuilder::with_capacity(1024);
 
         let pub_key_holder = builder.create_vector(public_key.to_sec1_bytes().as_ref());
@@ -169,9 +170,9 @@ impl Acknowledger {
         &self,
         err: VerificationError,
         session_token: &str,
-        public_key: &PublicKey,
-        signing_key: &SigningKey,
+        backend: &mut dyn SecurityBackend,
     ) -> Vec<u8> {
+        let public_key = backend.public_key();
         let mut builder = FlatBufferBuilder::with_capacity(1024);
 
         let pub_key_holder = builder.create_vector(public_key.to_sec1_bytes().as_ref());
@@ -191,7 +192,8 @@ impl Acknowledger {
         builder.finish(error_message, None);
         let buffer = builder.finished_data();
 
-        let signature = calculate_signature(buffer, signing_key);
+        let signature = calculate_signature_with_backend(buffer, backend)
+            .expect("Failed to sign error message");
 
         let mut builder = FlatBufferBuilder::with_capacity(1024);
 

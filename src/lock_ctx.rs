@@ -8,7 +8,7 @@ use crate::event_buffer::PersistentEventRingBuffer;
 use crate::event_generated::club::subjugated::fb::event::{
     CommonMetadata, CommonMetadataArgs, Event, EventArgs, EventType, SignedEvent, SignedEventArgs,
 };
-use crate::fb_helper::calculate_signature;
+use crate::fb_helper::calculate_signature_with_backend;
 #[allow(deprecated)]
 use crate::firmware_updater::FirmwareManager;
 use crate::internal_config::InternalConfig;
@@ -16,9 +16,9 @@ use crate::internal_contract::{InternalContract, InternalResetCommand, SaveState
 use crate::lock_ctx::TopicType::{Acknowledgments, ConfigurationData, SignedMessages};
 use crate::mqtt_service::{MqttService, SignedMessageTransport, TopicType};
 use crate::servo::Servo;
+use crate::storage_backend::{Esp32Rng, SecurityBackend};
 use crate::verifier::{SignedMessageVerifier, VerifiedType};
-use crate::Esp32Rng;
-use aes_gcm::aead::{Aead};
+use aes_gcm::aead::Aead;
 use aes_gcm::KeyInit;
 use aes_gcm::{AeadCore, Aes256Gcm, Key};
 use data_encoding::{BASE32_NOPAD, BASE64, BASE64URL};
@@ -26,17 +26,14 @@ use esp_idf_svc::nvs::{EspNvs, NvsDefault};
 use esp_idf_svc::sys::{nvs_flash_deinit, nvs_flash_erase, nvs_flash_init};
 use flatbuffers::FlatBufferBuilder;
 use hkdf::Hkdf;
-use p256::ecdh::diffie_hellman;
-use p256::ecdsa::signature::Signer;
-use p256::ecdsa::{Signature, SigningKey, VerifyingKey};
-use p256::{PublicKey, SecretKey};
+use p256::ecdsa::VerifyingKey;
+use p256::PublicKey;
 use rand_core::RngCore;
-use sha2::{Digest, Sha256};
+use sha2::Sha256;
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
 use std::time::Duration;
-use anyhow::anyhow;
 use crate::wifi_manager::WIFI_MANAGER;
 use crate::screen_ids::ScreenId;
 
@@ -51,9 +48,9 @@ pub struct TickUpdate {
 }
 
 pub struct LockCtx {
-    nvs: EspNvs<NvsDefault>,
-    pub(crate) lock_secret_key: Option<SecretKey>,
-    pub(crate) lock_public_key: Option<PublicKey>,
+    nvs: Rc<EspNvs<NvsDefault>>,
+    pub(crate) backend: Box<dyn SecurityBackend>,
+    pub(crate) lock_public_key: PublicKey,
     pub(crate) contract: Option<InternalContract>,
     is_locked: bool,
     pub(crate) session_token: String,
@@ -81,14 +78,16 @@ pub struct LockCtx {
 
 impl LockCtx {
     pub fn new(
-        nvs: EspNvs<NvsDefault>,
+        nvs: Rc<EspNvs<NvsDefault>>,
+        backend: Box<dyn SecurityBackend>,
         servo: Servo<'static>,
     ) -> Self {
         let event_ring = PersistentEventRingBuffer::load_or_init(&nvs);
+        let my_public = backend.public_key();
         let mut lck = LockCtx {
             nvs,
-            lock_secret_key: None,
-            lock_public_key: None,
+            backend,
+            lock_public_key: my_public,
             contract: None,
             is_locked: false,
             session_token: String::new(),
@@ -113,14 +112,17 @@ impl LockCtx {
 
         lck.session_token = lck.load_or_create_session_id();
         lck.mqtt_password = lck.load_or_create_mqtt_password();
-        let secret_key = lck.load_or_create_key();
-        let my_public = PublicKey::from_secret_scalar(&secret_key.to_nonzero_scalar());
 
         lck.firmware_manager
             .set_session_token(lck.session_token.clone());
 
-        lck.lock_secret_key = Some(secret_key);
-        lck.lock_public_key = Some(my_public);
+        let pubkey_compressed_b64 = BASE64.encode(lck.lock_public_key.to_sec1_bytes().as_ref());
+        log::info!("========================================================");
+        log::info!("🔒 Device Public Key & Database Info:");
+        log::info!("   Security Backend: {}", lck.backend.backend_name());
+        log::info!("   Session Token:    {}", lck.session_token);
+        log::info!("   Public Key (B64): {}", pubkey_compressed_b64);
+        log::info!("========================================================");
 
         let config = lck.get_configuration_or_default();
         lck.configuration = config;
@@ -268,33 +270,6 @@ impl LockCtx {
         password
     }
 
-    fn load_or_create_key(&mut self) -> SecretKey {
-        let key_name = "ec_private";
-        let mut buffer: [u8; 256] = [0; 256];
-        let existing_key: Option<&[u8]> = self
-            .nvs
-            .get_blob(key_name, &mut buffer)
-            .expect("The NVS mechanism should have worked");
-        let mut rng = Esp32Rng;
-
-        let private_key: SecretKey = if let Some(base64_key) = existing_key {
-            log::info!("Loaded existing EC private key.");
-            let key_bytes = BASE64.decode(base64_key).unwrap();
-            SecretKey::from_slice(&key_bytes).expect("Failed to parse private key")
-        } else {
-            log::info!("Generating a new EC private key...");
-            let sk = SecretKey::random(&mut rng);
-
-            let key_bytes = sk.to_bytes();
-            let encoded_key = BASE64.encode(&key_bytes);
-            self.nvs.set_blob(key_name, encoded_key.as_bytes()).unwrap();
-            log::info!("Saved new EC private key to NVS.");
-            sk
-        };
-
-        private_key
-    }
-
     pub fn start_mqtt_service_if_connected(&mut self) {
         if self.mqtt_service.is_some() {
             return;
@@ -418,12 +393,10 @@ impl LockCtx {
                             self.save_state_if_dirty();
 
                             let acknowledger = Acknowledger::new();
-                            let signing_key = self.get_signing_key();
                             let ack_buffer = acknowledger.build_acknowledgement(
                                 for_acknowledgement,
                                 &self.session_token,
-                                &self.lock_public_key.unwrap(),
-                                &signing_key,
+                                self.backend.as_mut(),
                             );
                             let ack_message =
                                 SignedMessageTransport::new(ack_buffer, Acknowledgments);
@@ -431,12 +404,10 @@ impl LockCtx {
                         }
                         Err(e) => {
                             let acknowledger = Acknowledger::new();
-                            let signing_key = self.get_signing_key();
                             let ack_buffer = acknowledger.build_error_for_command(
                                 for_acknowledgement,
                                 &self.session_token,
-                                &self.lock_public_key.unwrap(),
-                                &signing_key,
+                                self.backend.as_mut(),
                                 &e,
                             );
                             let ack_message =
@@ -448,12 +419,10 @@ impl LockCtx {
                 Err(verification_error) => {
                     log::info!("Verification error {:?}", verification_error);
                     let acknowledger = Acknowledger::new();
-                    let signing_key = self.get_signing_key();
                     let ack_buffer = acknowledger.build_error(
                         verification_error,
                         &self.session_token,
-                        &self.lock_public_key.unwrap(),
-                        &signing_key,
+                        self.backend.as_mut(),
                     );
                     let ack_message = SignedMessageTransport::new(ack_buffer, Acknowledgments);
                     self.enqueue_message(ack_message)
@@ -663,12 +632,10 @@ impl LockCtx {
                         self.save_state_if_dirty();
 
                         let acknowledger = Acknowledger::new();
-                        let signing_key = self.get_signing_key();
                         let ack_buffer = acknowledger.build_acknowledgement(
                             for_acknowledgement,
                             &self.session_token,
-                            &self.lock_public_key.unwrap(),
-                            &signing_key,
+                            self.backend.as_mut(),
                         );
                         let b64 = BASE64.encode(&ack_buffer);
                         println!("RESULT:{}", b64);
@@ -680,12 +647,10 @@ impl LockCtx {
                     }
                     Err(e) => {
                         let acknowledger = Acknowledger::new();
-                        let signing_key = self.get_signing_key();
                         let ack_buffer = acknowledger.build_error_for_command(
                             for_acknowledgement,
                             &self.session_token,
-                            &self.lock_public_key.unwrap(),
-                            &signing_key,
+                            self.backend.as_mut(),
                             &e,
                         );
                         let b64 = BASE64.encode(&ack_buffer);
@@ -701,12 +666,10 @@ impl LockCtx {
             Err(verification_error) => {
                 log::info!("Verification error {:?}", verification_error);
                 let acknowledger = Acknowledger::new();
-                let signing_key = self.get_signing_key();
                 let ack_buffer = acknowledger.build_error(
                     verification_error,
                     &self.session_token,
-                    &self.lock_public_key.unwrap(),
-                    &signing_key,
+                    self.backend.as_mut(),
                 );
                 let b64 = BASE64.encode(&ack_buffer);
                 println!("RESULT:{}", b64);
@@ -989,11 +952,18 @@ impl LockCtx {
         let pub_key = PublicKey::from_sec1_bytes(public_key_bytes.as_bytes())
             .expect("Invalid public key bytes");
 
-        let shared_secret = diffie_hellman(
-            self.lock_secret_key.as_ref().unwrap().to_nonzero_scalar(),
-            pub_key.as_affine(),
-        );
-        let hkdf = Hkdf::<Sha256>::new(None, shared_secret.raw_secret_bytes());
+        let shared_secret_bytes = match self.backend.ecdh_shared_secret(&pub_key) {
+            Ok(s) => s,
+            Err(e) => {
+                log::error!(
+                    "ECDH key agreement failed on {}: {:?}",
+                    self.backend.backend_name(),
+                    e
+                );
+                return;
+            }
+        };
+        let hkdf = Hkdf::<Sha256>::new(None, &shared_secret_bytes);
         let mut okm = [0u8; 32];
         hkdf.expand(b"aes-gcm key", &mut okm)
             .expect("HKDF expand failed");
@@ -1040,8 +1010,6 @@ impl LockCtx {
     }
 
     pub(crate) fn save_state_if_dirty(&mut self) {
-        use ciborium::ser::into_writer;
-
         if self.dirty {
             if let Some(internal_contract) = self.contract.as_ref() {
                 let save_state = SaveState {
@@ -1049,18 +1017,17 @@ impl LockCtx {
                     is_locked: self.is_locked,
                     emergency_unlocked: self.emergency_unlocked,
                 };
-
-                let mut bytes = Vec::new();
-                if into_writer(&save_state, &mut bytes).is_ok() {
-                    match self.nvs.set_blob("contract", &bytes) {
-                        Ok(_) => {
-                            log::info!("Contract saved to NVS [{}]", bytes.len());
-                            self.dirty = false;
-                        }
-                        Err(e) => {
-                            log::error!("Failed to save NVS [{}]: {:?}", bytes.len(), e);
-                            // Keep self.dirty = true to retry on subsequent ticks
-                        }
+                match self.backend.write_contract(&save_state) {
+                    Ok(()) => {
+                        log::info!("Contract saved to {} backend", self.backend.backend_name());
+                        self.dirty = false;
+                    }
+                    Err(e) => {
+                        log::error!(
+                            "Failed to save contract to {}: {:?}",
+                            self.backend.backend_name(),
+                            e
+                        );
                     }
                 }
             } else {
@@ -1082,6 +1049,7 @@ impl LockCtx {
     pub fn full_reset(&mut self, reset_command: &InternalResetCommand) {
         if self.configuration.enable_reset_command && reset_command.session() == self.session_token
         {
+            let _ = self.backend.wipe_for_reset();
             unsafe {
                 nvs_flash_deinit();
                 nvs_flash_erase();
@@ -1093,64 +1061,25 @@ impl LockCtx {
     }
 
     pub fn read_contract(&mut self) -> anyhow::Result<Option<SaveState>> {
-        use ciborium::de::from_reader;
-        let key_name = "contract";
-
-        let required_size = match  self.nvs.blob_len(key_name)? {
-            Some(len) => len,
-            None => {
-                log::info!("No contract data was present");
-                return Ok(None);
-            }
-        };
-        let mut buffer = vec![0u8; required_size];
-
-        match self.nvs.get_blob(key_name, &mut buffer) {
-            Ok(Some(bytes)) => {
-                let len = bytes.len();
-                match from_reader(&buffer[..len]) {
-                    Ok(state) => Ok(Some(state)),
-                    _ => {
-                        Err(anyhow!("Contract bytes were set but we couldn't deserialize them"))
-                    }
-                }
-            }
-            Ok(None) => {
-                log::info!("No contract data was present");
-                Ok(None)
-            }
-            Err(e) => {
-                log::error!("Contract was set but failed to read save state: {}", e);
-                Err(anyhow!("Contract was set but failed to read save state: {}", e))
-            }
-        }
+        self.backend.read_contract()
     }
 
     fn clear_contract(&mut self) {
-        log::info!("Cleared contract");
-        if self.nvs.remove("contract").is_ok() {
-            log::info!("Contract removed");
+        log::info!("Clearing contract from {}", self.backend.backend_name());
+        if let Err(e) = self.backend.clear_contract() {
+            log::error!("Failed to clear contract: {:?}", e);
         }
         self.contract = None;
         self.emergency_unlocked = false;
         self.emergency_press_count = 0;
     }
 
-    fn get_signing_key(&self) -> SigningKey {
-        let secret = self.lock_secret_key.as_ref().unwrap();
-
-        let cloned_secret = secret.clone();
-        let bytes = cloned_secret.to_bytes();
-        let key_bytes = bytes.as_slice();
-        SigningKey::from_slice(key_bytes).unwrap()
-    }
-
-    fn enqueue_announce_message(&self) {
+    fn enqueue_announce_message(&mut self) {
         let current_contract_serial = self.contract.as_ref().map(|c| c.serial_number).unwrap_or(0);
         let started_with_local_contract = self.contract.is_some();
 
         let mut builder = FlatBufferBuilder::with_capacity(1024);
-        let pub_key_holder = builder.create_vector(self.lock_public_key.unwrap().to_sec1_bytes().as_ref());
+        let pub_key_holder = builder.create_vector(self.lock_public_key.to_sec1_bytes().as_ref());
         let session = builder.create_string(&self.session_token);
 
         let lock_update_event = StartedUpdate::create(
@@ -1170,16 +1099,12 @@ impl LockCtx {
         builder.finish(lock_update_event, None);
         let buffer = builder.finished_data();
 
-        let table_offset = buffer[0] as usize;
-        let vtable_offset = buffer[table_offset] as usize;
-        let actual_start = table_offset - vtable_offset;
+        let signature = calculate_signature_with_backend(buffer, self.backend.as_mut())
+            .expect("Failed to sign StartedUpdate message");
 
-        let hash = Sha256::digest(&buffer[actual_start..]);
-
-        // UGH. We have to build the whole message over again because of the way
-        // Rust implements flatbuffers.
+        // Re-serialize in fresh builder to embed signature
         let mut builder = FlatBufferBuilder::with_capacity(1024);
-        let pub_key_holder = builder.create_vector(self.lock_public_key.unwrap().to_sec1_bytes().as_ref());
+        let pub_key_holder = builder.create_vector(self.lock_public_key.to_sec1_bytes().as_ref());
         let session = builder.create_string(&self.session_token);
         let lock_update_event = StartedUpdate::create(
             &mut builder,
@@ -1195,16 +1120,7 @@ impl LockCtx {
         let payload_type = MessagePayload::StartedUpdate; // Union type
         let payload_value = lock_update_event.as_union_value();
 
-        let secret = self.lock_secret_key.as_ref().unwrap();
-
-        let cloned_secret = secret.clone();
-        let bytes = cloned_secret.to_bytes();
-        let key_bytes = bytes.as_slice();
-        let signing_key = SigningKey::from_slice(key_bytes).unwrap();
-        let signature: Signature = signing_key.sign(hash.as_slice());
-
         let sig_bytes = signature.to_bytes();
-
         let signature_offset = builder.create_vector(sig_bytes.as_slice());
         let signed_message = SignedMessage::create(
             &mut builder,
@@ -1220,11 +1136,10 @@ impl LockCtx {
         let data = builder.finished_data().to_vec();
 
         let t = SignedMessageTransport::new(data, SignedMessages);
-
         self.enqueue_message(t);
     }
 
-    fn enqueue_periodic_update_message(&self, local_unlock: bool, local_lock: bool) {
+    fn enqueue_periodic_update_message(&mut self, local_unlock: bool, local_lock: bool) {
         let mut builder = FlatBufferBuilder::with_capacity(1024);
         let session = builder.create_string(&self.session_token);
 
@@ -1233,7 +1148,6 @@ impl LockCtx {
             None => 0,
         };
 
-        // let pub_key_holder = builder.create_vector(&public_key);
         let periodic_update_event = PeriodicUpdate::create(
             &mut builder,
             &PeriodicUpdateArgs {
@@ -1252,12 +1166,12 @@ impl LockCtx {
         builder.finish(periodic_update_event, None);
         let buffer = builder.finished_data();
 
-        let signature = calculate_signature(buffer, &self.get_signing_key());
+        let signature = calculate_signature_with_backend(buffer, self.backend.as_mut())
+            .expect("Failed to sign PeriodicUpdate message");
 
         let mut builder = FlatBufferBuilder::with_capacity(1024);
         let session = builder.create_string(&self.session_token);
 
-        // let pub_key_holder = builder.create_vector(&public_key);
         let periodic_update_event = PeriodicUpdate::create(
             &mut builder,
             &PeriodicUpdateArgs {
@@ -1330,7 +1244,8 @@ impl LockCtx {
         builder.finish(event, None);
         let buffer = builder.finished_data();
 
-        let signature = calculate_signature(buffer, &self.get_signing_key());
+        let signature = calculate_signature_with_backend(buffer, self.backend.as_mut())
+            .expect("Failed to sign Event message");
 
         // 2. Re-serialize in fresh builder to create outer SignedEvent
         let mut builder = FlatBufferBuilder::with_capacity(1024);
