@@ -1,85 +1,95 @@
 <form [formGroup]="contractForm" (submit)="createContract()">
-  <div class="row">
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
     <!-- Left Column: Contract Settings & Output -->
-    <div class="col-lg-5 col-md-12 mb-3">
-      <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white">
-          <h3 class="h5 mb-0">Contract Builder</h3>
+    <div class="space-y-6 lg:col-span-5">
+      <section hlmCard>
+        <div hlmCardHeader>
+          <h2 hlmCardTitle class="text-xl">Contract Builder</h2>
+          <p hlmCardDescription>
+            Configure unlock permissions, contract terms, and cryptographic signing options.
+          </p>
         </div>
-        <div class="card-body">
-          <fieldset>
-            <div class="form-check form-switch mb-3">
+
+        <div hlmCardContent>
+          <fieldset class="space-y-4">
+            <legend class="sr-only">Contract Terms and Unlock Permissions</legend>
+
+            <label
+              for="isTempUnlockAllowed"
+              class="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3 text-sm font-medium text-foreground"
+            >
+              <span>Is temporary unlocking allowed?</span>
               <input
                 id="isTempUnlockAllowed"
-                class="form-check-input"
                 type="checkbox"
                 formControlName="isTempUnlockAllowed"
+                class="h-4 w-4 rounded border-input text-primary focus:ring-ring"
               />
-              <label class="form-check-label" for="isTempUnlockAllowed">
-                Is temporary unlocking allowed?
-              </label>
-            </div>
+            </label>
 
-            <div class="form-check form-switch mb-3">
+            <label
+              for="isEmergencyUnlockAllowed"
+              class="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3 text-sm font-medium text-foreground"
+            >
+              <span>Is emergency unlock allowed?</span>
               <input
                 id="isEmergencyUnlockAllowed"
-                class="form-check-input"
                 type="checkbox"
                 formControlName="isEmergencyUnlockAllowed"
+                class="h-4 w-4 rounded border-input text-primary focus:ring-ring"
               />
-              <label class="form-check-label" for="isEmergencyUnlockAllowed">
-                Is emergency unlock allowed?
-              </label>
-            </div>
+            </label>
 
-            <div class="mb-3">
-              <label class="form-label fw-bold" for="terms">Terms</label>
+            <div class="space-y-1.5">
+              <label hlmLabel for="terms">Terms</label>
               <textarea
                 id="terms"
-                class="form-control"
+                hlmInput
                 formControlName="terms"
                 placeholder="Part of the contract body. Will be digitally signed."
-                rows="4">
-              </textarea>
+                rows="4"
+              ></textarea>
             </div>
 
-            <div class="mb-3">
-              <label class="form-label fw-bold" for="notes">Notes</label>
+            <div class="space-y-1.5">
+              <label hlmLabel for="notes">Notes</label>
               <textarea
                 id="notes"
-                class="form-control"
+                hlmInput
                 formControlName="notes"
                 placeholder="Only shown on website"
-                rows="3">
-              </textarea>
+                rows="3"
+              ></textarea>
             </div>
 
-            <button class="btn btn-lg btn-primary w-100" type="submit">
+            <button hlmBtn variant="default" size="lg" class="w-full" type="submit">
               Save Contract
             </button>
           </fieldset>
         </div>
-      </div>
+      </section>
 
       <!-- Generated Contract Canvas -->
-      <div class="card shadow-sm mt-3" #hiddenDiv hidden>
-        <div class="card-header bg-dark text-white">
-          <h4 class="h6 mb-0">Contract QR Code</h4>
+      <section hlmCard #hiddenDiv hidden>
+        <div hlmCardHeader>
+          <h3 hlmCardTitle class="text-base">Contract QR Code</h3>
         </div>
-        <div class="card-body text-center">
-          <canvas #canvas></canvas>
+        <div hlmCardContent class="flex justify-center">
+          <div class="qr-quiet-zone">
+            <canvas #canvas></canvas>
+          </div>
         </div>
-      </div>
+      </section>
     </div>
 
     <!-- Right Column: Bot Selection -->
-    <div class="col-lg-7 col-md-12 mb-3">
+    <div class="lg:col-span-7">
       <app-bot-selector
         [bots]="bots"
         [selectedBotNames]="selectedBotNames"
         (botAdded)="addBot($event)"
-        (botRemoved)="removeBotByName($event)">
-      </app-bot-selector>
+        (botRemoved)="removeBotByName($event)"
+      ></app-bot-selector>
     </div>
   </div>
 </form>

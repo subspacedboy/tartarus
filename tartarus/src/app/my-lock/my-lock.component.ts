@@ -1,18 +1,28 @@
-import {Component, OnInit, ChangeDetectionStrategy} from '@angular/core';
-import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
-import {UserDataService} from '../user-data.service';
-import {LockSession} from '../models/lock-session';
-import {ConfigService} from '../config.service';
-import {ContractCardComponent} from '../contract-card/contract-card.component';
-import {Contract} from '../models/contract';
-import {ToastService} from '../toast.service';
-import {DateAgoPipe} from "../date-ago.pipe";
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { TartarusCoordinatorService } from '../tartarus-coordinator.service';
+import { UserDataService } from '../user-data.service';
+import { LockSession } from '../models/lock-session';
+import { ConfigService } from '../config.service';
+import { ContractCardComponent } from '../contract-card/contract-card.component';
+import { Contract } from '../models/contract';
+import { ToastService } from '../toast.service';
+import { DateAgoPipe } from "../date-ago.pipe";
+import { HlmAlertImports } from '../shared/ui/ui-alert-helm';
+import { HlmButtonDirective } from '../shared/ui/ui-button-helm';
+import { HlmCardImports } from '../shared/ui/ui-card-helm';
+import { HlmInputDirective } from '../shared/ui/ui-input-helm';
+import { HlmLabelDirective } from '../shared/ui/ui-label-helm';
 
 @Component({
   selector: 'app-my-lock',
   imports: [
     ContractCardComponent,
-    DateAgoPipe
+    DateAgoPipe,
+    ...HlmAlertImports,
+    HlmButtonDirective,
+    ...HlmCardImports,
+    HlmInputDirective,
+    HlmLabelDirective,
   ],
   templateUrl: './my-lock.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

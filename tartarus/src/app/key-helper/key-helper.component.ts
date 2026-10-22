@@ -1,10 +1,17 @@
-import {Component, ElementRef, ViewChild, ChangeDetectionStrategy} from '@angular/core';
-import {CryptoService} from '../crypto.service';
+import { Component, ElementRef, ViewChild, ChangeDetectionStrategy } from '@angular/core';
+import { CryptoService } from '../crypto.service';
 import jsQR from 'jsqr';
+import { HlmCardImports } from '../shared/ui/ui-card-helm';
+import { HlmInputDirective } from '../shared/ui/ui-input-helm';
+import { HlmLabelDirective } from '../shared/ui/ui-label-helm';
 
 @Component({
   selector: 'app-key-helper',
-  imports: [],
+  imports: [
+    ...HlmCardImports,
+    HlmInputDirective,
+    HlmLabelDirective,
+  ],
   templateUrl: './key-helper.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './key-helper.component.scss'

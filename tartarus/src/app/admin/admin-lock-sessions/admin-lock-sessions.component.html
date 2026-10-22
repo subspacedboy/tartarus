@@ -1,54 +1,66 @@
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <div>
-    <p class="mb-1"><a routerLink="/admin/contracts">&larr; Live Contracts</a></p>
-    <h2>Lock Sessions</h2>
+<div class="space-y-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <p class="mb-1">
+        <a routerLink="/admin/contracts" class="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground no-underline">
+          &larr; Live Contracts
+        </a>
+      </p>
+      <h1 class="text-2xl font-bold tracking-tight text-foreground">Lock Sessions</h1>
+    </div>
   </div>
-</div>
 
-<table class="table table-striped table-hover">
-  <thead>
-    <tr>
-      <th scope="col">Name</th>
-      <th scope="col">Session Token</th>
-      <th scope="col">Active Contract</th>
-      <th scope="col">Lock State</th>
-      <th scope="col">Available?</th>
-      <th scope="col">Last Update</th>
-    </tr>
-  </thead>
-  <tbody>
-    @for (l of lockSessions | async; track l.name) {
-      <tr>
-        <th scope="row">
-          <a [routerLink]="['/admin/lock_sessions', l.sessionToken]">{{ l.name }}</a>
-        </th>
-        <td><code>{{l.sessionToken}}</code></td>
-        <td>
-          @if (l.activeContractName) {
-            <a [routerLink]="['/admin/contract', l.activeContractName]" class="badge bg-primary text-decoration-none">
-              {{ l.activeContractName }} (#{{ l.activeContractSerial }})
-            </a>
-          } @else {
-            <span class="text-muted">—</span>
+  <section hlmCard class="overflow-hidden">
+    <div class="overflow-x-auto">
+      <table hlmTable>
+        <thead hlmThead>
+          <tr hlmTrow>
+            <th hlmTh scope="col">Name</th>
+            <th hlmTh scope="col">Session Token</th>
+            <th hlmTh scope="col">Active Contract</th>
+            <th hlmTh scope="col">Lock State</th>
+            <th hlmTh scope="col">Available?</th>
+            <th hlmTh scope="col">Last Update</th>
+          </tr>
+        </thead>
+        <tbody hlmTbody>
+          @for (l of lockSessions | async; track l.name) {
+            <tr hlmTrow>
+              <th hlmTd scope="row">
+                <a [routerLink]="['/admin/lock_sessions', l.sessionToken]" class="font-medium text-primary hover:underline">{{ l.name }}</a>
+              </th>
+              <td hlmTd><code class="font-mono text-xs">{{l.sessionToken}}</code></td>
+              <td hlmTd>
+                @if (l.activeContractName) {
+                  <a [routerLink]="['/admin/contract', l.activeContractName]" hlmBadge variant="default" class="no-underline">
+                    {{ l.activeContractName }} (#{{ l.activeContractSerial }})
+                  </a>
+                } @else {
+                  <span class="text-muted-foreground">&mdash;</span>
+                }
+              </td>
+              <td hlmTd>
+                <div class="flex flex-wrap items-center gap-1.5">
+                  @if (l.lockState?.isLocked) {
+                    <span hlmBadge variant="destructive">Locked</span>
+                  } @else {
+                    <span hlmBadge variant="success">Unlocked</span>
+                  }
+                  @if (l.lockState?.emergencyUnlocked) {
+                    <span hlmBadge variant="warning">Emergency Unlocked</span>
+                  }
+                </div>
+              </td>
+              <td hlmTd>{{l.availableForContract ? 'Yes' : 'No'}}</td>
+              <td hlmTd class="text-xs text-muted-foreground">{{l.updatedAt | dateAgo}}</td>
+            </tr>
+          } @empty {
+            <tr hlmTrow>
+              <td hlmTd colspan="6" class="py-8 text-center text-muted-foreground">No lock sessions</td>
+            </tr>
           }
-        </td>
-        <td>
-          @if (l.lockState?.isLocked) {
-            <span class="badge bg-danger">Locked</span>
-          } @else {
-            <span class="badge bg-success">Unlocked</span>
-          }
-          @if (l.lockState?.emergencyUnlocked) {
-            <span class="badge bg-warning text-dark ms-1">Emergency Unlocked</span>
-          }
-        </td>
-        <td>{{l.availableForContract ? 'Yes' : 'No'}}</td>
-        <td>{{l.updatedAt | dateAgo}}</td>
-      </tr>
-    } @empty {
-      <tr>
-        <td colspan="6" style="text-align: center">No lock sessions</td>
-      </tr>
-    }
-  </tbody>
-</table>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

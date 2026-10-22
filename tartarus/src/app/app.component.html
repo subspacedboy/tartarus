@@ -1,46 +1,153 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-  <div class="container-fluid">
-    <a class="navbar-brand" id="maybe" href="#">Tartarus 🔐</a>
-    <div ngbDropdown placement="bottom-end" class="d-inline-block" display="dynamic">
-      <button type="button" class="btn btn-primary" id="dropdownBasic1" ngbDropdownToggle>Menu</button>
-      <div ngbDropdownMenu aria-labelledby="dropdownBasic1">
-        <button ngbDropdownItem><a routerLink="">Home</a></button>
+<a
+  href="#main-content"
+  class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground focus:shadow-md focus:outline-none focus:ring-2 focus:ring-ring"
+>
+  Skip to main content
+</a>
 
-        @if(hasLockSessions) {
-          <button ngbDropdownItem><a routerLink="my-lock">My Lock</a></button>
+<header class="sticky top-0 z-40 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85">
+  <nav
+    aria-label="Primary"
+    class="container mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8"
+  >
+    <div class="flex items-center gap-6">
+      <a
+        routerLink=""
+        id="brand-link"
+        class="navbar-brand inline-flex items-center gap-2.5 rounded-md px-1.5 py-1 text-base font-bold tracking-tight text-foreground no-underline transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <span class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <svg
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="h-4 w-4"
+          >
+            <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        </span>
+        <span>Tartarus</span>
+      </a>
 
-          <div class="dropdown-divider"></div>
-          <button ngbDropdownItem><a routerLink="logout-lock-user">Logout as Lock User</a></button>
-          <div class="dropdown-divider"></div>
+      <div class="hidden md:flex md:items-center md:gap-1">
+        <a
+          routerLink=""
+          routerLinkActive="bg-accent text-accent-foreground"
+          [routerLinkActiveOptions]="{ exact: true }"
+          class="inline-flex h-9 items-center rounded-md px-3 text-sm font-medium text-foreground/80 no-underline transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Home
+        </a>
+
+        @if (hasAuthorSession) {
+          <a
+            routerLink="/lock-sessions"
+            routerLinkActive="bg-accent text-accent-foreground"
+            class="inline-flex h-9 items-center rounded-md px-3 text-sm font-medium text-foreground/80 no-underline transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Lock Sessions
+          </a>
         }
 
-        @if(hasAuthorSession) {
-          <button ngbDropdownItem><a routerLink="logout-author">Logout as Author</a></button>
+        @if (hasLockSessions) {
+          <a
+            routerLink="my-lock"
+            routerLinkActive="bg-accent text-accent-foreground"
+            class="inline-flex h-9 items-center rounded-md px-3 text-sm font-medium text-foreground/80 no-underline transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            My Lock
+          </a>
         }
-
-<!--        @if (currentUser) {-->
-<!--          <button ngbDropdownItem><a routerLink="my-info">My Info</a></button>-->
-<!--          <button ngbDropdownItem><a routerLink="protocols">Protocols</a></button>-->
-<!--          <button ngbDropdownItem><a routerLink="subscribe">Subscribe</a></button>-->
-<!--          @if(environment.show_fake_location_component){-->
-<!--            <button ngbDropdownItem><a routerLink="fake-location">Set Fake Location</a></button>-->
-<!--          }-->
-<!--          <button ngbDropdownItem><a routerLink="logout">Logout</a></button>-->
-<!--        }-->
-
-        <div class="dropdown-divider"></div>
-        <button ngbDropdownItem><a routerLink="bt">Bluetooth Setup (BLE)</a></button>
-        <button ngbDropdownItem><a routerLink="updater">Firmware Flasher (USB)</a></button>
-        <button ngbDropdownItem><a routerLink="console">Serial Console (USB)</a></button>
-        <button ngbDropdownItem><a routerLink="configuration">Lock Configuration Data</a></button>
       </div>
     </div>
-  </div>
-</nav>
+
+    <div class="flex items-center gap-2">
+      @if (hasAuthorSession) {
+        <span hlmBadge variant="default" class="hidden sm:inline-flex">Keyholder Active</span>
+      }
+      @if (hasLockSessions) {
+        <span hlmBadge variant="secondary" class="hidden sm:inline-flex">Wearer Active</span>
+      }
+
+      <button
+        type="button"
+        hlmBtn
+        variant="outline"
+        size="sm"
+        id="dropdownBasic1"
+        [hlmMenuTriggerFor]="appMenu"
+        aria-label="Open hardware and session menu"
+      >
+        <span>Hardware &amp; Menu</span>
+        <svg
+          aria-hidden="true"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="h-4 w-4 opacity-70"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+
+      <ng-template #appMenu>
+        <hlm-menu class="w-60" aria-label="Application and hardware tools">
+          <hlm-menu-label>Navigation</hlm-menu-label>
+          <a hlmMenuItem routerLink="">Home</a>
+
+          @if (hasAuthorSession) {
+            <a hlmMenuItem routerLink="/lock-sessions">Lock Sessions</a>
+          }
+
+          @if (hasLockSessions) {
+            <a hlmMenuItem routerLink="my-lock">My Lock</a>
+          }
+
+          @if (hasLockSessions || hasAuthorSession) {
+            <hlm-menu-separator />
+            <hlm-menu-label>Active Sessions</hlm-menu-label>
+          }
+
+          @if (hasLockSessions) {
+            <a hlmMenuItem routerLink="logout-lock-user" class="text-destructive focus:text-destructive">
+              Logout as Lock User
+            </a>
+          }
+
+          @if (hasAuthorSession) {
+            <a hlmMenuItem routerLink="logout-author" class="text-destructive focus:text-destructive">
+              Logout as Author
+            </a>
+          }
+
+          <hlm-menu-separator />
+          <hlm-menu-label>Hardware &amp; Tools</hlm-menu-label>
+          <a hlmMenuItem routerLink="bt">Bluetooth Setup (BLE)</a>
+          <a hlmMenuItem routerLink="updater">Firmware Flasher (USB)</a>
+          <a hlmMenuItem routerLink="console">Serial Console (USB)</a>
+          <a hlmMenuItem routerLink="configuration">Lock Configuration Data</a>
+        </hlm-menu>
+      </ng-template>
+    </div>
+  </nav>
+</header>
 
 <app-toast-container></app-toast-container>
-<!--<ngx-spinner bdColor = "rgba(0, 0, 0, 0.8)" size = "medium" color = "#df720c" type = "ball-atom" [fullScreen] = "true"><p style="color: white" > Reticulating Splines... </p></ngx-spinner>-->
 
-<div class="container">
+<main
+  id="main-content"
+  tabindex="-1"
+  class="container mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 focus:outline-none"
+>
   <router-outlet></router-outlet>
-</div>
+</main>

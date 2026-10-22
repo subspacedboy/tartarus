@@ -1,21 +1,33 @@
-import {Component, OnInit, ChangeDetectionStrategy} from '@angular/core';
-import {ActivatedRoute, Router} from '@angular/router';
-import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
-import {UserDataService} from '../user-data.service';
-import {LockSession} from '../models/lock-session';
-import {Contract} from '../models/contract';
-import {ContractCardComponent} from '../contract-card/contract-card.component';
-import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
-import {ToastService} from '../toast.service';
-import {DateAgoPipe} from "../date-ago.pipe";
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { TartarusCoordinatorService } from '../tartarus-coordinator.service';
+import { UserDataService } from '../user-data.service';
+import { LockSession } from '../models/lock-session';
+import { Contract } from '../models/contract';
+import { ContractCardComponent } from '../contract-card/contract-card.component';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ToastService } from '../toast.service';
+import { DateAgoPipe } from "../date-ago.pipe";
+import { HlmAlertImports } from '../shared/ui/ui-alert-helm';
+import { HlmBadgeDirective } from '../shared/ui/ui-badge-helm';
+import { HlmButtonDirective } from '../shared/ui/ui-button-helm';
+import { HlmCardImports } from '../shared/ui/ui-card-helm';
+import { HlmInputDirective } from '../shared/ui/ui-input-helm';
+import { HlmLabelDirective } from '../shared/ui/ui-label-helm';
 
 @Component({
   selector: 'app-lock-session-detail',
-    imports: [
-        ContractCardComponent,
-        ReactiveFormsModule,
-        DateAgoPipe
-    ],
+  imports: [
+    ContractCardComponent,
+    ReactiveFormsModule,
+    DateAgoPipe,
+    ...HlmAlertImports,
+    HlmBadgeDirective,
+    HlmButtonDirective,
+    ...HlmCardImports,
+    HlmInputDirective,
+    HlmLabelDirective,
+  ],
   templateUrl: './lock-session-detail.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './lock-session-detail.component.scss'

@@ -3,13 +3,25 @@ import {UserDataService} from '../../user-data.service';
 import {TartarusCoordinatorService} from '../../tartarus-coordinator.service';
 import {IdHelperService} from '../../id-helper.service';
 import {CryptoService} from '../../crypto.service';
-import {Router} from '@angular/router';
+import {Router, RouterLink} from '@angular/router';
 import {WebsocketService} from '../../websocket.service';
 import jsQR from 'jsqr';
+import { HlmCardImports } from '../../shared/ui/ui-card-helm';
+import { HlmInputDirective } from '../../shared/ui/ui-input-helm';
+import { HlmLabelDirective } from '../../shared/ui/ui-label-helm';
+import { HlmAlertImports } from '../../shared/ui/ui-alert-helm';
+import { HlmBadgeDirective } from '../../shared/ui/ui-badge-helm';
 
 @Component({
   selector: 'app-admin-login',
-  imports: [],
+  imports: [
+    RouterLink,
+    ...HlmCardImports,
+    HlmInputDirective,
+    HlmLabelDirective,
+    ...HlmAlertImports,
+    HlmBadgeDirective,
+  ],
   templateUrl: './admin-login.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './admin-login.component.scss'

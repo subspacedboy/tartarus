@@ -1,20 +1,30 @@
-import {Component, ElementRef, Input, ViewChild, ChangeDetectionStrategy, ChangeDetectorRef} from '@angular/core';
-import {Contract} from '../models/contract';
-import {Command} from '../models/command';
-import {DatePipe} from '@angular/common';
+import { Component, ElementRef, Input, ViewChild, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Contract } from '../models/contract';
+import { Command } from '../models/command';
+import { DatePipe } from '@angular/common';
 import * as QRCode from 'qrcode';
-import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
-import {UserDataService} from '../user-data.service';
-import {SerialDeviceService} from '../serial-device.service';
-import {ToastService} from '../toast.service';
-import {SignedMessage} from '../club/subjugated/fb/message/signed-message';
+import { TartarusCoordinatorService } from '../tartarus-coordinator.service';
+import { UserDataService } from '../user-data.service';
+import { SerialDeviceService } from '../serial-device.service';
+import { ToastService } from '../toast.service';
+import { SignedMessage } from '../club/subjugated/fb/message/signed-message';
+import { HlmAlertImports } from '../shared/ui/ui-alert-helm';
+import { HlmBadgeDirective, type BadgeVariants } from '../shared/ui/ui-badge-helm';
+import { HlmButtonDirective } from '../shared/ui/ui-button-helm';
+import { HlmCardImports } from '../shared/ui/ui-card-helm';
+import { HlmSpinnerComponent } from '../shared/ui/ui-spinner-helm';
 
 import * as flatbuffers from 'flatbuffers';
 
 @Component({
   selector: 'app-command-card',
   imports: [
-    DatePipe
+    DatePipe,
+    ...HlmAlertImports,
+    HlmBadgeDirective,
+    HlmButtonDirective,
+    ...HlmCardImports,
+    HlmSpinnerComponent,
   ],
   templateUrl: './command-card.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
@@ -31,6 +41,32 @@ export class CommandCardComponent {
   serialError: string | null = null;
 
   @ViewChild('ackBtn') ackBtn!: ElementRef<HTMLButtonElement>;
+
+  get badgeVariant(): BadgeVariants['variant'] {
+    switch (this.command?.state) {
+      case 'PENDING':
+        return 'warning';
+      case 'ACKNOWLEDGED':
+        return 'success';
+      case 'ERROR':
+        return 'destructive';
+      default:
+        return 'secondary';
+    }
+  }
+
+  get accentBorderClass(): string {
+    switch (this.command?.state) {
+      case 'PENDING':
+        return 'border-l-4 border-l-warning';
+      case 'ACKNOWLEDGED':
+        return 'border-l-4 border-l-success';
+      case 'ERROR':
+        return 'border-l-4 border-l-destructive';
+      default:
+        return 'border-l-4 border-l-muted-foreground/40';
+    }
+  }
 
   constructor(
     private tartarusCoordinatorService: TartarusCoordinatorService,

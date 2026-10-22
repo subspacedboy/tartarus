@@ -1,28 +1,49 @@
-<div class="row">
-  <div class="col-lg-4">
-    <div class="bs-component">
-      <h2>Key Helper</h2>
-      <h3>What is this for?</h3>
-      <p>This will make you a key. A key is really just an image containing a QR code.
-        I strongly recommend saving this to your phone camera roll or to some place it will be safe
-        and probably backed up automatically. If you lose it, it's gone forever.</p>
-
-      <input type="file" (change)="onFileSelected($event)" accept="image/*">
-      <canvas #scanCanvas style="display: none;"></canvas>
-      <p>Scanned QR Code Data: <strong>{{ scannedResult }}</strong></p>
-
-      <p>Key: {{compressedKeyInBase64}}</p>
-
-      <p>Public PEM: {{publicPem}}</p>
-
-<!--      @if(showDownloadButton) {-->
-<!--        <p>-->
-<!--          Tap to hold and save to camera roll.-->
-<!--        </p>-->
-<!--        <div class="d-grid gap-2">-->
-<!--          <button class="btn btn-large btn-primary" (click)="downloadQRCode()">Download QR Code</button>-->
-<!--        </div>-->
-<!--      }-->
+<div class="mx-auto max-w-xl py-4">
+  <section hlmCard>
+    <div hlmCardHeader>
+      <h1 hlmCardTitle class="text-2xl">Key Inspector</h1>
+      <p hlmCardDescription>
+        Inspect a Tartarus key QR image and extract its compressed Base64 public key and PEM representation.
+      </p>
     </div>
-  </div>
+
+    <div hlmCardContent class="space-y-4">
+      <div class="space-y-1.5">
+        <label hlmLabel for="keyHelperFileInput">Key QR Code Image</label>
+        <input
+          id="keyHelperFileInput"
+          hlmInput
+          type="file"
+          (change)="onFileSelected($event)"
+          accept="image/*"
+        />
+        <canvas #scanCanvas class="hidden"></canvas>
+      </div>
+
+      <div class="space-y-3 rounded-lg border border-border bg-muted/30 p-3.5 text-sm">
+        <div>
+          <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground block">
+            Scanned QR Code Data:
+          </span>
+          <strong class="font-mono text-foreground">{{ scannedResult || 'Waiting for image...' }}</strong>
+        </div>
+
+        <div>
+          <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground block">
+            Compressed Key (Base64):
+          </span>
+          <code class="mt-1 block break-all rounded border border-border bg-muted px-2 py-1 font-mono text-xs text-foreground select-all">
+            {{ compressedKeyInBase64 || '—' }}
+          </code>
+        </div>
+
+        <div>
+          <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground block">
+            Public PEM:
+          </span>
+          <pre class="mt-1 overflow-x-auto whitespace-pre-wrap break-all rounded border border-border bg-muted px-2 py-1.5 font-mono text-xs text-foreground select-all">{{ publicPem || '—' }}</pre>
+        </div>
+      </div>
+    </div>
+  </section>
 </div>

@@ -26,6 +26,7 @@ import {AdminLockSessionsComponent} from './admin/admin-lock-sessions/admin-lock
 import {AdminLockSessionDetailComponent} from './admin/admin-lock-session-detail/admin-lock-session-detail.component';
 import {UpdaterComponent} from './updater/updater.component';
 import {ConsoleComponent} from './console/console.component';
+import {HardwareProvisioningComponent} from './admin/hardware/hardware-provisioning.component';
 
 export const routes: Routes = [
   {
@@ -60,6 +61,11 @@ export const routes: Routes = [
   {
     path: 'lock-sessions',
     component: LockSessionsComponent
+  },
+  {
+    path: 'lock-session',
+    redirectTo: 'lock-sessions',
+    pathMatch: 'full'
   },
   {
     path: 'lock-sessions/:sessionToken',
@@ -142,5 +148,10 @@ export const routes: Routes = [
     path: 'admin/add-firmware',
     canActivate: [adminGuard],
     component: AdminAddFirmwareComponent
+  },
+  {
+    path: 'admin/hardware',
+    canActivate: [adminGuard],
+    component: HardwareProvisioningComponent
   }
 ];

@@ -2,6 +2,8 @@ import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { LockEvent } from '../models/event';
 import { DateAgoPipe } from '../date-ago.pipe';
+import { HlmBadgeDirective, type BadgeVariants } from '../shared/ui/ui-badge-helm';
+import { HlmCardImports } from '../shared/ui/ui-card-helm';
 
 @Component({
   selector: 'app-event-card',
@@ -9,6 +11,8 @@ import { DateAgoPipe } from '../date-ago.pipe';
     CommonModule,
     DatePipe,
     DateAgoPipe,
+    HlmBadgeDirective,
+    ...HlmCardImports,
   ],
   templateUrl: './event-card.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
@@ -17,6 +21,24 @@ import { DateAgoPipe } from '../date-ago.pipe';
 export class EventCardComponent {
   @Input()
   event?: LockEvent;
+
+  get badgeVariant(): BadgeVariants['variant'] {
+    switch (this.event?.eventType) {
+      case 'UNLOCK':
+      case 'LOCAL_UNLOCK':
+        return 'success';
+      case 'EMERGENCY_UNLOCK':
+        return 'destructive';
+      case 'ACCEPT_CONTRACT':
+        return 'default';
+      case 'RELEASE_CONTRACT':
+        return 'warning';
+      case 'LOCK':
+      case 'LOCAL_LOCK':
+      default:
+        return 'secondary';
+    }
+  }
 
   get badgeClass(): string {
     switch (this.event?.eventType) {

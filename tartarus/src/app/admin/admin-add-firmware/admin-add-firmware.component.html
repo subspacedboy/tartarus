@@ -1,4 +1,38 @@
-<form [formGroup]="firmwareForm" (ngSubmit)="onSubmit()">
-  <input type="file" (change)="onFileChange($event)" />
-  <button type="submit">Upload</button>
-</form>
+<div class="mx-auto max-w-xl space-y-6">
+  <div>
+    <p class="mb-2">
+      <a routerLink="/admin" class="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground no-underline">
+        &larr; Back to Admin
+      </a>
+    </p>
+    <h1 class="text-2xl font-bold tracking-tight text-foreground">Add Firmware</h1>
+    <p class="mt-1 text-sm text-muted-foreground">
+      Upload a compiled firmware binary image to register it with the Coordinator.
+    </p>
+  </div>
+
+  <section hlmCard>
+    <div hlmCardHeader>
+      <h2 hlmCardTitle class="text-lg">Firmware Binary Upload</h2>
+      <p hlmCardDescription>Select the firmware binary file from disk and upload it to the coordinator.</p>
+    </div>
+
+    <div hlmCardContent>
+      <form [formGroup]="firmwareForm" (ngSubmit)="onSubmit()" class="space-y-4">
+        <div class="space-y-1.5">
+          <label hlmLabel for="firmwareBinaryInput">Firmware Image File</label>
+          <input
+            hlmInput
+            id="firmwareBinaryInput"
+            type="file"
+            (change)="onFileChange($event)"
+          />
+        </div>
+
+        <div class="flex justify-end">
+          <button hlmBtn type="submit">Upload</button>
+        </div>
+      </form>
+    </div>
+  </section>
+</div>

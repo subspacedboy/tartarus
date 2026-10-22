@@ -17,13 +17,21 @@ import {Permission} from '../club/subjugated/fb/message/permission';
 import {Bot as FBBot} from '../club/subjugated/fb/message/bot';
 import {Bot} from '../models/bot';
 
-import {BotSelectorComponent} from '../bot-selector/bot-selector.component';
+import { BotSelectorComponent } from '../bot-selector/bot-selector.component';
+import { HlmButtonDirective } from '../shared/ui/ui-button-helm';
+import { HlmCardImports } from '../shared/ui/ui-card-helm';
+import { HlmInputDirective } from '../shared/ui/ui-input-helm';
+import { HlmLabelDirective } from '../shared/ui/ui-label-helm';
 
 @Component({
   selector: 'app-new-full-contract',
   imports: [
     ReactiveFormsModule,
-    BotSelectorComponent
+    BotSelectorComponent,
+    HlmButtonDirective,
+    ...HlmCardImports,
+    HlmInputDirective,
+    HlmLabelDirective,
   ],
   templateUrl: './new-full-contract.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

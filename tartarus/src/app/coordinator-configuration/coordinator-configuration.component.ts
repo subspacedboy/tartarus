@@ -1,19 +1,31 @@
-import {AfterViewInit, Component, ElementRef, OnInit, ViewChild, ChangeDetectionStrategy} from '@angular/core';
-import {ConfigService} from '../config.service';
+import { AfterViewInit, Component, ElementRef, OnInit, ViewChild, ChangeDetectionStrategy } from '@angular/core';
+import { ConfigService } from '../config.service';
 import * as flatbuffers from 'flatbuffers';
-import {Key} from '../club/subjugated/fb/message/configuration/key';
-import {CoordinatorConfiguration} from '../club/subjugated/fb/message/configuration/coordinator-configuration';
+import { Key } from '../club/subjugated/fb/message/configuration/key';
+import { CoordinatorConfiguration } from '../club/subjugated/fb/message/configuration/coordinator-configuration';
 import * as QRCode from 'qrcode';
-import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
-import {firstValueFrom, Subject} from 'rxjs';
-import {SafetyKey} from '../models/safety-key';
-import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
-import {AppConfig} from '../models/app-config';
-import {QrcodeService} from '../qrcode.service';
+import { TartarusCoordinatorService } from '../tartarus-coordinator.service';
+import { firstValueFrom, Subject } from 'rxjs';
+import { SafetyKey } from '../models/safety-key';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AppConfig } from '../models/app-config';
+import { QrcodeService } from '../qrcode.service';
+import { HlmAlertImports } from '../shared/ui/ui-alert-helm';
+import { HlmButtonDirective } from '../shared/ui/ui-button-helm';
+import { HlmCardImports } from '../shared/ui/ui-card-helm';
+import { HlmInputDirective } from '../shared/ui/ui-input-helm';
+import { HlmLabelDirective } from '../shared/ui/ui-label-helm';
 
 @Component({
   selector: 'app-coordinator-configuration',
-  imports: [ReactiveFormsModule],
+  imports: [
+    ReactiveFormsModule,
+    ...HlmAlertImports,
+    HlmButtonDirective,
+    ...HlmCardImports,
+    HlmInputDirective,
+    HlmLabelDirective,
+  ],
   templateUrl: './coordinator-configuration.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './coordinator-configuration.component.scss'

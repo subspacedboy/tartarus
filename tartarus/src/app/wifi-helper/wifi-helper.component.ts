@@ -1,11 +1,19 @@
-import {Component, ElementRef, ViewChild, ChangeDetectionStrategy} from '@angular/core';
-import {QrcodeService} from '../qrcode.service';
-import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
+import { Component, ElementRef, ViewChild, ChangeDetectionStrategy } from '@angular/core';
+import { QrcodeService } from '../qrcode.service';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { HlmButtonDirective } from '../shared/ui/ui-button-helm';
+import { HlmCardImports } from '../shared/ui/ui-card-helm';
+import { HlmInputDirective } from '../shared/ui/ui-input-helm';
+import { HlmLabelDirective } from '../shared/ui/ui-label-helm';
 
 @Component({
   selector: 'app-wifi-helper',
   imports: [
-    ReactiveFormsModule
+    ReactiveFormsModule,
+    HlmButtonDirective,
+    ...HlmCardImports,
+    HlmInputDirective,
+    HlmLabelDirective,
   ],
   templateUrl: './wifi-helper.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

@@ -1,0 +1,299 @@
+<hlm-dialog [open]="true" (closed)="close()" aria-label="Hardware Unit Detail & Attestation History" class="max-w-5xl">
+  <div hlmDialogHeader class="flex flex-row items-center justify-between border-b border-border pb-3">
+    <h2 hlmDialogTitle class="flex items-center gap-2 text-lg">
+      <span aria-hidden="true">🔒</span>
+      <span>Hardware Unit Detail &amp; Attestation History</span>
+    </h2>
+    <button hlmBtn variant="ghost" size="sm" type="button" (click)="close()" aria-label="Close">✕</button>
+  </div>
+
+  <div class="space-y-5 py-2">
+    @if (isLoading()) {
+      <div class="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
+        <hlm-spinner />
+        <p class="text-sm">Loading hardware unit details...</p>
+      </div>
+    } @else if (unit(); as u) {
+      <!-- Header Banner -->
+      <div
+        class="flex flex-wrap items-start justify-between gap-4 rounded-lg border p-4"
+        [class.border-destructive/50]="u.isRevoked"
+        [class.bg-destructive/10]="u.isRevoked"
+        [class.border-border]="!u.isRevoked"
+        [class.bg-muted/30]="!u.isRevoked"
+      >
+        <div class="space-y-1">
+          <div class="flex flex-wrap items-center gap-2">
+            <h3 class="text-lg font-bold text-foreground">{{ u.label || 'Unnamed Unit' }}</h3>
+            @if (u.provisioningMode === 'HARD') {
+              <span hlmBadge variant="success">🛡️ HARD PROVISIONED</span>
+            } @else {
+              <span hlmBadge variant="warning">🧪 SOFT PROVISIONED (DEV)</span>
+            }
+            @if (u.isRevoked) {
+              <span hlmBadge variant="destructive">⛔ REVOKED</span>
+            } @else {
+              <span hlmBadge variant="success">ACTIVE</span>
+            }
+          </div>
+          <div class="flex flex-wrap items-center gap-2 font-mono text-xs text-muted-foreground">
+            <span>Hardware ID: <strong class="text-foreground">{{ u.hardwareId }}</strong></span>
+            <button hlmBtn variant="ghost" size="sm" type="button" class="h-6 px-2 text-xs" (click)="copyToClipboard(u.hardwareId, 'Hardware ID')">📋 Copy</button>
+          </div>
+          @if (u.isRevoked && u.revokedReason) {
+            <div class="text-xs font-medium text-destructive pt-1">
+              <strong>Revocation Reason:</strong> {{ u.revokedReason }}
+            </div>
+          }
+        </div>
+
+        <div class="text-right text-xs text-muted-foreground space-y-0.5">
+          <div>Provisioned: <strong class="text-foreground">{{ u.provisionedAt | dateAgo }}</strong></div>
+          <div>Last Attested: <strong class="text-foreground">{{ u.lastAttestedAt ? (u.lastAttestedAt | dateAgo) : 'Never' }}</strong></div>
+        </div>
+      </div>
+
+      <!-- Session Token Tracking Card -->
+      <section hlmCard>
+        <div hlmCardHeader class="flex flex-row items-center justify-between pb-3">
+          <h4 hlmCardTitle class="text-sm">🔄 Session Token Tracking (Privacy Rotation)</h4>
+          <span class="text-xs text-muted-foreground">Survives Factory Resets</span>
+        </div>
+        <div hlmCardContent class="space-y-3">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div class="rounded-md border border-border bg-muted/30 p-3">
+              <span class="block text-xs text-muted-foreground mb-1">Initial Session Token (at provisioning time):</span>
+              <div class="font-mono text-base font-semibold text-primary">{{ u.initialSessionToken }}</div>
+            </div>
+            <div class="rounded-md border border-border bg-muted/30 p-3">
+              <span class="block text-xs text-muted-foreground mb-1">Last Known Session Token (current):</span>
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-base font-semibold text-emerald-600 dark:text-emerald-400">{{ u.lastKnownSessionToken || '—' }}</span>
+                @if (u.lastKnownSessionToken && u.lastKnownSessionToken !== u.initialSessionToken) {
+                  <span hlmBadge variant="warning">Rotated via Reset</span>
+                } @else if (u.lastKnownSessionToken) {
+                  <span hlmBadge variant="secondary">Unchanged</span>
+                }
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-muted-foreground">
+            ℹ️ When an operator or user issues a factory reset (<code class="font-mono">ResetCommand</code>), the lock generates a new operational session token and identity keypair to protect privacy. The Coordinator tracks the physical hardware unit continuously across rotations via its immutable <code class="font-mono">copr_uid_hex</code>.
+          </p>
+        </div>
+      </section>
+
+      <!-- Cryptographic Identity & Infineon Certs -->
+      <section hlmCard>
+        <div hlmCardHeader class="pb-3">
+          <h4 hlmCardTitle class="text-sm">🔑 Cryptographic Keys &amp; Attestation</h4>
+        </div>
+        <div hlmCardContent class="space-y-4">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div class="space-y-1">
+              <label hlmLabel class="text-xs text-muted-foreground">Device Authenticity Key (OID 0xE0F2, SEC1 P-256):</label>
+              <div class="flex gap-2">
+                <input hlmInput type="text" class="font-mono text-xs" [value]="u.authPubkeyB64" readonly />
+                <button hlmBtn variant="outline" size="sm" type="button" (click)="copyToClipboard(u.authPubkeyB64, 'Auth PubKey')">Copy</button>
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <label hlmLabel class="text-xs text-muted-foreground">Last Known Lock Identity Key (OID 0xE0F1, SEC1 P-256):</label>
+              <div class="flex gap-2">
+                <input hlmInput type="text" class="font-mono text-xs" [value]="u.lastKnownLockPubkeyB64 || 'Not captured yet'" readonly />
+                @if (u.lastKnownLockPubkeyB64) {
+                  <button hlmBtn variant="outline" size="sm" type="button" (click)="copyToClipboard(u.lastKnownLockPubkeyB64, 'Lock PubKey')">Copy</button>
+                }
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <label hlmLabel class="text-xs text-muted-foreground">Infineon Factory Signature (OID 0xE0F0 -&gt; 0xE0F2, P1363):</label>
+              <div class="flex gap-2">
+                <input hlmInput type="text" class="font-mono text-xs" [value]="u.manufacturerSigB64" readonly />
+                <button hlmBtn variant="outline" size="sm" type="button" (click)="copyToClipboard(u.manufacturerSigB64, 'Manufacturer Signature')">Copy</button>
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <label hlmLabel class="text-xs text-muted-foreground">Attestation Digest (SHA-256 hex):</label>
+              <div class="flex gap-2">
+                <input hlmInput type="text" class="font-mono text-xs" [value]="u.attestationDigestHex" readonly />
+                <button hlmBtn variant="outline" size="sm" type="button" (click)="copyToClipboard(u.attestationDigestHex, 'Attestation Digest')">Copy</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-3 border-t border-border pt-3 text-xs sm:grid-cols-3">
+            <div>
+              <div class="font-semibold text-muted-foreground">Infineon Leaf Subject:</div>
+              <div class="truncate text-foreground" [title]="u.leafCertSubject">{{ u.leafCertSubject }}</div>
+            </div>
+            <div>
+              <div class="font-semibold text-muted-foreground">Issuer CA:</div>
+              <div class="truncate text-foreground" [title]="u.leafCertIssuer">{{ u.leafCertIssuer }}</div>
+            </div>
+            <div>
+              <div class="font-semibold text-muted-foreground">Leaf Serial Hex:</div>
+              <div class="font-mono text-foreground">{{ u.leafCertSerialHex }}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ESP32-S3 eFuse Security Posture -->
+      <section hlmCard>
+        <div hlmCardHeader class="pb-3">
+          <h4 hlmCardTitle class="text-sm">🔒 ESP32-S3 eFuse Security Posture</h4>
+        </div>
+        <div hlmCardContent>
+          <div class="flex flex-wrap gap-1.5">
+            <span hlmBadge [variant]="u.blk3Provisioned ? 'success' : 'secondary'">
+              {{ u.blk3Provisioned ? '✔ BLK3 Seed Burned' : '✖ BLK3 Seed Empty' }}
+            </span>
+            <span hlmBadge [variant]="u.blk3WriteProtected ? 'success' : 'secondary'">
+              {{ u.blk3WriteProtected ? '✔ BLK3 Write-Protected' : '✖ BLK3 Unprotected' }}
+            </span>
+            <span hlmBadge [variant]="u.secureBootEnabled ? 'success' : 'secondary'">
+              {{ u.secureBootEnabled ? '✔ Secure Boot v2 Enabled' : '✖ Secure Boot Disabled' }}
+            </span>
+            <span hlmBadge [variant]="u.padJtagDisabled ? 'success' : 'warning'">
+              {{ u.padJtagDisabled ? '✔ PAD JTAG Disabled' : '⚠ PAD JTAG Active' }}
+            </span>
+            <span hlmBadge [variant]="u.usbJtagDisabled ? 'success' : 'warning'">
+              {{ u.usbJtagDisabled ? '✔ USB JTAG Disabled' : '⚠ USB JTAG Active' }}
+            </span>
+            <span hlmBadge [variant]="u.softJtagDisabled ? 'success' : 'warning'">
+              {{ u.softJtagDisabled ? '✔ SOFT JTAG Disabled' : '⚠ SOFT JTAG Active' }}
+            </span>
+            <span hlmBadge [variant]="u.securityDownloadEnabled ? 'success' : 'warning'">
+              {{ u.securityDownloadEnabled ? '✔ ROM Secure Download' : '⚠ Secure Download Disabled' }}
+            </span>
+            <span hlmBadge variant="info">
+              Anti-Rollback Version: {{ u.secureVersion }}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Attestation History Log Table -->
+      <section hlmCard class="overflow-hidden">
+        <div hlmCardHeader class="flex flex-row items-center justify-between pb-3">
+          <h4 hlmCardTitle class="text-sm">📋 Recent Firmware Attestation Logs (Challenge Responses)</h4>
+          <span hlmBadge variant="secondary">{{ u.attestationLogs.length }} events</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table hlmTable>
+            <thead hlmThead>
+              <tr hlmTrow>
+                <th hlmTh>Timestamp</th>
+                <th hlmTh>Session Token</th>
+                <th hlmTh>Firmware Version</th>
+                <th hlmTh>Method</th>
+                <th hlmTh>Status</th>
+                <th hlmTh>Failure Reason</th>
+              </tr>
+            </thead>
+            <tbody hlmTbody>
+              @for (log of u.attestationLogs; track log.id) {
+                <tr hlmTrow>
+                  <td hlmTd class="text-xs text-muted-foreground">{{ log.createdAt | dateAgo }}</td>
+                  <td hlmTd><code class="font-mono text-xs">{{ log.sessionToken }}</code></td>
+                  <td hlmTd class="font-mono text-xs">{{ log.firmwareVersion || '—' }}</td>
+                  <td hlmTd>
+                    <span hlmBadge variant="outline" class="font-mono">{{ log.verificationMethod }}</span>
+                  </td>
+                  <td hlmTd>
+                    @if (log.success) {
+                      <span hlmBadge variant="success">PASS</span>
+                    } @else {
+                      <span hlmBadge variant="destructive">FAIL</span>
+                    }
+                  </td>
+                  <td hlmTd class="text-xs text-destructive">{{ log.failureReason || '—' }}</td>
+                </tr>
+              } @empty {
+                <tr hlmTrow>
+                  <td hlmTd colspan="6" class="py-6 text-center text-muted-foreground">
+                    No challenge-response attestation events recorded yet for this unit.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Administrative Settings / Emergency Revoke Form -->
+      <section hlmCard class="border-amber-500/40">
+        <div hlmCardHeader class="pb-3">
+          <h4 hlmCardTitle class="text-sm">⚙️ Unit Management &amp; Emergency Controls</h4>
+        </div>
+        <div hlmCardContent class="space-y-4">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div class="space-y-1.5">
+              <label hlmLabel for="editLabelInput">Label / Friendly Name:</label>
+              <input hlmInput id="editLabelInput" type="text" [ngModel]="editLabel()" (ngModelChange)="editLabel.set($event)" />
+            </div>
+            <div class="space-y-1.5">
+              <label hlmLabel for="editNotesInput">Administrative Notes:</label>
+              <input hlmInput id="editNotesInput" type="text" [ngModel]="editNotes()" (ngModelChange)="editNotes.set($event)" />
+            </div>
+          </div>
+
+          <div class="rounded-md border border-border bg-muted/30 p-4 space-y-2">
+            <label for="revokeSwitch" class="flex items-center gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                id="revokeSwitch"
+                class="h-4 w-4 rounded border-input text-destructive focus:ring-destructive"
+                [checked]="editIsRevoked()"
+                (change)="editIsRevoked.set($any($event.target).checked)"
+              />
+              <span class="text-sm font-semibold text-destructive">Emergency Revoke Hardware Unit</span>
+            </label>
+            <p class="text-xs text-muted-foreground">
+              When revoked, the Coordinator will immediately reject any future firmware challenge requests and MQTT connections from this hardware UID, blocking the lock from validating contracts.
+            </p>
+
+            @if (editIsRevoked()) {
+              <div class="pt-2 space-y-1">
+                <label hlmLabel for="revokeReasonInput" class="text-xs text-destructive">Revocation Reason:</label>
+                <input
+                  hlmInput
+                  id="revokeReasonInput"
+                  type="text"
+                  class="border-destructive"
+                  placeholder="e.g. Device physically compromised or reported stolen"
+                  [ngModel]="editRevokedReason()"
+                  (ngModelChange)="editRevokedReason.set($event)"
+                />
+              </div>
+            }
+          </div>
+
+          <div class="flex justify-end">
+            <button
+              hlmBtn
+              type="button"
+              [disabled]="isSaving()"
+              (click)="saveChanges()"
+            >
+              @if (isSaving()) {
+                <hlm-spinner size="sm" />
+                <span>Saving...</span>
+              } @else {
+                <span>💾 Save Changes</span>
+              }
+            </button>
+          </div>
+        </div>
+      </section>
+    }
+  </div>
+
+  <div hlmDialogFooter class="border-t border-border pt-4">
+    <button hlmBtn variant="secondary" type="button" (click)="close()">Close</button>
+  </div>
+</hlm-dialog>

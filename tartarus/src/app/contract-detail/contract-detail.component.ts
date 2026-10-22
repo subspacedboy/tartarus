@@ -1,25 +1,29 @@
-import {Component, OnInit, ChangeDetectionStrategy} from '@angular/core';
-import {DatePipe} from '@angular/common';
-import {NgbTooltip} from '@ng-bootstrap/ng-bootstrap';
-import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
-import {Contract} from '../models/contract';
-import {ActivatedRoute} from '@angular/router';
-import {UserDataService} from '../user-data.service';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { TartarusCoordinatorService } from '../tartarus-coordinator.service';
+import { Contract } from '../models/contract';
+import { ActivatedRoute } from '@angular/router';
+import { UserDataService } from '../user-data.service';
 import * as flatbuffers from 'flatbuffers';
-import {CryptoService} from '../crypto.service';
-import {UnlockCommand} from '../club/subjugated/fb/message/unlock-command';
-import {SignedMessage} from '../club/subjugated/fb/message/signed-message';
-import {MessagePayload} from '../club/subjugated/fb/message/message-payload';
-import {LockCommand} from '../club/subjugated/fb/message/lock-command';
-import {ReleaseCommand} from '../club/subjugated/fb/message/release-command';
-import {Contract as FBContract} from '../club/subjugated/fb/message/contract';
-import {ContractDescription, ContractBot} from '../models/contract-description';
-import {WebsocketService} from '../websocket.service';
-import {Command} from '../models/command';
-import {CommandCardComponent} from '../command-card/command-card.component';
-import {ToastService} from '../toast.service';
-import {DateAgoPipe} from "../date-ago.pipe";
-import {Bot} from '../models/bot';
+import { CryptoService } from '../crypto.service';
+import { UnlockCommand } from '../club/subjugated/fb/message/unlock-command';
+import { SignedMessage } from '../club/subjugated/fb/message/signed-message';
+import { MessagePayload } from '../club/subjugated/fb/message/message-payload';
+import { LockCommand } from '../club/subjugated/fb/message/lock-command';
+import { ReleaseCommand } from '../club/subjugated/fb/message/release-command';
+import { Contract as FBContract } from '../club/subjugated/fb/message/contract';
+import { ContractDescription, ContractBot } from '../models/contract-description';
+import { WebsocketService } from '../websocket.service';
+import { Command } from '../models/command';
+import { CommandCardComponent } from '../command-card/command-card.component';
+import { ToastService } from '../toast.service';
+import { DateAgoPipe } from "../date-ago.pipe";
+import { Bot } from '../models/bot';
+import { HlmAlertImports } from '../shared/ui/ui-alert-helm';
+import { HlmBadgeDirective } from '../shared/ui/ui-badge-helm';
+import { HlmButtonDirective } from '../shared/ui/ui-button-helm';
+import { HlmCardImports } from '../shared/ui/ui-card-helm';
+import { HlmTooltipTriggerDirective } from '../shared/ui/ui-tooltip-helm';
 
 @Component({
   selector: 'app-contract-detail',
@@ -27,7 +31,11 @@ import {Bot} from '../models/bot';
     CommandCardComponent,
     DateAgoPipe,
     DatePipe,
-    NgbTooltip
+    ...HlmAlertImports,
+    HlmBadgeDirective,
+    HlmButtonDirective,
+    ...HlmCardImports,
+    HlmTooltipTriggerDirective,
   ],
   templateUrl: './contract-detail.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

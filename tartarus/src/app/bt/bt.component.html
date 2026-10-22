@@ -1,216 +1,219 @@
-<div class="container py-4">
+<div class="space-y-6">
   <!-- Title & Status Header -->
-  <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
-    <div>
-      <h2 class="mb-1">Tartarus Bluetooth Manager 📡</h2>
-      <p class="text-muted mb-0">Configure Wi-Fi, set coordinator endpoints, and send commands over Web Bluetooth (BLE).</p>
+  <div class="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
+    <div class="space-y-1">
+      <h1 class="text-2xl font-bold tracking-tight text-foreground">Tartarus Bluetooth Manager</h1>
+      <p class="text-sm text-muted-foreground">
+        Configure Wi-Fi, set coordinator endpoints, and send commands over Web Bluetooth (BLE).
+      </p>
     </div>
-    <div class="d-flex gap-2">
+
+    <div class="flex flex-wrap items-center gap-2">
       @if (connectionState() === 'connected') {
-        <span class="badge bg-success fs-6 px-3 py-2">
-          Connected: {{ connectedDeviceName() }}
-        </span>
+        <span hlmBadge variant="success">Connected: {{ connectedDeviceName() }}</span>
         @if (isAuthenticated()) {
-          <span class="badge bg-success fs-6 px-3 py-2">
-            ✓ Authenticated
-          </span>
+          <span hlmBadge variant="success">✓ Authenticated</span>
         } @else if (isLockedOut()) {
-          <span class="badge bg-danger fs-6 px-3 py-2">
-            Locked Out
-          </span>
+          <span hlmBadge variant="destructive">Locked Out</span>
         } @else {
-          <span class="badge bg-warning text-dark fs-6 px-3 py-2">
-            PIN Required
-          </span>
+          <span hlmBadge variant="warning">PIN Required</span>
         }
       } @else if (connectionState() === 'connecting') {
-        <span class="badge bg-warning text-dark fs-6 px-3 py-2">
-          Connecting...
-        </span>
+        <span hlmBadge variant="warning">Connecting...</span>
       } @else {
-        <span class="badge bg-secondary fs-6 px-3 py-2">
-          Disconnected
-        </span>
+        <span hlmBadge variant="secondary">Disconnected</span>
       }
     </div>
   </div>
 
   <!-- Browser Support Warning -->
   @if (!isBluetoothSupported()) {
-    <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
-      <div>
-        <h5 class="alert-heading mb-1">Web Bluetooth Not Supported</h5>
-        <p class="mb-0">
-          This browser does not support the Web Bluetooth API.
-          Please open this page in <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong> on desktop/Android,
-          or use <strong>Bluefy (Web BLE Browser)</strong> on iOS.
-        </p>
+    <div hlmAlert variant="warning">
+      <h2 hlmAlertTitle>Web Bluetooth Not Supported</h2>
+      <div hlmAlertDescription>
+        This browser does not support the Web Bluetooth API. Please open this page in
+        <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong> on desktop/Android, or use
+        <strong>Bluefy (Web BLE Browser)</strong> on iOS.
       </div>
     </div>
   }
 
-  <div class="row g-4">
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
     <!-- Left Column: Controls -->
-    <div class="col-lg-7">
+    <div class="space-y-6 lg:col-span-7">
       <!-- 1. Connection Card -->
-      <div class="card mb-4 shadow-sm">
-        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-          <span class="fw-bold">1. Device Connection</span>
-          <small class="text-muted">Target: Tartarus</small>
+      <section hlmCard>
+        <div hlmCardHeader class="flex flex-row items-center justify-between gap-2 pb-3">
+          <h2 hlmCardTitle class="text-base">1. Device Connection</h2>
+          <span class="font-mono text-xs text-muted-foreground">Target: Tartarus BLE</span>
         </div>
-        <div class="card-body">
+        <div hlmCardContent class="space-y-4">
           @if (connectionState() === 'disconnected') {
-            <p class="card-text text-muted mb-3">
+            <p class="text-sm text-muted-foreground">
               Turn on your Tartarus device and click below to scan and pair via Bluetooth Low Energy.
             </p>
             <button
-              class="btn btn-primary btn-lg w-100"
+              type="button"
+              hlmBtn
+              variant="default"
+              size="lg"
+              class="w-full"
               [disabled]="!isBluetoothSupported()"
               (click)="connect()"
             >
-              Scan & Connect to Tartarus
+              Scan &amp; Connect to Tartarus
             </button>
-            <div class="form-check mt-2 text-start">
+            <label for="scanAll" class="flex cursor-pointer items-center gap-2.5 text-xs text-muted-foreground">
               <input
-                class="form-check-input"
                 type="checkbox"
                 id="scanAll"
+                class="h-4 w-4 rounded border-input text-primary focus:ring-ring"
                 [checked]="scanAllDevices()"
                 (change)="toggleScanAllDevices()"
               />
-              <label class="form-check-label text-muted small" for="scanAll">
-                Show all nearby Bluetooth devices (use if "Tartarus" is not appearing)
-              </label>
-            </div>
+              <span>Show all nearby Bluetooth devices (use if "Tartarus" is not appearing)</span>
+            </label>
           } @else if (connectionState() === 'connecting') {
-            <div class="text-center py-2">
-              <div class="spinner-border text-primary mb-2" role="status"></div>
-              <p class="mb-0 text-muted">Pairing with Tartarus GATT Server...</p>
+            <div class="flex flex-col items-center justify-center gap-2 py-4">
+              <hlm-spinner size="md" />
+              <p class="text-sm text-muted-foreground">Pairing with Tartarus GATT Server...</p>
             </div>
           } @else {
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="flex items-center justify-between gap-4">
               <div>
-                <strong class="text-success d-block">Connected to {{ connectedDeviceName() }}</strong>
-                <small class="text-muted">Status: {{ deviceStatus() }}</small>
+                <strong class="block text-sm font-semibold text-success">
+                  Connected to {{ connectedDeviceName() }}
+                </strong>
+                <span class="font-mono text-xs text-muted-foreground">Status: {{ deviceStatus() }}</span>
               </div>
-              <button class="btn btn-outline-danger" (click)="disconnect()">
+              <button type="button" hlmBtn variant="destructive" size="sm" (click)="disconnect()">
                 Disconnect
               </button>
             </div>
           }
         </div>
-      </div>
+      </section>
 
       <!-- 2. Device Authentication Card -->
       @if (connectionState() === 'connected') {
-        <div class="card mb-4 shadow-sm" [class.border-success]="isAuthenticated()" [class.border-danger]="isLockedOut()">
-          <div
-            class="card-header d-flex justify-content-between align-items-center"
-            [ngClass]="isAuthenticated() ? 'bg-success text-white' : isLockedOut() ? 'bg-danger text-white' : 'bg-dark text-white'"
-          >
-            <span class="fw-bold">2. Device Authentication</span>
+        <section
+          hlmCard
+          [class]="isAuthenticated() ? 'border-l-4 border-l-success' : isLockedOut() ? 'border-l-4 border-l-destructive' : 'border-l-4 border-l-warning'"
+        >
+          <div hlmCardHeader class="flex flex-row items-center justify-between gap-2 pb-3">
+            <h2 hlmCardTitle class="text-base">2. Device Authentication</h2>
             @if (isAuthenticated()) {
-              <span class="badge bg-light text-success fs-7">Authenticated</span>
+              <span hlmBadge variant="success">Authenticated</span>
             } @else if (isLockedOut()) {
-              <span class="badge bg-light text-danger fs-7">Locked Out</span>
+              <span hlmBadge variant="destructive">Locked Out</span>
             } @else {
-              <span class="badge bg-warning text-dark fs-7">PIN Required</span>
+              <span hlmBadge variant="warning">PIN Required</span>
             }
           </div>
-          <div class="card-body">
+          <div hlmCardContent class="space-y-4">
             @if (isAuthenticated()) {
-              <div class="d-flex align-items-center text-success">
-                <div>
-                  <h6 class="mb-1 fw-bold">Session Authenticated</h6>
-                  <p class="mb-0 text-muted small">You have verified device ownership. Device configuration and commands are unlocked.</p>
+              <div hlmAlert variant="success">
+                <h3 hlmAlertTitle>Session Authenticated</h3>
+                <div hlmAlertDescription>
+                  You have verified device ownership. Device configuration and commands are unlocked.
                 </div>
               </div>
             } @else if (isLockedOut()) {
-              <div class="alert alert-danger mb-0" role="alert">
-                <h6 class="alert-heading fw-bold mb-1">Tartarus Locked Out</h6>
-                <p class="small mb-0">Too many failed PIN attempts. For security, attempts are blocked. Please press <strong>D1</strong> on the Tartarus screen (screen: <strong>BLE PIN</strong>) to generate a new PIN and reset the lockout.</p>
+              <div hlmAlert variant="destructive">
+                <h3 hlmAlertTitle>Tartarus Locked Out</h3>
+                <div hlmAlertDescription>
+                  Too many failed PIN attempts. For security, attempts are blocked. Please press <strong>D1</strong> on the Tartarus screen (screen: <strong>BLE PIN</strong>) to generate a new PIN and reset the lockout.
+                </div>
               </div>
             } @else {
-              <p class="card-text text-muted small mb-3">
+              <p class="text-sm text-muted-foreground">
                 Look at the Tartarus screen (tab: <strong>BLE PIN</strong>) for the randomly generated 6-digit PIN and enter it below to unlock access.
               </p>
 
-              <form [formGroup]="authForm" (ngSubmit)="authenticate()">
-                <div class="mb-3">
-                  <label for="pin" class="form-label fw-bold">6-Digit PIN</label>
+              <form [formGroup]="authForm" (ngSubmit)="authenticate()" class="space-y-4">
+                <div class="space-y-1.5">
+                  <label hlmLabel for="pin">6-Digit PIN</label>
                   <input
                     id="pin"
+                    hlmInput
                     type="text"
                     maxlength="6"
                     pattern="[0-9]*"
                     inputmode="numeric"
-                    class="form-control form-control-lg font-monospace text-center fs-3"
-                    style="letter-spacing: 0.35rem;"
+                    autocomplete="one-time-code"
+                    class="h-12 text-center font-mono text-xl tracking-[0.35rem]"
                     formControlName="pin"
                     placeholder="000000"
                     [disabled]="isAuthenticating()"
                   />
                   @if (authError()) {
-                    <div class="text-danger small mt-2 fw-semibold">{{ authError() }}</div>
+                    <p class="text-xs font-medium text-destructive" role="alert">{{ authError() }}</p>
                   }
                 </div>
 
                 <button
                   type="submit"
-                  class="btn btn-warning w-100 fw-bold"
+                  hlmBtn
+                  variant="warning"
+                  class="w-full"
                   [disabled]="authForm.invalid || isAuthenticating()"
                 >
                   @if (isAuthenticating()) {
-                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                    Authenticating PIN...
+                    <hlm-spinner size="sm" />
+                    <span>Authenticating PIN...</span>
                   } @else {
-                    Unlock Device Controls
+                    <span>Unlock Device Controls</span>
                   }
                 </button>
               </form>
             }
           </div>
-        </div>
+        </section>
       }
 
       <!-- 3. Wi-Fi Configuration Card -->
-      <div class="card mb-4 shadow-sm" [class.opacity-75]="connectionState() === 'connected' && !isAuthenticated()">
-        <div class="card-header bg-dark text-white">
-          <span class="fw-bold">3. Wi-Fi Configuration</span>
+      <section hlmCard [class.opacity-75]="connectionState() === 'connected' && !isAuthenticated()">
+        <div hlmCardHeader class="pb-3">
+          <h2 hlmCardTitle class="text-base">3. Wi-Fi Configuration</h2>
         </div>
-        <div class="card-body">
+        <div hlmCardContent class="space-y-4">
           @if (connectionState() === 'connected' && !isAuthenticated()) {
-            <div class="alert alert-secondary py-2 small mb-3">
-              🔒 Authenticate with the 6-digit PIN above to configure Wi-Fi.
+            <div hlmAlert variant="default" class="py-2 text-xs">
+              <div hlmAlertDescription>🔒 Authenticate with the 6-digit PIN above to configure Wi-Fi.</div>
             </div>
           }
 
-          <form [formGroup]="wifiForm" (ngSubmit)="sendWifi()">
-            <div class="mb-3">
-              <label for="ssid" class="form-label fw-bold">Network Name (SSID)</label>
+          <form [formGroup]="wifiForm" (ngSubmit)="sendWifi()" class="space-y-4">
+            <div class="space-y-1.5">
+              <label hlmLabel for="ssid">Network Name (SSID)</label>
               <input
                 id="ssid"
+                hlmInput
                 type="text"
-                class="form-control"
                 formControlName="ssid"
                 placeholder="e.g. MyHomeNetwork"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
                 [disabled]="connectionState() !== 'connected' || !isAuthenticated() || isSendingWifi()"
               />
             </div>
 
-            <div class="mb-3">
-              <label for="password" class="form-label fw-bold">Wi-Fi Password</label>
-              <div class="input-group">
+            <div class="space-y-1.5">
+              <label hlmLabel for="password">Wi-Fi Password</label>
+              <div class="flex gap-2">
                 <input
                   id="password"
+                  hlmInput
+                  class="flex-1"
                   [type]="showPassword() ? 'text' : 'password'"
-                  class="form-control"
                   formControlName="password"
                   placeholder="Enter Wi-Fi password"
                   [disabled]="connectionState() !== 'connected' || !isAuthenticated() || isSendingWifi()"
                 />
                 <button
-                  class="btn btn-outline-secondary"
+                  hlmBtn
+                  variant="outline"
                   type="button"
                   (click)="toggleShowPassword()"
                   [disabled]="connectionState() !== 'connected' || !isAuthenticated() || isSendingWifi()"
@@ -222,129 +225,150 @@
 
             <button
               type="submit"
-              class="btn btn-success w-100"
+              hlmBtn
+              variant="success"
+              class="w-full"
               [disabled]="connectionState() !== 'connected' || !isAuthenticated() || wifiForm.invalid || isSendingWifi()"
             >
               @if (isSendingWifi()) {
-                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                Sending Wi-Fi Credentials...
+                <hlm-spinner size="sm" />
+                <span>Sending Wi-Fi Credentials...</span>
               } @else {
-                Save & Connect Wi-Fi on Tartarus
+                <span>Save &amp; Connect Wi-Fi on Tartarus</span>
               }
             </button>
           </form>
         </div>
-      </div>
+      </section>
 
       <!-- 4. Coordinator Configuration Card -->
-      <div class="card mb-4 shadow-sm" [class.opacity-75]="connectionState() === 'connected' && !isAuthenticated()">
-        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-          <span class="fw-bold">4. Coordinator Configuration</span>
+      <section hlmCard [class.opacity-75]="connectionState() === 'connected' && !isAuthenticated()">
+        <div hlmCardHeader class="flex flex-row items-center justify-between gap-2 pb-3">
+          <h2 hlmCardTitle class="text-base">4. Coordinator Configuration</h2>
           <button
-            class="btn btn-sm btn-outline-light"
+            hlmBtn
+            variant="outline"
+            size="sm"
             type="button"
             (click)="loadCoordinatorConfig()"
             [disabled]="isLoadingConfig()"
             title="Reload configuration values from coordinator API"
           >
             @if (isLoadingConfig()) {
-              <span class="spinner-border spinner-border-sm" role="status"></span>
+              <hlm-spinner size="sm" />
             } @else {
-              ↻ Refresh
+              <span>↻ Refresh</span>
             }
           </button>
         </div>
-        <div class="card-body">
+        <div hlmCardContent class="space-y-4">
           @if (connectionState() === 'connected' && !isAuthenticated()) {
-            <div class="alert alert-secondary py-2 small mb-3">
-              🔒 Authenticate with the 6-digit PIN above to configure coordinator endpoints.
+            <div hlmAlert variant="default" class="py-2 text-xs">
+              <div hlmAlertDescription>🔒 Authenticate with the 6-digit PIN above to configure coordinator endpoints.</div>
             </div>
           }
 
-          <p class="text-muted small mb-3">
+          <p class="text-xs text-muted-foreground">
             Sets the server endpoints where Tartarus connects. Transmitted as FlatBuffers data directly to the device.
           </p>
 
-          <form [formGroup]="coordinatorConfigForm" (ngSubmit)="sendCoordinatorConfiguration()">
-            <div class="row g-2 mb-2">
-              <div class="col-md-6">
-                <label for="webUri" class="form-label fw-bold small">Web URI</label>
+          <form [formGroup]="coordinatorConfigForm" (ngSubmit)="sendCoordinatorConfiguration()" class="space-y-4">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div class="space-y-1.5">
+                <label hlmLabel for="webUri">Web URI</label>
                 <input
                   id="webUri"
+                  hlmInput
+                  class="font-mono text-xs"
                   type="text"
-                  class="form-control form-control-sm"
                   formControlName="webUri"
                   placeholder="http://..."
+                  autocorrect="off"
+                  autocapitalize="off"
+                  spellcheck="false"
                   [disabled]="connectionState() !== 'connected' || !isAuthenticated() || isSendingConfig()"
                 />
               </div>
-              <div class="col-md-6">
-                <label for="wsUri" class="form-label fw-bold small">WebSocket (WS) URI</label>
+              <div class="space-y-1.5">
+                <label hlmLabel for="wsUri">WebSocket (WS) URI</label>
                 <input
                   id="wsUri"
+                  hlmInput
+                  class="font-mono text-xs"
                   type="text"
-                  class="form-control form-control-sm"
                   formControlName="wsUri"
                   placeholder="ws://..."
+                  autocorrect="off"
+                  autocapitalize="off"
+                  spellcheck="false"
                   [disabled]="connectionState() !== 'connected' || !isAuthenticated() || isSendingConfig()"
                 />
               </div>
-            </div>
-
-            <div class="row g-2 mb-3">
-              <div class="col-md-6">
-                <label for="apiUri" class="form-label fw-bold small">API URI</label>
+              <div class="space-y-1.5">
+                <label hlmLabel for="apiUri">API URI</label>
                 <input
                   id="apiUri"
+                  hlmInput
+                  class="font-mono text-xs"
                   type="text"
-                  class="form-control form-control-sm"
                   formControlName="apiUri"
                   placeholder="http://.../api"
+                  autocorrect="off"
+                  autocapitalize="off"
+                  spellcheck="false"
                   [disabled]="connectionState() !== 'connected' || !isAuthenticated() || isSendingConfig()"
                 />
               </div>
-              <div class="col-md-6">
-                <label for="mqttUri" class="form-label fw-bold small">MQTT URI</label>
+              <div class="space-y-1.5">
+                <label hlmLabel for="mqttUri">MQTT URI</label>
                 <input
                   id="mqttUri"
+                  hlmInput
+                  class="font-mono text-xs"
                   type="text"
-                  class="form-control form-control-sm"
                   formControlName="mqttUri"
                   placeholder="mqtt://..."
+                  autocorrect="off"
+                  autocapitalize="off"
+                  spellcheck="false"
                   [disabled]="connectionState() !== 'connected' || !isAuthenticated() || isSendingConfig()"
                 />
               </div>
             </div>
 
-            <div class="form-check form-switch mb-3">
+            <label
+              for="includeSafetyKeys"
+              class="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3 text-xs font-medium text-foreground"
+            >
+              <span>Include Safety Keys in configuration payload</span>
               <input
                 id="includeSafetyKeys"
-                class="form-check-input"
                 type="checkbox"
                 formControlName="includeSafetyKeys"
+                class="h-4 w-4 rounded border-input text-primary focus:ring-ring"
                 [disabled]="connectionState() !== 'connected' || !isAuthenticated() || isSendingConfig()"
               />
-              <label class="form-check-label small" for="includeSafetyKeys">
-                Include Safety Keys in configuration payload
-              </label>
-            </div>
+            </label>
 
-            <div class="d-flex gap-2">
+            <div class="flex flex-wrap gap-2">
               <button
                 type="submit"
-                class="btn btn-primary flex-grow-1"
+                hlmBtn
+                variant="default"
+                class="flex-1"
                 [disabled]="connectionState() !== 'connected' || !isAuthenticated() || coordinatorConfigForm.invalid || isSendingConfig()"
               >
                 @if (isSendingConfig()) {
-                  <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                  Transmitting Config...
+                  <hlm-spinner size="sm" />
+                  <span>Transmitting Config...</span>
                 } @else {
-                  Transmit Configuration over BLE
+                  <span>Transmit Configuration over BLE</span>
                 }
               </button>
               <button
                 type="button"
-                class="btn btn-outline-secondary"
+                hlmBtn
+                variant="outline"
                 (click)="copyConfigToCommand()"
                 [disabled]="coordinatorConfigForm.invalid"
                 title="Populate Command field with Base64"
@@ -354,26 +378,27 @@
             </div>
           </form>
         </div>
-      </div>
+      </section>
 
       <!-- 5. Arbitrary Command Card -->
-      <div class="card mb-4 shadow-sm" [class.opacity-75]="connectionState() === 'connected' && !isAuthenticated()">
-        <div class="card-header bg-dark text-white">
-          <span class="fw-bold">5. Send Arbitrary Commands</span>
+      <section hlmCard [class.opacity-75]="connectionState() === 'connected' && !isAuthenticated()">
+        <div hlmCardHeader class="pb-3">
+          <h2 hlmCardTitle class="text-base">5. Send Arbitrary Commands</h2>
         </div>
-        <div class="card-body">
+        <div hlmCardContent class="space-y-4">
           @if (connectionState() === 'connected' && !isAuthenticated()) {
-            <div class="alert alert-secondary py-2 small mb-3">
-              🔒 Authenticate with the 6-digit PIN above to execute commands.
+            <div hlmAlert variant="default" class="py-2 text-xs">
+              <div hlmAlertDescription>🔒 Authenticate with the 6-digit PIN above to execute commands.</div>
             </div>
           }
 
-          <form [formGroup]="commandForm" (ngSubmit)="sendCommand()">
-            <div class="mb-3">
-              <label for="command" class="form-label fw-bold">Base64 Command String</label>
+          <form [formGroup]="commandForm" (ngSubmit)="sendCommand()" class="space-y-4">
+            <div class="space-y-1.5">
+              <label hlmLabel for="command">Base64 Command String</label>
               <textarea
                 id="command"
-                class="form-control font-monospace"
+                hlmInput
+                class="font-mono text-xs"
                 rows="4"
                 formControlName="command"
                 placeholder="Paste signed Base64 command string here..."
@@ -383,104 +408,112 @@
 
             <button
               type="submit"
-              class="btn btn-outline-primary w-100"
+              hlmBtn
+              variant="secondary"
+              class="w-full"
               [disabled]="connectionState() !== 'connected' || !isAuthenticated() || commandForm.invalid || isSendingCommand()"
             >
               @if (isSendingCommand()) {
-                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                Transmitting Command...
+                <hlm-spinner size="sm" />
+                <span>Transmitting Command...</span>
               } @else {
-                Execute Command over BLE
+                <span>Execute Command over BLE</span>
               }
             </button>
           </form>
         </div>
-      </div>
+      </section>
 
       <!-- 6. Advanced: Event Queue Management Card -->
-      <div class="card mb-4 shadow-sm" [class.opacity-75]="connectionState() === 'connected' && !isAuthenticated()">
-        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-          <span class="fw-bold">6. Advanced: Event Queue Management ⚡</span>
+      <section hlmCard [class.opacity-75]="connectionState() === 'connected' && !isAuthenticated()">
+        <div hlmCardHeader class="flex flex-row items-center justify-between gap-2 pb-3">
+          <h2 hlmCardTitle class="text-base">6. Advanced: Event Queue Management</h2>
           @if (connectionState() === 'connected' && eventQueueCount() !== null) {
-            <span
-              class="badge"
-              [class.bg-danger]="eventQueueCount()! > 0"
-              [class.bg-success]="eventQueueCount() === 0"
-            >
+            <span hlmBadge [variant]="eventQueueCount()! > 0 ? 'destructive' : 'success'">
               {{ eventQueueCount() }} {{ eventQueueCount() === 1 ? 'event' : 'events' }} in flash
             </span>
           }
         </div>
-        <div class="card-body">
-          <p class="text-muted small mb-3">
+        <div hlmCardContent class="space-y-4">
+          <p class="text-xs text-muted-foreground">
             Inspect, force re-enqueue, or purge unacknowledged events stored in the lock's persistent NVS flash ring buffer.
           </p>
 
           @if (connectionState() === 'connected' && !isAuthenticated()) {
-            <div class="alert alert-secondary py-2 small mb-3">
-              🔒 Authenticate with the 6-digit PIN above to execute event queue management actions.
+            <div hlmAlert variant="default" class="py-2 text-xs">
+              <div hlmAlertDescription>🔒 Authenticate with the 6-digit PIN above to execute event queue management actions.</div>
             </div>
           }
 
           <!-- Action Buttons Toolbar -->
-          <div class="d-flex flex-wrap gap-2 mb-3">
+          <div class="flex flex-wrap gap-2">
             <button
               type="button"
-              class="btn btn-outline-primary btn-sm flex-grow-1"
+              hlmBtn
+              variant="outline"
+              size="sm"
+              class="flex-1"
               (click)="refreshEventQueue()"
               [disabled]="connectionState() !== 'connected' || isEventQueueLoading()"
             >
               @if (isEventQueueLoading()) {
-                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                Refreshing...
+                <hlm-spinner size="sm" />
+                <span>Refreshing...</span>
               } @else {
-                🔄 Refresh Queue
+                <span>🔄 Refresh Queue</span>
               }
             </button>
 
             <button
               type="button"
-              class="btn btn-outline-warning btn-sm flex-grow-1"
+              hlmBtn
+              variant="warning"
+              size="sm"
+              class="flex-1"
               (click)="reenqueueEventQueue()"
               [disabled]="connectionState() !== 'connected' || !isAuthenticated() || isReenqueuing() || (eventQueueCount() === 0)"
               title="Re-enqueue unacknowledged flash events into MQTT outgoing queue"
             >
               @if (isReenqueuing()) {
-                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                Re-enqueuing...
+                <hlm-spinner size="sm" />
+                <span>Re-enqueuing...</span>
               } @else {
-                📤 Force Re-enqueue
+                <span>📤 Force Re-enqueue</span>
               }
             </button>
 
             <button
               type="button"
-              class="btn btn-outline-danger btn-sm flex-grow-1"
+              hlmBtn
+              variant="destructive"
+              size="sm"
+              class="flex-1"
               (click)="clearEventQueue()"
               [disabled]="connectionState() !== 'connected' || !isAuthenticated() || isClearingQueue() || (eventQueueCount() === 0)"
               title="Wipe all unacknowledged events from flash ring buffer"
             >
               @if (isClearingQueue()) {
-                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                Clearing...
+                <hlm-spinner size="sm" />
+                <span>Clearing...</span>
               } @else {
-                🗑️ Clear Queue
+                <span>🗑️ Clear Queue</span>
               }
             </button>
           </div>
 
           <!-- Queue Control Status -->
           @if (eventQueueCtrlStatus() && eventQueueCtrlStatus() !== 'idle' && eventQueueCtrlStatus() !== 'ready') {
-            <div class="alert alert-info py-1 px-2 small mb-3 d-flex align-items-center">
-              <span class="me-1">Status:</span>
-              <strong>{{ eventQueueCtrlStatus() }}</strong>
+            <div hlmAlert variant="info" class="py-2 text-xs">
+              <div hlmAlertDescription>
+                Status: <strong>{{ eventQueueCtrlStatus() }}</strong>
+              </div>
             </div>
           }
 
           <!-- Events Inspector Table -->
-          <div class="border rounded p-2 bg-light">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <span class="fw-bold small">
+          <div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Events in Flash
                 @if (eventQueueCount() !== null) {
                   ({{ eventQueueItems().length }})
@@ -488,7 +521,10 @@
               </span>
               <button
                 type="button"
-                class="btn btn-link btn-sm p-0 text-decoration-none small text-muted"
+                hlmBtn
+                variant="ghost"
+                size="sm"
+                class="h-7 px-2 text-xs"
                 (click)="toggleShowRawEventQueue()"
               >
                 {{ showRawEventQueue() ? 'Hide Raw JSON' : 'Show Raw JSON' }}
@@ -496,48 +532,36 @@
             </div>
 
             @if (connectionState() !== 'connected') {
-              <div class="text-muted small text-center py-3">
+              <div class="py-4 text-center text-xs text-muted-foreground">
                 Connect to Tartarus to inspect the event queue.
               </div>
             } @else if (eventQueueItems().length === 0) {
-              <div class="alert alert-success d-flex align-items-center mb-0 py-2 small">
-                <span>✓ Event queue is empty. No unacknowledged events in flash storage.</span>
+              <div hlmAlert variant="success" class="py-2 text-xs">
+                <div hlmAlertDescription>
+                  ✓ Event queue is empty. No unacknowledged events in flash storage.
+                </div>
               </div>
             } @else {
-              <div class="table-responsive" style="max-height: 250px;">
-                <table class="table table-sm table-hover mb-0 font-monospace small">
-                  <thead class="table-dark">
-                    <tr>
-                      <th style="width: 15%">Slot</th>
-                      <th style="width: 25%">Contract</th>
-                      <th style="width: 25%">Counter</th>
-                      <th style="width: 35%">Event Type</th>
+              <div class="max-h-60 overflow-auto rounded-md border border-border">
+                <table hlmTable class="font-mono text-xs">
+                  <thead hlmTHead>
+                    <tr hlmTr>
+                      <th hlmTh>Slot</th>
+                      <th hlmTh>Contract</th>
+                      <th hlmTh>Counter</th>
+                      <th hlmTh>Event Type</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody hlmTBody>
                     @for (item of eventQueueItems(); track item.slot + '-' + item.counter) {
-                      <tr>
-                        <td>
-                          <span class="badge bg-secondary">#{{ item.slot }}</span>
+                      <tr hlmTr>
+                        <td hlmTd>
+                          <span hlmBadge variant="secondary">#{{ item.slot }}</span>
                         </td>
-                        <td>
-                          {{ item.contract }}
-                        </td>
-                        <td>
-                          <span class="fw-bold">{{ item.counter }}</span>
-                        </td>
-                        <td>
-                          <span
-                            class="badge"
-                            [class.bg-success]="item.type === 'Unlock' || item.type === 'LocalUnlock'"
-                            [class.bg-danger]="item.type === 'Lock' || item.type === 'LocalLock'"
-                            [class.bg-primary]="item.type === 'AcceptContract'"
-                            [class.bg-warning]="item.type === 'EmergencyUnlock'"
-                            [class.bg-info]="item.type === 'ReleaseContract'"
-                            [class.bg-dark]="item.type !== 'Unlock' && item.type !== 'LocalUnlock' && item.type !== 'Lock' && item.type !== 'LocalLock' && item.type !== 'AcceptContract' && item.type !== 'EmergencyUnlock' && item.type !== 'ReleaseContract'"
-                          >
-                            {{ item.type }}
-                          </span>
+                        <td hlmTd>{{ item.contract }}</td>
+                        <td hlmTd class="font-semibold">{{ item.counter }}</td>
+                        <td hlmTd>
+                          <span hlmBadge variant="outline">{{ item.type }}</span>
                         </td>
                       </tr>
                     }
@@ -547,46 +571,46 @@
             }
 
             @if (showRawEventQueue()) {
-              <div class="mt-2 pt-2 border-top">
-                <label class="form-label small text-muted mb-1">Raw GATT Payload:</label>
-                <pre class="bg-dark text-light p-2 rounded small font-monospace mb-0 overflow-auto" style="max-height: 150px;">{{ eventQueueRaw() || '[]' }}</pre>
+              <div class="border-t border-border pt-2 space-y-1">
+                <span class="text-xs font-medium text-muted-foreground block">Raw GATT Payload:</span>
+                <pre class="max-h-36 overflow-auto rounded-md border border-border bg-slate-950 p-2 font-mono text-xs text-slate-100">{{ eventQueueRaw() || '[]' }}</pre>
               </div>
             }
           </div>
         </div>
-      </div>
+      </section>
     </div>
 
     <!-- Right Column: Live Terminal Activity Log -->
-    <div class="col-lg-5">
-      <div class="card shadow-sm sticky-top" style="top: 1rem;">
-        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-          <span class="fw-bold">Activity Log</span>
-          <button class="btn btn-sm btn-outline-light" (click)="clearLogs()">Clear</button>
+    <div class="lg:col-span-5">
+      <section hlmCard class="sticky top-20 overflow-hidden">
+        <div hlmCardHeader class="flex flex-row items-center justify-between border-b border-border bg-muted/40 py-3">
+          <h2 hlmCardTitle class="text-sm font-semibold">Activity Log</h2>
+          <button type="button" hlmBtn variant="outline" size="sm" class="h-7 px-2.5 text-xs" (click)="clearLogs()">
+            Clear
+          </button>
         </div>
-        <div class="card-body p-0 log-terminal bg-black text-light">
-          <div class="p-3 font-monospace small">
-            @if (logs().length === 0) {
-              <div class="text-muted">No activity yet.</div>
-            } @else {
-              @for (entry of logs(); track $index) {
-                <div class="log-line mb-1">
-                  <span class="text-muted me-2">[{{ entry.timestamp }}]</span>
-                  @if (entry.type === 'success') {
-                    <span class="text-success">{{ entry.message }}</span>
-                  } @else if (entry.type === 'error') {
-                    <span class="text-danger fw-bold">{{ entry.message }}</span>
-                  } @else if (entry.type === 'warn') {
-                    <span class="text-warning">{{ entry.message }}</span>
-                  } @else {
-                    <span class="text-info">{{ entry.message }}</span>
-                  }
-                </div>
-              }
+        <div class="log-terminal p-3 font-mono text-xs">
+          @if (logs().length === 0) {
+            <div class="text-slate-400">No activity yet.</div>
+          } @else {
+            @for (entry of logs(); track $index) {
+              <div class="log-line mb-1">
+                <span class="mr-2 text-slate-400">[{{ entry.timestamp }}]</span>
+                @if (entry.type === 'success') {
+                  <span class="text-emerald-400">{{ entry.message }}</span>
+                } @else if (entry.type === 'error') {
+                  <span class="font-semibold text-rose-400">{{ entry.message }}</span>
+                } @else if (entry.type === 'warn') {
+                  <span class="text-amber-300">{{ entry.message }}</span>
+                } @else {
+                  <span class="text-sky-300">{{ entry.message }}</span>
+                }
+              </div>
             }
-          </div>
+          }
         </div>
-      </div>
+      </section>
     </div>
   </div>
 </div>

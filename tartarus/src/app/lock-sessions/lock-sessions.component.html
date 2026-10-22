@@ -1,41 +1,51 @@
-<h1>Lock Sessions</h1>
+<div class="space-y-6">
+  <div>
+    <h1 class="text-2xl font-bold tracking-tight text-foreground">Lock Sessions</h1>
+    <p class="text-sm text-muted-foreground">
+      Saved lock sessions shared with your author key.
+    </p>
+  </div>
 
-@if(knownTokens.length == 0) {
-  <p>
-    You don't have any lock sessions yet. You'll need a lock session link to write a contract. Go find a
-    sub with a Tartarus lock 😘
-  </p>
-}
-
-<div class="row">
-  @for (k of knownTokens; track k.name) {
-    <div class="col-sm-6 col-lg-4 col-xl-3 d-flex">
-      <app-lock-session-card
-        class="w-100"
-        [knownToken]="k"
-        (delete)="confirmDelete(k, deleteConfirmModal)">
-      </app-lock-session-card>
+  @if (knownTokens.length === 0) {
+    <section hlmCard class="py-8 text-center">
+      <div hlmCardContent class="space-y-2 text-sm text-muted-foreground">
+        <p class="font-medium text-foreground">No lock sessions yet</p>
+        <p>
+          You'll need a lock session link to write a contract. Ask a lock wearer to share their Tartarus session link with you.
+        </p>
+      </div>
+    </section>
+  } @else {
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      @for (k of knownTokens; track k.name) {
+        <app-lock-session-card
+          class="block h-full"
+          [knownToken]="k"
+          (delete)="confirmDelete(k)"
+        ></app-lock-session-card>
+      }
     </div>
   }
 </div>
 
-<ng-template #deleteConfirmModal let-modal>
-  <div class="modal-header">
-    <h5 class="modal-title">Delete Lock Session</h5>
-    <button type="button" class="btn-close" aria-label="Close" (click)="modal.dismiss('cancel')"></button>
-  </div>
-  <div class="modal-body">
-    <p>
+<hlm-dialog
+  [open]="!!tokenToDelete"
+  aria-label="Delete Lock Session"
+  (closed)="cancelDelete()"
+>
+  <div hlmDialogHeader>
+    <h2 hlmDialogTitle>Delete Lock Session</h2>
+    <p hlmDialogDescription>
       Are you sure you want to remove
-      <strong>{{ tokenToDelete?.notes || tokenToDelete?.shareableToken || tokenToDelete?.name }}</strong>
+      <strong class="text-foreground">{{ tokenToDelete?.notes || tokenToDelete?.shareableToken || tokenToDelete?.name }}</strong>
       from your lock sessions?
     </p>
-    <p class="text-muted small mb-0">
-      You can re-add it at any time by revisiting its shareable link.
-    </p>
   </div>
-  <div class="modal-footer">
-    <button type="button" class="btn btn-secondary" (click)="modal.dismiss('cancel')">Cancel</button>
-    <button type="button" class="btn btn-danger" (click)="modal.close('confirm')">Delete</button>
+  <p class="text-xs text-muted-foreground">
+    You can re-add it at any time by revisiting its shareable link.
+  </p>
+  <div hlmDialogFooter>
+    <button type="button" hlmBtn variant="outline" (click)="cancelDelete()">Cancel</button>
+    <button type="button" hlmBtn variant="destructive" (click)="confirmDeleteAction()">Delete</button>
   </div>
-</ng-template>
+</hlm-dialog>

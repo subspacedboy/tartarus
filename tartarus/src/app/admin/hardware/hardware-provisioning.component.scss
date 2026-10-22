@@ -1,0 +1,7 @@
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.table tbody tr:hover {
+  background-color: var(--bs-tertiary-bg);
+}

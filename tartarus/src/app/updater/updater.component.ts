@@ -35,6 +35,15 @@ export interface CustomFileSlot {
   useUpload: boolean;
 }
 
+import { HlmAlertImports } from '../shared/ui/ui-alert-helm';
+import { HlmBadgeDirective } from '../shared/ui/ui-badge-helm';
+import { HlmButtonDirective } from '../shared/ui/ui-button-helm';
+import { HlmCardImports } from '../shared/ui/ui-card-helm';
+import { HlmInputDirective } from '../shared/ui/ui-input-helm';
+import { HlmLabelDirective } from '../shared/ui/ui-label-helm';
+import { HlmProgressComponent } from '../shared/ui/ui-progress-helm';
+import { HlmSpinnerComponent } from '../shared/ui/ui-spinner-helm';
+
 // Protected NVS flash range (0x9000 to 0xF000, 24 KiB)
 const NVS_START_ADDR = 0x9000;
 const NVS_END_ADDR = 0xF000;
@@ -42,7 +51,18 @@ const NVS_END_ADDR = 0xF000;
 @Component({
   selector: 'app-updater',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ...HlmAlertImports,
+    HlmBadgeDirective,
+    HlmButtonDirective,
+    ...HlmCardImports,
+    HlmInputDirective,
+    HlmLabelDirective,
+    HlmProgressComponent,
+    HlmSpinnerComponent,
+  ],
   templateUrl: './updater.component.html',
   styleUrl: './updater.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

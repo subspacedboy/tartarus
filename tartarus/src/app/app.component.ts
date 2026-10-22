@@ -1,15 +1,25 @@
-import {Component, OnInit, ChangeDetectionStrategy} from '@angular/core';
-import {ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet} from '@angular/router';
-import {NgbDropdown, NgbDropdownItem, NgbDropdownMenu, NgbDropdownToggle} from '@ng-bootstrap/ng-bootstrap';
-import {UserDataService} from './user-data.service';
-import {WebsocketService} from './websocket.service';
-import {ConfigService} from './config.service';
-import {ToastContainerComponent} from './toast-container/toast-container.component';
-import {ToastService} from './toast.service';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { UserDataService } from './user-data.service';
+import { WebsocketService } from './websocket.service';
+import { ConfigService } from './config.service';
+import { ToastContainerComponent } from './toast-container/toast-container.component';
+import { ToastService } from './toast.service';
+import { HlmBadgeDirective } from './shared/ui/ui-badge-helm';
+import { HlmButtonDirective } from './shared/ui/ui-button-helm';
+import { HlmMenuImports } from './shared/ui/ui-menu-helm';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, NgbDropdownItem, NgbDropdownMenu, NgbDropdown, RouterLink, NgbDropdownToggle, ToastContainerComponent],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    ToastContainerComponent,
+    HlmBadgeDirective,
+    HlmButtonDirective,
+    ...HlmMenuImports,
+  ],
   templateUrl: './app.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './app.component.scss'

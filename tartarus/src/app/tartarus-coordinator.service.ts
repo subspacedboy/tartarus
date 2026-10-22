@@ -14,6 +14,13 @@ import {Bot} from './models/bot';
 import {AdminSession} from './models/admin-session';
 import {LockUserSession} from './models/lock-user-session';
 import {LockEvent} from './models/event';
+import {
+  ProvisionedHardwareUnitSummary,
+  ProvisionedHardwareUnitDetail,
+  ProvisioningPreviewResult,
+  ProvisioningIngestRequest,
+  UpdateHardwareUnitRequest
+} from './models/provisioned-hardware-unit';
 
 @Injectable({
   providedIn: 'root'
@@ -511,6 +518,59 @@ export class TartarusCoordinatorService {
     }),  catchError(error => {
       return this.handleError(error);
     }));
+  }
+
+  // Hardware Fleet & Provisioning
+
+  public listProvisionedUnits(mode?: string, revoked?: boolean, search?: string): Observable<ProvisionedHardwareUnitSummary[]> {
+    const uri = `${this.baseUrl}/api/admin/hardware/units`;
+    let queryParams: any = {};
+    if (mode) queryParams.mode = mode;
+    if (revoked !== undefined && revoked !== null) queryParams.revoked = revoked;
+    if (search) queryParams.search = search;
+
+    return this.http.get<ProvisionedHardwareUnitSummary[]>(uri, {
+      headers: new HttpHeaders({ 'X-Require-Admin': 'requires authorization tokens' }),
+      params: queryParams,
+    }).pipe(
+      catchError(error => this.handleError(error))
+    );
+  }
+
+  public getProvisionedUnitDetail(hardwareId: string): Observable<ProvisionedHardwareUnitDetail> {
+    const uri = `${this.baseUrl}/api/admin/hardware/units/${hardwareId}`;
+    return this.http.get<ProvisionedHardwareUnitDetail>(uri, {
+      headers: new HttpHeaders({ 'X-Require-Admin': 'requires authorization tokens' }),
+    }).pipe(
+      catchError(error => this.handleError(error))
+    );
+  }
+
+  public verifyProvisioningPreview(request: ProvisioningIngestRequest): Observable<ProvisioningPreviewResult> {
+    const uri = `${this.baseUrl}/api/admin/hardware/verify-preview`;
+    return this.http.post<ProvisioningPreviewResult>(uri, request, {
+      headers: new HttpHeaders({ 'Content-Type': 'application/json', 'X-Require-Admin': 'requires authorization tokens' }),
+    }).pipe(
+      catchError(error => this.handleError(error))
+    );
+  }
+
+  public provisionHardwareUnit(request: ProvisioningIngestRequest): Observable<ProvisionedHardwareUnitDetail> {
+    const uri = `${this.baseUrl}/api/admin/hardware/provision`;
+    return this.http.post<ProvisionedHardwareUnitDetail>(uri, request, {
+      headers: new HttpHeaders({ 'Content-Type': 'application/json', 'X-Require-Admin': 'requires authorization tokens' }),
+    }).pipe(
+      catchError(error => this.handleError(error))
+    );
+  }
+
+  public updateHardwareUnit(hardwareId: string, request: UpdateHardwareUnitRequest): Observable<ProvisionedHardwareUnitDetail> {
+    const uri = `${this.baseUrl}/api/admin/hardware/units/${hardwareId}`;
+    return this.http.patch<ProvisionedHardwareUnitDetail>(uri, request, {
+      headers: new HttpHeaders({ 'Content-Type': 'application/json', 'X-Require-Admin': 'requires authorization tokens' }),
+    }).pipe(
+      catchError(error => this.handleError(error))
+    );
   }
 
   // Error handling

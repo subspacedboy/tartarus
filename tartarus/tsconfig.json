@@ -16,7 +16,28 @@
     "moduleResolution": "bundler",
     "importHelpers": true,
     "target": "ES2022",
-    "module": "ES2022"
+    "module": "ES2022",
+    "paths": {
+      "@spartan-ng/ui-core": ["./src/app/shared/ui/utils/hlm.ts"],
+      "@spartan-ng/ui-alert-helm": ["./src/app/shared/ui/ui-alert-helm/index.ts"],
+      "@spartan-ng/ui-badge-helm": ["./src/app/shared/ui/ui-badge-helm/index.ts"],
+      "@spartan-ng/ui-button-helm": ["./src/app/shared/ui/ui-button-helm/index.ts"],
+      "@spartan-ng/ui-card-helm": ["./src/app/shared/ui/ui-card-helm/index.ts"],
+      "@spartan-ng/ui-dialog-helm": ["./src/app/shared/ui/ui-dialog-helm/index.ts"],
+      "@spartan-ng/ui-input-helm": ["./src/app/shared/ui/ui-input-helm/index.ts"],
+      "@spartan-ng/ui-label-helm": ["./src/app/shared/ui/ui-label-helm/index.ts"],
+      "@spartan-ng/ui-menu-helm": ["./src/app/shared/ui/ui-menu-helm/index.ts"],
+      "@spartan-ng/ui-progress-helm": ["./src/app/shared/ui/ui-progress-helm/index.ts"],
+      "@spartan-ng/ui-separator-helm": ["./src/app/shared/ui/ui-separator-helm/index.ts"],
+      "@spartan-ng/ui-sheet-helm": ["./src/app/shared/ui/ui-sheet-helm/index.ts"],
+      "@spartan-ng/ui-sonner-helm": ["./src/app/shared/ui/ui-sonner-helm/index.ts"],
+      "@spartan-ng/ui-spinner-helm": ["./src/app/shared/ui/ui-spinner-helm/index.ts"],
+      "@spartan-ng/ui-switch-helm": ["./src/app/shared/ui/ui-switch-helm/index.ts"],
+      "@spartan-ng/ui-table-helm": ["./src/app/shared/ui/ui-table-helm/index.ts"],
+      "@spartan-ng/ui-tabs-helm": ["./src/app/shared/ui/ui-tabs-helm/index.ts"],
+      "@spartan-ng/ui-tooltip-helm": ["./src/app/shared/ui/ui-tooltip-helm/index.ts"],
+      "@spartan-ng/helm": ["./src/app/shared/ui/index.ts"]
+    }
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,

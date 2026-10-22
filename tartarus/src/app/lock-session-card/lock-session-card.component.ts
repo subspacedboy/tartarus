@@ -1,13 +1,19 @@
-import {Component, Input, Output, EventEmitter, ChangeDetectionStrategy} from '@angular/core';
-import {KnownToken} from '../models/known-token';
-import {RouterLink} from '@angular/router';
-import {DatePipe} from '@angular/common';
+import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
+import { KnownToken } from '../models/known-token';
+import { RouterLink } from '@angular/router';
+import { DatePipe } from '@angular/common';
+import { HlmBadgeDirective } from '../shared/ui/ui-badge-helm';
+import { HlmButtonDirective } from '../shared/ui/ui-button-helm';
+import { HlmCardImports } from '../shared/ui/ui-card-helm';
 
 @Component({
   selector: 'app-lock-session-card',
   imports: [
     RouterLink,
-    DatePipe
+    DatePipe,
+    HlmBadgeDirective,
+    HlmButtonDirective,
+    ...HlmCardImports,
   ],
   templateUrl: './lock-session-card.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

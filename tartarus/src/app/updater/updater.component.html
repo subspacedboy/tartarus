@@ -1,108 +1,102 @@
-<div class="container py-4">
+<div class="space-y-6">
   <!-- Title & Status Header -->
-  <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom flex-wrap gap-2">
-    <div>
-      <h2 class="mb-1">Tartarus Firmware Flasher ⚡</h2>
-      <p class="text-muted mb-0">
-        Flash arbitrary or signed firmware safely via Web Serial.
+  <div class="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
+    <div class="space-y-1">
+      <h1 class="text-2xl font-bold tracking-tight text-foreground">Tartarus Firmware Flasher</h1>
+      <p class="text-sm text-muted-foreground">
+        Flash arbitrary or signed firmware safely via Web Serial with NVS partition protection.
       </p>
     </div>
-    <div class="d-flex align-items-center gap-2">
+
+    <div class="flex items-center gap-2">
       @if (connectionState() === 'flashing') {
-        <span class="badge bg-warning text-dark fs-6 px-3 py-2">
-          <span class="spinner-border spinner-border-sm me-1" role="status"></span> Flashing: {{ progressPercent() }}%
+        <span hlmBadge variant="warning" class="inline-flex items-center gap-1.5">
+          <hlm-spinner size="sm" />
+          <span>Flashing: {{ progressPercent() }}%</span>
         </span>
       } @else if (connectionState() === 'connected') {
-        <span class="badge bg-success fs-6 px-3 py-2">
-          Connected: {{ connectedChip() || 'ESP32-S3' }}
-        </span>
+        <span hlmBadge variant="success">Connected: {{ connectedChip() || 'ESP32-S3' }}</span>
       } @else if (connectionState() === 'connecting') {
-        <span class="badge bg-info text-dark fs-6 px-3 py-2">
-          Connecting...
-        </span>
+        <span hlmBadge variant="warning">Connecting...</span>
       } @else if (connectionState() === 'done') {
-        <span class="badge bg-primary fs-6 px-3 py-2">
-          Update Complete!
-        </span>
+        <span hlmBadge variant="default">Update Complete!</span>
       } @else if (connectionState() === 'error') {
-        <span class="badge bg-danger fs-6 px-3 py-2">
-          Error
-        </span>
+        <span hlmBadge variant="destructive">Error</span>
       } @else {
-        <span class="badge bg-secondary fs-6 px-3 py-2">
-          Disconnected
-        </span>
+        <span hlmBadge variant="secondary">Disconnected</span>
       }
     </div>
   </div>
 
   <!-- Browser Support Warning -->
   @if (!isSerialSupported()) {
-    <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
-      <div>
-        <h5 class="alert-heading mb-1">Web Serial API Not Supported</h5>
-        <p class="mb-0">
-          Your browser does not support the Web Serial API required to communicate with ESP32-S3 over USB.
-          Please open this page in <strong>Google Chrome</strong>, <strong>Microsoft Edge</strong>, or <strong>Opera</strong> on desktop.
-        </p>
+    <div hlmAlert variant="warning">
+      <h2 hlmAlertTitle>Web Serial API Not Supported</h2>
+      <div hlmAlertDescription>
+        Your browser does not support the Web Serial API required to communicate with ESP32-S3 over USB.
+        Please open this page in <strong>Google Chrome</strong>, <strong>Microsoft Edge</strong>, or <strong>Opera</strong> on desktop.
       </div>
     </div>
   }
 
-  <div class="row g-4">
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
     <!-- Left Column: Controls & Configuration -->
-    <div class="col-lg-7">
-
+    <div class="space-y-6 lg:col-span-7">
       <!-- 1. Device Connection Card -->
-      <div class="card mb-4 shadow-sm">
-        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-          <span class="fw-bold">1. Device Connection</span>
-          <small class="text-muted">Target: ESP32-S3 USB Serial</small>
+      <section hlmCard>
+        <div hlmCardHeader class="flex flex-row items-center justify-between gap-2 pb-3">
+          <h2 hlmCardTitle class="text-base">1. Device Connection</h2>
+          <span class="font-mono text-xs text-muted-foreground">Target: ESP32-S3 USB Serial</span>
         </div>
-        <div class="card-body">
+        <div hlmCardContent class="space-y-4">
           @if (connectionState() === 'disconnected' || connectionState() === 'error' || connectionState() === 'done') {
-            <p class="card-text text-muted mb-3">
-              Connect your Tartarus device to this computer via USB-C. Ensure no other serial monitor (like <code>espflash</code> or Arduino IDE) has the port open.
+            <p class="text-sm text-muted-foreground">
+              Connect your Tartarus device to this computer via USB-C. Ensure no other serial monitor (like <code class="font-mono text-xs">espflash</code> or Arduino IDE) has the port open.
             </p>
 
-            <div class="row g-2 align-items-center mb-3">
-              <div class="col-auto">
-                <label for="baudRateSelect" class="col-form-label small fw-bold">Flashing Baud Rate:</label>
-              </div>
-              <div class="col-auto">
-                <select
-                  id="baudRateSelect"
-                  class="form-select form-select-sm"
-                  [ngModel]="baudRate()"
-                  (ngModelChange)="baudRate.set($event)"
-                >
-                  <option [ngValue]="115200">115,200 (Safe / Slow)</option>
-                  <option [ngValue]="460800">460,800 (Standard / Recommended)</option>
-                  <option [ngValue]="921600">921,600 (Fast)</option>
-                </select>
-              </div>
+            <div class="space-y-1.5">
+              <label hlmLabel for="baudRateSelect">Flashing Baud Rate</label>
+              <select
+                id="baudRateSelect"
+                hlmInput
+                [ngModel]="baudRate()"
+                (ngModelChange)="baudRate.set($event)"
+              >
+                <option [ngValue]="115200">115,200 (Safe / Slow)</option>
+                <option [ngValue]="460800">460,800 (Standard / Recommended)</option>
+                <option [ngValue]="921600">921,600 (Fast)</option>
+              </select>
             </div>
 
             <button
-              class="btn btn-primary btn-lg w-100"
+              type="button"
+              hlmBtn
+              variant="default"
+              size="lg"
+              class="w-full"
               [disabled]="!isSerialSupported()"
               (click)="connect()"
             >
               Connect to Device
             </button>
           } @else if (connectionState() === 'connecting') {
-            <div class="text-center py-3">
-              <div class="spinner-border text-primary mb-2" role="status"></div>
-              <p class="mb-0 text-muted">Syncing with ESP32 ROM bootloader...</p>
+            <div class="flex flex-col items-center justify-center gap-2 py-4">
+              <hlm-spinner size="md" />
+              <p class="text-sm text-muted-foreground">Syncing with ESP32 ROM bootloader...</p>
             </div>
           } @else {
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="flex items-center justify-between gap-4">
               <div>
-                <strong class="text-success d-block">Connected to {{ connectedChip() || 'ESP32-S3' }}</strong>
-                <small class="text-muted">{{ baudRate() }} baud &bull; Ready for flashing</small>
+                <strong class="block text-sm font-semibold text-success">
+                  Connected to {{ connectedChip() || 'ESP32-S3' }}
+                </strong>
+                <span class="font-mono text-xs text-muted-foreground">{{ baudRate() }} baud &bull; Ready for flashing</span>
               </div>
               <button
-                class="btn btn-outline-danger"
+                type="button"
+                hlmBtn
+                variant="destructive"
+                size="sm"
                 [disabled]="connectionState() === 'flashing'"
                 (click)="disconnect()"
               >
@@ -111,182 +105,189 @@
             </div>
           }
         </div>
-      </div>
+      </section>
 
       <!-- 2. Firmware Server & Manifest Card -->
-      <div class="card mb-4 shadow-sm">
-        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-          <span class="fw-bold">2. Firmware Server</span>
-          <small class="text-muted">firmware.json Manifest</small>
+      <section hlmCard>
+        <div hlmCardHeader class="flex flex-row items-center justify-between gap-2 pb-3">
+          <h2 hlmCardTitle class="text-base">2. Firmware Server</h2>
+          <span class="font-mono text-xs text-muted-foreground">firmware.json Manifest</span>
         </div>
-        <div class="card-body">
-          <div class="mb-3">
-            <label for="baseUrlInput" class="form-label fw-bold">Server Base URL</label>
-            <div class="input-group input-group-sm">
+        <div hlmCardContent class="space-y-4">
+          <div class="space-y-1.5">
+            <label hlmLabel for="baseUrlInput">Server Base URL</label>
+            <div class="flex gap-2">
               <input
                 id="baseUrlInput"
+                hlmInput
                 type="text"
-                class="form-control font-monospace"
+                class="flex-1 font-mono text-xs"
                 [ngModel]="baseUrl()"
                 (ngModelChange)="baseUrl.set($event)"
                 placeholder="https://domain.com/firmware/"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
                 [disabled]="connectionState() === 'flashing'"
               />
               <button
-                class="btn btn-outline-primary"
+                hlmBtn
+                variant="outline"
                 type="button"
                 [disabled]="manifestLoading() || connectionState() === 'flashing'"
                 (click)="fetchManifest()"
               >
                 @if (manifestLoading()) {
-                  <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                  <hlm-spinner size="sm" />
                 }
-                Reload Manifest
+                <span>Reload Manifest</span>
               </button>
             </div>
-            <div class="form-text small">
-              The updater looks for <code>firmware.json</code> at this location to discover all arbitrary and signed releases.
-            </div>
+            <p class="text-xs text-muted-foreground">
+              The updater looks for <code class="font-mono">firmware.json</code> at this location to discover all arbitrary and signed releases.
+            </p>
           </div>
 
           @if (manifestLoading()) {
-            <div class="alert alert-info py-2 small mb-0 d-flex align-items-center">
-              <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
-              <span>Fetching available firmware releases from server...</span>
+            <div hlmAlert variant="info" class="py-2 text-xs">
+              <div hlmAlertDescription class="flex items-center gap-2">
+                <hlm-spinner size="sm" />
+                <span>Fetching available firmware releases from server...</span>
+              </div>
             </div>
           } @else if (manifestError()) {
-            <div class="alert alert-danger py-2 small mb-0">
-              <strong>Error loading firmware.json:</strong> {{ manifestError() }}
-              <div class="mt-1">
-                You can correct the URL above or switch to <strong>Arbitrary Releases</strong> to upload local files.
+            <div hlmAlert variant="destructive" class="py-2 text-xs">
+              <h3 hlmAlertTitle>Error loading firmware.json</h3>
+              <div hlmAlertDescription>
+                {{ manifestError() }}
+                <span class="block mt-1">
+                  You can correct the URL above or switch to <strong>Arbitrary Releases</strong> to upload local files.
+                </span>
               </div>
             </div>
           } @else if (manifest()) {
-            <div class="alert alert-success py-2 small mb-0 d-flex justify-content-between align-items-center">
-              <span>
+            <div hlmAlert variant="success" class="py-2 text-xs">
+              <div hlmAlertDescription>
                 ✓ Loaded <strong>{{ manifest()?.releases?.length ?? 0 }}</strong> release(s)
                 ({{ arbitraryReleases().length }} arbitrary, {{ signedReleases().length }} signed)
                 @if (manifest()?.chipset) {
                   for <strong>{{ manifest()?.chipset }}</strong>
                 }
-              </span>
+              </div>
             </div>
           }
         </div>
-      </div>
+      </section>
 
       <!-- 3. Release Track & Version Selection Card -->
-      <div class="card mb-4 shadow-sm">
-        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-          <span class="fw-bold">3. Release Track & Version</span>
-          <span class="badge bg-secondary font-monospace">{{ selectedTrack() | uppercase }}</span>
+      <section hlmCard>
+        <div hlmCardHeader class="flex flex-row items-center justify-between gap-2 pb-3">
+          <h2 hlmCardTitle class="text-base">3. Release Track &amp; Version</h2>
+          <span hlmBadge variant="secondary" class="font-mono">{{ selectedTrack() | uppercase }}</span>
         </div>
-        <div class="card-body">
-          <label class="form-label fw-bold mb-2">Select Firmware Track:</label>
+        <div hlmCardContent class="space-y-4">
+          <fieldset class="space-y-2.5">
+            <legend class="text-sm font-medium text-foreground mb-1">Select Firmware Track</legend>
 
-          <!-- Track A: Arbitrary Releases -->
-          <div class="form-check p-3 mb-2 border rounded bg-light">
-            <input
-              class="form-check-input"
-              type="radio"
-              name="trackRadio"
-              id="trackArbitrary"
-              value="arbitrary"
-              [checked]="selectedTrack() === 'arbitrary'"
-              (change)="setTrack('arbitrary')"
-              [disabled]="connectionState() === 'flashing'"
-            />
-            <label class="form-check-label ms-1" for="trackArbitrary">
-              <strong class="text-primary d-block">Arbitrary / Unsigned Releases (Recommended)</strong>
-              <small class="text-muted d-block mt-1">
-                Unsigned development builds or local custom binary files. For unlocked hardware only.
-              </small>
+            <!-- Track A: Arbitrary Releases -->
+            <label
+              for="trackArbitrary"
+              class="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-muted/30 p-3.5 transition-colors hover:bg-muted/50"
+            >
+              <input
+                type="radio"
+                name="trackRadio"
+                id="trackArbitrary"
+                value="arbitrary"
+                class="mt-1 h-4 w-4 border-input text-primary focus:ring-ring"
+                [checked]="selectedTrack() === 'arbitrary'"
+                (change)="setTrack('arbitrary')"
+                [disabled]="connectionState() === 'flashing'"
+              />
+              <span class="space-y-0.5 text-sm">
+                <strong class="block font-semibold text-primary">Arbitrary / Unsigned Releases (Recommended)</strong>
+                <span class="block text-xs text-muted-foreground">
+                  Unsigned development builds or local custom binary files. For unlocked hardware only.
+                </span>
+              </span>
             </label>
-          </div>
 
-          <!-- Track B: Signed Releases -->
-          <div class="form-check p-3 mb-3 border rounded bg-light">
-            <input
-              class="form-check-input"
-              type="radio"
-              name="trackRadio"
-              id="trackSigned"
-              value="signed"
-              [checked]="selectedTrack() === 'signed'"
-              (change)="setTrack('signed')"
-              [disabled]="connectionState() === 'flashing'"
-            />
-            <label class="form-check-label ms-1" for="trackSigned">
-              <strong class="d-block">Signed Releases (Production)</strong>
-              <small class="text-muted d-block mt-1">
-                Official releases cryptographically signed with Secure Boot v2. Guarantees authenticity, integrity, and tamper-resistance.
-              </small>
+            <!-- Track B: Signed Releases -->
+            <label
+              for="trackSigned"
+              class="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-muted/30 p-3.5 transition-colors hover:bg-muted/50"
+            >
+              <input
+                type="radio"
+                name="trackRadio"
+                id="trackSigned"
+                value="signed"
+                class="mt-1 h-4 w-4 border-input text-primary focus:ring-ring"
+                [checked]="selectedTrack() === 'signed'"
+                (change)="setTrack('signed')"
+                [disabled]="connectionState() === 'flashing'"
+              />
+              <span class="space-y-0.5 text-sm">
+                <strong class="block font-semibold text-foreground">Signed Releases (Production)</strong>
+                <span class="block text-xs text-muted-foreground">
+                  Official releases cryptographically signed with Secure Boot v2. Guarantees authenticity, integrity, and tamper-resistance.
+                </span>
+              </span>
             </label>
-          </div>
+          </fieldset>
 
-          <!-- Track Details & Selection -->
           @if (selectedTrack() === 'arbitrary') {
-            <!-- Arbitrary Releases Mode -->
-            <div class="alert alert-info border-info shadow-sm mb-3">
-              <div class="d-flex">
-                <div class="fs-4 me-3">ℹ️</div>
-                <div>
-                  <h6 class="alert-heading fw-bold mb-1">Arbitrary / Unsigned Mode Active</h6>
-                  <p class="small mb-1">
-                    Arbitrary builds can only run on unlocked development hardware.
-                  </p>
-                  <p class="small mb-0 text-danger fw-bold">
-                    ⚠️ Note: Unsigned code will FAIL to boot on any device that has already had Secure Boot enabled.
-                  </p>
-                </div>
+            <div hlmAlert variant="info">
+              <h3 hlmAlertTitle>Arbitrary / Unsigned Mode Active</h3>
+              <div hlmAlertDescription class="space-y-1 text-xs">
+                <p>Arbitrary builds can only run on unlocked development hardware.</p>
+                <p class="font-semibold text-destructive">
+                  ⚠️ Note: Unsigned code will FAIL to boot on any device that has already had Secure Boot enabled.
+                </p>
               </div>
             </div>
 
-            <!-- Source toggle: Manifest vs Local Upload -->
-            <div class="mb-3">
-              <label class="form-label fw-bold small">Arbitrary Binary Source:</label>
-              <div class="btn-group btn-group-sm w-100" role="group">
-                <input
-                  type="radio"
-                  class="btn-check"
-                  name="arbitrarySourceRadio"
-                  id="sourceManifest"
-                  autocomplete="off"
-                  [checked]="arbitrarySource() === 'manifest'"
-                  (change)="arbitrarySource.set('manifest')"
+            <div class="space-y-1.5">
+              <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground block">
+                Arbitrary Binary Source
+              </span>
+              <div class="grid grid-cols-1 gap-2 sm:grid-cols-2" role="group" aria-label="Arbitrary binary source">
+                <button
+                  type="button"
+                  hlmBtn
+                  size="sm"
+                  [variant]="arbitrarySource() === 'manifest' ? 'default' : 'outline'"
                   [disabled]="connectionState() === 'flashing'"
-                />
-                <label class="btn btn-outline-secondary" for="sourceManifest">
-                  Server Manifest Unsigned Releases ({{ arbitraryReleases().length }})
-                </label>
-
-                <input
-                  type="radio"
-                  class="btn-check"
-                  name="arbitrarySourceRadio"
-                  id="sourceLocal"
-                  autocomplete="off"
-                  [checked]="arbitrarySource() === 'local'"
-                  (change)="arbitrarySource.set('local')"
+                  (click)="arbitrarySource.set('manifest')"
+                >
+                  Server Manifest ({{ arbitraryReleases().length }})
+                </button>
+                <button
+                  type="button"
+                  hlmBtn
+                  size="sm"
+                  [variant]="arbitrarySource() === 'local' ? 'default' : 'outline'"
                   [disabled]="connectionState() === 'flashing'"
-                />
-                <label class="btn btn-outline-secondary" for="sourceLocal">
-                  Local Custom File Upload (.bin)
-                </label>
+                  (click)="arbitrarySource.set('local')"
+                >
+                  Local File Upload (.bin)
+                </button>
               </div>
             </div>
 
             @if (arbitrarySource() === 'manifest') {
               @if (arbitraryReleases().length === 0) {
-                <div class="alert alert-secondary py-2 small mb-3">
-                  No unsigned releases found in <code>firmware.json</code>. You can switch to "Local Custom File Upload" to upload binaries.
+                <div hlmAlert variant="default" class="py-2 text-xs">
+                  <div hlmAlertDescription>
+                    No unsigned releases found in <code class="font-mono">firmware.json</code>. Switch to "Local File Upload" to upload binaries.
+                  </div>
                 </div>
               } @else {
-                <div class="mb-3">
-                  <label for="arbitraryVersionSelect" class="form-label fw-bold small">Available Unsigned Versions:</label>
+                <div class="space-y-1.5">
+                  <label hlmLabel for="arbitraryVersionSelect">Available Unsigned Versions</label>
                   <select
                     id="arbitraryVersionSelect"
-                    class="form-select form-select-sm"
+                    hlmInput
                     [ngModel]="selectedVersion()"
                     (ngModelChange)="onVersionChange($event)"
                     [disabled]="connectionState() === 'flashing'"
@@ -300,158 +301,154 @@
                 </div>
 
                 @if (currentRelease()) {
-                  <div class="p-3 border rounded bg-light mb-3">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
+                  <div class="rounded-lg border border-border bg-muted/30 p-3.5 space-y-2 text-sm">
+                    <div class="flex items-start justify-between gap-2">
                       <div>
-                        <strong class="fs-6">{{ currentRelease()?.version }}</strong>
+                        <strong class="font-mono text-foreground">{{ currentRelease()?.version }}</strong>
                         @if (currentRelease()?.releaseDate) {
-                          <span class="text-muted small ms-2">Released: {{ currentRelease()?.releaseDate }}</span>
+                          <span class="ml-2 text-xs text-muted-foreground">Released: {{ currentRelease()?.releaseDate }}</span>
                         }
                       </div>
-                      <span class="badge bg-warning text-dark">Unsigned</span>
+                      <span hlmBadge variant="warning">Unsigned</span>
                     </div>
-                    <p class="small text-muted mb-2">{{ currentRelease()?.description }}</p>
-                    <div class="small">
-                      <strong>Binaries:</strong> <code class="ms-1">{{ currentRelease()?.app }}</code>
+                    <p class="text-xs text-muted-foreground">{{ currentRelease()?.description }}</p>
+                    <div class="text-xs">
+                      <strong>Binaries:</strong>
+                      <code class="ml-1 font-mono">{{ currentRelease()?.app }}</code>
                       @if (currentRelease()?.bootloader) {
-                        <span class="text-muted"> + bootloader & partitions</span>
+                        <span class="text-muted-foreground"> + bootloader &amp; partitions</span>
                       }
                     </div>
                   </div>
 
-                  <div class="mb-3">
-                    <label class="form-label fw-bold small">Flashing Scope:</label>
-                    <div class="form-check mb-2">
+                  <fieldset class="space-y-2">
+                    <legend class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Flashing Scope
+                    </legend>
+                    <label for="arbitraryScopeAppOnly" class="flex cursor-pointer items-center gap-2.5 text-sm">
                       <input
-                        class="form-check-input"
                         type="radio"
                         name="arbitraryScopeRadio"
                         id="arbitraryScopeAppOnly"
                         value="app_only"
+                        class="h-4 w-4 border-input text-primary focus:ring-ring"
                         [checked]="selectedFlashScope() === 'app_only'"
                         (change)="selectedFlashScope.set('app_only')"
                         [disabled]="connectionState() === 'flashing'"
                       />
-                      <label class="form-check-label small" for="arbitraryScopeAppOnly">
-                        <strong>Application Only (Offset 0x10000)</strong>
-                      </label>
-                    </div>
-                    <div class="form-check">
+                      <span><strong>Application Only (Offset 0x10000)</strong></span>
+                    </label>
+                    <label for="arbitraryScopeMigration" class="flex cursor-pointer items-center gap-2.5 text-sm">
                       <input
-                        class="form-check-input"
                         type="radio"
                         name="arbitraryScopeRadio"
                         id="arbitraryScopeMigration"
                         value="migration"
+                        class="h-4 w-4 border-input text-primary focus:ring-ring"
                         [checked]="selectedFlashScope() === 'migration'"
                         (change)="selectedFlashScope.set('migration')"
                         [disabled]="connectionState() === 'flashing' || !canMigrateCurrentRelease()"
                       />
-                      <label class="form-check-label small" for="arbitraryScopeMigration">
-                        <strong>Full Image (Bootloader 0x0 + Partitions 0x8000 + App 0x10000)</strong>
-                      </label>
-                    </div>
-                  </div>
+                      <span><strong>Full Image (Bootloader 0x0 + Partitions 0x8000 + App 0x10000)</strong></span>
+                    </label>
+                  </fieldset>
                 }
               }
             } @else {
               <!-- Local Custom File Upload Slots -->
-              <div class="border-top pt-3 mt-3">
-                <h6 class="fw-bold mb-3 small">Custom Binary Files (Local Upload)</h6>
+              <div class="space-y-3 border-t border-border pt-3">
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Custom Binary Files (Local Upload)
+                </h3>
 
                 <!-- Slot 1: Bootloader -->
-                <div class="mb-3 p-2 border rounded bg-white">
-                  <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="fw-bold small">{{ customBootloader.label }}</span>
-                    <span class="badge bg-secondary font-monospace">{{ customBootloader.address }}</span>
+                <div class="rounded-lg border border-border bg-muted/20 p-3 space-y-1.5">
+                  <div class="flex items-center justify-between">
+                    <label hlmLabel for="customBootloaderInput">{{ customBootloader.label }}</label>
+                    <span hlmBadge variant="secondary" class="font-mono">{{ customBootloader.address }}</span>
                   </div>
                   <input
+                    id="customBootloaderInput"
                     type="file"
-                    class="form-control form-control-sm"
+                    hlmInput
                     accept=".bin"
                     (change)="onLocalFileSelected(customBootloader, $event)"
                     [disabled]="connectionState() === 'flashing'"
                   />
                   @if (customBootloader.fileName) {
-                    <small class="text-success d-block mt-1">✓ Loaded: {{ customBootloader.fileName }}</small>
+                    <span class="block text-xs font-medium text-success">✓ Loaded: {{ customBootloader.fileName }}</span>
                   } @else {
-                    <small class="text-muted d-block mt-1">Optional. Select a bootloader .bin file to flash at 0x0000.</small>
+                    <span class="block text-xs text-muted-foreground">Optional. Select a bootloader .bin file to flash at 0x0000.</span>
                   }
                 </div>
 
                 <!-- Slot 2: Partitions -->
-                <div class="mb-3 p-2 border rounded bg-white">
-                  <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="fw-bold small">{{ customPartitions.label }}</span>
-                    <span class="badge bg-secondary font-monospace">{{ customPartitions.address }}</span>
+                <div class="rounded-lg border border-border bg-muted/20 p-3 space-y-1.5">
+                  <div class="flex items-center justify-between">
+                    <label hlmLabel for="customPartitionsInput">{{ customPartitions.label }}</label>
+                    <span hlmBadge variant="secondary" class="font-mono">{{ customPartitions.address }}</span>
                   </div>
                   <input
+                    id="customPartitionsInput"
                     type="file"
-                    class="form-control form-control-sm"
+                    hlmInput
                     accept=".bin"
                     (change)="onLocalFileSelected(customPartitions, $event)"
                     [disabled]="connectionState() === 'flashing'"
                   />
                   @if (customPartitions.fileName) {
-                    <small class="text-success d-block mt-1">✓ Loaded: {{ customPartitions.fileName }}</small>
+                    <span class="block text-xs font-medium text-success">✓ Loaded: {{ customPartitions.fileName }}</span>
                   } @else {
-                    <small class="text-muted d-block mt-1">Optional. Select a partition table .bin file to flash at 0x8000.</small>
+                    <span class="block text-xs text-muted-foreground">Optional. Select a partition table .bin file to flash at 0x8000.</span>
                   }
                 </div>
 
                 <!-- Slot 3: App -->
-                <div class="mb-3 p-2 border rounded bg-white">
-                  <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="fw-bold small">{{ customApp.label }}</span>
-                    <span class="badge bg-secondary font-monospace">{{ customApp.address }}</span>
+                <div class="rounded-lg border border-border bg-muted/20 p-3 space-y-1.5">
+                  <div class="flex items-center justify-between">
+                    <label hlmLabel for="customAppInput">{{ customApp.label }}</label>
+                    <span hlmBadge variant="secondary" class="font-mono">{{ customApp.address }}</span>
                   </div>
                   <input
+                    id="customAppInput"
                     type="file"
-                    class="form-control form-control-sm"
+                    hlmInput
                     accept=".bin"
                     (change)="onLocalFileSelected(customApp, $event)"
                     [disabled]="connectionState() === 'flashing'"
                   />
                   @if (customApp.fileName) {
-                    <small class="text-success d-block mt-1">✓ Loaded: {{ customApp.fileName }}</small>
+                    <span class="block text-xs font-medium text-success">✓ Loaded: {{ customApp.fileName }}</span>
                   } @else {
-                    <small class="text-muted d-block mt-1">Select an application .bin file to flash at 0x10000.</small>
+                    <span class="block text-xs text-muted-foreground">Select an application .bin file to flash at 0x10000.</span>
                   }
                 </div>
               </div>
             }
-
           } @else {
             <!-- Signed Releases Mode -->
-            <!-- Signed Warning Alert -->
-            <div class="alert alert-warning border-warning shadow-sm mb-3">
-              <div class="d-flex">
-                <div class="fs-4 me-3">⚠️</div>
-                <div>
-                  <h6 class="alert-heading fw-bold mb-1">Permanent Secure Boot Hardware Warning</h6>
-                  <p class="small mb-1">
-                    Once a device is flashed with a signed version (or when migrating bootloader), ESP32-S3 Secure Boot v2
-                    permanently burns the signing key hash into hardware eFuses on initial boot.
-                  </p>
-                  <p class="small fw-bold mb-0 text-danger">
-                    This hardware change is <u>PERMANENT and IRREVERSIBLE</u>. From that point forward, the device will ONLY ever boot
-                    firmware signed with this specific private key. Unsigned code or code signed with any other key will be rejected by the hardware ROM.
-                  </p>
-                </div>
+            <div hlmAlert variant="warning">
+              <h3 hlmAlertTitle>⚠️ Permanent Secure Boot Hardware Warning</h3>
+              <div hlmAlertDescription class="space-y-1 text-xs">
+                <p>
+                  Once a device is flashed with a signed version (or when migrating bootloader), ESP32-S3 Secure Boot v2 permanently burns the signing key hash into hardware eFuses on initial boot.
+                </p>
+                <p class="font-semibold text-destructive">
+                  This hardware change is PERMANENT and IRREVERSIBLE. From that point forward, the device will ONLY ever boot firmware signed with this specific private key.
+                </p>
               </div>
             </div>
 
-            <!-- Signed Version Dropdown -->
             @if (signedReleases().length === 0) {
-              <div class="alert alert-secondary py-2 small mb-3">
-                No signed releases found in <code>firmware.json</code>.
+              <div hlmAlert variant="default" class="py-2 text-xs">
+                <div hlmAlertDescription>No signed releases found in <code class="font-mono">firmware.json</code>.</div>
               </div>
             } @else {
-              <div class="mb-3">
-                <label for="signedVersionSelect" class="form-label fw-bold small">Available Signed Versions:</label>
+              <div class="space-y-1.5">
+                <label hlmLabel for="signedVersionSelect">Available Signed Versions</label>
                 <select
                   id="signedVersionSelect"
-                  class="form-select form-select-sm"
+                  hlmInput
                   [ngModel]="selectedVersion()"
                   (ngModelChange)="onVersionChange($event)"
                   [disabled]="connectionState() === 'flashing'"
@@ -464,159 +461,148 @@
                 </select>
               </div>
 
-              <!-- Selected Release Information -->
               @if (currentRelease()) {
-                <div class="p-3 border rounded bg-light mb-3">
-                  <div class="d-flex justify-content-between align-items-start mb-2">
+                <div class="rounded-lg border border-border bg-muted/30 p-3.5 space-y-2 text-sm">
+                  <div class="flex items-start justify-between gap-2">
                     <div>
-                      <strong class="fs-6">{{ currentRelease()?.version }}</strong>
+                      <strong class="font-mono text-foreground">{{ currentRelease()?.version }}</strong>
                       @if (currentRelease()?.releaseDate) {
-                        <span class="text-muted small ms-2">Released: {{ currentRelease()?.releaseDate }}</span>
+                        <span class="ml-2 text-xs text-muted-foreground">Released: {{ currentRelease()?.releaseDate }}</span>
                       }
                     </div>
-                    <span class="badge bg-success">Signed</span>
+                    <span hlmBadge variant="success">Signed</span>
                   </div>
-                  <p class="small text-muted mb-2">{{ currentRelease()?.description }}</p>
-                  <div class="small">
+                  <p class="text-xs text-muted-foreground">{{ currentRelease()?.description }}</p>
+                  <div class="text-xs">
                     <strong>Binaries:</strong>
-                    <code class="ms-1">{{ currentRelease()?.app }}</code>
+                    <code class="ml-1 font-mono">{{ currentRelease()?.app }}</code>
                     @if (currentRelease()?.bootloader) {
-                      <span class="text-muted"> + bootloader & partitions</span>
+                      <span class="text-muted-foreground"> + bootloader &amp; partitions</span>
                     }
                   </div>
                 </div>
 
-                <!-- Scope Selection -->
-                <div class="mb-3">
-                  <label class="form-label fw-bold small">Flashing Scope:</label>
-
-                  <!-- App Only -->
-                  <div class="form-check mb-2">
+                <fieldset class="space-y-2">
+                  <legend class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Flashing Scope
+                  </legend>
+                  <label for="scopeAppOnly" class="flex cursor-pointer items-start gap-2.5 text-sm">
                     <input
-                      class="form-check-input"
                       type="radio"
                       name="scopeRadio"
                       id="scopeAppOnly"
                       value="app_only"
+                      class="mt-1 h-4 w-4 border-input text-primary focus:ring-ring"
                       [checked]="selectedFlashScope() === 'app_only'"
                       (change)="selectedFlashScope.set('app_only')"
                       [disabled]="connectionState() === 'flashing'"
                     />
-                    <label class="form-check-label small" for="scopeAppOnly">
+                    <span>
                       <strong>Application Update Only (Offset 0x10000)</strong> &mdash; Recommended for standard updates.
-                    </label>
-                  </div>
-
-                  <!-- Full Migration -->
-                  <div class="form-check">
+                    </span>
+                  </label>
+                  <label for="scopeMigration" class="flex cursor-pointer items-start gap-2.5 text-sm">
                     <input
-                      class="form-check-input"
                       type="radio"
                       name="scopeRadio"
                       id="scopeMigration"
                       value="migration"
+                      class="mt-1 h-4 w-4 border-input text-primary focus:ring-ring"
                       [checked]="selectedFlashScope() === 'migration'"
                       (change)="selectedFlashScope.set('migration')"
                       [disabled]="connectionState() === 'flashing' || !canMigrateCurrentRelease()"
                     />
-                    <label class="form-check-label small" for="scopeMigration">
+                    <span>
                       <strong>Secure Boot v2 Full Migration (Bootloader 0x0 + Partitions 0x8000 + App 0x10000)</strong>
                       @if (!canMigrateCurrentRelease()) {
-                        <span class="text-muted d-block">(Not available for this release: bootloader or partitions missing from manifest)</span>
+                        <span class="block text-xs text-muted-foreground">(Not available for this release: bootloader or partitions missing from manifest)</span>
                       } @else {
-                        <span class="text-muted d-block">Use for first-time provisioning or upgrading older unsigned units to Secure Boot v2.</span>
+                        <span class="block text-xs text-muted-foreground">Use for first-time provisioning or upgrading older unsigned units to Secure Boot v2.</span>
                       }
-                    </label>
-                  </div>
-                </div>
+                    </span>
+                  </label>
+                </fieldset>
               }
             }
           }
-
         </div>
-      </div>
+      </section>
 
       <!-- 4. Flashing Execution Card -->
-      <div class="card mb-4 shadow-sm">
-        <div class="card-header bg-dark text-white">
-          <span class="fw-bold">4. Flash Execution</span>
+      <section hlmCard>
+        <div hlmCardHeader class="pb-3">
+          <h2 hlmCardTitle class="text-base">4. Flash Execution</h2>
         </div>
-        <div class="card-body">
+        <div hlmCardContent class="space-y-4">
           @if (connectionState() === 'flashing') {
-            <div class="mb-3">
-              <div class="d-flex justify-content-between mb-1">
-                <span class="small fw-bold">{{ currentAction() }}</span>
-                <span class="small fw-bold">{{ progressPercent() }}%</span>
+            <div class="space-y-2">
+              <div class="flex items-center justify-between text-xs font-semibold">
+                <span>{{ currentAction() }}</span>
+                <span class="font-mono">{{ progressPercent() }}%</span>
               </div>
-              <div class="progress" style="height: 22px;">
-                <div
-                  class="progress-bar progress-bar-striped progress-bar-animated bg-success"
-                  role="progressbar"
-                  [style.width.%]="progressPercent()"
-                  [attr.aria-valuenow]="progressPercent()"
-                  aria-valuemin="0"
-                  aria-valuemax="100"
-                >
-                  {{ progressPercent() }}%
-                </div>
-              </div>
+              <hlm-progress [value]="progressPercent()" [aria-label]="currentAction() || 'Firmware flashing progress'" />
               @if (progressDetails()) {
-                <small class="text-muted font-monospace d-block mt-1 text-truncate">
+                <p class="truncate font-mono text-xs text-muted-foreground">
                   {{ progressDetails() }}
-                </small>
+                </p>
               }
             </div>
-            <div class="alert alert-warning py-2 mb-0 small">
-              ⚠️ Please keep the device connected. Do not close or refresh this tab while flashing is in progress.
+            <div hlmAlert variant="warning" class="py-2 text-xs">
+              <div hlmAlertDescription>
+                ⚠️ Please keep the device connected. Do not close or refresh this tab while flashing is in progress.
+              </div>
             </div>
           } @else {
             <button
-              class="btn btn-success btn-lg w-100 fw-bold"
+              type="button"
+              hlmBtn
+              variant="success"
+              size="lg"
+              class="w-full"
               [disabled]="!isSerialSupported() || (selectedTrack() === 'signed' && !currentRelease())"
               (click)="startFlashing()"
             >
               @if (connectionState() === 'connected') {
-                Flash Device (NVS Protected) 🚀
+                <span>Flash Device (NVS Protected) 🚀</span>
               } @else {
-                Connect & Flash Device (NVS Protected) 🚀
+                <span>Connect &amp; Flash Device (NVS Protected) 🚀</span>
               }
             </button>
           }
         </div>
-      </div>
-
+      </section>
     </div>
 
     <!-- Right Column: Live Activity Terminal -->
-    <div class="col-lg-5">
-      <div class="card shadow-sm sticky-top" style="top: 1rem;">
-        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-          <span class="fw-bold">Activity Log</span>
-          <button class="btn btn-sm btn-outline-light" (click)="clearLogs()">Clear</button>
+    <div class="lg:col-span-5">
+      <section hlmCard class="sticky top-20 overflow-hidden">
+        <div hlmCardHeader class="flex flex-row items-center justify-between border-b border-border bg-muted/40 py-3">
+          <h2 hlmCardTitle class="text-sm font-semibold">Activity Log</h2>
+          <button type="button" hlmBtn variant="outline" size="sm" class="h-7 px-2.5 text-xs" (click)="clearLogs()">
+            Clear
+          </button>
         </div>
-        <div #logContainer class="card-body p-0 log-terminal bg-black text-light">
-          <div class="p-3 font-monospace small">
-            @if (logs().length === 0) {
-              <div class="text-muted">No activity yet. Click "Connect" or "Flash Device" to begin.</div>
-            } @else {
-              @for (entry of logs(); track $index) {
-                <div class="log-line mb-1">
-                  <span class="text-muted me-2">[{{ entry.timestamp }}]</span>
-                  @if (entry.type === 'success') {
-                    <span class="text-success">{{ entry.message }}</span>
-                  } @else if (entry.type === 'error') {
-                    <span class="text-danger fw-bold">{{ entry.message }}</span>
-                  } @else if (entry.type === 'warn') {
-                    <span class="text-warning">{{ entry.message }}</span>
-                  } @else {
-                    <span class="text-info">{{ entry.message }}</span>
-                  }
-                </div>
-              }
+        <div #logContainer class="log-terminal p-3 font-mono text-xs">
+          @if (logs().length === 0) {
+            <div class="text-slate-400">No activity yet. Click "Connect" or "Flash Device" to begin.</div>
+          } @else {
+            @for (entry of logs(); track $index) {
+              <div class="log-line mb-1">
+                <span class="mr-2 text-slate-400">[{{ entry.timestamp }}]</span>
+                @if (entry.type === 'success') {
+                  <span class="text-emerald-400">{{ entry.message }}</span>
+                } @else if (entry.type === 'error') {
+                  <span class="font-semibold text-rose-400">{{ entry.message }}</span>
+                } @else if (entry.type === 'warn') {
+                  <span class="text-amber-300">{{ entry.message }}</span>
+                } @else {
+                  <span class="text-sky-300">{{ entry.message }}</span>
+                }
+              </div>
             }
-          </div>
+          }
         </div>
-      </div>
+      </section>
     </div>
   </div>
 </div>

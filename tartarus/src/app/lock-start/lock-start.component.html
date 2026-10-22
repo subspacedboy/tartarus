@@ -1,48 +1,67 @@
-@if(loaded) {
-  <h1>Lock Start</h1>
+@if (loaded) {
+  <div class="mx-auto max-w-3xl space-y-6 py-4">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-foreground">Lock Start</h1>
+      <p class="text-sm text-muted-foreground">
+        Your smart lock session is registered. Share one of the links below with your contract author.
+      </p>
+    </div>
 
-  <div class="row">
-    <div class="col-sm-10">
-
-      <div class="bs-component">
-        <div class="alert alert-dismissible alert-info">
-          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-          <strong>Heads up!</strong> This is the link you send to contract authors when you want the ability to review.
+    <section hlmCard>
+      <div hlmCardHeader>
+        <h2 hlmCardTitle class="text-lg">Reviewable Contract Share Link</h2>
+        <p hlmCardDescription>
+          Send this link to contract authors when you want the ability to review and approve contracts before they activate.
+        </p>
+      </div>
+      <div hlmCardContent class="space-y-3">
+        <div hlmAlert variant="info">
+          <div hlmAlertDescription>
+            <strong>Heads up!</strong> This is the link you send to contract authors when you want the ability to review.
+          </div>
+        </div>
+        <div class="space-y-1.5">
+          <label hlmLabel for="lockLink">Share Link</label>
+          <input hlmInput class="font-mono text-xs" id="lockLink" [value]="getShareLink()" [disabled]="true" readonly />
         </div>
       </div>
+    </section>
 
-      <input class="form-control" id="lockLink" [value]="getShareLink()" [disabled]="true">
-    </div>
-  </div>
-
-  <div class="row">
-    <div class="col-sm-10">
-
-      <div class="bs-component">
-        <div class="alert alert-dismissible alert-info">
-          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-          <strong>Heads up!</strong> This is the link you send to contract authors when you DO NOT want the ability to review.
-          If your lock is online, they can simply activate contracts without approval. You've been warned.
+    <section hlmCard>
+      <div hlmCardHeader>
+        <h2 hlmCardTitle class="text-lg">Total Control Link</h2>
+        <p hlmCardDescription>
+          Send this link only when you want the author to activate contracts immediately without your review.
+        </p>
+      </div>
+      <div hlmCardContent class="space-y-3">
+        <div hlmAlert variant="warning">
+          <div hlmAlertDescription>
+            <strong>Heads up!</strong> This is the link you send to contract authors when you DO NOT want the ability to review.
+            If your lock is online, they can simply activate contracts without approval. You've been warned.
+          </div>
+        </div>
+        <div class="space-y-1.5">
+          <label hlmLabel for="lockLink2">Total Control Link</label>
+          <input hlmInput class="font-mono text-xs" id="lockLink2" [value]="getTotalControlLink()" [disabled]="true" readonly />
         </div>
       </div>
+    </section>
 
-      <input class="form-control" id="lockLink2" [value]="getTotalControlLink()" [disabled]="true">
+    <div class="space-y-3">
+      <button type="button" hlmBtn variant="outline" size="sm" (click)="showTechnicalDetails()">
+        Show Technical Details
+      </button>
+
+      @if (showDetails) {
+        <section hlmCard>
+          <div hlmCardContent class="space-y-1.5 pt-4 font-mono text-xs text-muted-foreground">
+            <div><span class="font-semibold text-foreground">Nonce:</span> {{ nonce }}</div>
+            <div><span class="font-semibold text-foreground">Cipher:</span> {{ cipher }}</div>
+            <div><span class="font-semibold text-foreground">Session ID:</span> {{ session }}</div>
+          </div>
+        </section>
+      }
     </div>
   </div>
-
-  <button type="button" class="btn btn-light" (click)="showTechnicalDetails()">Show Technical Details</button>
-
-  @if(showDetails) {
-    <div class="row">
-      <div>
-        Nonce: {{nonce}}
-      </div>
-      <div>
-        Cipher: {{cipher}}
-      </div>
-      <div>
-        Session ID: {{session}}
-      </div>
-    </div>
-  }
 }

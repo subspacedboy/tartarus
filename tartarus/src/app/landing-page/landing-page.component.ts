@@ -1,16 +1,22 @@
-import {Component, Inject, OnInit, ChangeDetectionStrategy} from '@angular/core';
-import {RouterLink} from '@angular/router';
-import {UserDataService} from '../user-data.service';
-import {AppComponent} from '../app.component';
-import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
-import {Contract} from '../models/contract';
-import {ContractCardComponent} from '../contract-card/contract-card.component';
+import { Component, Inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { UserDataService } from '../user-data.service';
+import { AppComponent } from '../app.component';
+import { TartarusCoordinatorService } from '../tartarus-coordinator.service';
+import { Contract } from '../models/contract';
+import { ContractCardComponent } from '../contract-card/contract-card.component';
+import { HlmBadgeDirective } from '../shared/ui/ui-badge-helm';
+import { HlmButtonDirective } from '../shared/ui/ui-button-helm';
+import { HlmCardImports } from '../shared/ui/ui-card-helm';
 
 @Component({
   selector: 'app-landing-page',
   imports: [
     RouterLink,
-    ContractCardComponent
+    ContractCardComponent,
+    HlmBadgeDirective,
+    HlmButtonDirective,
+    ...HlmCardImports,
   ],
   templateUrl: './landing-page.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

@@ -1,23 +1,39 @@
 @if (knownToken) {
-  <div class="card mb-3" style="max-width: 20rem;">
-    <div class="card-header text-truncate" [title]="knownToken.notes || knownToken.name">
-      {{ knownToken.notes || knownToken.name }}
+  <section hlmCard class="flex h-full flex-col justify-between border-l-4 border-l-primary transition-shadow hover:shadow-md">
+    <div hlmCardHeader class="pb-3">
+      <div class="flex items-start justify-between gap-2">
+        <h3
+          hlmCardTitle
+          class="truncate text-base font-semibold text-foreground"
+          [title]="knownToken.notes || knownToken.name"
+        >
+          {{ knownToken.notes || knownToken.name }}
+        </h3>
+        <span hlmBadge variant="secondary" class="shrink-0">Lock Session</span>
+      </div>
     </div>
-    <div class="card-body">
-      <h4 class="card-title">🔑 Lock Session</h4>
-      <p class="card-text mb-1">
-        <small class="text-muted">Token: </small>
-        <code class="user-select-all">{{ knownToken.shareableToken }}</code>
-      </p>
+
+    <div hlmCardContent class="space-y-2 pb-3 text-sm">
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Token:</span>
+        <code class="select-all rounded border border-border bg-muted px-2 py-0.5 font-mono text-xs text-foreground">
+          {{ knownToken.shareableToken }}
+        </code>
+      </div>
       @if (knownToken.createdAt) {
-        <p class="card-text text-muted small mb-2">
+        <p class="text-xs text-muted-foreground">
           Added {{ knownToken.createdAt | date: 'short' }}
         </p>
       }
-      <div class="d-flex justify-content-between align-items-center mt-3">
-        <a [routerLink]="['/lock-sessions', knownToken.shareableToken]" class="btn btn-primary btn-sm">Details</a>
-        <button type="button" class="btn btn-outline-danger btn-sm" (click)="onDelete($event)">Delete</button>
-      </div>
     </div>
-  </div>
+
+    <div hlmCardFooter class="justify-between gap-2 border-t border-border/60 pt-3">
+      <a [routerLink]="['/lock-sessions', knownToken.shareableToken]" hlmBtn variant="default" size="sm">
+        Details
+      </a>
+      <button type="button" hlmBtn variant="destructive" size="sm" (click)="onDelete($event)">
+        Delete
+      </button>
+    </div>
+  </section>
 }

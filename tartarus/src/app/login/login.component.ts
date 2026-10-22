@@ -1,11 +1,15 @@
-import {Component, ElementRef, OnInit, ViewChild, ChangeDetectionStrategy} from '@angular/core';
-import {UserDataService} from '../user-data.service';
-import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
+import { Component, ElementRef, OnInit, ViewChild, ChangeDetectionStrategy } from '@angular/core';
+import { UserDataService } from '../user-data.service';
+import { TartarusCoordinatorService } from '../tartarus-coordinator.service';
 import jsQR from 'jsqr';
-import {IdHelperService} from '../id-helper.service';
-import {CryptoService} from '../crypto.service';
-import {Router} from '@angular/router';
-import {WebsocketService} from '../websocket.service';
+import { IdHelperService } from '../id-helper.service';
+import { CryptoService } from '../crypto.service';
+import { Router } from '@angular/router';
+import { WebsocketService } from '../websocket.service';
+import { HlmAlertImports } from '../shared/ui/ui-alert-helm';
+import { HlmCardImports } from '../shared/ui/ui-card-helm';
+import { HlmInputDirective } from '../shared/ui/ui-input-helm';
+import { HlmLabelDirective } from '../shared/ui/ui-label-helm';
 
 interface LoadedKeyPair {
   privateKey: CryptoKey;
@@ -16,7 +20,12 @@ interface LoadedKeyPair {
 
 @Component({
   selector: 'app-login',
-  imports: [],
+  imports: [
+    ...HlmAlertImports,
+    ...HlmCardImports,
+    HlmInputDirective,
+    HlmLabelDirective,
+  ],
   templateUrl: './login.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './login.component.scss'

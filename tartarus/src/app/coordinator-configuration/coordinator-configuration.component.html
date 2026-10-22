@@ -1,97 +1,178 @@
-<div class="alert alert-dismissible alert-warning">
-  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-  <h4 class="alert-heading">Warning!</h4>
-  <p class="mb-0">This is an expert mode page. If you're not sure what any of this does, don't adjust it.</p>
-</div>
-
-<div class="row">
-  <div class="col-lg-4">
-    <div class="bs-component">
-      <h2>Tartarus Lock Configuration Data</h2>
-      <h3>What is this for?</h3>
-      <p>This is used to tell your Tartarus lock where to connect. You can manually adjust the URIs if you're running
-      your own version of the coordinator service and frontend somewhere else.</p>
+<div class="mx-auto max-w-5xl space-y-6">
+  <div hlmAlert variant="warning">
+    <h2 hlmAlertTitle>Expert Mode Configuration</h2>
+    <div hlmAlertDescription>
+      This is an expert mode page used to tell your Tartarus lock where to connect. If you're not sure what these endpoints do, leave the default values intact.
     </div>
   </div>
-</div>
 
-<div class="row">
-  <div class="col-lg-4">
-    <div class="bs-component">
-      <h2>Which coordinator?</h2>
-      <h3>What is this for?</h3>
-      <p>You can refer to a different coordinator.</p>
+  <div class="space-y-1">
+    <h1 class="text-2xl font-bold tracking-tight text-foreground">Tartarus Lock Configuration Data</h1>
+    <p class="text-sm text-muted-foreground">
+      Adjust coordinator endpoints for self-hosted deployments or generate a scannable configuration QR code for your physical lock.
+    </p>
+  </div>
 
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <!-- Left Card: Frontend Coordinator Override -->
+    <section hlmCard class="flex flex-col justify-between">
+      <div hlmCardHeader>
+        <h2 hlmCardTitle class="text-lg">Which Coordinator? (Frontend Override)</h2>
+        <p hlmCardDescription>
+          Point this web client to a custom coordinator API and WebSocket endpoint.
+        </p>
+      </div>
+      <div hlmCardContent class="space-y-4">
+        <form [formGroup]="backendSelection" (submit)="chooseBackend()" class="space-y-4">
+          <fieldset class="space-y-3">
+            <legend class="sr-only">Frontend Coordinator Endpoints</legend>
 
-      <form [formGroup]="backendSelection" (submit)="chooseBackend()">
-        <fieldset>
+            <div class="space-y-1.5">
+              <label hlmLabel for="wsUri_backend">WS URI</label>
+              <input
+                id="wsUri_backend"
+                hlmInput
+                class="font-mono text-xs"
+                type="text"
+                formControlName="wsUri"
+                placeholder="ws://..."
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+              />
+            </div>
 
-          <div class="col-sm-10">
-            <label for="wsUri_backend">WS URI: </label>
-            <input id="wsUri_backend" class="form-control" type="text" formControlName="wsUri" placeholder="WS URI">
-          </div>
+            <div class="space-y-1.5">
+              <label hlmLabel for="apiUri_backend">API URI</label>
+              <input
+                id="apiUri_backend"
+                hlmInput
+                class="font-mono text-xs"
+                type="text"
+                formControlName="apiUri"
+                placeholder="https://.../api"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+              />
+            </div>
 
-          <div class="col-sm-10">
-            <label for="apiUri_backend">API URI: </label>
-            <input id="apiUri_backend" class="form-control" type="text" formControlName="apiUri" placeholder="API URI">
-          </div>
+            <div class="flex flex-wrap gap-2 pt-2">
+              <button hlmBtn variant="default" type="submit" class="flex-1">
+                Choose Backend
+              </button>
+              <button type="button" hlmBtn variant="destructive" (click)="resetBackend()">
+                Reset Backend
+              </button>
+            </div>
+          </fieldset>
+        </form>
+      </div>
+    </section>
 
-          <button class="btn btn-small btn-primary" type="submit">
-            Choose Backend
-          </button>
+    <!-- Right Card: Lock QR Configuration -->
+    <section hlmCard>
+      <div hlmCardHeader>
+        <h2 hlmCardTitle class="text-lg">Lock Endpoint Configuration (QR Payload)</h2>
+        <p hlmCardDescription>
+          Generate a scannable FlatBuffers QR code that reconfigures your physical smart lock.
+        </p>
+      </div>
+      <div hlmCardContent>
+        <form [formGroup]="configurationForm" (submit)="regenerate()" class="space-y-3">
+          <fieldset class="space-y-3">
+            <legend class="sr-only">Smart Lock Endpoints</legend>
 
-        </fieldset>
-      </form>
+            <div class="space-y-1.5">
+              <label hlmLabel for="webUri">Web URI</label>
+              <input
+                id="webUri"
+                hlmInput
+                class="font-mono text-xs"
+                type="text"
+                formControlName="webUri"
+                placeholder="Web URI"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+              />
+            </div>
 
-      <button type="button" class="btn btn-large btn-danger" (click)="resetBackend()">Reset Backend</button>
+            <div class="space-y-1.5">
+              <label hlmLabel for="wsUri">WS URI</label>
+              <input
+                id="wsUri"
+                hlmInput
+                class="font-mono text-xs"
+                type="text"
+                formControlName="wsUri"
+                placeholder="WS URI"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+              />
+            </div>
 
+            <div class="space-y-1.5">
+              <label hlmLabel for="apiUri">API URI</label>
+              <input
+                id="apiUri"
+                hlmInput
+                class="font-mono text-xs"
+                type="text"
+                formControlName="apiUri"
+                placeholder="API URI"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+              />
+            </div>
+
+            <div class="space-y-1.5">
+              <label hlmLabel for="mqttUri">MQTT URI</label>
+              <input
+                id="mqttUri"
+                hlmInput
+                class="font-mono text-xs"
+                type="text"
+                formControlName="mqttUri"
+                placeholder="MQTT URI"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+              />
+            </div>
+
+            <label
+              for="includeSafetyKeys"
+              class="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3 text-sm font-medium text-foreground"
+            >
+              <span>Include Safety Keys?</span>
+              <input
+                id="includeSafetyKeys"
+                type="checkbox"
+                formControlName="includeSafetyKeys"
+                class="h-4 w-4 rounded border-input text-primary focus:ring-ring"
+              />
+            </label>
+
+            <button hlmBtn variant="default" class="w-full" type="submit">
+              Regenerate
+            </button>
+          </fieldset>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <section hlmCard #hiddenDiv hidden>
+    <div hlmCardHeader>
+      <h2 hlmCardTitle class="text-lg">Configuration Data</h2>
     </div>
-  </div>
-</div>
-
-<div class="row" style="margin-top: 1em;">
-  <div class="col-lg-4">
-  <h2>Lock configuration</h2>
-  <h3>What is this for?</h3>
-  <p>Use these fields to generate a scannable QR code that will reconfigure your smart lock.</p>
-
-  <form [formGroup]="configurationForm" (submit)="regenerate()">
-    <fieldset>
-      <div class="col-sm-10">
-        <label for="webUri">Web URI: </label>
-        <input id="webUri" class="form-control" type="text" formControlName="webUri" placeholder="Web URI">
+    <div hlmCardContent class="flex justify-center">
+      <div class="qr-quiet-zone">
+        <canvas #canvas></canvas>
       </div>
-
-      <div class="col-sm-10">
-        <label for="wsUri">WS URI: </label>
-        <input id="wsUri" class="form-control" type="text" formControlName="wsUri" placeholder="WS URI">
-      </div>
-
-      <div class="col-sm-10">
-        <label for="apiUri">API URI: </label>
-        <input id="apiUri" class="form-control" type="text" formControlName="apiUri" placeholder="Web URI">
-      </div>
-
-      <div class="col-sm-10">
-        <label for="mqttUri">MQTT URI: </label>
-        <input id="mqttUri" class="form-control" type="text" formControlName="mqttUri" placeholder="MQTT URI">
-      </div>
-
-      <div class="form-check form-switch">
-        <label class="form-check-label" for="includeSafetyKeys">Include Safety Keys?</label>
-        <input id="includeSafetyKeys" class="form-check-input" type="checkbox" formControlName="includeSafetyKeys">
-      </div>
-
-      <button class="btn btn-small btn-primary" type="submit">
-        Regenerate
-      </button>
-    </fieldset>
-  </form>
-  </div>
-</div>
-
-
-<div #hiddenDiv hidden>
-  <h1 style="color: black">Configuration Data</h1>
-  <canvas #canvas></canvas>
+    </div>
+  </section>
 </div>

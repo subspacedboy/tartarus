@@ -1,0 +1,244 @@
+<hlm-dialog [open]="true" (closed)="close()" aria-label="Ingest & Verify Hardware Provisioning Blob" class="max-w-4xl">
+  <div hlmDialogHeader class="flex flex-row items-center justify-between border-b border-border pb-3">
+    <h2 hlmDialogTitle class="flex items-center gap-2 text-lg">
+      <span aria-hidden="true">🛡️</span>
+      <span>Ingest &amp; Verify Hardware Provisioning Blob</span>
+    </h2>
+    <button hlmBtn variant="ghost" size="sm" type="button" (click)="close()" aria-label="Close">✕</button>
+  </div>
+
+  <div class="space-y-5 py-2">
+    <!-- Direct WebSerial Actions (if supported) -->
+    <section hlmCard class="border-primary/20 bg-muted/30 p-4">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h3 class="text-sm font-semibold text-primary">⚡ Direct WebSerial Provisioning</h3>
+          <p class="text-xs text-muted-foreground">Connect your ESP32-S3 over USB CDC to run commands and capture attestation automatically.</p>
+        </div>
+
+        @if (serialService.isSerialSupported()) {
+          <div class="flex flex-wrap items-center gap-2">
+            <button hlmBtn variant="outline" size="sm" type="button" [disabled]="isSerialBusy()" (click)="runSerialCommand('EXPORT_CERT')">
+              📜 EXPORT_CERT
+            </button>
+            <button hlmBtn variant="warning" size="sm" type="button" [disabled]="isSerialBusy()" (click)="runSerialCommand('SOFT_PROVISION')">
+              🧪 SOFT_PROVISION (Dev)
+            </button>
+            <button hlmBtn variant="destructive" size="sm" type="button" [disabled]="isSerialBusy()" (click)="runSerialCommand('PROVISION')">
+              🔒 PROVISION (Factory)
+            </button>
+          </div>
+        } @else {
+          <span hlmBadge variant="secondary">WebSerial not supported in this browser</span>
+        }
+      </div>
+
+      @if (serialStatusMessage()) {
+        <div class="mt-2 text-xs font-medium text-primary">
+          <em>{{ serialStatusMessage() }}</em>
+        </div>
+      }
+    </section>
+
+    <!-- Raw Blob Input Section -->
+    <div class="space-y-2">
+      <div class="flex items-center justify-between">
+        <label hlmLabel for="rawBlobInput">
+          Provisioning JSON / Serial Output Line:
+        </label>
+        <label hlmBtn variant="outline" size="sm" class="cursor-pointer">
+          📁 Upload .json / .log
+          <input type="file" accept=".json,.log,.txt" (change)="onFileSelected($event)" class="sr-only">
+        </label>
+      </div>
+
+      <textarea
+        hlmInput
+        id="rawBlobInput"
+        rows="5"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        class="h-auto font-mono text-xs"
+        placeholder="Paste raw serial line (PROVISION_RESULT:{...}, SOFT_PROVISION_RESULT:{...}, CERT_EXPORT:{...}) or JSON blob here..."
+        [ngModel]="rawPayload()"
+        (ngModelChange)="onPayloadInput($event)"
+      ></textarea>
+    </div>
+
+    <!-- Live Verification Preview Card -->
+    @if (isLoadingPreview()) {
+      <section hlmCard class="p-6 text-center">
+        <div class="inline-flex items-center gap-2 text-muted-foreground">
+          <hlm-spinner size="sm" />
+          <span class="text-sm">Running cryptographic verification pipeline...</span>
+        </div>
+      </section>
+    } @else if (preview(); as p) {
+      <section
+        hlmCard
+        class="overflow-hidden border-2"
+        [class.border-emerald-500/50]="p.valid"
+        [class.border-destructive/50]="!p.valid"
+      >
+        <div
+          class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-border"
+          [class.bg-emerald-500/10]="p.valid"
+          [class.bg-destructive/10]="!p.valid"
+        >
+          <span class="font-semibold text-sm flex items-center gap-2">
+            @if (p.valid) {
+              <span>✅ Cryptographic Verification Succeeded</span>
+            } @else {
+              <span>❌ Verification Failed</span>
+            }
+          </span>
+
+          @if (p.provisioningMode === 'HARD') {
+            <span hlmBadge variant="success">🛡️ HARD PROVISIONED (PRODUCTION)</span>
+          } @else if (p.provisioningMode === 'SOFT') {
+            <span hlmBadge variant="warning">🧪 SOFT PROVISIONED (DEVELOPMENT)</span>
+          } @else {
+            <span hlmBadge variant="secondary">{{ p.provisioningMode }}</span>
+          }
+        </div>
+
+        <div hlmCardContent class="space-y-4 pt-4">
+          <!-- Verification Badges / Checklist -->
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div class="rounded-md border border-border bg-muted/30 p-3 text-xs space-y-1">
+              <div class="font-semibold text-foreground">
+                @if (p.chainValid) { <span class="text-emerald-600 dark:text-emerald-400">✔</span> } @else { <span class="text-destructive">✖</span> }
+                Infineon X.509 Chain
+              </div>
+              <div class="truncate text-muted-foreground" [title]="p.leafCertSubject">Subject: {{ p.leafCertSubject || '—' }}</div>
+              <div class="truncate text-muted-foreground" [title]="p.leafCertIssuer">Issuer: {{ p.leafCertIssuer || '—' }}</div>
+              <div class="font-mono text-muted-foreground">Serial: {{ p.leafCertSerialHex || '—' }}</div>
+            </div>
+
+            <div class="rounded-md border border-border bg-muted/30 p-3 text-xs space-y-1">
+              <div class="font-semibold text-foreground">
+                @if (p.attestationDigestValid) { <span class="text-emerald-600 dark:text-emerald-400">✔</span> } @else { <span class="text-destructive">✖</span> }
+                Attestation Preimage &amp; Digest
+              </div>
+              <div class="text-muted-foreground"><code class="font-mono">TARTARUS-AUTH-KEY-V1:</code></div>
+              <div class="truncate font-mono text-muted-foreground" [title]="p.hardwareId">
+                CoprUID: {{ p.hardwareId || '—' }}
+              </div>
+              <div class="text-muted-foreground">Session: <code class="font-mono">{{ p.sessionToken || '—' }}</code></div>
+            </div>
+
+            <div class="rounded-md border border-border bg-muted/30 p-3 text-xs space-y-1">
+              <div class="font-semibold text-foreground">
+                @if (p.signatureValid) { <span class="text-emerald-600 dark:text-emerald-400">✔</span> } @else { <span class="text-destructive">✖</span> }
+                0xE0F0 Factory Signature
+              </div>
+              <div class="text-muted-foreground">Infineon ECDSA P-256 (0xE0F0)</div>
+              <div class="text-muted-foreground">Certifies Authenticity Key (0xE0F2)</div>
+            </div>
+          </div>
+
+          <!-- ESP32-S3 eFuse Security Posture Checklist -->
+          @if (p.efuseStatus; as ef) {
+            <div>
+              <div class="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">ESP32-S3 Hardware Security eFuses</div>
+              <div class="flex flex-wrap gap-1.5">
+                <span hlmBadge [variant]="ef.blk3_provisioned ? 'success' : 'secondary'">
+                  {{ ef.blk3_provisioned ? '✔ BLK3 Seed' : '✖ BLK3 Seed Empty' }}
+                </span>
+                <span hlmBadge [variant]="ef.blk3_write_protected ? 'success' : 'secondary'">
+                  {{ ef.blk3_write_protected ? '✔ BLK3 Write-Protect' : '✖ BLK3 Write-Protect' }}
+                </span>
+                <span hlmBadge [variant]="ef.secure_boot_enabled ? 'success' : 'secondary'">
+                  {{ ef.secure_boot_enabled ? '✔ Secure Boot v2' : '✖ Secure Boot Disabled' }}
+                </span>
+                <span hlmBadge [variant]="ef.pad_jtag_disabled ? 'success' : 'warning'">
+                  {{ ef.pad_jtag_disabled ? '✔ PAD JTAG Disabled' : '⚠ PAD JTAG Active' }}
+                </span>
+                <span hlmBadge [variant]="ef.usb_jtag_disabled ? 'success' : 'warning'">
+                  {{ ef.usb_jtag_disabled ? '✔ USB JTAG Disabled' : '⚠ USB JTAG Active' }}
+                </span>
+                <span hlmBadge [variant]="ef.soft_jtag_disabled ? 'success' : 'warning'">
+                  {{ ef.soft_jtag_disabled ? '✔ SOFT JTAG Disabled' : '⚠ SOFT JTAG Active' }}
+                </span>
+                <span hlmBadge [variant]="ef.security_download_enabled ? 'success' : 'warning'">
+                  {{ ef.security_download_enabled ? '✔ ROM Secure Download' : '⚠ Secure Download Disabled' }}
+                </span>
+                <span hlmBadge variant="info">
+                  Secure Version: {{ ef.secure_version }}
+                </span>
+              </div>
+            </div>
+          }
+
+          <!-- Warnings & Errors list -->
+          @if (p.errors.length > 0) {
+            <div hlmAlert variant="destructive">
+              <h5 hlmAlertTitle>Errors</h5>
+              <ul hlmAlertDescription class="list-disc pl-4 space-y-0.5">
+                @for (err of p.errors; track err) {
+                  <li>{{ err }}</li>
+                }
+              </ul>
+            </div>
+          }
+
+          @if (p.warnings.length > 0) {
+            <div hlmAlert variant="warning">
+              <h5 hlmAlertTitle>Warnings</h5>
+              <ul hlmAlertDescription class="list-disc pl-4 space-y-0.5">
+                @for (w of p.warnings; track w) {
+                  <li>{{ w }}</li>
+                }
+              </ul>
+            </div>
+          }
+        </div>
+      </section>
+    }
+
+    <!-- Administrative Metadata Fields -->
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div class="space-y-1.5">
+        <label hlmLabel for="unitLabel">Unit Label / Name (Optional):</label>
+        <input
+          hlmInput
+          type="text"
+          id="unitLabel"
+          placeholder="e.g. Production Lock #042 or Bench Dev Board"
+          [ngModel]="label()"
+          (ngModelChange)="label.set($event)"
+        />
+      </div>
+
+      <div class="space-y-1.5">
+        <label hlmLabel for="unitNotes">Administrative Notes (Optional):</label>
+        <input
+          hlmInput
+          type="text"
+          id="unitNotes"
+          placeholder="e.g. Deployed in North Rack, assembled 2026-10-22"
+          [ngModel]="notes()"
+          (ngModelChange)="notes.set($event)"
+        />
+      </div>
+    </div>
+  </div>
+
+  <div hlmDialogFooter class="border-t border-border pt-4">
+    <button hlmBtn variant="secondary" type="button" (click)="close()">Cancel</button>
+    <button
+      hlmBtn
+      type="button"
+      [disabled]="isSaving() || !preview()?.valid"
+      (click)="saveUnit()"
+    >
+      @if (isSaving()) {
+        <hlm-spinner size="sm" />
+        <span>Registering...</span>
+      } @else {
+        <span>💾 Save Provisioned Unit</span>
+      }
+    </button>
+  </div>
+</hlm-dialog>

@@ -1,15 +1,21 @@
-import {Component, ElementRef, OnInit, ViewChild, ChangeDetectionStrategy} from '@angular/core';
-import {FormsModule} from '@angular/forms';
+import { Component, ElementRef, OnInit, ViewChild, ChangeDetectionStrategy } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 
 import * as QRCode from 'qrcode';
-import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
-import {Platform} from '@angular/cdk/platform';
-import {CryptoService} from '../crypto.service';
+import { TartarusCoordinatorService } from '../tartarus-coordinator.service';
+import { Platform } from '@angular/cdk/platform';
+import { CryptoService } from '../crypto.service';
+import { HlmAlertImports } from '../shared/ui/ui-alert-helm';
+import { HlmButtonDirective } from '../shared/ui/ui-button-helm';
+import { HlmCardImports } from '../shared/ui/ui-card-helm';
 
 @Component({
   selector: 'app-new-keypair',
   imports: [
-    FormsModule
+    FormsModule,
+    ...HlmAlertImports,
+    HlmButtonDirective,
+    ...HlmCardImports,
   ],
   templateUrl: './new-keypair.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

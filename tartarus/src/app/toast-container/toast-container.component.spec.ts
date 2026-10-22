@@ -17,7 +17,9 @@ describe('ToastContainerComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
+  it('should create and render hlm-toaster', () => {
     expect(component).toBeTruthy();
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('hlm-toaster')).toBeTruthy();
   });
 });

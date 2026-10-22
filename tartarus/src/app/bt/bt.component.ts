@@ -33,10 +33,30 @@ interface LogEntry {
   message: string;
 }
 
+import { HlmAlertImports } from '../shared/ui/ui-alert-helm';
+import { HlmBadgeDirective } from '../shared/ui/ui-badge-helm';
+import { HlmButtonDirective } from '../shared/ui/ui-button-helm';
+import { HlmCardImports } from '../shared/ui/ui-card-helm';
+import { HlmInputDirective } from '../shared/ui/ui-input-helm';
+import { HlmLabelDirective } from '../shared/ui/ui-label-helm';
+import { HlmSpinnerComponent } from '../shared/ui/ui-spinner-helm';
+import { HlmTableImports } from '../shared/ui/ui-table-helm';
+
 @Component({
   selector: 'app-bt',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    ...HlmAlertImports,
+    HlmBadgeDirective,
+    HlmButtonDirective,
+    ...HlmCardImports,
+    HlmInputDirective,
+    HlmLabelDirective,
+    HlmSpinnerComponent,
+    ...HlmTableImports,
+  ],
   templateUrl: './bt.component.html',
   styleUrl: './bt.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

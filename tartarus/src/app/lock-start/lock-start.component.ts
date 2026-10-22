@@ -1,17 +1,28 @@
-import {AfterViewInit, Component, OnInit, ChangeDetectionStrategy} from '@angular/core';
-import {ActivatedRoute, Router} from '@angular/router';
-import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
-import {UserDataService} from '../user-data.service';
-import {LockSession} from '../models/lock-session';
-import {ConfigService} from '../config.service';
-import {CryptoService} from '../crypto.service';
-import {firstValueFrom, Subject} from 'rxjs';
-import {LockUserSession} from '../models/lock-user-session';
-import {WebsocketService} from '../websocket.service';
+import { AfterViewInit, Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { TartarusCoordinatorService } from '../tartarus-coordinator.service';
+import { UserDataService } from '../user-data.service';
+import { LockSession } from '../models/lock-session';
+import { ConfigService } from '../config.service';
+import { CryptoService } from '../crypto.service';
+import { firstValueFrom, Subject } from 'rxjs';
+import { LockUserSession } from '../models/lock-user-session';
+import { WebsocketService } from '../websocket.service';
+import { HlmAlertImports } from '../shared/ui/ui-alert-helm';
+import { HlmButtonDirective } from '../shared/ui/ui-button-helm';
+import { HlmCardImports } from '../shared/ui/ui-card-helm';
+import { HlmInputDirective } from '../shared/ui/ui-input-helm';
+import { HlmLabelDirective } from '../shared/ui/ui-label-helm';
 
 @Component({
   selector: 'app-lock-start',
-  imports: [],
+  imports: [
+    ...HlmAlertImports,
+    HlmButtonDirective,
+    ...HlmCardImports,
+    HlmInputDirective,
+    HlmLabelDirective,
+  ],
   templateUrl: './lock-start.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './lock-start.component.scss'

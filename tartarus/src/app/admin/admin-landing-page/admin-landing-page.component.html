@@ -1,15 +1,77 @@
-<div class="row">
-  <div class="col-lg-4">
-    <div class="bs-component">
-      <h1>Admin Stuff</h1>
-
-      <ul class="list-group">
-        <li class="list-group-item"><a routerLink="contracts">Live Contracts</a></li>
-        <li class="list-group-item"><a routerLink="lock_sessions">Lock Sessions</a></li>
-        <li class="list-group-item"><a routerLink="add-firmware">Add Firmware</a></li>
-      </ul>
-
-
+<div class="mx-auto max-w-4xl space-y-6">
+  <div>
+    <div class="flex items-center gap-2.5">
+      <h1 class="text-2xl font-bold tracking-tight text-foreground">Admin Portal</h1>
+      <span hlmBadge variant="secondary">Coordinator Administration</span>
     </div>
+    <p class="mt-1 text-sm text-muted-foreground">
+      Inspect live contracts, monitor active lock sessions, manage hardware root-of-trust attestation, and publish signed firmware images.
+    </p>
+  </div>
+
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <a
+      routerLink="contracts"
+      hlmCard
+      class="group block transition-all hover:border-primary/40 hover:shadow-md no-underline"
+    >
+      <div hlmCardHeader>
+        <div class="flex items-center justify-between">
+          <h2 hlmCardTitle class="text-base group-hover:text-primary transition-colors">Live Contracts</h2>
+          <span class="text-muted-foreground group-hover:translate-x-0.5 transition-transform" aria-hidden="true">&rarr;</span>
+        </div>
+        <p hlmCardDescription>
+          Filter and inspect contracts across all lifecycle states, emergency unlocks, and command histories.
+        </p>
+      </div>
+    </a>
+
+    <a
+      routerLink="lock_sessions"
+      hlmCard
+      class="group block transition-all hover:border-primary/40 hover:shadow-md no-underline"
+    >
+      <div hlmCardHeader>
+        <div class="flex items-center justify-between">
+          <h2 hlmCardTitle class="text-base group-hover:text-primary transition-colors">Lock Sessions</h2>
+          <span class="text-muted-foreground group-hover:translate-x-0.5 transition-transform" aria-hidden="true">&rarr;</span>
+        </div>
+        <p hlmCardDescription>
+          View registered physical lock sessions, firmware validation status, and active contract bindings.
+        </p>
+      </div>
+    </a>
+
+    <a
+      routerLink="hardware"
+      hlmCard
+      class="group block transition-all hover:border-primary/40 hover:shadow-md no-underline"
+    >
+      <div hlmCardHeader>
+        <div class="flex items-center justify-between">
+          <h2 hlmCardTitle class="text-base group-hover:text-primary transition-colors">Hardware Fleet &amp; Provisioning</h2>
+          <span class="text-muted-foreground group-hover:translate-x-0.5 transition-transform" aria-hidden="true">&rarr;</span>
+        </div>
+        <p hlmCardDescription>
+          Manage OPTIGA&trade; Trust M hardware root of trust, eFuse posture, and provisioning blobs.
+        </p>
+      </div>
+    </a>
+
+    <a
+      routerLink="add-firmware"
+      hlmCard
+      class="group block transition-all hover:border-primary/40 hover:shadow-md no-underline"
+    >
+      <div hlmCardHeader>
+        <div class="flex items-center justify-between">
+          <h2 hlmCardTitle class="text-base group-hover:text-primary transition-colors">Add Firmware</h2>
+          <span class="text-muted-foreground group-hover:translate-x-0.5 transition-transform" aria-hidden="true">&rarr;</span>
+        </div>
+        <p hlmCardDescription>
+          Upload a compiled firmware binary to the coordinator repository for OTA distribution.
+        </p>
+      </div>
+    </a>
   </div>
 </div>

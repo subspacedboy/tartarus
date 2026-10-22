@@ -1,83 +1,142 @@
-<div class="row">
-  <div class="col-lg-4">
-    <div class="bs-component">
-      <h1>I want to write contracts and hold keys...</h1>
+<div class="mx-auto max-w-5xl space-y-6 py-4">
+  <div class="space-y-1">
+    <h1 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Tartarus Control Center</h1>
+    <p class="text-sm text-muted-foreground">
+      Cryptographic contract management and hardware lock coordination.
+    </p>
+  </div>
 
-        @if(parent.hasAuthorSession) {
-          <p>
-            <a routerLink="lock-sessions">Lock sessions</a>
-          </p>
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <!-- Left Card: Keyholder / Contract Author -->
+    <section hlmCard class="flex flex-col justify-between">
+      <div hlmCardHeader>
+        <div class="flex items-center justify-between gap-2">
+          <span hlmBadge variant="default">Keyholder / Author</span>
+          @if (parent.hasAuthorSession) {
+            <span hlmBadge variant="success">Authenticated</span>
+          }
+        </div>
+        <h2 hlmCardTitle class="mt-2 text-xl">I want to write contracts and hold keys...</h2>
+        <p hlmCardDescription>
+          Author digitally signed contracts, attach automation bots, and issue lock/unlock commands.
+        </p>
+      </div>
 
-          @if(confirmedContracts.length > 0) {
-            <div>
-              <h3>Active Contracts</h3>
-              @for (c of confirmedContracts; track c.name){
-                <app-contract-card [contract]="c" basePath="lock-sessions/{{c.shareableToken}}/"></app-contract-card>
-              }
+      <div hlmCardContent class="flex-1 space-y-4">
+        @if (parent.hasAuthorSession) {
+          <div class="flex flex-wrap items-center gap-3">
+            <a routerLink="lock-sessions" hlmBtn variant="default">
+              View Lock Sessions
+            </a>
+          </div>
+
+          @if (confirmedContracts.length > 0) {
+            <div class="space-y-3 pt-2">
+              <h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Active Contracts ({{ confirmedContracts.length }})
+              </h3>
+              <div class="grid grid-cols-1 gap-3">
+                @for (c of confirmedContracts; track c.name) {
+                  <app-contract-card [contract]="c" basePath="lock-sessions/{{ c.shareableToken }}/"></app-contract-card>
+                }
+              </div>
             </div>
           }
-
         } @else {
-          <div>
-            <h2>Step 1</h2>
-            <div>
-              You need a key. It will work as your login and is required to do pretty much anything
-              so make sure not to lose it 😇. You only need one no matter how many contracts you write or
-              for any number of people. It's also important to <strong>not</strong> share it.
-            </div>
+          <ol class="space-y-4 text-sm">
+            <li class="flex gap-3 rounded-lg border border-border bg-muted/30 p-3.5">
+              <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                1
+              </span>
+              <div class="space-y-2">
+                <h3 class="font-semibold text-foreground">Generate Your Cryptographic Keypair</h3>
+                <p class="text-muted-foreground">
+                  You need a key. It works as your login and signs your contracts. You only need one keypair across all contracts—never share it.
+                </p>
+                <div>
+                  <a [routerLink]="['/keypair']" hlmBtn variant="default" size="sm">Make a Key</a>
+                </div>
+              </div>
+            </li>
 
-            <div>
-              You can get one here: <a [routerLink]="['/keypair']">Make a key</a>
-            </div>
+            <li class="flex gap-3 rounded-lg border border-border bg-muted/30 p-3.5">
+              <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                2
+              </span>
+              <div class="space-y-2">
+                <h3 class="font-semibold text-foreground">Authenticate with Your Key QR</h3>
+                <p class="text-muted-foreground">
+                  Come back here to log in with your saved key QR image.
+                </p>
+                <div>
+                  <a [routerLink]="['/login']" hlmBtn variant="outline" size="sm">Login with Key</a>
+                </div>
+              </div>
+            </li>
+
+            <li class="flex gap-3 rounded-lg border border-border bg-muted/30 p-3.5">
+              <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold text-secondary-foreground">
+                3
+              </span>
+              <div class="space-y-1">
+                <h3 class="font-semibold text-foreground">Open a Shared Session Link</h3>
+                <p class="text-muted-foreground">
+                  When you want to write a contract for someone, they will send you a session link. Follow that link to begin.
+                </p>
+              </div>
+            </li>
+          </ol>
+        }
+      </div>
+    </section>
+
+    <!-- Right Card: Lock Wearer / Holder -->
+    <section hlmCard class="flex flex-col justify-between">
+      <div hlmCardHeader>
+        <div class="flex items-center justify-between gap-2">
+          <span hlmBadge variant="secondary">Lock Wearer / Holder</span>
+          @if (parent.hasLockSessions) {
+            <span hlmBadge variant="success">Session Active</span>
+          }
+        </div>
+        <h2 hlmCardTitle class="mt-2 text-xl">I want to have my keys held...</h2>
+        <p hlmCardDescription>
+          Pair your physical Tartarus smart lock, share session links, and review or execute commands.
+        </p>
+      </div>
+
+      <div hlmCardContent class="flex-1 space-y-4">
+        @if (parent.hasLockSessions) {
+          <div class="flex flex-wrap items-center gap-3">
+            <a routerLink="my-lock" hlmBtn variant="default">
+              Go To My Lock
+            </a>
           </div>
 
-
-          <h2>Step 1.5</h2>
-          <div>
-            Come back here to login with your key.
-            <div>
-              You can get one here: <a [routerLink]="['/login']">Login</a>
+          @if (reviewPending.length > 0) {
+            <div class="space-y-3 pt-2">
+              <h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Pending Contracts ({{ reviewPending.length }})
+              </h3>
+              <div class="grid grid-cols-1 gap-3">
+                @for (c of reviewPending; track c.name) {
+                  <app-contract-card [contract]="c" basePath="my-lock/"></app-contract-card>
+                }
+              </div>
             </div>
-          </div>
-
-          <h2>Step 2</h2>
-          <div>
-            When you want to write a contract for someone they will send you a session link.
-            Follow that link :-).
+          }
+        } @else {
+          <div class="rounded-lg border border-border bg-muted/30 p-4 text-sm text-muted-foreground space-y-2">
+            <h3 class="font-semibold text-foreground">Start from Your Smart Lock</h3>
+            <p>
+              Your journey starts with the physical smart lock. When the lock starts up, it displays a QR code containing an encrypted session link.
+            </p>
+            <p>
+              Scan and follow that link. Once authenticated, your active lock session and pending contracts will appear here.
+            </p>
           </div>
         }
       </div>
-
-    </div>
-</div>
-
-<div class="row">
-  <div class="col-lg-4">
-    <div class="bs-component">
-      <h1>I want to have my keys held...</h1>
-
-      @if(parent.hasLockSessions) {
-        <div>
-          <a routerLink="my-lock">My Lock</a>
-        </div>
-
-        @if(reviewPending.length > 0) {
-          <div>
-            <h3>Pending Contracts</h3>
-            @for (c of reviewPending; track c.name){
-              <app-contract-card [contract]="c" basePath="my-lock/"></app-contract-card>
-            }
-          </div>
-        }
-
-      } @else {
-        <div>
-          Your journey starts with the smart lock.
-          When the lock starts up it will display a QR code that as a link in it.
-          Follow that link. After you're logged in you'll be able to see it here in this spot.
-        </div>
-      }
-    </div>
-
+    </section>
   </div>
 </div>

@@ -12,12 +12,30 @@ import { FormsModule } from '@angular/forms';
 import { Transport } from 'esptool-js';
 import { ToastService } from '../toast.service';
 
+import { HlmAlertImports } from '../shared/ui/ui-alert-helm';
+import { HlmBadgeDirective } from '../shared/ui/ui-badge-helm';
+import { HlmButtonDirective } from '../shared/ui/ui-button-helm';
+import { HlmCardImports } from '../shared/ui/ui-card-helm';
+import { HlmInputDirective } from '../shared/ui/ui-input-helm';
+import { HlmLabelDirective } from '../shared/ui/ui-label-helm';
+import { HlmSpinnerComponent } from '../shared/ui/ui-spinner-helm';
+
 export type LineEnding = '\r\n' | '\n' | '\r' | '';
 
 @Component({
   selector: 'app-console',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ...HlmAlertImports,
+    HlmBadgeDirective,
+    HlmButtonDirective,
+    ...HlmCardImports,
+    HlmInputDirective,
+    HlmLabelDirective,
+    HlmSpinnerComponent,
+  ],
   templateUrl: './console.component.html',
   styleUrl: './console.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

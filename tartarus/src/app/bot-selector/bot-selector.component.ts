@@ -1,8 +1,12 @@
 import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { NgbTooltip } from '@ng-bootstrap/ng-bootstrap';
 import { Bot } from '../models/bot';
+import { HlmBadgeDirective } from '../shared/ui/ui-badge-helm';
+import { HlmButtonDirective } from '../shared/ui/ui-button-helm';
+import { HlmCardImports } from '../shared/ui/ui-card-helm';
+import { HlmInputDirective } from '../shared/ui/ui-input-helm';
+import { HlmTooltipTriggerDirective } from '../shared/ui/ui-tooltip-helm';
 
 export type BotSortField = 'name' | 'createdAt';
 export type SortDirection = 'asc' | 'desc';
@@ -14,7 +18,11 @@ export type SortDirection = 'asc' | 'desc';
     CommonModule,
     FormsModule,
     DatePipe,
-    NgbTooltip
+    HlmBadgeDirective,
+    HlmButtonDirective,
+    ...HlmCardImports,
+    HlmInputDirective,
+    HlmTooltipTriggerDirective,
   ],
   templateUrl: './bot-selector.component.html',
   styleUrl: './bot-selector.component.scss',

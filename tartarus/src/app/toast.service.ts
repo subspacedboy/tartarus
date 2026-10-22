@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { toast as sonnerToast } from 'ngx-sonner';
 
 export interface ToastInfo {
   header: string;
@@ -19,6 +20,7 @@ export class ToastService {
 
   show(header: string, body: string) {
     this.toasts.push({ header, body });
+    sonnerToast(header, { description: body });
   }
 
   showInfo(body: string) {
@@ -30,6 +32,7 @@ export class ToastService {
     };
 
     this.toasts.push(toast);
+    sonnerToast.info(body, { duration: 4000 });
   }
 
   showSuccess(body: string) {
@@ -42,6 +45,7 @@ export class ToastService {
     };
 
     this.toasts.push(toast);
+    sonnerToast.success(body, { duration: 3000 });
   }
 
   showError(body: string) {
@@ -53,6 +57,7 @@ export class ToastService {
     };
 
     this.toasts.push(toast);
+    sonnerToast.error(body, { duration: 6000 });
   }
 
   remove(toast: ToastInfo) {

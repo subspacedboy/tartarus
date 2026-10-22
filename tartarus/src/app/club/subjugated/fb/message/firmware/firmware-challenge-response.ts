@@ -45,8 +45,15 @@ version(obj?:Version):Version|null {
   return offset ? (obj || new Version()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
 }
 
+hardwareId():string|null
+hardwareId(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+hardwareId(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
 static startFirmwareChallengeResponse(builder:flatbuffers.Builder) {
-  builder.startObject(2);
+  builder.startObject(3);
 }
 
 static addSignature(builder:flatbuffers.Builder, signatureOffset:flatbuffers.Offset) {
@@ -67,6 +74,10 @@ static startSignatureVector(builder:flatbuffers.Builder, numElems:number) {
 
 static addVersion(builder:flatbuffers.Builder, versionOffset:flatbuffers.Offset) {
   builder.addFieldOffset(1, versionOffset, 0);
+}
+
+static addHardwareId(builder:flatbuffers.Builder, hardwareIdOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(2, hardwareIdOffset, 0);
 }
 
 static endFirmwareChallengeResponse(builder:flatbuffers.Builder):flatbuffers.Offset {

@@ -17,6 +17,10 @@ import {MessagePayload} from '../../club/subjugated/fb/message/message-payload';
 import {Contract as FBContract} from '../../club/subjugated/fb/message/contract';
 import {ContractDescription} from '../../models/contract-description';
 import {LockEvent} from '../../models/event';
+import { HlmCardImports } from '../../shared/ui/ui-card-helm';
+import { HlmBadgeDirective } from '../../shared/ui/ui-badge-helm';
+import { HlmButtonDirective } from '../../shared/ui/ui-button-helm';
+import { HlmAlertImports } from '../../shared/ui/ui-alert-helm';
 
 @Component({
   selector: 'app-admin-contract-detail',
@@ -25,6 +29,10 @@ import {LockEvent} from '../../models/event';
     EventCardComponent,
     RouterLink,
     DateAgoPipe,
+    ...HlmCardImports,
+    HlmBadgeDirective,
+    HlmButtonDirective,
+    ...HlmAlertImports,
   ],
   templateUrl: './admin-contract-detail.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

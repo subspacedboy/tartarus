@@ -1,17 +1,20 @@
-import {Component, OnInit, ChangeDetectionStrategy, TemplateRef} from '@angular/core';
-import {ActivatedRoute, Router, RouterLink} from '@angular/router';
-import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
-import {UserDataService} from '../user-data.service';
-import {KnownToken} from '../models/known-token';
-import {LockSessionCardComponent} from '../lock-session-card/lock-session-card.component';
-import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
-import {ToastService} from '../toast.service';
+import { Component, OnInit, ChangeDetectionStrategy, TemplateRef } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { TartarusCoordinatorService } from '../tartarus-coordinator.service';
+import { KnownToken } from '../models/known-token';
+import { LockSessionCardComponent } from '../lock-session-card/lock-session-card.component';
+import { ToastService } from '../toast.service';
+import { HlmButtonDirective } from '../shared/ui/ui-button-helm';
+import { HlmCardImports } from '../shared/ui/ui-card-helm';
+import { HlmDialogImports } from '../shared/ui/ui-dialog-helm';
 
 @Component({
   selector: 'app-lock-sessions',
   imports: [
-    RouterLink,
-    LockSessionCardComponent
+    LockSessionCardComponent,
+    HlmButtonDirective,
+    ...HlmCardImports,
+    ...HlmDialogImports,
   ],
   templateUrl: './lock-sessions.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
@@ -21,12 +24,12 @@ export class LockSessionsComponent implements OnInit {
   knownTokens: KnownToken[];
   tokenToDelete?: KnownToken;
 
-  constructor(private activatedRoute: ActivatedRoute,
-              private router: Router,
-              private tartarusCoordinatorService: TartarusCoordinatorService,
-              private modalService: NgbModal,
-              private toastService: ToastService,
-              ) {
+  constructor(
+    private activatedRoute: ActivatedRoute,
+    private router: Router,
+    private tartarusCoordinatorService: TartarusCoordinatorService,
+    private toastService: ToastService,
+  ) {
     this.knownTokens = [];
   }
 
@@ -40,18 +43,18 @@ export class LockSessionsComponent implements OnInit {
     });
   }
 
-  confirmDelete(token: KnownToken, modalContent: TemplateRef<any>) {
+  confirmDelete(token: KnownToken, _modalContent?: TemplateRef<any>) {
     this.tokenToDelete = token;
-    this.modalService.open(modalContent, { centered: true }).result.then(
-      (result) => {
-        if (result === 'confirm') {
-          this.deleteToken(token);
-        }
-      },
-      () => {
-        this.tokenToDelete = undefined;
-      }
-    );
+  }
+
+  cancelDelete() {
+    this.tokenToDelete = undefined;
+  }
+
+  confirmDeleteAction() {
+    if (this.tokenToDelete) {
+      this.deleteToken(this.tokenToDelete);
+    }
   }
 
   deleteToken(token: KnownToken) {

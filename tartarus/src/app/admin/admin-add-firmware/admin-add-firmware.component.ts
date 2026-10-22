@@ -1,11 +1,21 @@
 import { Component, ChangeDetectionStrategy } from '@angular/core';
 import {TartarusCoordinatorService} from '../../tartarus-coordinator.service';
 import {FormBuilder, FormGroup, ReactiveFormsModule} from '@angular/forms';
+import { RouterLink } from '@angular/router';
+import { HlmCardImports } from '../../shared/ui/ui-card-helm';
+import { HlmButtonDirective } from '../../shared/ui/ui-button-helm';
+import { HlmInputDirective } from '../../shared/ui/ui-input-helm';
+import { HlmLabelDirective } from '../../shared/ui/ui-label-helm';
 
 @Component({
   selector: 'app-admin-add-firmware',
   imports: [
-    ReactiveFormsModule
+    ReactiveFormsModule,
+    RouterLink,
+    ...HlmCardImports,
+    HlmButtonDirective,
+    HlmInputDirective,
+    HlmLabelDirective,
   ],
   templateUrl: './admin-add-firmware.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

@@ -1,77 +1,162 @@
-<div class="btn-group" role="group" aria-label="Contract state toggles">
-  <input type="checkbox" class="btn-check" id="created" [(ngModel)]="selectedStatesMap['CREATED']">
-  <label class="btn btn-outline-secondary" for="created">Created</label>
+<div class="space-y-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <p class="mb-1">
+        <a routerLink="/admin" class="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground no-underline">
+          &larr; Back to Admin
+        </a>
+      </p>
+      <h1 class="text-2xl font-bold tracking-tight text-foreground">Live Contracts</h1>
+      <p class="mt-1 text-sm text-muted-foreground">Filter and inspect contracts across lifecycle states.</p>
+    </div>
+  </div>
 
-  <input type="checkbox" class="btn-check" id="accepted" [(ngModel)]="selectedStatesMap['ACCEPTED']">
-  <label class="btn btn-outline-secondary" for="accepted">Accepted</label>
+  <!-- Filter Bar -->
+  <section hlmCard class="p-4">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Contract state toggles">
+        <label
+          for="created"
+          class="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors select-none"
+          [class.border-primary]="selectedStatesMap['CREATED']"
+          [class.bg-primary/10]="selectedStatesMap['CREATED']"
+          [class.text-primary]="selectedStatesMap['CREATED']"
+          [class.border-border]="!selectedStatesMap['CREATED']"
+          [class.text-muted-foreground]="!selectedStatesMap['CREATED']"
+        >
+          <input type="checkbox" class="sr-only" id="created" [(ngModel)]="selectedStatesMap['CREATED']">
+          <span>Created</span>
+        </label>
 
-  <input type="checkbox" class="btn-check" id="rejected" [(ngModel)]="selectedStatesMap['REJECTED']">
-  <label class="btn btn-outline-secondary" for="rejected">Rejected</label>
+        <label
+          for="accepted"
+          class="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors select-none"
+          [class.border-primary]="selectedStatesMap['ACCEPTED']"
+          [class.bg-primary/10]="selectedStatesMap['ACCEPTED']"
+          [class.text-primary]="selectedStatesMap['ACCEPTED']"
+          [class.border-border]="!selectedStatesMap['ACCEPTED']"
+          [class.text-muted-foreground]="!selectedStatesMap['ACCEPTED']"
+        >
+          <input type="checkbox" class="sr-only" id="accepted" [(ngModel)]="selectedStatesMap['ACCEPTED']">
+          <span>Accepted</span>
+        </label>
 
-  <input type="checkbox" class="btn-check" id="confirmed" [(ngModel)]="selectedStatesMap['CONFIRMED']">
-  <label class="btn btn-outline-primary" for="confirmed">Confirmed</label>
+        <label
+          for="rejected"
+          class="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors select-none"
+          [class.border-primary]="selectedStatesMap['REJECTED']"
+          [class.bg-primary/10]="selectedStatesMap['REJECTED']"
+          [class.text-primary]="selectedStatesMap['REJECTED']"
+          [class.border-border]="!selectedStatesMap['REJECTED']"
+          [class.text-muted-foreground]="!selectedStatesMap['REJECTED']"
+        >
+          <input type="checkbox" class="sr-only" id="rejected" [(ngModel)]="selectedStatesMap['REJECTED']">
+          <span>Rejected</span>
+        </label>
 
-  <input type="checkbox" class="btn-check" id="released" [(ngModel)]="selectedStatesMap['RELEASED']">
-  <label class="btn btn-outline-primary" for="released">Released</label>
+        <label
+          for="confirmed"
+          class="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors select-none"
+          [class.border-primary]="selectedStatesMap['CONFIRMED']"
+          [class.bg-primary/10]="selectedStatesMap['CONFIRMED']"
+          [class.text-primary]="selectedStatesMap['CONFIRMED']"
+          [class.border-border]="!selectedStatesMap['CONFIRMED']"
+          [class.text-muted-foreground]="!selectedStatesMap['CONFIRMED']"
+        >
+          <input type="checkbox" class="sr-only" id="confirmed" [(ngModel)]="selectedStatesMap['CONFIRMED']">
+          <span>Confirmed</span>
+        </label>
 
-  <input type="checkbox" class="btn-check" id="aborted" [(ngModel)]="selectedStatesMap['ABORTED']">
-  <label class="btn btn-outline-danger" for="aborted">Aborted</label>
+        <label
+          for="released"
+          class="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors select-none"
+          [class.border-primary]="selectedStatesMap['RELEASED']"
+          [class.bg-primary/10]="selectedStatesMap['RELEASED']"
+          [class.text-primary]="selectedStatesMap['RELEASED']"
+          [class.border-border]="!selectedStatesMap['RELEASED']"
+          [class.text-muted-foreground]="!selectedStatesMap['RELEASED']"
+        >
+          <input type="checkbox" class="sr-only" id="released" [(ngModel)]="selectedStatesMap['RELEASED']">
+          <span>Released</span>
+        </label>
+
+        <label
+          for="aborted"
+          class="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors select-none"
+          [class.border-destructive]="selectedStatesMap['ABORTED']"
+          [class.bg-destructive/10]="selectedStatesMap['ABORTED']"
+          [class.text-destructive]="selectedStatesMap['ABORTED']"
+          [class.border-border]="!selectedStatesMap['ABORTED']"
+          [class.text-muted-foreground]="!selectedStatesMap['ABORTED']"
+        >
+          <input type="checkbox" class="sr-only" id="aborted" [(ngModel)]="selectedStatesMap['ABORTED']">
+          <span>Aborted</span>
+        </label>
+      </div>
+
+      <button hlmBtn variant="secondary" size="sm" type="button" (click)="fetchContracts()">
+        Fetch Contracts
+      </button>
+    </div>
+  </section>
+
+  <!-- Contracts Table -->
+  <section hlmCard class="overflow-hidden">
+    <div class="overflow-x-auto">
+      <table hlmTable>
+        <thead hlmThead>
+          <tr hlmTrow>
+            <th hlmTh scope="col">#</th>
+            <th hlmTh scope="col" sortable="name" (sort)="onSort($event)" class="cursor-pointer select-none">Name</th>
+            <th hlmTh scope="col" sortable="serialNumber" (sort)="onSort($event)" class="cursor-pointer select-none">Serial</th>
+            <th hlmTh scope="col">Lock Session</th>
+            <th hlmTh scope="col">Lock Last Update</th>
+            <th hlmTh scope="col" sortable="state" (sort)="onSort($event)" class="cursor-pointer select-none">State</th>
+            <th hlmTh scope="col" sortable="authorSessionName" (sort)="onSort($event)" class="cursor-pointer select-none">Author</th>
+            <th hlmTh scope="col" sortable="updatedAt" (sort)="onSort($event)" class="cursor-pointer select-none">Contract Updated</th>
+          </tr>
+        </thead>
+        <tbody hlmTbody>
+          @for (c of contracts | async; track c.name) {
+            <tr hlmTrow>
+              <th hlmTd scope="row" class="font-mono text-xs text-muted-foreground">{{ c.name }}</th>
+              <td hlmTd>
+                <a routerLink="/admin/contract/{{c.name}}" class="font-mono font-medium text-primary hover:underline">{{c.name}}</a>
+              </td>
+              <td hlmTd class="font-mono">{{c.serialNumber}}</td>
+              <td hlmTd>
+                @if (c.lockSessionToken) {
+                  <a [routerLink]="['/admin/lock_sessions', c.lockSessionToken]" class="font-mono text-primary hover:underline">
+                    {{ c.lockSessionName || c.lockSessionToken }}
+                  </a>
+                } @else {
+                  <span class="text-muted-foreground">&mdash;</span>
+                }
+              </td>
+              <td hlmTd>
+                @if (c.lockLastUpdate) {
+                  <span>{{ c.lockLastUpdate | dateAgo }}</span>
+                } @else {
+                  <span class="text-muted-foreground">&mdash;</span>
+                }
+              </td>
+              <td hlmTd>
+                <span hlmBadge variant="secondary">{{c.state}}</span>
+              </td>
+              <td hlmTd class="font-mono text-xs">
+                {{c.authorSessionName}}
+              </td>
+              <td hlmTd class="text-xs text-muted-foreground">
+                {{c.updatedAt | date: 'short'}}
+              </td>
+            </tr>
+          } @empty {
+            <tr hlmTrow>
+              <td hlmTd colspan="8" class="py-8 text-center text-muted-foreground">No contracts</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
 </div>
-
-<button class="btn btn-secondary mt-2" (click)="fetchContracts()">Fetch Contracts</button>
-
-  <table class="table table-striped">
-    <thead>
-
-    <tr>
-      <th scope="col">#</th>
-      <th scope="col" sortable="name" (sort)="onSort($event)">Name</th>
-      <th scope="col" sortable="serialNumber" (sort)="onSort($event)">Serial</th>
-      <th scope="col">Lock Session</th>
-      <th scope="col">Lock Last Update</th>
-      <th scope="col" sortable="state" (sort)="onSort($event)">State</th>
-      <th scope="col" sortable="authorSessionName" (sort)="onSort($event)">Author</th>
-      <th scope="col" sortable="updatedAt" (sort)="onSort($event)">Contract Updated</th>
-    </tr>
-    </thead>
-    <tbody>
-      @for (c of contracts | async; track c.name) {
-        <tr>
-          <th scope="row">{{ c.name }}</th>
-          <td>
-            <a routerLink="/admin/contract/{{c.name}}">{{c.name}}</a>
-          </td>
-          <td>{{c.serialNumber}}</td>
-          <td>
-            @if (c.lockSessionToken) {
-              <a [routerLink]="['/admin/lock_sessions', c.lockSessionToken]">
-                {{ c.lockSessionName || c.lockSessionToken }}
-              </a>
-            } @else {
-              <span class="text-muted">—</span>
-            }
-          </td>
-          <td>
-            @if (c.lockLastUpdate) {
-              <span>{{ c.lockLastUpdate | dateAgo }}</span>
-            } @else {
-              <span class="text-muted">—</span>
-            }
-          </td>
-          <td>
-            {{c.state}}
-          </td>
-          <td>
-            {{c.authorSessionName}}
-          </td>
-          <td>
-            {{c.updatedAt | date: 'short'}}
-          </td>
-        </tr>
-      } @empty {
-        <tr>
-          <td colspan="8" style="text-align: center">No contracts</td>
-        </tr>
-      }
-    </tbody>
-  </table>

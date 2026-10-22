@@ -7,6 +7,10 @@ import {Observable} from 'rxjs';
 import {RouterLink} from '@angular/router';
 import {FormsModule} from '@angular/forms';
 import {DateAgoPipe} from '../../date-ago.pipe';
+import { HlmTableImports } from '../../shared/ui/ui-table-helm';
+import { HlmCardImports } from '../../shared/ui/ui-card-helm';
+import { HlmButtonDirective } from '../../shared/ui/ui-button-helm';
+import { HlmBadgeDirective } from '../../shared/ui/ui-badge-helm';
 
 @Component({
   selector: 'app-admin-contracts',
@@ -17,6 +21,10 @@ import {DateAgoPipe} from '../../date-ago.pipe';
     FormsModule,
     DatePipe,
     DateAgoPipe,
+    ...HlmTableImports,
+    ...HlmCardImports,
+    HlmButtonDirective,
+    HlmBadgeDirective,
   ],
   templateUrl: './admin-contracts.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

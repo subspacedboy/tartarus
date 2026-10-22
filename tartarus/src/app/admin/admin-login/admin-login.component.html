@@ -1,25 +1,59 @@
-<h1>Admin Login</h1>
-
-@if(alreadyLoggedIn()) {
-  <h1>You're logged in.</h1>
-} @else {
-  <div class="row">
-    <h2>Load key from image</h2>
-    <input type="file" (change)="onFileSelected($event)" accept="image/*">
-    <canvas #scanCanvas style="display: none;"></canvas>
-    <p>Scanned QR Code Data: <strong>{{ scannedResult }}</strong></p>
+<div class="mx-auto max-w-xl space-y-6">
+  <div>
+    <div class="flex items-center gap-2">
+      <h1 class="text-2xl font-bold tracking-tight text-foreground">Admin Login</h1>
+      <span hlmBadge variant="warning">Restricted</span>
+    </div>
+    <p class="mt-1 text-sm text-muted-foreground">
+      Authenticate with an administrator ECDSA P-256 QR key backup image.
+    </p>
   </div>
 
-  @if(loginComplete) {
-    <div class="row">
-      <div class="bs-component">
-        <div class="alert alert-success">
-          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-          <strong>Sucess!</strong> You're logged in as a contract author.
-        </div>
+  @if(alreadyLoggedIn()) {
+    <div hlmAlert variant="success">
+      <h4 hlmAlertTitle>You're logged in.</h4>
+      <div hlmAlertDescription>
+        Your administrator session is active. <a routerLink="/admin" class="font-medium underline underline-offset-4">Proceed to Admin Portal &rarr;</a>
       </div>
     </div>
+  } @else {
+    <section hlmCard>
+      <div hlmCardHeader>
+        <h2 hlmCardTitle class="text-lg">Load key from image</h2>
+        <p hlmCardDescription>
+          Upload your administrator QR key image to sign an ephemeral authentication token.
+        </p>
+      </div>
+
+      <div hlmCardContent class="space-y-4">
+        <div class="space-y-1.5">
+          <label hlmLabel for="adminKeyFile">Administrator QR Image</label>
+          <input
+            hlmInput
+            id="adminKeyFile"
+            type="file"
+            (change)="onFileSelected($event)"
+            accept="image/*"
+          />
+        </div>
+
+        <canvas #scanCanvas class="hidden"></canvas>
+
+        @if (scannedResult) {
+          <p class="text-sm text-muted-foreground">
+            Scanned QR Code Data: <strong class="font-mono text-foreground">{{ scannedResult }}</strong>
+          </p>
+        }
+
+        @if(loginComplete) {
+          <div hlmAlert variant="success">
+            <h4 hlmAlertTitle>Success!</h4>
+            <div hlmAlertDescription>
+              You're logged in as an administrator. <a routerLink="/admin" class="font-medium underline underline-offset-4">Open Admin Dashboard &rarr;</a>
+            </div>
+          </div>
+        }
+      </div>
+    </section>
   }
-}
-
-
+</div>

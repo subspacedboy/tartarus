@@ -1,27 +1,35 @@
-import {Component, OnInit, ChangeDetectionStrategy} from '@angular/core';
-import {DatePipe} from '@angular/common';
-import {NgbTooltip} from '@ng-bootstrap/ng-bootstrap';
-import {TartarusCoordinatorService} from '../tartarus-coordinator.service';
-import {ActivatedRoute} from '@angular/router';
-import {UserDataService} from '../user-data.service';
-import {CryptoService} from '../crypto.service';
-import {Contract} from '../models/contract';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { TartarusCoordinatorService } from '../tartarus-coordinator.service';
+import { ActivatedRoute } from '@angular/router';
+import { UserDataService } from '../user-data.service';
+import { CryptoService } from '../crypto.service';
+import { Contract } from '../models/contract';
 import * as flatbuffers from 'flatbuffers';
-import {SignedMessage} from '../club/subjugated/fb/message/signed-message';
-import {MessagePayload} from '../club/subjugated/fb/message/message-payload';
-import {Contract as FBContract} from '../club/subjugated/fb/message/contract';
-import {ContractDescription, ContractBot} from '../models/contract-description';
-import {WebsocketService} from '../websocket.service';
-import {Command} from '../models/command';
-import {CommandCardComponent} from '../command-card/command-card.component';
-import {Bot} from '../models/bot';
+import { SignedMessage } from '../club/subjugated/fb/message/signed-message';
+import { MessagePayload } from '../club/subjugated/fb/message/message-payload';
+import { Contract as FBContract } from '../club/subjugated/fb/message/contract';
+import { ContractDescription, ContractBot } from '../models/contract-description';
+import { WebsocketService } from '../websocket.service';
+import { Command } from '../models/command';
+import { CommandCardComponent } from '../command-card/command-card.component';
+import { Bot } from '../models/bot';
+import { HlmAlertImports } from '../shared/ui/ui-alert-helm';
+import { HlmBadgeDirective } from '../shared/ui/ui-badge-helm';
+import { HlmButtonDirective } from '../shared/ui/ui-button-helm';
+import { HlmCardImports } from '../shared/ui/ui-card-helm';
+import { HlmTooltipTriggerDirective } from '../shared/ui/ui-tooltip-helm';
 
 @Component({
   selector: 'app-lock-user-contract-detail',
   imports: [
     CommandCardComponent,
     DatePipe,
-    NgbTooltip
+    ...HlmAlertImports,
+    HlmBadgeDirective,
+    HlmButtonDirective,
+    ...HlmCardImports,
+    HlmTooltipTriggerDirective,
   ],
   templateUrl: './lock-user-contract-detail.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

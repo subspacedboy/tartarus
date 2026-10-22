@@ -1,0 +1,258 @@
+<div class="space-y-6">
+  <!-- Page Header & Breadcrumbs -->
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <p class="mb-1">
+        <a routerLink="/admin" class="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground no-underline">&larr; Back to Admin</a>
+      </p>
+      <h1 class="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
+        <span aria-hidden="true">🛡️</span>
+        <span>Hardware Fleet &amp; Provisioning</span>
+      </h1>
+      <p class="mt-1 text-sm text-muted-foreground">
+        Manage hardware root of trust, OPTIGA&trade; Trust M attestation, and operational session tracking.
+      </p>
+    </div>
+
+    <div>
+      <button hlmBtn type="button" (click)="openIngestModal()">
+        <span aria-hidden="true">➕</span>
+        <span>Ingest Provisioning Blob</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Summary Metric Cards -->
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <button
+      type="button"
+      hlmCard
+      class="p-5 text-left transition-all hover:border-primary/40 hover:shadow-md cursor-pointer"
+      [class.ring-2]="selectedModeFilter() === 'ALL'"
+      [class.ring-primary]="selectedModeFilter() === 'ALL'"
+      (click)="setFilter('ALL')"
+    >
+      <div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total Provisioned</div>
+      <div class="mt-1 text-2xl font-bold text-primary">{{ totalCount() }}</div>
+      <div class="mt-0.5 text-xs text-muted-foreground">Registered hardware units</div>
+    </button>
+
+    <button
+      type="button"
+      hlmCard
+      class="p-5 text-left transition-all hover:border-emerald-500/40 hover:shadow-md cursor-pointer"
+      [class.ring-2]="selectedModeFilter() === 'HARD'"
+      [class.ring-emerald-500]="selectedModeFilter() === 'HARD'"
+      (click)="setFilter('HARD')"
+    >
+      <div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Production (HARD)</div>
+      <div class="mt-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ hardCount() }}</div>
+      <div class="mt-0.5 text-xs text-emerald-600 dark:text-emerald-400">Fuse-locked production units</div>
+    </button>
+
+    <button
+      type="button"
+      hlmCard
+      class="p-5 text-left transition-all hover:border-amber-500/40 hover:shadow-md cursor-pointer"
+      [class.ring-2]="selectedModeFilter() === 'SOFT'"
+      [class.ring-amber-500]="selectedModeFilter() === 'SOFT'"
+      (click)="setFilter('SOFT')"
+    >
+      <div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Development (SOFT)</div>
+      <div class="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">{{ softCount() }}</div>
+      <div class="mt-0.5 text-xs text-amber-600 dark:text-amber-400">Development &amp; bench units</div>
+    </button>
+
+    <button
+      type="button"
+      hlmCard
+      class="p-5 text-left transition-all hover:border-destructive/40 hover:shadow-md cursor-pointer"
+      [class.ring-2]="selectedModeFilter() === 'REVOKED'"
+      [class.ring-destructive]="selectedModeFilter() === 'REVOKED'"
+      (click)="setFilter('REVOKED')"
+    >
+      <div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Revoked Units</div>
+      <div class="mt-1 text-2xl font-bold text-destructive">{{ revokedCount() }}</div>
+      <div class="mt-0.5 text-xs text-destructive">Access blocked</div>
+    </button>
+  </div>
+
+  <!-- Action Bar: Search & Mode Filter -->
+  <section hlmCard class="p-4">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div class="relative w-full max-w-md">
+        <input
+          hlmInput
+          type="search"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          placeholder="Search Hardware ID, Session Token, or Label..."
+          [ngModel]="searchTerm()"
+          (ngModelChange)="searchTerm.set($event)"
+        />
+      </div>
+
+      <div class="flex flex-wrap items-center gap-1.5" role="group" aria-label="Provisioning mode filter">
+        <button
+          hlmBtn
+          type="button"
+          size="sm"
+          [variant]="selectedModeFilter() === 'ALL' ? 'default' : 'outline'"
+          (click)="setFilter('ALL')"
+        >
+          All ({{ totalCount() }})
+        </button>
+        <button
+          hlmBtn
+          type="button"
+          size="sm"
+          [variant]="selectedModeFilter() === 'HARD' ? 'success' : 'outline'"
+          (click)="setFilter('HARD')"
+        >
+          HARD ({{ hardCount() }})
+        </button>
+        <button
+          hlmBtn
+          type="button"
+          size="sm"
+          [variant]="selectedModeFilter() === 'SOFT' ? 'warning' : 'outline'"
+          (click)="setFilter('SOFT')"
+        >
+          SOFT ({{ softCount() }})
+        </button>
+        <button
+          hlmBtn
+          type="button"
+          size="sm"
+          [variant]="selectedModeFilter() === 'REVOKED' ? 'destructive' : 'outline'"
+          (click)="setFilter('REVOKED')"
+        >
+          Revoked ({{ revokedCount() }})
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Provisioned Hardware Units Table -->
+  <section hlmCard class="overflow-hidden">
+    <div class="overflow-x-auto">
+      <table hlmTable>
+        <thead hlmThead>
+          <tr hlmTrow>
+            <th hlmTh scope="col" class="w-36">Mode</th>
+            <th hlmTh scope="col">Hardware ID (CoprUID)</th>
+            <th hlmTh scope="col">Label / Notes</th>
+            <th hlmTh scope="col">Session Token</th>
+            <th hlmTh scope="col">Firmware</th>
+            <th hlmTh scope="col">Last Attestation</th>
+            <th hlmTh scope="col">Status</th>
+            <th hlmTh scope="col" class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody hlmTbody>
+          @if (isLoading()) {
+            <tr hlmTrow>
+              <td hlmTd colspan="8" class="py-10 text-center text-muted-foreground">
+                <div class="inline-flex items-center gap-2">
+                  <hlm-spinner size="sm" />
+                  <span>Loading provisioned hardware units...</span>
+                </div>
+              </td>
+            </tr>
+          } @else {
+            @for (u of filteredUnits(); track u.hardwareId) {
+              <tr hlmTrow class="cursor-pointer" (click)="inspectUnit(u.hardwareId)">
+                <td hlmTd>
+                  @if (u.provisioningMode === 'HARD') {
+                    <span hlmBadge variant="success">🛡️ HARD</span>
+                  } @else {
+                    <span hlmBadge variant="warning">🧪 SOFT</span>
+                  }
+                </td>
+
+                <td hlmTd>
+                  <div class="flex items-center gap-1.5 font-mono text-xs" [title]="u.hardwareId">
+                    <span>{{ u.hardwareId.substring(0, 14) }}&hellip;{{ u.hardwareId.substring(u.hardwareId.length - 8) }}</span>
+                    <button
+                      type="button"
+                      hlmBtn
+                      variant="ghost"
+                      size="icon"
+                      class="h-6 w-6 text-muted-foreground hover:text-foreground"
+                      (click)="copyHardwareId(u.hardwareId, $event)"
+                      title="Copy full Hardware ID"
+                      aria-label="Copy full Hardware ID"
+                    >
+                      📋
+                    </button>
+                  </div>
+                </td>
+
+                <td hlmTd>
+                  <span class="font-medium text-foreground">{{ u.label || '—' }}</span>
+                </td>
+
+                <td hlmTd>
+                  <div class="flex items-center gap-1.5 text-xs">
+                    <code class="font-mono">{{ u.lastKnownSessionToken || u.initialSessionToken }}</code>
+                    @if (u.lastKnownSessionToken && u.lastKnownSessionToken !== u.initialSessionToken) {
+                      <span hlmBadge variant="info" [title]="'Initial: ' + u.initialSessionToken">Rotated</span>
+                    }
+                  </div>
+                </td>
+
+                <td hlmTd>
+                  <span class="font-mono text-xs">{{ u.lastFirmwareVersion || '—' }}</span>
+                </td>
+
+                <td hlmTd>
+                  <span class="text-xs text-muted-foreground">
+                    {{ u.lastAttestedAt ? (u.lastAttestedAt | dateAgo) : 'Never' }}
+                  </span>
+                </td>
+
+                <td hlmTd>
+                  @if (u.isRevoked) {
+                    <span hlmBadge variant="destructive">Revoked</span>
+                  } @else {
+                    <span hlmBadge variant="success">Active</span>
+                  }
+                </td>
+
+                <td hlmTd class="text-right" (click)="$event.stopPropagation()">
+                  <button hlmBtn variant="outline" size="sm" type="button" (click)="inspectUnit(u.hardwareId)">
+                    Inspect
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr hlmTrow>
+                <td hlmTd colspan="8" class="py-10 text-center text-muted-foreground">
+                  No provisioned hardware units found matching your search.
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<!-- Ingest Provisioning Modal -->
+@if (showIngestModal()) {
+  <app-provisioning-ingest-modal
+    (modalClosed)="closeIngestModal()"
+    (unitSaved)="onUnitSaved($event)"
+  ></app-provisioning-ingest-modal>
+}
+
+<!-- Unit Detail Drawer / Modal -->
+@if (selectedUnitHardwareId(); as selectedId) {
+  <app-hardware-unit-detail-modal
+    [hardwareId]="selectedId"
+    (modalClosed)="closeDetailModal()"
+    (unitUpdated)="onUnitUpdated($event)"
+  ></app-hardware-unit-detail-modal>
+}

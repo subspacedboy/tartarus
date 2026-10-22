@@ -1,28 +1,38 @@
-<div class="row">
-  <div class="col-lg-4">
-    <div class="bs-component">
-      <h2>Key Generator</h2>
-      <h3>What is this for?</h3>
-      <p>This will make you a key. A key is really just an image containing a QR code.
-        I strongly recommend saving this to your phone camera roll or to some place it will be safe
-        and probably backed up automatically. If you lose it, it's gone forever.</p>
+<div class="mx-auto max-w-xl py-6">
+  <section hlmCard>
+    <div hlmCardHeader>
+      <h1 hlmCardTitle class="text-2xl">Key Generator</h1>
+      <p hlmCardDescription>
+        Generate a cryptographic keypair encoded as a downloadable QR code image.
+      </p>
+    </div>
 
-      <div class="d-grid gap-2">
-        <button type="button" class="btn btn-primary" (click)="generateQRCode()">Generate Key</button>
-      </div>
-
-      <div #qrCodeContainer>
-        <canvas #canvas></canvas>
-      </div>
-
-      @if(showDownloadButton) {
-        <p>
-          Tap to hold and save to camera roll.
-        </p>
-        <div class="d-grid gap-2">
-          <button class="btn btn-large btn-primary" (click)="downloadQRCode()">Download QR Code</button>
+    <div hlmCardContent class="space-y-4">
+      <div hlmAlert variant="warning">
+        <h2 hlmAlertTitle>Save &amp; Back Up Your Key</h2>
+        <div hlmAlertDescription>
+          Save this QR image to your camera roll or a secure password manager. If you lose this image, your key is gone forever. Never share it with anyone.
         </div>
+      </div>
+
+      <button type="button" hlmBtn variant="default" class="w-full" (click)="generateQRCode()">
+        Generate Key
+      </button>
+
+      <div class="flex flex-col items-center justify-center pt-2">
+        <div #qrCodeContainer class="qr-quiet-zone" [class.hidden]="!showDownloadButton">
+          <canvas #canvas></canvas>
+        </div>
+      </div>
+
+      @if (showDownloadButton) {
+        <p class="text-center text-xs text-muted-foreground">
+          Tap and hold the QR image on mobile to save to your camera roll, or download below.
+        </p>
+        <button type="button" hlmBtn variant="secondary" class="w-full" (click)="downloadQRCode()">
+          Download QR Code
+        </button>
       }
     </div>
-  </div>
+  </section>
 </div>

@@ -5,7 +5,9 @@ import {TartarusCoordinatorService} from '../../tartarus-coordinator.service';
 import {AsyncPipe} from '@angular/common';
 import {RouterLink} from '@angular/router';
 import {DateAgoPipe} from '../../date-ago.pipe';
-import {NgbdSortableHeader} from '../../sortable.directive';
+import { HlmTableImports } from '../../shared/ui/ui-table-helm';
+import { HlmCardImports } from '../../shared/ui/ui-card-helm';
+import { HlmBadgeDirective } from '../../shared/ui/ui-badge-helm';
 
 @Component({
   selector: 'app-admin-lock-sessions',
@@ -13,6 +15,9 @@ import {NgbdSortableHeader} from '../../sortable.directive';
     AsyncPipe,
     RouterLink,
     DateAgoPipe,
+    ...HlmTableImports,
+    ...HlmCardImports,
+    HlmBadgeDirective,
   ],
   templateUrl: './admin-lock-sessions.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
