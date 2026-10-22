@@ -9,3 +9,17 @@ CONFIG_SECURE_BOOTLOADER_MODE_REFLASHABLE=y
 
 # Provide path to the signing key (relative to the project root)
 CONFIG_SECURE_BOOT_SIGNING_KEY="secure_boot_signing_key.pem"
+
+# Disable JTAG and revoke unused Secure Boot digest slots
+CONFIG_SECURE_BOOT_ALLOW_JTAG=n
+CONFIG_SECURE_BOOT_ENABLE_AGGRESSIVE_KEY_REVOKE=y
+
+# Enable Application Anti-Rollback Protection in eFuse
+CONFIG_BOOTLOADER_APP_ANTI_ROLLBACK=y
+CONFIG_BOOTLOADER_APP_SECURE_VERSION=1
+CONFIG_BOOTLOADER_APP_SEC_VER_SIZE_EFUSE_FIELD=16
+
+# Enable Security Download Mode (keeps serial flashing working while blocking
+# ESP_READ_REG / ESP_READ_FLASH / RAM stub execution so BLK3 cannot be read out)
+CONFIG_SECURE_ENABLE_SECURE_ROM_DL_MODE=y
+# CONFIG_SECURE_DISABLE_ROM_DL_MODE is not set

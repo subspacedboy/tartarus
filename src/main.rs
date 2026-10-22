@@ -22,6 +22,7 @@ mod internal_firmware;
 mod lock_ctx;
 mod mqtt_service;
 mod prelude;
+pub mod provisioning;
 mod screen_ids;
 use screen_ids::ScreenId;
 mod servo;
@@ -215,10 +216,29 @@ fn main() {
     let servo = Servo::new(driver);
 
     // Checking eFuses
-
-    log::info!("Secure boot enabled: {}", is_secure_boot_enabled());
-    log::info!("JTAG disabled: {}", is_jtag_disabled());
-    log::info!("USB download disabled: {}", is_usb_download_disabled());
+    let efuse_status = provisioning::get_efuse_security_status();
+    log::info!("=== ESP32-S3 eFuse Security Posture ===");
+    log::info!(
+        "  BLK3 Provisioned: {}, Write-Protected: {}",
+        efuse_status.blk3_provisioned,
+        efuse_status.blk3_write_protected
+    );
+    log::info!(
+        "  Secure Boot v2:   {}, Anti-Rollback Version: {}",
+        efuse_status.secure_boot_enabled,
+        efuse_status.secure_version
+    );
+    log::info!(
+        "  JTAG Disabled:    PAD={}, USB={}, SOFT={}/3",
+        efuse_status.pad_jtag_disabled,
+        efuse_status.usb_jtag_disabled,
+        efuse_status.soft_jtag_disabled_cnt
+    );
+    log::info!(
+        "  ROM Download:     Security_Download={}, USB_Download_Disabled={}",
+        efuse_status.security_download_enabled,
+        efuse_status.usb_download_disabled
+    );
 
     log::info!("Initializing I2C bus on SDA=GPIO3, SCL=GPIO4 @ 100 kHz");
     const READER_ADDRESS: u8 = 0x0c;
@@ -584,18 +604,21 @@ fn log_nvs_health_stats() {
     }
 }
 
+#[allow(dead_code)]
 fn is_secure_boot_enabled() -> bool {
     unsafe {
         esp_efuse_read_field_bit(core::ptr::addr_of_mut!(ESP_EFUSE_SECURE_BOOT_EN) as *mut _)
     }
 }
 
+#[allow(dead_code)]
 fn is_jtag_disabled() -> bool {
     unsafe {
         esp_efuse_read_field_bit(core::ptr::addr_of_mut!(ESP_EFUSE_DIS_PAD_JTAG) as *mut _)
     }
 }
 
+#[allow(dead_code)]
 fn is_usb_download_disabled() -> bool {
     unsafe {
         esp_efuse_read_field_bit(

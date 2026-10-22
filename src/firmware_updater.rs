@@ -13,6 +13,7 @@ use std::borrow::BorrowMut;
 use std::cell::RefCell;
 
 use crate::mqtt_service::{MqttService, SignedMessageTransport, TopicType};
+use crate::storage_backend::SecurityBackend;
 use crate::Esp32Rng;
 use embedded_svc::ota::SlotState;
 use esp_idf_hal::cpu::Core::Core1;
@@ -156,14 +157,19 @@ impl FirmwareManager {
         self.mqtt_service = Some(mqtt_service);
     }
 
-    pub fn process_message(&mut self, firmware_data: Vec<u8>, _under_contract: bool) {
+    pub fn process_message(
+        &mut self,
+        firmware_data: Vec<u8>,
+        _under_contract: bool,
+        backend: &mut dyn SecurityBackend,
+    ) {
         if let Ok(msg) = read_as_firmware_message(firmware_data.as_slice()) {
             match msg {
                 FirmwareMessageType::Challenge(challenge) => {
                     log::info!("We got firmware challenge");
                     let session_token = self.session_token.clone().unwrap();
                     let response_bytes =
-                        self.respond_to_challenge(&challenge, &session_token);
+                        self.respond_to_challenge(&challenge, &session_token, backend);
                     self.enqueue_message(SignedMessageTransport::new(
                         response_bytes,
                         crate::mqtt_service::TopicType::FirmwareMessage,
@@ -245,12 +251,26 @@ impl FirmwareManager {
         &mut self,
         challenge: &InternalChallenge,
         session_token: &str,
+        backend: &mut dyn SecurityBackend,
     ) -> Vec<u8> {
         let mut builder = FlatBufferBuilder::with_capacity(1024);
 
-        let signing_key = get_challenge_key();
-        let signature_offset = if let Some(key) = signing_key {
-            let sized_nonce: &[u8; 32] = &challenge.nonce.as_slice().try_into().unwrap();
+        let sized_nonce: &[u8; 32] = &challenge.nonce.as_slice().try_into().unwrap();
+        let hw_sig_opt = match backend.sign_authenticity_challenge(sized_nonce) {
+            Ok(Some(sig)) => Some(sig),
+            Ok(None) => None,
+            Err(e) => {
+                log::warn!(
+                    "Hardware authenticity challenge signing returned error ({e}); checking fallback key"
+                );
+                None
+            }
+        };
+
+        let signature_offset = if let Some(signature) = hw_sig_opt {
+            let signature_bytes = signature.to_bytes();
+            Some(builder.create_vector(signature_bytes.as_slice()))
+        } else if let Some(key) = get_challenge_key() {
             let signature: Signature = key
                 .sign_prehash(sized_nonce)
                 .expect("Nonce should be 32 bytes and fixed");

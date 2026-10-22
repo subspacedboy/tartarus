@@ -110,8 +110,19 @@ impl LockCtx {
             pending_correlation_id: None,
         };
 
-        lck.session_token = lck.load_or_create_session_id();
-        lck.mqtt_password = lck.load_or_create_mqtt_password();
+        match lck.backend.load_or_create_credentials(&lck.nvs) {
+            Ok(creds) => {
+                lck.session_token = creds.session_token;
+                lck.mqtt_password = creds.mqtt_password;
+            }
+            Err(e) => {
+                log::warn!(
+                    "Backend credential load failed ({e}), falling back to NVS credential loader"
+                );
+                lck.session_token = lck.load_or_create_session_id();
+                lck.mqtt_password = lck.load_or_create_mqtt_password();
+            }
+        }
 
         lck.firmware_manager
             .set_session_token(lck.session_token.clone());
@@ -442,8 +453,11 @@ impl LockCtx {
 
         while !firmware.is_empty() {
             let firmware_data = firmware.pop_front().unwrap();
-            self.firmware_manager
-                .process_message(firmware_data, self.contract.is_some());
+            self.firmware_manager.process_message(
+                firmware_data,
+                self.contract.is_some(),
+                self.backend.as_mut(),
+            );
         }
 
         // Process QR payload if present
@@ -564,8 +578,57 @@ impl LockCtx {
     }
 
     pub fn process_qr_payload(&mut self, qr_data: &[u8]) {
-        // 1. Check if WiFi QR
+        // 1. Check if WiFi QR or Provisioning / Certificate Export serial command
         if let Ok(maybe_str) = std::str::from_utf8(qr_data) {
+            let trimmed = maybe_str.trim();
+            if trimmed.eq_ignore_ascii_case("PROVISION") {
+                use std::io::Write;
+                if self.contract.is_some() {
+                    log::warn!("Refusing PROVISION command while device is under active contract");
+                    println!("PROVISION_ERROR:Cannot provision while under active contract");
+                    let _ = std::io::stdout().flush();
+                    return;
+                }
+                match self
+                    .backend
+                    .provision_device(&self.session_token, &self.mqtt_password)
+                {
+                    Ok((new_pk, json)) => {
+                        self.lock_public_key = new_pk;
+                        self.lock_url = None;
+                        self.login_cryptogram = None;
+                        self.login_cryptogram_nonce = None;
+                        let _ = self.nvs.remove("session_key");
+                        let _ = self.nvs.remove("mqtt_password");
+                        let _ = self.nvs.remove("ec_private");
+                        println!("PROVISION_RESULT:{}", json);
+                        let _ = std::io::stdout().flush();
+                    }
+                    Err(e) => {
+                        log::error!("PROVISION command failed: {:#}", e);
+                        println!("PROVISION_ERROR:{:#}", e);
+                        let _ = std::io::stdout().flush();
+                    }
+                }
+                return;
+            }
+
+            if trimmed.eq_ignore_ascii_case("EXPORT_CERT") {
+                use std::io::Write;
+                match self.backend.export_cert_bundle(&self.session_token) {
+                    Ok(json) => {
+                        println!("CERT_EXPORT:{}", json);
+                        let _ = std::io::stdout().flush();
+                    }
+                    Err(e) => {
+                        log::error!("EXPORT_CERT command failed: {:#}", e);
+                        println!("CERT_EXPORT_ERROR:{:#}", e);
+                        let _ = std::io::stdout().flush();
+                    }
+                }
+                return;
+            }
+
             if maybe_str.starts_with("WIFI:") {
                 if let Some((ssid, password)) = crate::wifi_util::parse_wifi_qr(maybe_str) {
                     if let Some(mgr_cell) = crate::wifi_manager::WIFI_MANAGER.get() {
