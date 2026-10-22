@@ -62,8 +62,15 @@ class FirmwareChallengeResponse(object):
             return obj
         return None
 
+    # FirmwareChallengeResponse
+    def HardwareId(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
+        if o != 0:
+            return self._tab.String(o + self._tab.Pos)
+        return None
+
 def FirmwareChallengeResponseStart(builder):
-    builder.StartObject(2)
+    builder.StartObject(3)
 
 def Start(builder):
     FirmwareChallengeResponseStart(builder)
@@ -85,6 +92,12 @@ def FirmwareChallengeResponseAddVersion(builder, version):
 
 def AddVersion(builder, version):
     FirmwareChallengeResponseAddVersion(builder, version)
+
+def FirmwareChallengeResponseAddHardwareId(builder, hardwareId):
+    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(hardwareId), 0)
+
+def AddHardwareId(builder, hardwareId):
+    FirmwareChallengeResponseAddHardwareId(builder, hardwareId)
 
 def FirmwareChallengeResponseEnd(builder):
     return builder.EndObject()

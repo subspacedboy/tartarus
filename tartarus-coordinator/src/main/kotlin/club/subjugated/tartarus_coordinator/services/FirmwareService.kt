@@ -7,9 +7,13 @@ import club.subjugated.tartarus_coordinator.events.FirmwareValidationEvent
 import club.subjugated.tartarus_coordinator.models.Firmware
 import club.subjugated.tartarus_coordinator.models.FirmwareState
 import club.subjugated.tartarus_coordinator.models.FirmwareUpgradePath
+import club.subjugated.tartarus_coordinator.models.HardwareAttestationLog
 import club.subjugated.tartarus_coordinator.storage.FirmwareRepository
 import club.subjugated.tartarus_coordinator.storage.FirmwareUpgradePathRepository
+import club.subjugated.tartarus_coordinator.storage.HardwareAttestationLogRepository
+import club.subjugated.tartarus_coordinator.storage.ProvisionedHardwareUnitRepository
 import club.subjugated.tartarus_coordinator.util.TimeSource
+import club.subjugated.tartarus_coordinator.util.decodeSec1PublicKey
 import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromCompressedKeyByteArray
 import club.subjugated.tartarus_coordinator.util.rawToDerSignature
 import com.github.benmanes.caffeine.cache.Cache
@@ -20,6 +24,7 @@ import java.security.SecureRandom
 import java.security.Signature
 import java.util.*
 import java.util.concurrent.TimeUnit
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
@@ -30,6 +35,10 @@ class FirmwareService(
     private var firmwareUpgradePathRepository: FirmwareUpgradePathRepository,
     private var timeSource: TimeSource,
     private var publisher: ApplicationEventPublisher,
+    @Autowired(required = false)
+    private var unitRepository: ProvisionedHardwareUnitRepository? = null,
+    @Autowired(required = false)
+    private var attestationLogRepository: HardwareAttestationLogRepository? = null,
 ) {
     @Value("\${tartarus.firmware.challenge_key}") var challengeKey: String = ""
 
@@ -129,10 +138,8 @@ class FirmwareService(
         sessionToken: String,
         data: ByteArray,
         currentFirmware: String? = null,
+        hardwareId: String? = null,
     ): Boolean {
-        val challengeKey =
-            getECPublicKeyFromCompressedKeyByteArray(Base64.getDecoder().decode(challengeKey))
-
         val nonce =
             nonceChallenges.getIfPresent(requestId)
                 ?: run {
@@ -149,14 +156,138 @@ class FirmwareService(
                 }
         nonceChallenges.invalidate(requestId)
 
+        val signature = rawToDerSignature(data)
+
+        // Case A: hardwareId is present (OPTIGA Provisioned Unit)
+        if (!hardwareId.isNullOrBlank()) {
+            val normHwId = hardwareId.trim().lowercase()
+            val unit = unitRepository?.findByHardwareId(normHwId)
+
+            if (unit == null) {
+                logAttestation(
+                    hardwareId = normHwId,
+                    sessionToken = sessionToken,
+                    firmwareVersion = currentFirmware,
+                    verificationMethod = "FAILED",
+                    success = false,
+                    failureReason = "Unregistered hardware_id: $normHwId",
+                )
+                val event =
+                    FirmwareValidationEvent(
+                        this,
+                        sessionToken = sessionToken,
+                        validated = false,
+                        currentFirmware = currentFirmware,
+                    )
+                publisher.publishEvent(event)
+                return false
+            }
+
+            if (unit.isRevoked) {
+                logAttestation(
+                    hardwareId = normHwId,
+                    sessionToken = sessionToken,
+                    firmwareVersion = currentFirmware,
+                    verificationMethod = "FAILED",
+                    success = false,
+                    failureReason = "Hardware unit is revoked",
+                )
+                val event =
+                    FirmwareValidationEvent(
+                        this,
+                        sessionToken = sessionToken,
+                        validated = false,
+                        currentFirmware = currentFirmware,
+                    )
+                publisher.publishEvent(event)
+                return false
+            }
+
+            val authKey = decodeSec1PublicKey(Base64.getDecoder().decode(unit.authPubkeyB64))
+            val verifier =
+                Signature.getInstance("NONEwithECDSA", "BC").apply {
+                    initVerify(authKey)
+                    update(nonce)
+                }
+            val validated =
+                try {
+                    verifier.verify(signature)
+                } catch (e: Exception) {
+                    false
+                }
+
+            if (validated) {
+                unit.lastKnownSessionToken = sessionToken
+                unit.lastFirmwareVersion = currentFirmware
+                unit.lastAttestedAt = timeSource.nowInUtc()
+                unit.updatedAt = timeSource.nowInUtc()
+                unitRepository?.save(unit)
+
+                logAttestation(
+                    hardwareId = normHwId,
+                    sessionToken = sessionToken,
+                    firmwareVersion = currentFirmware,
+                    verificationMethod = "OPTIGA_${unit.provisioningMode}",
+                    success = true,
+                    failureReason = null,
+                )
+
+                val event =
+                    FirmwareValidationEvent(
+                        this,
+                        sessionToken = sessionToken,
+                        validated = true,
+                        currentFirmware = currentFirmware,
+                    )
+                publisher.publishEvent(event)
+                return true
+            } else {
+                logAttestation(
+                    hardwareId = normHwId,
+                    sessionToken = sessionToken,
+                    firmwareVersion = currentFirmware,
+                    verificationMethod = "FAILED",
+                    success = false,
+                    failureReason = "Signature verification failed against auth_pubkey",
+                )
+
+                val event =
+                    FirmwareValidationEvent(
+                        this,
+                        sessionToken = sessionToken,
+                        validated = false,
+                        currentFirmware = currentFirmware,
+                    )
+                publisher.publishEvent(event)
+                return false
+            }
+        }
+
+        // Case B: hardwareId is Null / Empty (Legacy Software Key Fallback)
+        val challengeKey =
+            getECPublicKeyFromCompressedKeyByteArray(Base64.getDecoder().decode(challengeKey))
+
         val verifier =
-            Signature.getInstance("NonewithECDSA", "BC").apply {
+            Signature.getInstance("NONEwithECDSA", "BC").apply {
                 initVerify(challengeKey)
                 update(nonce)
             }
-        val signature = rawToDerSignature(data)
 
-        val validated = verifier.verify(signature)
+        val validated =
+            try {
+                verifier.verify(signature)
+            } catch (e: Exception) {
+                false
+            }
+
+        logAttestation(
+            hardwareId = null,
+            sessionToken = sessionToken,
+            firmwareVersion = currentFirmware,
+            verificationMethod = if (validated) "LEGACY_KEY" else "FAILED",
+            success = validated,
+            failureReason = if (validated) null else "Legacy key signature verification failed",
+        )
 
         val event =
             FirmwareValidationEvent(
@@ -168,6 +299,31 @@ class FirmwareService(
         publisher.publishEvent(event)
 
         return validated
+    }
+
+    private fun logAttestation(
+        hardwareId: String?,
+        sessionToken: String,
+        firmwareVersion: String?,
+        verificationMethod: String,
+        success: Boolean,
+        failureReason: String?,
+    ) {
+        try {
+            val log =
+                HardwareAttestationLog(
+                    hardwareId = hardwareId,
+                    sessionToken = sessionToken,
+                    firmwareVersion = firmwareVersion,
+                    verificationMethod = verificationMethod,
+                    success = success,
+                    failureReason = failureReason,
+                    createdAt = timeSource.nowInUtc(),
+                )
+            attestationLogRepository?.save(log)
+        } catch (e: Exception) {
+            println("⚠️ Warning: failed to save attestation log: ${e.message}")
+        }
     }
 
     fun createUpgradePath(fromVersion: String, toVersion: String): FirmwareUpgradePath {

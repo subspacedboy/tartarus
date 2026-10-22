@@ -117,6 +117,9 @@ fun getECPublicKeyFromCompressedKeyByteArray(compressedKeyBytes: ByteArray): ECP
     return keyFactory.generatePublic(spec) as ECPublicKey
 }
 
+fun decodeSec1PublicKey(sec1Bytes: ByteArray): ECPublicKey =
+    getECPublicKeyFromCompressedKeyByteArray(sec1Bytes)
+
 fun isDerEncoded(signature: ByteArray): Boolean {
     if (signature.isEmpty() || signature[0] != 0x30.toByte())
         return false // Check for SEQUENCE (0x30)

@@ -25,9 +25,8 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentCaptor
-import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
-import org.mockito.Mockito.verify
+import org.mockito.Mockito.`when`
 
 class EventServiceTest {
 
@@ -56,42 +55,46 @@ class EventServiceTest {
         botRepository = mock(BotRepository::class.java)
         mqttClient = mock(MqttClient::class.java)
 
-        eventService = EventService().apply {
-            this.eventRepository = this@EventServiceTest.eventRepository
-            this.eventDeliveryRepository = this@EventServiceTest.eventDeliveryRepository
-            this.contractRepository = this@EventServiceTest.contractRepository
-            this.lockSessionService = this@EventServiceTest.lockSessionService
-            this.botRepository = this@EventServiceTest.botRepository
-            this.mqttClient = this@EventServiceTest.mqttClient
-        }
+        eventService =
+            EventService().apply {
+                this.eventRepository = this@EventServiceTest.eventRepository
+                this.eventDeliveryRepository = this@EventServiceTest.eventDeliveryRepository
+                this.contractRepository = this@EventServiceTest.contractRepository
+                this.lockSessionService = this@EventServiceTest.lockSessionService
+                this.botRepository = this@EventServiceTest.botRepository
+                this.mqttClient = this@EventServiceTest.mqttClient
+            }
     }
 
     @Test
     fun processIncomingLockEventUsesStandardNameScheme() {
         val keyPair = generateECKeyPair()
-        val pubKeyB64 = Base64.getEncoder().encodeToString(encodePublicKeySecp1(keyPair.public as ECPublicKey))
+        val pubKeyB64 =
+            Base64.getEncoder().encodeToString(encodePublicKeySecp1(keyPair.public as ECPublicKey))
         val sessionToken = "ls-test-token"
-        val lockSession = LockSession(
-            publicKey = pubKeyB64,
-            sessionToken = sessionToken,
-            shareToken = "share-123",
-            totalControlToken = "tc-123",
-        )
+        val lockSession =
+            LockSession(
+                publicKey = pubKeyB64,
+                sessionToken = sessionToken,
+                shareToken = "share-123",
+                totalControlToken = "tc-123",
+            )
 
         `when`(lockSessionService.findBySessionToken(sessionToken)).thenReturn(lockSession)
 
         // Build flatbuffer event
         val builder = FlatBufferBuilder(1024)
         val lockSessionOffset = builder.createString(sessionToken)
-        val metadataOffset = CommonMetadata.createCommonMetadata(
-            builder,
-            lockSessionOffset,
-            1.toUShort(),
-            0.toUShort(),
-            1.toUShort(),
-            0,
-            0,
-        )
+        val metadataOffset =
+            CommonMetadata.createCommonMetadata(
+                builder,
+                lockSessionOffset,
+                1.toUShort(),
+                0.toUShort(),
+                1.toUShort(),
+                0,
+                0,
+            )
         val eventOffset = Event.createEvent(builder, metadataOffset, EventType.Unlock)
         builder.finish(eventOffset)
 
@@ -101,30 +104,37 @@ class EventServiceTest {
         val vtableStart = start - eventStart
         val payloadToHash = eventBytes.copyOfRange(vtableStart, eventBytes.size)
         val hash = MessageDigest.getInstance("SHA-256").digest(payloadToHash)
-        var sig = Signature.getInstance("SHA256withECDSA", "BC").apply {
-            initSign(keyPair.private)
-            update(hash)
-        }.sign()
+        var sig =
+            Signature.getInstance("SHA256withECDSA", "BC")
+                .apply {
+                    initSign(keyPair.private)
+                    update(hash)
+                }
+                .sign()
         sig = derToRawSignature(sig)
 
         val signedBuilder = FlatBufferBuilder(1024)
         val signedLockSessionOffset = signedBuilder.createString(sessionToken)
-        val signedMetadataOffset = CommonMetadata.createCommonMetadata(
-            signedBuilder,
-            signedLockSessionOffset,
-            1.toUShort(),
-            0.toUShort(),
-            1.toUShort(),
-            0,
-            0,
-        )
-        val signedEventPayloadOffset = Event.createEvent(signedBuilder, signedMetadataOffset, EventType.Unlock)
+        val signedMetadataOffset =
+            CommonMetadata.createCommonMetadata(
+                signedBuilder,
+                signedLockSessionOffset,
+                1.toUShort(),
+                0.toUShort(),
+                1.toUShort(),
+                0,
+                0,
+            )
+        val signedEventPayloadOffset =
+            Event.createEvent(signedBuilder, signedMetadataOffset, EventType.Unlock)
         val sigOffset = signedBuilder.createByteVector(sig)
-        val signedEventOffset = SignedEvent.createSignedEvent(signedBuilder, sigOffset, signedEventPayloadOffset)
+        val signedEventOffset =
+            SignedEvent.createSignedEvent(signedBuilder, sigOffset, signedEventPayloadOffset)
         signedBuilder.finish(signedEventOffset)
         val payloadBytes = signedBuilder.sizedByteArray()
 
-        val eventCaptor = ArgumentCaptor.forClass(club.subjugated.tartarus_coordinator.models.Event::class.java)
+        val eventCaptor =
+            ArgumentCaptor.forClass(club.subjugated.tartarus_coordinator.models.Event::class.java)
         `when`(eventRepository.save(eventCaptor.capture())).thenAnswer { it.arguments[0] }
 
         val created = eventService.processIncomingLockEvent(sessionToken, payloadBytes)

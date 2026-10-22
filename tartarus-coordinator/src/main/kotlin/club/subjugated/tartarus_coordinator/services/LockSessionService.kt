@@ -24,32 +24,38 @@ class LockSessionService {
     @Autowired lateinit var botService: BotService
 
     fun createLockSession(newLockSessionMessage: NewLockSessionMessage): LockSession {
-        return lockSessionRepository.findBySessionToken(newLockSessionMessage.sessionToken)
-            ?: run {
-                val session =
-                    LockSession(
-                        publicKey = newLockSessionMessage.publicKey,
-                        sessionToken = newLockSessionMessage.sessionToken,
-                        shareToken = generateId("s-"),
-                        totalControlToken = generateId("tc-"),
-                        createdAt = timeSource.nowInUtc(),
-                        updatedAt = timeSource.nowInUtc(),
-                    )
-                saveLockSession(session)
-
-                // Also make the command queue, maybe move it to its own service if it gets
-                // complicated
-                val queue =
-                    CommandQueue(
-                        lockSession = session,
-                        createdAt = timeSource.nowInUtc(),
-                        updatedAt = timeSource.nowInUtc(),
-                    )
-                session.commandQueue.add(queue)
-                this.commandQueueRepository.save(queue)
-
-                session
+        val existing = lockSessionRepository.findBySessionToken(newLockSessionMessage.sessionToken)
+        if (existing != null) {
+            if (existing.publicKey != newLockSessionMessage.publicKey) {
+                existing.publicKey = newLockSessionMessage.publicKey
+                existing.updatedAt = timeSource.nowInUtc()
+                saveLockSession(existing)
             }
+            return existing
+        }
+        val session =
+            LockSession(
+                publicKey = newLockSessionMessage.publicKey,
+                sessionToken = newLockSessionMessage.sessionToken,
+                shareToken = generateId("s-"),
+                totalControlToken = generateId("tc-"),
+                createdAt = timeSource.nowInUtc(),
+                updatedAt = timeSource.nowInUtc(),
+            )
+        saveLockSession(session)
+
+        // Also make the command queue, maybe move it to its own service if it gets
+        // complicated
+        val queue =
+            CommandQueue(
+                lockSession = session,
+                createdAt = timeSource.nowInUtc(),
+                updatedAt = timeSource.nowInUtc(),
+            )
+        session.commandQueue.add(queue)
+        this.commandQueueRepository.save(queue)
+
+        return session
     }
 
     fun findBySessionToken(token: String): LockSession? {

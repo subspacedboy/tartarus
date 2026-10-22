@@ -7,6 +7,7 @@ import club.subjugated.tartarus_coordinator.api.firmware.FirmwareApiController
 import club.subjugated.tartarus_coordinator.api.messages.NewLockSessionMessage
 import club.subjugated.tartarus_coordinator.events.NewCommandEvent
 import club.subjugated.tartarus_coordinator.models.CommandState
+import club.subjugated.tartarus_coordinator.storage.ProvisionedHardwareUnitRepository
 import club.subjugated.tartarus_coordinator.util.*
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
@@ -57,10 +58,13 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
      * - `locks/+/events`: Monotonic contract audit and lifecycle events
      *
      * Architectural Rationale:
-     * 1. Least-Privilege Broker ACLs: Locks authenticate with their session token and are restricted
-     *    to `locks/<client_id>/#`. They cannot publish to or tamper with other locks' topics or a shared global queue.
-     * 2. Transport-Level Identity: The session token is known immediately from the topic string before decoding/verifying.
-     * 3. Targeted Observability: Operations can subscribe to `locks/<session_token>/#` to inspect a single lock's full traffic.
+     * 1. Least-Privilege Broker ACLs: Locks authenticate with their session token and are
+     *    restricted to `locks/<client_id>/#`. They cannot publish to or tamper with other locks'
+     *    topics or a shared global queue.
+     * 2. Transport-Level Identity: The session token is known immediately from the topic string
+     *    before decoding/verifying.
+     * 3. Targeted Observability: Operations can subscribe to `locks/<session_token>/#` to inspect a
+     *    single lock's full traffic.
      * 4. Scalability: Enables partition-by-device sharding across backend worker instances.
      */
     private val lockUpdateTopic: String = "locks/+/updates"
@@ -77,6 +81,8 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
     @Autowired lateinit var commandQueueService: CommandQueueService
     @Autowired lateinit var configurationService: ConfigurationService
     @Autowired lateinit var firmwareService: FirmwareService
+    @Autowired(required = false) var unitRepository: ProvisionedHardwareUnitRepository? = null
+    @Autowired lateinit var timeSource: TimeSource
 
     @Autowired lateinit var botApiController: BotApiController
     @Autowired lateinit var firmwareApiController: FirmwareApiController
@@ -171,18 +177,63 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                                 }
                                 is ValidationKeyRequirement.LockSessionKey -> {
                                     val lockSession =
-                                        this.lockSessionService.findBySessionToken(
-                                            sessionToken
-                                        )
+                                        this.lockSessionService.findBySessionToken(sessionToken)
                                     if (lockSession == null) {
-                                        signedMessageBytesValidator(
-                                            ByteBuffer.wrap(message.payload)
-                                        )
+                                        val unitKey =
+                                            unitRepository
+                                                ?.findByLastKnownSessionToken(sessionToken)
+                                                ?.firstOrNull()
+                                                ?.lastKnownLockPubkeyB64
+                                                ?: unitRepository
+                                                    ?.findByInitialSessionToken(sessionToken)
+                                                    ?.firstOrNull()
+                                                    ?.lastKnownLockPubkeyB64
+                                        if (unitKey != null) {
+                                            val keyBytes = Base64.getDecoder().decode(unitKey)
+                                            signedMessageBytesValidatorWithExternalKey(
+                                                ByteBuffer.wrap(message.payload),
+                                                keyBytes,
+                                            )
+                                        } else {
+                                            signedMessageBytesValidator(
+                                                ByteBuffer.wrap(message.payload)
+                                            )
+                                        }
                                     } else {
-                                        signedMessageBytesValidatorWithExternalKey(
-                                            ByteBuffer.wrap(message.payload),
-                                            lockSession.decodePublicKey(),
-                                        )
+                                        var validated =
+                                            signedMessageBytesValidatorWithExternalKey(
+                                                ByteBuffer.wrap(message.payload),
+                                                lockSession.decodePublicKey(),
+                                            )
+                                        if (validated is ValidatedPayload.UnknownPayload) {
+                                            val unit =
+                                                unitRepository
+                                                    ?.findByLastKnownSessionToken(sessionToken)
+                                                    ?.firstOrNull()
+                                                    ?: unitRepository
+                                                        ?.findByInitialSessionToken(sessionToken)
+                                                        ?.firstOrNull()
+                                            val unitKey = unit?.lastKnownLockPubkeyB64
+                                            if (
+                                                unitKey != null && unitKey != lockSession.publicKey
+                                            ) {
+                                                val keyBytes = Base64.getDecoder().decode(unitKey)
+                                                val revalidated =
+                                                    signedMessageBytesValidatorWithExternalKey(
+                                                        ByteBuffer.wrap(message.payload),
+                                                        keyBytes,
+                                                    )
+                                                if (
+                                                    revalidated !is ValidatedPayload.UnknownPayload
+                                                ) {
+                                                    lockSession.publicKey = unitKey
+                                                    lockSession.updatedAt = timeSource.nowInUtc()
+                                                    lockSessionService.saveLockSession(lockSession)
+                                                    validated = revalidated
+                                                }
+                                            }
+                                        }
+                                        validated
                                     }
                                 }
                                 else -> {
@@ -190,7 +241,13 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                                 }
                             }
 
-                        println("✅ Signature is good for $sessionToken -> $signedMessage")
+                        if (signedMessage !is ValidatedPayload.UnknownPayload) {
+                            println("✅ Validated payload for $sessionToken -> $signedMessage")
+                        } else {
+                            println(
+                                "❌ Signature verification failed or unknown payload for $sessionToken"
+                            )
+                        }
 
                         when (signedMessage) {
                             is ValidatedPayload.StartedUpdatePayload -> {
@@ -226,7 +283,9 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                             FirmwareMessage.getRootAsFirmwareMessage(
                                 ByteBuffer.wrap(message.payload)
                             )
-                        println("🧱 Got Firmware API message on $topic for session $sessionToken -> ${firmwareApiMessage}")
+                        println(
+                            "🧱 Got Firmware API message on $topic for session $sessionToken -> ${firmwareApiMessage}"
+                        )
 
                         val response = firmwareApiController.routeRequest(firmwareApiMessage)
 
@@ -280,6 +339,23 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
 
         val lockSession = lockSessionService.createLockSession(nlsm)
         lockSessionService.saveLockSession(lockSession)
+
+        // Update matching provisioned hardware unit lock pubkey if known
+        try {
+            val pubKeyB64 = nlsm.publicKey
+            val matched =
+                (unitRepository?.findByLastKnownSessionToken(sessionToken) ?: emptyList()) +
+                    (unitRepository?.findByInitialSessionToken(sessionToken) ?: emptyList())
+            for (u in matched.distinctBy { it.hardwareId }) {
+                u.lastKnownLockPubkeyB64 = pubKeyB64
+                u.lastKnownSessionToken = sessionToken
+                unitRepository?.save(u)
+            }
+        } catch (e: Exception) {
+            println(
+                "⚠️ Warning: could not update provisioned unit for session $sessionToken: ${e.message}"
+            )
+        }
 
         val queue = lockSession.commandQueue.first()
         val commands = queue.commands

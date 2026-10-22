@@ -4,6 +4,8 @@
   <CurrentIssues>
     <ID>CyclomaticComplexMethod:CommandController.kt$CommandController$@PostMapping( "/forLockUser/command/{commandName}/acknowledge", produces = [MediaType.APPLICATION_JSON], ) @ResponseBody fun manuallyAcknowledgeCommand( @AuthenticationPrincipal lockUser: UserDetails, @PathVariable contractName: String, @PathVariable commandName: String, @RequestBody(required = false) body: AcknowledgeCommandMessage? = null, ): ResponseEntity&lt;List&lt;CommandMessage&gt;&gt;</ID>
     <ID>CyclomaticComplexMethod:EventService.kt$EventService$fun processIncomingLockEvent(sessionToken: String, payloadBytes: ByteArray): Event?</ID>
+    <ID>CyclomaticComplexMethod:HardwareVerificationService.kt$HardwareVerificationService$@Transactional fun ingestAndSave(request: ProvisioningIngestRequest): ProvisionedHardwareUnitDetailDto</ID>
+    <ID>CyclomaticComplexMethod:HardwareVerificationService.kt$HardwareVerificationService$fun verifyInfineonCertificateChain( certsDerB64: List&lt;String&gt; ): Pair&lt;X509Certificate, List&lt;String&gt;&gt;</ID>
     <ID>CyclomaticComplexMethod:MqttListenerService.kt$MqttListenerService$@PostConstruct fun start()</ID>
     <ID>CyclomaticComplexMethod:fb_helpers.kt$fun signedMessageBytesValidatorWithExternalKey(buf: ByteBuffer, key: ByteArray): ValidatedPayload</ID>
     <ID>EmptyClassBlock:ContractChangeEvent.kt$ContractChangeEvent${}</ID>
@@ -244,9 +246,17 @@
     <ID>LongMethod:ContractService.kt$ContractService$fun resetWithSafetyKey(contract: Contract, safetyKey: SafetyKey): Contract</ID>
     <ID>LongMethod:ContractService.kt$ContractService$fun saveCommand( authorSession: AuthorSession, lockSession: LockSession, contract: Contract, signedMessage: String, )</ID>
     <ID>LongMethod:EventService.kt$EventService$fun processIncomingLockEvent(sessionToken: String, payloadBytes: ByteArray): Event?</ID>
+    <ID>LongMethod:EventServiceTest.kt$EventServiceTest$@Test fun processIncomingLockEventUsesStandardNameScheme()</ID>
+    <ID>LongMethod:FirmwareService.kt$FirmwareService$fun validateChallengeSignature( requestId: Long, sessionToken: String, data: ByteArray, currentFirmware: String? = null, hardwareId: String? = null, ): Boolean</ID>
+    <ID>LongMethod:HardwareVerificationService.kt$HardwareVerificationService$@Transactional fun ingestAndSave(request: ProvisioningIngestRequest): ProvisionedHardwareUnitDetailDto</ID>
+    <ID>LongMethod:HardwareVerificationService.kt$HardwareVerificationService$fun verifyInfineonCertificateChain( certsDerB64: List&lt;String&gt; ): Pair&lt;X509Certificate, List&lt;String&gt;&gt;</ID>
+    <ID>LongMethod:HardwareVerificationService.kt$HardwareVerificationService$fun verifyPreview(request: ProvisioningIngestRequest): ProvisioningPreviewResponse</ID>
+    <ID>LongMethod:HardwareVerificationServiceTest.kt$HardwareVerificationServiceTest$@Test fun testDowngradePrevention_HardToSoftThrows()</ID>
+    <ID>LongMethod:HardwareVerificationServiceTest.kt$HardwareVerificationServiceTest$@Test fun testEndToEndVerification_SoftProvisioned()</ID>
     <ID>LongMethod:JwtHandshakeInterceptor.kt$JwtHandshakeInterceptor$override fun beforeHandshake( request: org.springframework.http.server.ServerHttpRequest, response: org.springframework.http.server.ServerHttpResponse, wsHandler: WebSocketHandler, attributes: MutableMap&lt;String, Any&gt;, ): Boolean</ID>
     <ID>LongMethod:MqttListenerService.kt$MqttListenerService$@PostConstruct fun start()</ID>
     <ID>LongMethod:fb_helpers.kt$fun signedMessageBytesValidatorWithExternalKey(buf: ByteBuffer, key: ByteArray): ValidatedPayload</ID>
+    <ID>LoopWithTooManyJumpStatements:HardwareVerificationService.kt$HardwareVerificationService$while</ID>
     <ID>MagicNumber:AbortCommand.kt$AbortCommand$4</ID>
     <ID>MagicNumber:AbortCommand.kt$AbortCommand$6</ID>
     <ID>MagicNumber:AbortCommand.kt$AbortCommand$8</ID>
@@ -343,6 +353,8 @@
     <ID>MagicNumber:FirmwareChallengeRequest.kt$FirmwareChallengeRequest$6</ID>
     <ID>MagicNumber:FirmwareChallengeResponse.kt$FirmwareChallengeResponse$4</ID>
     <ID>MagicNumber:FirmwareChallengeResponse.kt$FirmwareChallengeResponse$6</ID>
+    <ID>MagicNumber:FirmwareChallengeResponse.kt$FirmwareChallengeResponse$8</ID>
+    <ID>MagicNumber:FirmwareChallengeResponse.kt$FirmwareChallengeResponse.Companion$3</ID>
     <ID>MagicNumber:FirmwareMessage.kt$FirmwareMessage$10</ID>
     <ID>MagicNumber:FirmwareMessage.kt$FirmwareMessage$4</ID>
     <ID>MagicNumber:FirmwareMessage.kt$FirmwareMessage$6</ID>
@@ -399,6 +411,10 @@
     <ID>MagicNumber:GetLockSessionResponse.kt$GetLockSessionResponse$8</ID>
     <ID>MagicNumber:GetLockSessionResponse.kt$GetLockSessionResponse.Companion$3</ID>
     <ID>MagicNumber:GetLockSessionResponse.kt$GetLockSessionResponse.Companion$4</ID>
+    <ID>MagicNumber:HardwareVerificationService.kt$HardwareVerificationService$10</ID>
+    <ID>MagicNumber:HardwareVerificationService.kt$HardwareVerificationService$16</ID>
+    <ID>MagicNumber:HardwareVerificationService.kt$HardwareVerificationService$64</ID>
+    <ID>MagicNumber:HardwareVerificationService.kt$HardwareVerificationService$65</ID>
     <ID>MagicNumber:HiveMqMqttBroker.kt$HiveMqMqttBroker$1000</ID>
     <ID>MagicNumber:Key.kt$Key$4</ID>
     <ID>MagicNumber:Key.kt$Key$6</ID>
@@ -470,15 +486,19 @@
     <ID>MagicNumber:crypto_helpers.kt$8</ID>
     <ID>MagicNumber:id_helpers.kt$4</ID>
     <ID>MaxLineLength:Command.kt$Command$return "Command(name='$name', state=$state, type=$type, serialNumber=$serialNumber, counter=$counter, authorSession=$authorSession)"</ID>
+    <ID>MaxLineLength:HardwareVerificationService.kt$HardwareVerificationService$"🔒 Loaded ${rootCertificates.size} Infineon Root CAs and ${intermediateCertificates.size} Intermediate CAs"</ID>
+    <ID>MaxLineLength:HardwareVerificationServiceTest.kt$HardwareVerificationServiceTest$"""SOFT_PROVISION_RESULT:{"status":"SOFT_PROVISIONED","session_token":"VLEPLJ","copr_uid_hex":"cd16338401001c000100000a091b5c000b00820068801010710809","lock_pubkey_b64":"BD96VWWdfcaHrF6cRYIHT8nwgpoGz6af7gf74z0yr9ymwMvy+2kLzT2VEoWXALHcidu1nPiHQUvj+17x60Hxk/4=","auth_pubkey_b64":"BGW7C/7hcVcMI1SKMeRqGoloV/0a2HWN9QYzsNtq6KGPMMOpqbp/FNuYTYn5NCJY6i7tPgqEFZXBmV6ahPEagpQ=","manufacturer_sig_b64":"DsN6XFwRNJW6pkJT67GWxMaEh8YNrt9FjG94jT9pitGMMZjMNBDAgEw0DpxxlBc2sbsFKtyVyaPI05Kesz9Zfw==","attestation_digest_hex":"e1505ba501c22df2875fa58a5a28c5b078c7cf6752d9ceb0ea2454a2e8373840","infineon_certs_der_b64":["MIIB2TCCAX6gAwIBAgIETu1GvDAKBggqhkjOPQQDAjByMQswCQYDVQQGEwJERTEhMB8GA1UECgwYSW5maW5lb24gVGVjaG5vbG9naWVzIEFHMRMwEQYDVQQLDApPUFRJR0EoVE0pMSswKQYDVQQDDCJJbmZpbmVvbiBPUFRJR0EoVE0pIFRydXN0IE0gQ0EgMTAxMB4XDTE5MDcwMTE1MDQxM1oXDTM5MDcwMTE1MDQxM1owHDEaMBgGA1UEAwwRSW5maW5lb24gSW9UIE5vZGUwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARENGYNC3yfqufVgM3mTxa05KA/mmb/MnTF5q4aIZ2caMG8J++G5qCcMboaj49ktmHefrtS1FDjAybll96REqpPo1gwVjAOBgNVHQ8BAf8EBAMCAIAwDAYDVR0TAQH/BAIwADAVBgNVHSAEDjAMMAoGCCqCFABEARQBMB8GA1UdIwQYMBaAFDwwjFzViuijXTKA5FSDsv/Nhk0jMAoGCCqGSM49BAMCA0kAMEYCIQCAMPZZzrn8Gz5C9suTEdckxZoFxBCm+i7nI9NffXTxFgIhALSzBayRPfl983zRaJGqV/aKFcwWzLyrGGyOJYv5YfyO"],"efuse_status":{"blk3_provisioned":false,"blk3_write_protected":false,"secure_boot_enabled":false,"pad_jtag_disabled":false,"usb_jtag_disabled":false,"soft_jtag_disabled":false,"security_download_enabled":false,"usb_download_disabled":false,"secure_version":0}}"""</ID>
     <ID>MaxLineLength:JwtHandshakeInterceptor.kt$JwtHandshakeInterceptor$"WebSocket handshake rejected: no valid credentials provided. lockUserJwt present: {}, authorJwt present: {}, adminJwt present: {}"</ID>
     <ID>MaxLineLength:MqttListenerService.kt$MqttListenerService$"👀 Periodic update from ${update.session} -&gt; Locked? ${update.isLocked}, Local Lock -&gt; ${update.localLock}, Local Unlock -&gt; ${update.localUnlock}, Emergency unlocked? -&gt; ${update.emergencyUnlocked}"</ID>
     <ID>NestedBlockDepth:EventService.kt$EventService$fun processIncomingLockEvent(sessionToken: String, payloadBytes: ByteArray): Event?</ID>
+    <ID>NestedBlockDepth:HardwareVerificationService.kt$HardwareVerificationService$@PostConstruct fun loadBundledCertificates()</ID>
     <ID>ReturnCount:AdminSessionController.kt$AdminSessionController$@PostMapping("/") fun confirmAdminSession( @RequestBody confirmAdminSessionMessage: ConfirmAdminSessionMessage ): ResponseEntity&lt;AdminSessionMessage&gt;</ID>
     <ID>ReturnCount:AuthorSessionController.kt$AuthorSessionController$@PostMapping("/", produces = [MediaType.APPLICATION_JSON]) @ResponseBody fun saveAuthorSession( @RequestBody newAuthorSessionMessage: NewAuthorSessionMessage ): ResponseEntity&lt;AuthorSessionMessage&gt;</ID>
     <ID>ReturnCount:AuthorSessionService.kt$AuthorSessionService$fun authorKnowsToken(authorSession: AuthorSession, shareableToken: String): KnownToken</ID>
     <ID>ReturnCount:BotApiController.kt$BotApiController$fun routeRequest(message: BotApiMessage): BotApiMessage</ID>
     <ID>ReturnCount:EventService.kt$EventService$fun processIncomingLockEvent(sessionToken: String, payloadBytes: ByteArray): Event?</ID>
     <ID>ReturnCount:FirmwareApiController.kt$FirmwareApiController$fun routeRequest(message: FirmwareMessage): FirmwareMessage?</ID>
+    <ID>ReturnCount:FirmwareService.kt$FirmwareService$fun validateChallengeSignature( requestId: Long, sessionToken: String, data: ByteArray, currentFirmware: String? = null, hardwareId: String? = null, ): Boolean</ID>
     <ID>ReturnCount:HiveMqMqttBroker.kt$AuthExtension.MyAuthenticator$override fun onConnect(input: SimpleAuthInput, output: SimpleAuthOutput)</ID>
     <ID>ReturnCount:HiveMqMqttBroker.kt$AuthExtension.MyAuthorizer$override fun authorizePublish(p0: PublishAuthorizerInput?, p1: PublishAuthorizerOutput?)</ID>
     <ID>ReturnCount:HiveMqMqttBroker.kt$AuthExtension.MyAuthorizer$override fun authorizeSubscribe( p0: SubscriptionAuthorizerInput?, p1: SubscriptionAuthorizerOutput?, )</ID>
@@ -491,12 +511,20 @@
     <ID>SwallowedException:AuthorSessionController.kt$AuthorSessionController$e: IllegalArgumentException</ID>
     <ID>SwallowedException:AuthorSessionController.kt$AuthorSessionController$e: IllegalStateException</ID>
     <ID>SwallowedException:BotService.kt$BotService$cryptoException: CryptoException</ID>
+    <ID>SwallowedException:FirmwareService.kt$FirmwareService$e: Exception</ID>
+    <ID>SwallowedException:HardwareVerificationService.kt$HardwareVerificationService$e: Exception</ID>
     <ID>SwallowedException:LockSession.kt$LockSession$e: IllegalArgumentException</ID>
     <ID>ThrowingExceptionsWithoutMessageOrCause:MqttListenerService.kt$MqttListenerService$IllegalStateException()</ID>
     <ID>ThrowsCount:CommandController.kt$CommandController$@PostMapping( "/forLockUser/command/{commandName}/acknowledge", produces = [MediaType.APPLICATION_JSON], ) @ResponseBody fun manuallyAcknowledgeCommand( @AuthenticationPrincipal lockUser: UserDetails, @PathVariable contractName: String, @PathVariable commandName: String, @RequestBody(required = false) body: AcknowledgeCommandMessage? = null, ): ResponseEntity&lt;List&lt;CommandMessage&gt;&gt;</ID>
+    <ID>ThrowsCount:HardwareVerificationService.kt$HardwareVerificationService$fun verifyAttestationDigest( coprUidHex: String, authPubkeyB64: String, attestationDigestHex: String, ): Pair&lt;ByteArray, ByteArray&gt;</ID>
+    <ID>ThrowsCount:HardwareVerificationService.kt$HardwareVerificationService$fun verifyInfineonCertificateChain( certsDerB64: List&lt;String&gt; ): Pair&lt;X509Certificate, List&lt;String&gt;&gt;</ID>
+    <ID>ThrowsCount:HardwareVerificationService.kt$HardwareVerificationService$fun verifyManufacturerSignature( factoryPublicKey: PublicKey, expectedDigest: ByteArray, manufacturerSigB64: String, preimage: ByteArray, )</ID>
     <ID>TooGenericExceptionCaught:AdminSessionController.kt$AdminSessionController$e: Exception</ID>
     <ID>TooGenericExceptionCaught:CommandController.kt$CommandController$e: Exception</ID>
     <ID>TooGenericExceptionCaught:EventService.kt$EventService$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:FirmwareService.kt$FirmwareService$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:HardwareVerificationService.kt$HardwareVerificationService$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:MqttListenerService.kt$MqttListenerService$e: Exception</ID>
     <ID>TooGenericExceptionCaught:MqttListenerService.kt$MqttListenerService$ex: Exception</ID>
     <ID>TooGenericExceptionCaught:WebUserAuthenticationFilter.kt$WebUserAuthenticationFilter$ex: Exception</ID>
     <ID>TooGenericExceptionCaught:jwt_helpers.kt$ex: Exception</ID>
@@ -510,12 +538,14 @@
     <ID>TooManyFunctions:CoordinatorConfiguration.kt$CoordinatorConfiguration$Companion</ID>
     <ID>TooManyFunctions:CreateCommandRequest.kt$CreateCommandRequest$Companion</ID>
     <ID>TooManyFunctions:Error.kt$Error$Companion</ID>
+    <ID>TooManyFunctions:FirmwareChallengeResponse.kt$FirmwareChallengeResponse$Companion</ID>
     <ID>TooManyFunctions:FirmwareMessage.kt$FirmwareMessage$Companion</ID>
     <ID>TooManyFunctions:GetContractResponse.kt$GetContractResponse$Companion</ID>
     <ID>TooManyFunctions:GetEventsResponse.kt$GetEventsResponse$Companion</ID>
     <ID>TooManyFunctions:GetFirmwareChunkResponse.kt$GetFirmwareChunkResponse$Companion</ID>
     <ID>TooManyFunctions:GetLatestFirmwareResponse.kt$GetLatestFirmwareResponse$Companion</ID>
     <ID>TooManyFunctions:GetLockSessionResponse.kt$GetLockSessionResponse$Companion</ID>
+    <ID>TooManyFunctions:HardwareVerificationService.kt$HardwareVerificationService</ID>
     <ID>TooManyFunctions:PeriodicUpdate.kt$PeriodicUpdate$Companion</ID>
     <ID>TooManyFunctions:SignedEvent.kt$SignedEvent$Companion</ID>
     <ID>TooManyFunctions:SignedMessage.kt$SignedMessage$Companion</ID>
@@ -546,11 +576,21 @@
     <ID>WildcardImport:CommandQueue.kt$import jakarta.persistence.*</ID>
     <ID>WildcardImport:Contract.kt$import jakarta.persistence.*</ID>
     <ID>WildcardImport:ContractController.kt$import org.springframework.web.bind.annotation.*</ID>
+    <ID>WildcardImport:HardwareAttestationLog.kt$import jakarta.persistence.*</ID>
+    <ID>WildcardImport:HardwareProvisioningAdminController.kt$import club.subjugated.tartarus_coordinator.api.messages.*</ID>
+    <ID>WildcardImport:HardwareProvisioningAdminController.kt$import org.springframework.web.bind.annotation.*</ID>
+    <ID>WildcardImport:HardwareProvisioningAdminControllerTest.kt$import club.subjugated.tartarus_coordinator.api.messages.*</ID>
+    <ID>WildcardImport:HardwareVerificationService.kt$import club.subjugated.tartarus_coordinator.api.messages.*</ID>
+    <ID>WildcardImport:HardwareVerificationService.kt$import java.security.*</ID>
+    <ID>WildcardImport:HardwareVerificationServiceTest.kt$import club.subjugated.tartarus_coordinator.util.*</ID>
+    <ID>WildcardImport:HardwareVerificationServiceTest.kt$import java.security.*</ID>
+    <ID>WildcardImport:HardwareVerificationServiceTest.kt$import org.mockito.Mockito.*</ID>
     <ID>WildcardImport:KnownToken.kt$import jakarta.persistence.*</ID>
     <ID>WildcardImport:LockSession.kt$import jakarta.persistence.*</ID>
     <ID>WildcardImport:LockSessionController.kt$import org.springframework.web.bind.annotation.*</ID>
     <ID>WildcardImport:LockSessionService.kt$import club.subjugated.tartarus_coordinator.models.*</ID>
     <ID>WildcardImport:MqttListenerService.kt$import club.subjugated.tartarus_coordinator.util.*</ID>
+    <ID>WildcardImport:ProvisionedHardwareUnit.kt$import jakarta.persistence.*</ID>
     <ID>WildcardImport:SafetyKey.kt$import jakarta.persistence.*</ID>
     <ID>WildcardImport:SafetyKeyService.kt$import club.subjugated.tartarus_coordinator.util.*</ID>
     <ID>WildcardImport:crypto_helpers.kt$import java.security.*</ID>

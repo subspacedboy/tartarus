@@ -51,6 +51,17 @@ class FirmwareChallengeResponse : Table() {
             null
         }
     }
+    val hardwareId : String?
+        get() {
+            val o = __offset(8)
+            return if (o != 0) {
+                __string(o + bb_pos)
+            } else {
+                null
+            }
+        }
+    val hardwareIdAsByteBuffer : ByteBuffer? get() = __vector_as_bytebuffer(8, 1)
+    fun hardwareIdInByteBuffer(_bb: ByteBuffer) : ByteBuffer? = __vector_in_bytebuffer(_bb, 8, 1)
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsFirmwareChallengeResponse(_bb: ByteBuffer): FirmwareChallengeResponse = getRootAsFirmwareChallengeResponse(_bb, FirmwareChallengeResponse())
@@ -58,13 +69,14 @@ class FirmwareChallengeResponse : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createFirmwareChallengeResponse(builder: FlatBufferBuilder, signatureOffset: Int, versionOffset: Int) : Int {
-            builder.startTable(2)
+        fun createFirmwareChallengeResponse(builder: FlatBufferBuilder, signatureOffset: Int, versionOffset: Int, hardwareIdOffset: Int) : Int {
+            builder.startTable(3)
+            addHardwareId(builder, hardwareIdOffset)
             addVersion(builder, versionOffset)
             addSignature(builder, signatureOffset)
             return endFirmwareChallengeResponse(builder)
         }
-        fun startFirmwareChallengeResponse(builder: FlatBufferBuilder) = builder.startTable(2)
+        fun startFirmwareChallengeResponse(builder: FlatBufferBuilder) = builder.startTable(3)
         fun addSignature(builder: FlatBufferBuilder, signature: Int) = builder.addOffset(0, signature, 0)
         @kotlin.ExperimentalUnsignedTypes
         fun createSignatureVector(builder: FlatBufferBuilder, data: UByteArray) : Int {
@@ -76,6 +88,7 @@ class FirmwareChallengeResponse : Table() {
         }
         fun startSignatureVector(builder: FlatBufferBuilder, numElems: Int) = builder.startVector(1, numElems, 1)
         fun addVersion(builder: FlatBufferBuilder, version: Int) = builder.addOffset(1, version, 0)
+        fun addHardwareId(builder: FlatBufferBuilder, hardwareId: Int) = builder.addOffset(2, hardwareId, 0)
         fun endFirmwareChallengeResponse(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o
