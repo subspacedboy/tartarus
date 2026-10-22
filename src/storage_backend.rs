@@ -2,7 +2,7 @@ use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use data_encoding::{BASE32_NOPAD, BASE64};
+use data_encoding::{BASE32_NOPAD, BASE64, HEXLOWER};
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
 use embedded_hal::i2c::{ErrorType, I2c, Operation};
@@ -242,6 +242,23 @@ pub const OPTIGA_CREDENTIALS_DATA_OID: Oid = Oid::Custom(0xF1D2); // 140B Type B
 pub const OPTIGA_CONTRACT_DATA_OID: Oid = Oid::Custom(0xF1E0); // 1500B Type A: CBOR SaveState
 pub const FRAME_MAGIC: [u8; 2] = [0x54, 0x41]; // "TA"
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProvisionMode {
+    /// Development provisioning (`SOFT_PROVISION`):
+    /// - Uses default 64-byte Platform Binding Secret (`0x01..=0x40`) in `0xE140`
+    /// - Leaves `0xE140` metadata changeable (`Change=Always`)
+    /// - Generates/moves keys & credentials into OPTIGA (`0xE0F1`, `0xF1D0`, `0xE0F2`, `0xF1D1`, `0xF1D2`)
+    /// - Does NOT burn any ESP32-S3 eFuses (`EFUSE_BLK3`, JTAG, Secure Download Mode remain untouched)
+    Soft,
+    /// Production hardware lockdown (`PROVISION`):
+    /// - Generates 32-byte random seed (`ESP32_RNG ^ OPTIGA_TRNG`), derives 64-byte PBS via HKDF-SHA256
+    /// - Burns 32-byte seed into `EFUSE_BLK3` and write-protects `BLK3`
+    /// - Generates/moves keys & credentials into OPTIGA (`0xE0F1`, `0xF1D0`, `0xE0F2`, `0xF1D1`, `0xF1D2`)
+    /// - Permanently locks `0xE140` metadata (`Change=Never, Read=Never`)
+    /// - Burns ESP32-S3 JTAG disable and Secure ROM Download Mode eFuses
+    Hard,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct DeviceCredentials {
     pub session_token: String,
@@ -279,7 +296,7 @@ fn load_or_generate_nvs_credentials(nvs: &EspNvs<NvsDefault>) -> DeviceCredentia
             token
         }
         None => {
-            log::info!("Generating a new session ID...");
+            log::info!("Generating a new session ID in NVS...");
             let mut bytes = [0u8; 5];
             rng.fill_bytes(&mut bytes);
             let token = BASE32_NOPAD.encode(&bytes)[..6].to_string();
@@ -300,7 +317,7 @@ fn load_or_generate_nvs_credentials(nvs: &EspNvs<NvsDefault>) -> DeviceCredentia
             token
         }
         None => {
-            log::info!("Generating a new MQTT password...");
+            log::info!("Generating a new MQTT password in NVS...");
             let mut bytes = [0u8; 32];
             rng.fill_bytes(&mut bytes);
             let token = BASE32_NOPAD.encode(&bytes)[..].to_string();
@@ -313,6 +330,32 @@ fn load_or_generate_nvs_credentials(nvs: &EspNvs<NvsDefault>) -> DeviceCredentia
         session_token,
         mqtt_password,
     }
+}
+
+fn load_or_create_nvs_secret_key(nvs: &EspNvs<NvsDefault>) -> (SecretKey, PublicKey) {
+    let key_name = "ec_private";
+    let mut buffer: [u8; 256] = [0; 256];
+    let existing_key: Option<&[u8]> = nvs
+        .get_blob(key_name, &mut buffer)
+        .expect("The NVS mechanism should have worked");
+    let mut rng = Esp32Rng;
+
+    let secret_key: SecretKey = if let Some(base64_key) = existing_key {
+        log::info!("Loaded existing EC private key from NVS.");
+        let key_bytes = BASE64.decode(base64_key).unwrap();
+        SecretKey::from_slice(&key_bytes).expect("Failed to parse private key")
+    } else {
+        log::info!("Generating a new EC private key in software (NVS)...");
+        let sk = SecretKey::random(&mut rng);
+        let key_bytes = sk.to_bytes();
+        let encoded_key = BASE64.encode(&key_bytes);
+        nvs.set_blob(key_name, encoded_key.as_bytes()).unwrap();
+        log::info!("Saved new EC private key to NVS.");
+        sk
+    };
+
+    let public_key = PublicKey::from_secret_scalar(&secret_key.to_nonzero_scalar());
+    (secret_key, public_key)
 }
 
 pub fn parse_optiga_public_key(raw: &[u8]) -> anyhow::Result<p256::PublicKey> {
@@ -477,11 +520,15 @@ where
 // =========================================================================
 
 pub trait SecurityBackend {
-    /// Human-readable backend name for logging ("OPTIGA Trust M" or "ESP32 NVS").
+    /// Human-readable backend name for logging.
     fn backend_name(&self) -> &'static str;
 
     /// Returns the lock's NIST P-256 public key.
     fn public_key(&self) -> PublicKey;
+
+    /// Returns the immutable hardware identifier (`copr_uid_hex` from OPTIGA `0xE0C2`)
+    /// when backed by a provisioned OPTIGA Trust M, or `None` on software NVS / unprovisioned standby.
+    fn hardware_id(&self) -> Option<String>;
 
     /// Signs a 32-byte SHA-256 digest using the lock's P-256 private key,
     /// returning a 64-byte raw IEEE P1363 signature.
@@ -518,15 +565,28 @@ pub trait SecurityBackend {
     /// Wipes keys, credentials, and contract state prior to a full device reset.
     fn wipe_for_reset(&mut self) -> anyhow::Result<()>;
 
-    /// Executes full hardware provisioning (`PROVISION` command):
+    /// Executes full production hardware provisioning (`PROVISION` command):
     /// - Generates/burns `EFUSE_BLK3` seed and binds OPTIGA PBS (`0xE140`)
     /// - Generates Lock Identity Key (`0xE0F1` / `0xF1D0`)
     /// - Generates Authenticity Key (`0xE0F2`), signs with Infineon Factory Key (`0xE0F0`), caches in `0xF1D1`
-    /// - Stores credentials in `0xF1D2`
+    /// - Moves/stores credentials in `0xF1D2`
     /// - Locks `0xE140` to `Change=Never, Read=Never`
     /// - Burns ESP32-S3 JTAG disable + Secure ROM Download Mode eFuses
     /// Returns `(new_lock_public_key, json_bundle)`.
     fn provision_device(
+        &mut self,
+        session_token: &str,
+        mqtt_password: &str,
+    ) -> anyhow::Result<(PublicKey, String)>;
+
+    /// Executes development provisioning (`SOFT_PROVISION` command):
+    /// - Writes the default 64-byte Platform Binding Secret (`0x01..=0x40`) to `0xE140` (keeping `0xE140` changeable)
+    /// - Generates Lock Identity Key (`0xE0F1` / `0xF1D0`)
+    /// - Generates Authenticity Key (`0xE0F2`), signs with Infineon Factory Key (`0xE0F0`), caches in `0xF1D1`
+    /// - Moves/stores credentials in `0xF1D2` and deletes plaintext credentials from NVS
+    /// - Does NOT burn any ESP32-S3 eFuses
+    /// Returns `(new_lock_public_key, json_bundle)`.
+    fn soft_provision_device(
         &mut self,
         session_token: &str,
         mqtt_password: &str,
@@ -548,28 +608,7 @@ pub struct NvsSecurityBackend {
 
 impl NvsSecurityBackend {
     pub fn new(nvs: Rc<EspNvs<NvsDefault>>) -> Self {
-        let key_name = "ec_private";
-        let mut buffer: [u8; 256] = [0; 256];
-        let existing_key: Option<&[u8]> = nvs
-            .get_blob(key_name, &mut buffer)
-            .expect("The NVS mechanism should have worked");
-        let mut rng = Esp32Rng;
-
-        let secret_key: SecretKey = if let Some(base64_key) = existing_key {
-            log::info!("Loaded existing EC private key from NVS.");
-            let key_bytes = BASE64.decode(base64_key).unwrap();
-            SecretKey::from_slice(&key_bytes).expect("Failed to parse private key")
-        } else {
-            log::info!("Generating a new EC private key in software...");
-            let sk = SecretKey::random(&mut rng);
-            let key_bytes = sk.to_bytes();
-            let encoded_key = BASE64.encode(&key_bytes);
-            nvs.set_blob(key_name, encoded_key.as_bytes()).unwrap();
-            log::info!("Saved new EC private key to NVS.");
-            sk
-        };
-
-        let public_key = PublicKey::from_secret_scalar(&secret_key.to_nonzero_scalar());
+        let (secret_key, public_key) = load_or_create_nvs_secret_key(&nvs);
         Self {
             nvs,
             secret_key,
@@ -585,6 +624,10 @@ impl SecurityBackend for NvsSecurityBackend {
 
     fn public_key(&self) -> PublicKey {
         self.public_key
+    }
+
+    fn hardware_id(&self) -> Option<String> {
+        None
     }
 
     fn sign_prehash(&mut self, digest_32: &[u8; 32]) -> anyhow::Result<Signature> {
@@ -621,36 +664,11 @@ impl SecurityBackend for NvsSecurityBackend {
     }
 
     fn read_contract(&mut self) -> anyhow::Result<Option<SaveState>> {
-        let key_name = "contract";
-        let required_size = match self.nvs.blob_len(key_name)? {
-            Some(len) => len,
-            None => {
-                log::info!("No contract data was present in NVS");
-                return Ok(None);
-            }
-        };
-        let mut buffer = vec![0u8; required_size];
-        match self.nvs.get_blob(key_name, &mut buffer) {
-            Ok(Some(bytes)) => {
-                let len = bytes.len();
-                match ciborium::de::from_reader(&buffer[..len]) {
-                    Ok(state) => Ok(Some(state)),
-                    Err(e) => anyhow::bail!("Contract bytes present but failed to deserialize: {e}"),
-                }
-            }
-            Ok(None) => Ok(None),
-            Err(e) => anyhow::bail!("Failed to read contract from NVS: {e}"),
-        }
+        read_contract_from_nvs(&self.nvs)
     }
 
     fn write_contract(&mut self, state: &SaveState) -> anyhow::Result<()> {
-        let mut bytes = Vec::new();
-        ciborium::ser::into_writer(state, &mut bytes)
-            .map_err(|e| anyhow::anyhow!("Failed to serialize contract: {e}"))?;
-        self.nvs
-            .set_blob("contract", &bytes)
-            .map_err(|e| anyhow::anyhow!("Failed to write contract to NVS: {e}"))?;
-        Ok(())
+        write_contract_to_nvs(&self.nvs, state)
     }
 
     fn clear_contract(&mut self) -> anyhow::Result<()> {
@@ -674,9 +692,49 @@ impl SecurityBackend for NvsSecurityBackend {
         anyhow::bail!("Hardware provisioning requires an OPTIGA Trust M security chip on I2C (0x30)")
     }
 
+    fn soft_provision_device(
+        &mut self,
+        _session_token: &str,
+        _mqtt_password: &str,
+    ) -> anyhow::Result<(PublicKey, String)> {
+        anyhow::bail!("Soft provisioning requires an OPTIGA Trust M security chip on I2C (0x30)")
+    }
+
     fn export_cert_bundle(&mut self, _session_token: &str) -> anyhow::Result<String> {
         anyhow::bail!("Certificate export requires an OPTIGA Trust M security chip on I2C (0x30)")
     }
+}
+
+fn read_contract_from_nvs(nvs: &EspNvs<NvsDefault>) -> anyhow::Result<Option<SaveState>> {
+    let key_name = "contract";
+    let required_size = match nvs.blob_len(key_name)? {
+        Some(len) => len,
+        None => {
+            log::info!("No contract data was present in NVS");
+            return Ok(None);
+        }
+    };
+    let mut buffer = vec![0u8; required_size];
+    match nvs.get_blob(key_name, &mut buffer) {
+        Ok(Some(bytes)) => {
+            let len = bytes.len();
+            match ciborium::de::from_reader(&buffer[..len]) {
+                Ok(state) => Ok(Some(state)),
+                Err(e) => anyhow::bail!("Contract bytes present but failed to deserialize: {e}"),
+            }
+        }
+        Ok(None) => Ok(None),
+        Err(e) => anyhow::bail!("Failed to read contract from NVS: {e}"),
+    }
+}
+
+fn write_contract_to_nvs(nvs: &EspNvs<NvsDefault>, state: &SaveState) -> anyhow::Result<()> {
+    let mut bytes = Vec::new();
+    ciborium::ser::into_writer(state, &mut bytes)
+        .map_err(|e| anyhow::anyhow!("Failed to serialize contract: {e}"))?;
+    nvs.set_blob("contract", &bytes)
+        .map_err(|e| anyhow::anyhow!("Failed to write contract to NVS: {e}"))?;
+    Ok(())
 }
 
 // =========================================================================
@@ -685,13 +743,24 @@ impl SecurityBackend for NvsSecurityBackend {
 
 pub struct OptigaSecurityBackend {
     dev: OptigaTrustM<SharedI2cBus, EspOptigaTimer, NoPin, NoPin, RustCryptoBackend, HostDatastore>,
+    nvs: Rc<EspNvs<NvsDefault>>,
     public_key: PublicKey,
+    unprovisioned_secret_key: Option<SecretKey>,
+    is_provisioned: bool,
     protection: ProtectionConfig,
     copr_uid: Vec<u8>,
 }
 
 impl OptigaSecurityBackend {
-    pub fn try_init(mut bus: SharedI2cBus) -> anyhow::Result<Self> {
+    /// Initializes communication with the OPTIGA Trust M chip in **strict read-only mode**.
+    ///
+    /// No metadata, keys, or data objects in OPTIGA NVM are modified during `try_init`.
+    /// - If the OPTIGA has already been provisioned (via `PROVISION` or `SOFT_PROVISION`),
+    ///   it loads the provisioned public key (`0xF1D0`) and verifies `0xE0F1`.
+    /// - If the OPTIGA has NOT been provisioned yet (and `EFUSE_BLK3` is unburned), it enters
+    ///   **Unprovisioned Standby** mode—performing zero writes to OPTIGA and waiting for an
+    ///   explicit `SOFT_PROVISION` or `PROVISION` command over serial.
+    pub fn try_init(mut bus: SharedI2cBus, nvs: Rc<EspNvs<NvsDefault>>) -> anyhow::Result<Self> {
         // 1. Fast I2C Probe: Try up to 3 times to write PlRegister::I2cState (0x82) to 0x30
         let mut detected = false;
         for attempt in 1..=3 {
@@ -714,7 +783,7 @@ impl OptigaSecurityBackend {
         }
 
         log::info!(
-            "OPTIGA chip detected on I2C bus at 0x{:02X}. Initializing driver...",
+            "OPTIGA chip detected on I2C bus at 0x{:02X}. Initializing driver (read-only boot check)...",
             IFX_I2C_BASE_ADDR
         );
 
@@ -755,7 +824,6 @@ impl OptigaSecurityBackend {
         };
 
         // 6. Negotiate Shielded Connection (AES-128-CCM-8)
-        // Check if ESP32-S3 EFUSE_BLK3 has been provisioned with a PBS seed:
         let blk3_seed_opt = read_blk3_seed();
         if let Some(ref blk3_seed) = blk3_seed_opt {
             log::info!("EFUSE_BLK3 seed detected; deriving 64-byte OPTIGA Platform Binding Secret via HKDF-SHA256...");
@@ -805,105 +873,114 @@ impl OptigaSecurityBackend {
             }
         }
 
-        // 7. Ensure Metadata & Load or Generate ECC Keypair in 0xE0F1
+        // 7. Strictly Read-Only Provisioning Check (NO metadata writes or key generation at boot!)
+        let mut provisioned_pk: Option<PublicKey> = None;
         {
             let mut util = dev.util();
             util.set_protection(protection);
-            // 0xE0F1: Change=Always, Execute=Always, KeyUsage=0x33 (AUTH | ENCRYPT | SIGN | KEY_AGREEMENT)
-            let _ = util.write_metadata(
-                OPTIGA_KEY_OID,
-                &[0x20, 0x09, 0xD0, 0x01, 0x00, 0xD3, 0x01, 0x00, 0xE8, 0x01, 0x33],
-            );
-            // 0xF1D0..0xF1D2, 0xF1E0: Change=Always, Read=Always
-            for oid in [
-                OPTIGA_PUBKEY_DATA_OID,
-                OPTIGA_ATTESTATION_DATA_OID,
-                OPTIGA_CREDENTIALS_DATA_OID,
-                OPTIGA_CONTRACT_DATA_OID,
-            ] {
-                let _ = util.write_metadata(oid, &[0x20, 0x06, 0xD0, 0x01, 0x00, 0xD1, 0x01, 0x00]);
-            }
-        }
+            let pubkey_opt = read_framed_oid(&mut util, OPTIGA_PUBKEY_DATA_OID, 96)
+                .ok()
+                .flatten();
+            let att_opt = read_framed_oid(&mut util, OPTIGA_ATTESTATION_DATA_OID, 136)
+                .ok()
+                .flatten();
 
-        let mut public_key: Option<PublicKey> = None;
-        {
-            let mut util = dev.util();
-            util.set_protection(protection);
-            if let Ok(Some(pubkey_bytes)) = read_framed_oid(&mut util, OPTIGA_PUBKEY_DATA_OID, 96) {
-                if let Ok(pk) = parse_optiga_public_key(&pubkey_bytes) {
-                    // Verify that 0xE0F1 actually holds the matching private key AND supports ECDH
-                    let mut crypt = dev.crypt();
-                    crypt.set_protection(protection);
-                    let test_digest = [0x42u8; 32];
-                    let mut sig_buf = [0u8; 128];
-                    let mut sign_ok = false;
-                    let mut ecdh_ok = false;
+            if let (Some(pubkey_bytes), Some(att_bytes)) = (pubkey_opt, att_opt) {
+                if att_bytes.len() == 129 {
+                    if let Ok(pk) = parse_optiga_public_key(&pubkey_bytes) {
+                        // Read-only verification that 0xE0F1 holds the matching private key and supports ECDH
+                        let mut crypt = dev.crypt();
+                        crypt.set_protection(protection);
+                        let test_digest = [0x42u8; 32];
+                        let mut sig_buf = [0u8; 128];
+                        let mut sign_ok = false;
+                        let mut ecdh_ok = false;
 
-                    if let Ok(sig_len) = crypt.ecdsa_sign(&test_digest, OPTIGA_KEY_OID, &mut sig_buf)
-                    {
-                        if let Ok(sig) = optiga_der_integers_to_signature(&sig_buf[..sig_len]) {
-                            let verifying_key = VerifyingKey::from(&pk);
-                            if verifying_key.verify_prehash(&test_digest, &sig).is_ok() {
-                                sign_ok = true;
+                        if let Ok(sig_len) =
+                            crypt.ecdsa_sign(&test_digest, OPTIGA_KEY_OID, &mut sig_buf)
+                        {
+                            if let Ok(sig) = optiga_der_integers_to_signature(&sig_buf[..sig_len]) {
+                                let verifying_key = VerifyingKey::from(&pk);
+                                if verifying_key.verify_prehash(&test_digest, &sig).is_ok() {
+                                    sign_ok = true;
+                                }
                             }
                         }
-                    }
 
-                    if sign_ok {
-                        let sec1_encoded = pk.to_encoded_point(false);
-                        let sec1_bytes = sec1_encoded.as_bytes();
-                        let mut bitstring_68 = [0u8; 68];
-                        bitstring_68[0] = 0x03;
-                        bitstring_68[1] = 0x42;
-                        bitstring_68[2] = 0x00;
-                        bitstring_68[3..].copy_from_slice(sec1_bytes);
-                        let mut dummy_secret = [0u8; 32];
-                        if crypt
-                            .ecdh(
-                                OPTIGA_KEY_OID,
-                                &bitstring_68,
-                                EccCurve::NistP256,
-                                &mut dummy_secret,
-                            )
-                            .is_ok()
-                        {
-                            ecdh_ok = true;
-                        } else if crypt
-                            .ecdh(
-                                OPTIGA_KEY_OID,
-                                sec1_bytes,
-                                EccCurve::NistP256,
-                                &mut dummy_secret,
-                            )
-                            .is_ok()
-                        {
-                            ecdh_ok = true;
+                        if sign_ok {
+                            let sec1_encoded = pk.to_encoded_point(false);
+                            let sec1_bytes = sec1_encoded.as_bytes();
+                            let mut bitstring_68 = [0u8; 68];
+                            bitstring_68[0] = 0x03;
+                            bitstring_68[1] = 0x42;
+                            bitstring_68[2] = 0x00;
+                            bitstring_68[3..].copy_from_slice(sec1_bytes);
+                            let mut dummy_secret = [0u8; 32];
+                            if crypt
+                                .ecdh(
+                                    OPTIGA_KEY_OID,
+                                    &bitstring_68,
+                                    EccCurve::NistP256,
+                                    &mut dummy_secret,
+                                )
+                                .is_ok()
+                            {
+                                ecdh_ok = true;
+                            } else if crypt
+                                .ecdh(
+                                    OPTIGA_KEY_OID,
+                                    sec1_bytes,
+                                    EccCurve::NistP256,
+                                    &mut dummy_secret,
+                                )
+                                .is_ok()
+                            {
+                                ecdh_ok = true;
+                            }
                         }
-                    }
 
-                    if sign_ok && ecdh_ok {
-                        log::info!("Loaded and cryptographically verified OPTIGA P-256 public key (ECDSA + ECDH) from 0xF1D0");
-                        public_key = Some(pk);
-                    } else if sign_ok {
-                        log::warn!("Stored key in 0xE0F1 supports signing but failed ECDH (missing KEY_AGREEMENT usage); regenerating keypair...");
-                    } else {
-                        log::warn!("Stored public key does not match private key in 0xE0F1; regenerating keypair...");
+                        if sign_ok && ecdh_ok {
+                            log::info!(
+                                "Loaded and verified provisioned OPTIGA state (0xE0F1 + 0xF1D0 + 0xF1D1)"
+                            );
+                            provisioned_pk = Some(pk);
+                        }
                     }
                 }
             }
         }
 
-        let pk = match public_key {
-            Some(k) => k,
-            None => Self::generate_and_store_lock_keypair(&mut dev, protection)?,
-        };
-
-        Ok(Self {
-            dev,
-            public_key: pk,
-            protection,
-            copr_uid,
-        })
+        match provisioned_pk {
+            Some(pk) => Ok(Self {
+                dev,
+                nvs,
+                public_key: pk,
+                unprovisioned_secret_key: None,
+                is_provisioned: true,
+                protection,
+                copr_uid,
+            }),
+            None => {
+                if blk3_seed_opt.is_some() {
+                    anyhow::bail!(
+                        "CRITICAL: EFUSE_BLK3 is provisioned, but OPTIGA slots (0xF1D0/0xF1D1) are not provisioned or failed verification!"
+                    );
+                }
+                log::warn!(
+                    "OPTIGA Trust M is attached but UNPROVISIONED (zero writes performed to OPTIGA on boot). Running in NVS standby until SOFT_PROVISION or PROVISION is executed."
+                );
+                let (sk, pk) = load_or_create_nvs_secret_key(&nvs);
+                Ok(Self {
+                    dev,
+                    nvs,
+                    public_key: pk,
+                    unprovisioned_secret_key: Some(sk),
+                    is_provisioned: false,
+                    protection,
+                    copr_uid,
+                })
+            }
+        }
     }
 
     fn generate_and_store_lock_keypair(
@@ -924,6 +1001,14 @@ impl OptigaSecurityBackend {
             let _ = util.write_metadata(
                 OPTIGA_KEY_OID,
                 &[0x20, 0x09, 0xD0, 0x01, 0x00, 0xD3, 0x01, 0x00, 0xE8, 0x01, 0x33],
+            );
+            let _ = util.write_metadata(
+                OPTIGA_PUBKEY_DATA_OID,
+                &[0x20, 0x06, 0xD0, 0x01, 0x00, 0xD1, 0x01, 0x00],
+            );
+            let _ = util.write_metadata(
+                OPTIGA_CONTRACT_DATA_OID,
+                &[0x20, 0x06, 0xD0, 0x01, 0x00, 0xD1, 0x01, 0x00],
             );
             // Clear any old contract as the key is being replaced
             let _ = clear_framed_oid(&mut util, OPTIGA_CONTRACT_DATA_OID);
@@ -962,21 +1047,360 @@ impl OptigaSecurityBackend {
             .map_err(|e| anyhow::anyhow!("Failed to serialize DeviceCredentials: {e}"))?;
         let mut util = self.dev.util();
         util.set_protection(self.protection);
+        let _ = util.write_metadata(
+            OPTIGA_CREDENTIALS_DATA_OID,
+            &[0x20, 0x06, 0xD0, 0x01, 0x00, 0xD1, 0x01, 0x00],
+        );
         write_framed_oid(&mut util, OPTIGA_CREDENTIALS_DATA_OID, &cbor_bytes, 136)?;
         Ok(())
+    }
+
+    fn execute_provisioning(
+        &mut self,
+        mode: ProvisionMode,
+        session_token: &str,
+        mqtt_password: &str,
+    ) -> anyhow::Result<(PublicKey, String)> {
+        let mode_label = match mode {
+            ProvisionMode::Soft => "SOFT_PROVISION (Development Mode - No eFuses Burned)",
+            ProvisionMode::Hard => "PROVISION (Factory Hardware Lockdown Mode)",
+        };
+        log::info!("=== STARTING TARTARUS {} ===", mode_label);
+
+        if mode == ProvisionMode::Soft && read_blk3_seed().is_some() {
+            anyhow::bail!(
+                "Cannot run SOFT_PROVISION on a unit whose EFUSE_BLK3 has already been permanently burned; use PROVISION or EXPORT_CERT"
+            );
+        }
+
+        // Step 1: Read Infineon X.509 Certificate Chain from 0xE0E0 and extract factory public key (for 0xE0F0)
+        let certs = {
+            let mut util = self.dev.util();
+            util.set_protection(self.protection);
+            read_optiga_certificates(&mut util, OPTIGA_FACTORY_CERT_OID)?
+        };
+        if certs.is_empty() {
+            anyhow::bail!("No X.509 certificates found in OPTIGA OID 0xE0E0");
+        }
+        let factory_pubkey_bitstring = extract_public_key_bitstring(&certs[0].der)
+            .ok_or_else(|| anyhow::anyhow!("Failed to locate P-256 public key in 0xE0E0 leaf certificate"))?;
+        let factory_pk = parse_optiga_public_key(factory_pubkey_bitstring)?;
+        let factory_verifying_key = VerifyingKey::from(&factory_pk);
+        log::info!(
+            "Step 1 OK: Extracted Infineon factory certificate chain ({} cert(s)) and verified leaf P-256 SPKI",
+            certs.len()
+        );
+
+        // Step 2: Determine Platform Binding Secret (PBS), write to 0xE140, and verify Shielded Connection
+        let (target_pbs, hard_seed_opt): ([u8; 64], Option<[u8; 32]>) = match mode {
+            ProvisionMode::Soft => {
+                log::info!(
+                    "Step 2 (SOFT_PROVISION): Using standard 64-byte Infineon default PBS (0x01..=0x40) for 0xE140"
+                );
+                (HostDatastore::default().secret, None)
+            }
+            ProvisionMode::Hard => {
+                let seed_32: [u8; 32] = match read_blk3_seed() {
+                    Some(existing_seed) => {
+                        log::info!(
+                            "Step 2 (PROVISION): EFUSE_BLK3 already contains a 32-byte seed; reusing for PBS derivation."
+                        );
+                        existing_seed
+                    }
+                    None => {
+                        log::info!(
+                            "Step 2 (PROVISION): Generating fresh 32-byte random seed (ESP32 HWRNG ^ OPTIGA TRNG)..."
+                        );
+                        let mut esp_rand = [0u8; 32];
+                        Esp32Rng.fill_bytes(&mut esp_rand);
+
+                        let mut optiga_rand = [0u8; 32];
+                        {
+                            let mut crypt = self.dev.crypt();
+                            crypt.set_protection(self.protection);
+                            crypt
+                                .get_random_with_type(RngType::Trng, &mut optiga_rand)
+                                .map_err(|e| {
+                                    anyhow::anyhow!("OPTIGA TRNG failed during seed generation: {e}")
+                                })?;
+                        }
+
+                        let mut combined = [0u8; 32];
+                        for i in 0..32 {
+                            combined[i] = esp_rand[i] ^ optiga_rand[i];
+                        }
+                        if combined.iter().all(|&b| b == 0) {
+                            anyhow::bail!("Generated seed was all zeros");
+                        }
+                        combined
+                    }
+                };
+                let derived = derive_pbs_from_seed(&seed_32, &self.copr_uid);
+                (derived, Some(seed_32))
+            }
+        };
+
+        // Write target_pbs to OPTIGA 0xE140
+        {
+            let mut util = self.dev.util();
+            util.set_protection(self.protection);
+            // Ensure 0xE140 is writable (Change=Always, Execute=Always, DataObjectType=0x22 Platform Binding Secret)
+            let _ = util.write_metadata(
+                OPTIGA_PBS_OID,
+                &[0x20, 0x09, 0xD0, 0x01, 0x00, 0xD3, 0x01, 0x00, 0xE8, 0x01, 0x22],
+            );
+            if let Err(e) = util.write_data(OPTIGA_PBS_OID, 0, &target_pbs, true) {
+                log::warn!(
+                    "Writing PBS to 0xE140 returned {e} (may already be written/locked); verifying handshake..."
+                );
+            }
+        }
+
+        // Update host datastore with target_pbs and force a fresh Shielded Connection handshake
+        let _ = self
+            .dev
+            .cmd
+            .stack
+            .prl
+            .datastore
+            .write(DatastoreId::PlatformBindingSharedSecret, &target_pbs);
+        self.dev.cmd.stack.prl.reset();
+
+        {
+            let mut util = self.dev.util();
+            util.set_protection(ProtectionConfig {
+                level: ProtectionLevel::Full,
+                force_reestablish: true,
+            });
+            let mut uid_check = [0u8; 32];
+            let len = util
+                .read_data(Oid::CoprUid, 0, &mut uid_check)
+                .map_err(|e| {
+                    anyhow::anyhow!(
+                        "Shielded Connection handshake with PBS failed: {e}. Aborting provisioning!"
+                    )
+                })?;
+            if &uid_check[..len] != self.copr_uid.as_slice() {
+                anyhow::bail!("CoprUid mismatch over Shielded Connection handshake!");
+            }
+        }
+        self.protection = ProtectionConfig {
+            level: ProtectionLevel::Full,
+            force_reestablish: false,
+        };
+        log::info!("Step 2 OK: OPTIGA 0xE140 bound and ProtectionLevel::Full handshake verified.");
+
+        // Step 3: Burn 32-byte seed into ESP32-S3 EFUSE_BLK3 ONLY in Hard Provisioning mode
+        if let Some(ref seed_32) = hard_seed_opt {
+            burn_blk3_seed(seed_32)?;
+            log::info!("Step 3 OK: EFUSE_BLK3 programmed and write-protected.");
+        } else {
+            log::info!("Step 3 (SOFT_PROVISION): Skipping EFUSE_BLK3 burn.");
+        }
+
+        // Step 4: Generate fresh Lock Identity Keypair in 0xE0F1 and cache SEC1 Public Key in 0xF1D0
+        let new_lock_pk = Self::generate_and_store_lock_keypair(&mut self.dev, self.protection)?;
+        self.public_key = new_lock_pk;
+        self.unprovisioned_secret_key = None;
+        let lock_sec1 = self.public_key.to_sec1_bytes();
+        log::info!("Step 4 OK: Lock Identity Keypair generated in 0xE0F1 and cached in 0xF1D0.");
+
+        // Step 5: Generate Authenticity Check Keypair in 0xE0F2, sign with Factory Key 0xE0F0, verify & cache in 0xF1D1
+        let (auth_sec1_vec, mfg_sig_bytes) = {
+            {
+                let mut util = self.dev.util();
+                util.set_protection(self.protection);
+                let _ = util.write_metadata(
+                    OPTIGA_AUTH_KEY_OID,
+                    &[0x20, 0x09, 0xD0, 0x01, 0x00, 0xD3, 0x01, 0x00, 0xE8, 0x01, 0x11],
+                );
+                let _ = util.write_metadata(
+                    OPTIGA_ATTESTATION_DATA_OID,
+                    &[0x20, 0x06, 0xD0, 0x01, 0x00, 0xD1, 0x01, 0x00],
+                );
+            }
+
+            let auth_pk = {
+                let mut crypt = self.dev.crypt();
+                crypt.set_protection(self.protection);
+                let mut pubkey_buf = [0u8; 128];
+                let pub_len = crypt
+                    .ecc_generate_keypair(
+                        EccCurve::NistP256,
+                        OPTIGA_AUTH_KEY_OID,
+                        KeyUsage::auth_and_sign(),
+                        &mut pubkey_buf,
+                    )
+                    .map_err(|e| {
+                        anyhow::anyhow!("Failed to generate Auth ECC keypair in 0xE0F2: {e}")
+                    })?;
+                parse_optiga_public_key(&pubkey_buf[..pub_len])?
+            };
+
+            // Verify 0xE0F2 can sign a test nonce
+            {
+                let mut crypt = self.dev.crypt();
+                crypt.set_protection(self.protection);
+                let test_nonce = [0xA5u8; 32];
+                let mut test_sig_buf = [0u8; 128];
+                let test_sig_len = crypt
+                    .ecdsa_sign(&test_nonce, OPTIGA_AUTH_KEY_OID, &mut test_sig_buf)
+                    .map_err(|e| anyhow::anyhow!("0xE0F2 self-test sign failed: {e}"))?;
+                let test_sig = optiga_der_integers_to_signature(&test_sig_buf[..test_sig_len])?;
+                VerifyingKey::from(&auth_pk)
+                    .verify_prehash(&test_nonce, &test_sig)
+                    .map_err(|e| anyhow::anyhow!("0xE0F2 self-test verification failed: {e}"))?;
+            }
+
+            let auth_sec1 = auth_pk.to_sec1_bytes(); // 65 bytes (uncompressed SEC1: 0x04 || X || Y)
+            if auth_sec1.len() != 65 {
+                anyhow::bail!(
+                    "Expected 65-byte uncompressed SEC1 key for 0xE0F2, got {}",
+                    auth_sec1.len()
+                );
+            }
+
+            let attestation_digest =
+                compute_auth_key_attestation_digest(&self.copr_uid, auth_sec1.as_ref());
+
+            // Sign attestation_digest with Infineon Factory Private Key 0xE0F0
+            let mfg_sig = {
+                let mut crypt = self.dev.crypt();
+                crypt.set_protection(self.protection);
+                let mut sig_buf = [0u8; 128];
+                let sig_len = crypt
+                    .ecdsa_sign(&attestation_digest, OPTIGA_FACTORY_KEY_OID, &mut sig_buf)
+                    .map_err(|e| {
+                        anyhow::anyhow!(
+                            "Failed to sign 0xE0F2 attestation with Factory Key 0xE0F0: {e}"
+                        )
+                    })?;
+                optiga_der_integers_to_signature(&sig_buf[..sig_len])?
+            };
+
+            // Verify 0xE0F0 signature against Infineon 0xE0E0 certificate public key
+            factory_verifying_key
+                .verify_prehash(&attestation_digest, &mfg_sig)
+                .map_err(|e| {
+                    anyhow::anyhow!(
+                        "Factory Key 0xE0F0 signature failed verification against 0xE0E0 certificate: {e}"
+                    )
+                })?;
+
+            let mfg_sig_raw = mfg_sig.to_bytes(); // 64 bytes P1363
+            let mut attestation_record = Vec::with_capacity(129);
+            attestation_record.extend_from_slice(auth_sec1.as_ref());
+            attestation_record.extend_from_slice(mfg_sig_raw.as_slice());
+
+            {
+                let mut util = self.dev.util();
+                util.set_protection(self.protection);
+                write_framed_oid(
+                    &mut util,
+                    OPTIGA_ATTESTATION_DATA_OID,
+                    &attestation_record,
+                    136,
+                )?;
+            }
+
+            (auth_sec1.to_vec(), mfg_sig_raw.to_vec())
+        };
+        log::info!(
+            "Step 5 OK: Authenticity Key 0xE0F2 generated, certified by Factory Key 0xE0F0, and stored in 0xF1D1."
+        );
+
+        // Step 6: Move/Store DeviceCredentials into OPTIGA 0xF1D2 and remove from NVS
+        let creds = DeviceCredentials {
+            session_token: session_token.to_string(),
+            mqtt_password: mqtt_password.to_string(),
+        };
+        self.write_credentials_to_optiga(&creds)?;
+        let _ = self.nvs.remove("session_key");
+        let _ = self.nvs.remove("mqtt_password");
+        let _ = self.nvs.remove("ec_private");
+        log::info!("Step 6 OK: DeviceCredentials moved into OPTIGA 0xF1D2 and wiped from NVS.");
+
+        // Step 7 & 8: Metadata lockdown and ESP32-S3 eFuse lockdown ONLY in Hard Provisioning mode
+        let status_label = match mode {
+            ProvisionMode::Hard => {
+                {
+                    let mut util = self.dev.util();
+                    util.set_protection(self.protection);
+                    if let Err(e) = util.write_metadata(
+                        OPTIGA_PBS_OID,
+                        &[0x20, 0x06, 0xD0, 0x01, 0xFF, 0xD1, 0x01, 0xFF],
+                    ) {
+                        log::warn!(
+                            "Setting 0xE140 metadata to Change=Never, Read=Never returned: {e}"
+                        );
+                    }
+                }
+                log::info!("Step 7 OK: OPTIGA PBS (0xE140) locked (Change=Never, Read=Never).");
+
+                burn_security_lockdown_efuses()?;
+                log::info!("Step 8 OK: ESP32-S3 JTAG and Secure Download Mode eFuses burned.");
+                "PROVISIONED"
+            }
+            ProvisionMode::Soft => {
+                log::info!(
+                    "Step 7 & 8 (SOFT_PROVISION): Leaving 0xE140 changeable and skipping all ESP32-S3 eFuse burns."
+                );
+                "SOFT_PROVISIONED"
+            }
+        };
+
+        self.is_provisioned = true;
+
+        let efuse_status = get_efuse_security_status();
+        let json = format_cert_export_json(
+            status_label,
+            session_token,
+            &self.copr_uid,
+            lock_sec1.as_ref(),
+            &auth_sec1_vec,
+            &mfg_sig_bytes,
+            &certs,
+            &efuse_status,
+        );
+
+        log::info!("=== TARTARUS {} COMPLETE ===", mode_label);
+        Ok((self.public_key, json))
     }
 }
 
 impl SecurityBackend for OptigaSecurityBackend {
     fn backend_name(&self) -> &'static str {
-        "OPTIGA Trust M"
+        if self.is_provisioned {
+            "OPTIGA Trust M (Provisioned)"
+        } else {
+            "OPTIGA Trust M (Unprovisioned Standby - NVS Active)"
+        }
     }
 
     fn public_key(&self) -> PublicKey {
         self.public_key
     }
 
+    fn hardware_id(&self) -> Option<String> {
+        if self.is_provisioned {
+            Some(HEXLOWER.encode(&self.copr_uid))
+        } else {
+            None
+        }
+    }
+
     fn sign_prehash(&mut self, digest_32: &[u8; 32]) -> anyhow::Result<Signature> {
+        if !self.is_provisioned {
+            let sk = self
+                .unprovisioned_secret_key
+                .as_ref()
+                .ok_or_else(|| anyhow::anyhow!("Unprovisioned standby missing NVS secret key"))?;
+            let signing_key = SigningKey::from(sk);
+            return signing_key
+                .sign_prehash(digest_32)
+                .map_err(|e| anyhow::anyhow!("Standby NVS software signing failed: {e}"));
+        }
+
         let mut crypt = self.dev.crypt();
         crypt.set_protection(self.protection);
         let mut sig_buf = [0u8; 128];
@@ -990,19 +1414,9 @@ impl SecurityBackend for OptigaSecurityBackend {
         &mut self,
         nonce_32: &[u8; 32],
     ) -> anyhow::Result<Option<Signature>> {
-        // Check if 0xF1D1 holds a provisioned attestation record for 0xE0F2
-        let has_attestation = {
-            let mut util = self.dev.util();
-            util.set_protection(self.protection);
-            matches!(
-                read_framed_oid(&mut util, OPTIGA_ATTESTATION_DATA_OID, 136),
-                Ok(Some(ref bytes)) if bytes.len() == 129
-            )
-        };
-
-        if !has_attestation {
+        if !self.is_provisioned {
             log::info!(
-                "OPTIGA authenticity key (0xE0F2 / 0xF1D1) not provisioned; falling back to software key if available"
+                "OPTIGA is in unprovisioned standby; falling back to software challenge key if available"
             );
             return Ok(None);
         }
@@ -1019,6 +1433,18 @@ impl SecurityBackend for OptigaSecurityBackend {
     }
 
     fn ecdh_shared_secret(&mut self, peer_public_key: &PublicKey) -> anyhow::Result<[u8; 32]> {
+        if !self.is_provisioned {
+            let sk = self
+                .unprovisioned_secret_key
+                .as_ref()
+                .ok_or_else(|| anyhow::anyhow!("Unprovisioned standby missing NVS secret key"))?;
+            let shared_secret =
+                p256::ecdh::diffie_hellman(sk.to_nonzero_scalar(), peer_public_key.as_affine());
+            let mut out = [0u8; 32];
+            out.copy_from_slice(shared_secret.raw_secret_bytes());
+            return Ok(out);
+        }
+
         let sec1_encoded = peer_public_key.to_encoded_point(false);
         let sec1_bytes = sec1_encoded.as_bytes(); // 65 bytes
         let mut bitstring_68 = [0u8; 68];
@@ -1056,6 +1482,11 @@ impl SecurityBackend for OptigaSecurityBackend {
         &mut self,
         nvs: &EspNvs<NvsDefault>,
     ) -> anyhow::Result<DeviceCredentials> {
+        // When OPTIGA is unprovisioned, NEVER write to OPTIGA 0xF1D2 on boot—use NVS until PROVISION / SOFT_PROVISION
+        if !self.is_provisioned {
+            return Ok(load_or_generate_nvs_credentials(nvs));
+        }
+
         let existing_optiga_creds = {
             let mut util = self.dev.util();
             util.set_protection(self.protection);
@@ -1071,73 +1502,40 @@ impl SecurityBackend for OptigaSecurityBackend {
                     "Loaded device credentials (session_token={:?}) from OPTIGA 0xF1D2",
                     creds.session_token
                 );
-                if read_blk3_seed().is_some() {
-                    let _ = nvs.remove("session_key");
-                    let _ = nvs.remove("mqtt_password");
-                }
                 return Ok(creds);
             }
         }
 
-        // Check if legacy NVS has credentials to migrate, or generate fresh ones
-        let mut session_buf = [0u8; 32];
-        let mut pass_buf = [0u8; 128];
-        let nvs_session = nvs
-            .get_blob("session_key", &mut session_buf)
-            .ok()
-            .flatten()
-            .map(|b| String::from_utf8_lossy(b).into_owned());
-        let nvs_pass = nvs
-            .get_blob("mqtt_password", &mut pass_buf)
-            .ok()
-            .flatten()
-            .map(|b| String::from_utf8_lossy(b).into_owned());
-
-        let creds = match (nvs_session, nvs_pass) {
-            (Some(s), Some(p)) if !s.is_empty() && !p.is_empty() => {
-                log::info!("Migrating existing session_token & mqtt_password from NVS into OPTIGA 0xF1D2");
-                DeviceCredentials {
-                    session_token: s,
-                    mqtt_password: p,
-                }
-            }
-            _ => {
-                log::info!("Generating fresh session_token & mqtt_password for OPTIGA 0xF1D2...");
-                let mut generated = generate_fresh_credentials();
-                // Mix OPTIGA hardware TRNG into credentials if available
-                let mut trng_bytes = [0u8; 37];
-                let mut crypt = self.dev.crypt();
-                crypt.set_protection(self.protection);
-                if crypt
-                    .get_random_with_type(RngType::Trng, &mut trng_bytes)
-                    .is_ok()
-                {
-                    let mut esp_bytes = [0u8; 37];
-                    Esp32Rng.fill_bytes(&mut esp_bytes);
-                    for i in 0..37 {
-                        trng_bytes[i] ^= esp_bytes[i];
-                    }
-                    generated.session_token = BASE32_NOPAD.encode(&trng_bytes[..5])[..6].to_string();
-                    generated.mqtt_password = BASE32_NOPAD.encode(&trng_bytes[5..37]).to_string();
-                }
-                generated
-            }
-        };
-
-        self.write_credentials_to_optiga(&creds)?;
+        // Only reached on a provisioned OPTIGA after wipe_for_reset() cleared 0xF1D2
         log::info!(
-            "Saved device credentials (session_token={:?}) to OPTIGA 0xF1D2",
-            creds.session_token
+            "Provisioned OPTIGA 0xF1D2 was cleared by reset; generating fresh credentials in 0xF1D2..."
         );
-
-        if read_blk3_seed().is_some() {
-            let _ = nvs.remove("session_key");
-            let _ = nvs.remove("mqtt_password");
+        let mut generated = generate_fresh_credentials();
+        {
+            let mut trng_bytes = [0u8; 37];
+            let mut crypt = self.dev.crypt();
+            crypt.set_protection(self.protection);
+            if crypt
+                .get_random_with_type(RngType::Trng, &mut trng_bytes)
+                .is_ok()
+            {
+                let mut esp_bytes = [0u8; 37];
+                Esp32Rng.fill_bytes(&mut esp_bytes);
+                for i in 0..37 {
+                    trng_bytes[i] ^= esp_bytes[i];
+                }
+                generated.session_token = BASE32_NOPAD.encode(&trng_bytes[..5])[..6].to_string();
+                generated.mqtt_password = BASE32_NOPAD.encode(&trng_bytes[5..37]).to_string();
+            }
         }
-        Ok(creds)
+        self.write_credentials_to_optiga(&generated)?;
+        Ok(generated)
     }
 
     fn read_contract(&mut self) -> anyhow::Result<Option<SaveState>> {
+        if !self.is_provisioned {
+            return read_contract_from_nvs(&self.nvs);
+        }
         let mut util = self.dev.util();
         util.set_protection(self.protection);
         match read_framed_oid(&mut util, OPTIGA_CONTRACT_DATA_OID, 1496)? {
@@ -1151,6 +1549,9 @@ impl SecurityBackend for OptigaSecurityBackend {
     }
 
     fn write_contract(&mut self, state: &SaveState) -> anyhow::Result<()> {
+        if !self.is_provisioned {
+            return write_contract_to_nvs(&self.nvs, state);
+        }
         let mut bytes = Vec::new();
         ciborium::ser::into_writer(state, &mut bytes)
             .map_err(|e| anyhow::anyhow!("Failed to serialize SaveState: {e}"))?;
@@ -1160,13 +1561,27 @@ impl SecurityBackend for OptigaSecurityBackend {
     }
 
     fn clear_contract(&mut self) -> anyhow::Result<()> {
+        if !self.is_provisioned {
+            let _ = self.nvs.remove("contract");
+            return Ok(());
+        }
         let mut util = self.dev.util();
         util.set_protection(self.protection);
         clear_framed_oid(&mut util, OPTIGA_CONTRACT_DATA_OID)
     }
 
     fn wipe_for_reset(&mut self) -> anyhow::Result<()> {
-        log::info!("Wiping OPTIGA operational state (contract 0xF1E0, credentials 0xF1D2) and rotating Lock Key 0xE0F1...");
+        if !self.is_provisioned {
+            let _ = self.nvs.remove("contract");
+            let _ = self.nvs.remove("ec_private");
+            let _ = self.nvs.remove("session_key");
+            let _ = self.nvs.remove("mqtt_password");
+            return Ok(());
+        }
+
+        log::info!(
+            "Wiping provisioned OPTIGA operational state (contract 0xF1E0, credentials 0xF1D2) and rotating Lock Key 0xE0F1..."
+        );
         {
             let mut util = self.dev.util();
             util.set_protection(self.protection);
@@ -1185,256 +1600,24 @@ impl SecurityBackend for OptigaSecurityBackend {
         session_token: &str,
         mqtt_password: &str,
     ) -> anyhow::Result<(PublicKey, String)> {
-        log::info!("=== STARTING TARTARUS HARDWARE PROVISIONING ===");
+        self.execute_provisioning(ProvisionMode::Hard, session_token, mqtt_password)
+    }
 
-        // Step 1: Read Infineon X.509 Certificate Chain from 0xE0E0 and extract factory public key (for 0xE0F0)
-        let certs = {
-            let mut util = self.dev.util();
-            util.set_protection(self.protection);
-            read_optiga_certificates(&mut util, OPTIGA_FACTORY_CERT_OID)?
-        };
-        if certs.is_empty() {
-            anyhow::bail!("No X.509 certificates found in OPTIGA OID 0xE0E0");
-        }
-        let factory_pubkey_bitstring = extract_public_key_bitstring(&certs[0].der)
-            .ok_or_else(|| anyhow::anyhow!("Failed to locate P-256 public key in 0xE0E0 leaf certificate"))?;
-        let factory_pk = parse_optiga_public_key(factory_pubkey_bitstring)?;
-        let factory_verifying_key = VerifyingKey::from(&factory_pk);
-        log::info!(
-            "Step 1 OK: Extracted Infineon factory certificate chain ({} cert(s)) and verified leaf P-256 SPKI",
-            certs.len()
-        );
-
-        // Step 2: Generate or Read 32-byte BLK3 seed, derive 64-byte PBS, write 0xE140, and verify Shielded Connection
-        let seed_32: [u8; 32] = match read_blk3_seed() {
-            Some(existing_seed) => {
-                log::info!("Step 2: EFUSE_BLK3 already contains a 32-byte seed; reusing for PBS derivation.");
-                existing_seed
-            }
-            None => {
-                log::info!("Step 2: Generating fresh 32-byte random seed (ESP32 HWRNG ^ OPTIGA TRNG)...");
-                let mut esp_rand = [0u8; 32];
-                Esp32Rng.fill_bytes(&mut esp_rand);
-
-                let mut optiga_rand = [0u8; 32];
-                {
-                    let mut crypt = self.dev.crypt();
-                    crypt.set_protection(self.protection);
-                    crypt
-                        .get_random_with_type(RngType::Trng, &mut optiga_rand)
-                        .map_err(|e| anyhow::anyhow!("OPTIGA TRNG failed during seed generation: {e}"))?;
-                }
-
-                let mut combined = [0u8; 32];
-                for i in 0..32 {
-                    combined[i] = esp_rand[i] ^ optiga_rand[i];
-                }
-                if combined.iter().all(|&b| b == 0) {
-                    anyhow::bail!("Generated seed was all zeros");
-                }
-                combined
-            }
-        };
-
-        let derived_pbs = derive_pbs_from_seed(&seed_32, &self.copr_uid);
-
-        // Write derived_pbs to OPTIGA 0xE140 if not already using it
-        {
-            let mut util = self.dev.util();
-            util.set_protection(self.protection);
-            // Ensure 0xE140 is writable before writing PBS (DataObjectType = 0x22 Platform Binding Secret)
-            let _ = util.write_metadata(
-                OPTIGA_PBS_OID,
-                &[0x20, 0x09, 0xD0, 0x01, 0x00, 0xD3, 0x01, 0x00, 0xE8, 0x01, 0x22],
-            );
-            if let Err(e) = util.write_data(OPTIGA_PBS_OID, 0, &derived_pbs, true) {
-                log::warn!(
-                    "Writing PBS to 0xE140 returned {e} (may already be written/locked); verifying handshake..."
-                );
-            }
-        }
-
-        // Update host datastore with derived PBS and force a fresh Shielded Connection handshake
-        let _ = self
-            .dev
-            .cmd
-            .stack
-            .prl
-            .datastore
-            .write(DatastoreId::PlatformBindingSharedSecret, &derived_pbs);
-        self.dev.cmd.stack.prl.reset();
-
-        {
-            let mut util = self.dev.util();
-            util.set_protection(ProtectionConfig {
-                level: ProtectionLevel::Full,
-                force_reestablish: true,
-            });
-            let mut uid_check = [0u8; 32];
-            let len = util
-                .read_data(Oid::CoprUid, 0, &mut uid_check)
-                .map_err(|e| {
-                    anyhow::anyhow!(
-                        "Shielded Connection handshake with derived PBS failed: {e}. Aborting before burning eFuses!"
-                    )
-                })?;
-            if &uid_check[..len] != self.copr_uid.as_slice() {
-                anyhow::bail!("CoprUid mismatch over Shielded Connection handshake!");
-            }
-        }
-        self.protection = ProtectionConfig {
-            level: ProtectionLevel::Full,
-            force_reestablish: false,
-        };
-        log::info!("Step 2 OK: OPTIGA 0xE140 bound and ProtectionLevel::Full handshake verified.");
-
-        // Step 3: Burn 32-byte seed into ESP32-S3 EFUSE_BLK3 and write-protect BLK3
-        burn_blk3_seed(&seed_32)?;
-        log::info!("Step 3 OK: EFUSE_BLK3 programmed and write-protected.");
-
-        // Step 4: Generate fresh Lock Identity Keypair in 0xE0F1 and cache SEC1 Public Key in 0xF1D0
-        let new_lock_pk = Self::generate_and_store_lock_keypair(&mut self.dev, self.protection)?;
-        self.public_key = new_lock_pk;
-        let lock_sec1 = self.public_key.to_sec1_bytes();
-        log::info!("Step 4 OK: Lock Identity Keypair generated in 0xE0F1 and cached in 0xF1D0.");
-
-        // Step 5: Generate Authenticity Check Keypair in 0xE0F2, sign with Factory Key 0xE0F0, verify & cache in 0xF1D1
-        let (auth_sec1_vec, mfg_sig_bytes) = {
-            {
-                let mut util = self.dev.util();
-                util.set_protection(self.protection);
-                let _ = util.write_metadata(
-                    OPTIGA_AUTH_KEY_OID,
-                    &[0x20, 0x09, 0xD0, 0x01, 0x00, 0xD3, 0x01, 0x00, 0xE8, 0x01, 0x11],
-                );
-                let _ = util.write_metadata(
-                    OPTIGA_ATTESTATION_DATA_OID,
-                    &[0x20, 0x06, 0xD0, 0x01, 0x00, 0xD1, 0x01, 0x00],
-                );
-            }
-
-            let auth_pk = {
-                let mut crypt = self.dev.crypt();
-                crypt.set_protection(self.protection);
-                let mut pubkey_buf = [0u8; 128];
-                let pub_len = crypt
-                    .ecc_generate_keypair(
-                        EccCurve::NistP256,
-                        OPTIGA_AUTH_KEY_OID,
-                        KeyUsage::auth_and_sign(),
-                        &mut pubkey_buf,
-                    )
-                    .map_err(|e| anyhow::anyhow!("Failed to generate Auth ECC keypair in 0xE0F2: {e}"))?;
-                parse_optiga_public_key(&pubkey_buf[..pub_len])?
-            };
-
-            // Verify 0xE0F2 can sign a test nonce
-            {
-                let mut crypt = self.dev.crypt();
-                crypt.set_protection(self.protection);
-                let test_nonce = [0xA5u8; 32];
-                let mut test_sig_buf = [0u8; 128];
-                let test_sig_len = crypt
-                    .ecdsa_sign(&test_nonce, OPTIGA_AUTH_KEY_OID, &mut test_sig_buf)
-                    .map_err(|e| anyhow::anyhow!("0xE0F2 self-test sign failed: {e}"))?;
-                let test_sig = optiga_der_integers_to_signature(&test_sig_buf[..test_sig_len])?;
-                VerifyingKey::from(&auth_pk)
-                    .verify_prehash(&test_nonce, &test_sig)
-                    .map_err(|e| anyhow::anyhow!("0xE0F2 self-test verification failed: {e}"))?;
-            }
-
-            let auth_sec1 = auth_pk.to_sec1_bytes(); // 65 bytes (uncompressed SEC1: 0x04 || X || Y)
-            if auth_sec1.len() != 65 {
-                anyhow::bail!("Expected 65-byte uncompressed SEC1 key for 0xE0F2, got {}", auth_sec1.len());
-            }
-
-            let attestation_digest =
-                compute_auth_key_attestation_digest(&self.copr_uid, auth_sec1.as_ref());
-
-            // Sign attestation_digest with Infineon Factory Private Key 0xE0F0
-            let mfg_sig = {
-                let mut crypt = self.dev.crypt();
-                crypt.set_protection(self.protection);
-                let mut sig_buf = [0u8; 128];
-                let sig_len = crypt
-                    .ecdsa_sign(&attestation_digest, OPTIGA_FACTORY_KEY_OID, &mut sig_buf)
-                    .map_err(|e| {
-                        anyhow::anyhow!("Failed to sign 0xE0F2 attestation with Factory Key 0xE0F0: {e}")
-                    })?;
-                optiga_der_integers_to_signature(&sig_buf[..sig_len])?
-            };
-
-            // Verify 0xE0F0 signature against Infineon 0xE0E0 certificate public key
-            factory_verifying_key
-                .verify_prehash(&attestation_digest, &mfg_sig)
-                .map_err(|e| {
-                    anyhow::anyhow!(
-                        "Factory Key 0xE0F0 signature failed verification against 0xE0E0 certificate: {e}"
-                    )
-                })?;
-
-            let mfg_sig_raw = mfg_sig.to_bytes(); // 64 bytes P1363
-            let mut attestation_record = Vec::with_capacity(129);
-            attestation_record.extend_from_slice(auth_sec1.as_ref());
-            attestation_record.extend_from_slice(mfg_sig_raw.as_slice());
-
-            {
-                let mut util = self.dev.util();
-                util.set_protection(self.protection);
-                write_framed_oid(
-                    &mut util,
-                    OPTIGA_ATTESTATION_DATA_OID,
-                    &attestation_record,
-                    136,
-                )?;
-            }
-
-            (auth_sec1.to_vec(), mfg_sig_raw.to_vec())
-        };
-        log::info!("Step 5 OK: Authenticity Key 0xE0F2 generated, certified by Factory Key 0xE0F0, and stored in 0xF1D1.");
-
-        // Step 6: Store DeviceCredentials in 0xF1D2
-        let creds = DeviceCredentials {
-            session_token: session_token.to_string(),
-            mqtt_password: mqtt_password.to_string(),
-        };
-        self.write_credentials_to_optiga(&creds)?;
-        log::info!("Step 6 OK: DeviceCredentials stored in OPTIGA 0xF1D2.");
-
-        // Step 7: Lock OPTIGA PBS (0xE140) metadata to Change=Never (0xFF), Read=Never (0xFF)
-        {
-            let mut util = self.dev.util();
-            util.set_protection(self.protection);
-            if let Err(e) = util.write_metadata(
-                OPTIGA_PBS_OID,
-                &[0x20, 0x06, 0xD0, 0x01, 0xFF, 0xD1, 0x01, 0xFF],
-            ) {
-                log::warn!("Setting 0xE140 metadata to Change=Never, Read=Never returned: {e}");
-            }
-        }
-        log::info!("Step 7 OK: OPTIGA PBS (0xE140) locked (Change=Never, Read=Never).");
-
-        // Step 8: Burn ESP32-S3 hardware security lockdown eFuses (JTAG disable + ROM Secure Download Mode)
-        burn_security_lockdown_efuses()?;
-        log::info!("Step 8 OK: ESP32-S3 JTAG and Secure Download Mode eFuses burned.");
-
-        let efuse_status = get_efuse_security_status();
-        let json = format_cert_export_json(
-            "PROVISIONED",
-            session_token,
-            &self.copr_uid,
-            lock_sec1.as_ref(),
-            &auth_sec1_vec,
-            &mfg_sig_bytes,
-            &certs,
-            &efuse_status,
-        );
-
-        log::info!("=== TARTARUS HARDWARE PROVISIONING COMPLETE ===");
-        Ok((self.public_key, json))
+    fn soft_provision_device(
+        &mut self,
+        session_token: &str,
+        mqtt_password: &str,
+    ) -> anyhow::Result<(PublicKey, String)> {
+        self.execute_provisioning(ProvisionMode::Soft, session_token, mqtt_password)
     }
 
     fn export_cert_bundle(&mut self, session_token: &str) -> anyhow::Result<String> {
+        if !self.is_provisioned {
+            anyhow::bail!(
+                "OPTIGA has not been provisioned yet; run SOFT_PROVISION or PROVISION first"
+            );
+        }
+
         let (certs, attestation) = {
             let mut util = self.dev.util();
             util.set_protection(self.protection);
@@ -1482,10 +1665,11 @@ pub fn init_security_backend(
     nvs: Rc<EspNvs<NvsDefault>>,
 ) -> Box<dyn SecurityBackend> {
     let blk3_provisioned = read_blk3_seed().is_some();
-    match OptigaSecurityBackend::try_init(bus) {
+    match OptigaSecurityBackend::try_init(bus, nvs.clone()) {
         Ok(optiga_backend) => {
             log::info!(
-                "Security backend initialized: OPTIGA Trust M (hardware-backed, blk3_provisioned={})",
+                "Security backend initialized: {} (blk3_provisioned={})",
+                optiga_backend.backend_name(),
                 blk3_provisioned
             );
             Box::new(optiga_backend)

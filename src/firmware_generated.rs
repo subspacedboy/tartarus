@@ -386,6 +386,7 @@ impl<'a> ::flatbuffers::Follow<'a> for FirmwareChallengeResponse<'a> {
 impl<'a> FirmwareChallengeResponse<'a> {
   pub const VT_SIGNATURE: ::flatbuffers::VOffsetT = 4;
   pub const VT_VERSION: ::flatbuffers::VOffsetT = 6;
+  pub const VT_HARDWARE_ID: ::flatbuffers::VOffsetT = 8;
 
   #[inline]
   pub unsafe fn init_from_table(table: ::flatbuffers::Table<'a>) -> Self {
@@ -397,6 +398,7 @@ impl<'a> FirmwareChallengeResponse<'a> {
     args: &'args FirmwareChallengeResponseArgs<'args>
   ) -> ::flatbuffers::WIPOffset<FirmwareChallengeResponse<'bldr>> {
     let mut builder = FirmwareChallengeResponseBuilder::new(_fbb);
+    if let Some(x) = args.hardware_id { builder.add_hardware_id(x); }
     if let Some(x) = args.version { builder.add_version(x); }
     if let Some(x) = args.signature { builder.add_signature(x); }
     builder.finish()
@@ -417,6 +419,13 @@ impl<'a> FirmwareChallengeResponse<'a> {
     // which contains a valid value in this slot
     unsafe { self._tab.get::<::flatbuffers::ForwardsUOffset<Version>>(FirmwareChallengeResponse::VT_VERSION, None)}
   }
+  #[inline]
+  pub fn hardware_id(&self) -> Option<&'a str> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<::flatbuffers::ForwardsUOffset<&str>>(FirmwareChallengeResponse::VT_HARDWARE_ID, None)}
+  }
 }
 
 impl ::flatbuffers::Verifiable for FirmwareChallengeResponse<'_> {
@@ -427,6 +436,7 @@ impl ::flatbuffers::Verifiable for FirmwareChallengeResponse<'_> {
     v.visit_table(pos)?
      .visit_field::<::flatbuffers::ForwardsUOffset<::flatbuffers::Vector<'_, u8>>>("signature", Self::VT_SIGNATURE, false)?
      .visit_field::<::flatbuffers::ForwardsUOffset<Version>>("version", Self::VT_VERSION, false)?
+     .visit_field::<::flatbuffers::ForwardsUOffset<&str>>("hardware_id", Self::VT_HARDWARE_ID, false)?
      .finish();
     Ok(())
   }
@@ -434,6 +444,7 @@ impl ::flatbuffers::Verifiable for FirmwareChallengeResponse<'_> {
 pub struct FirmwareChallengeResponseArgs<'a> {
     pub signature: Option<::flatbuffers::WIPOffset<::flatbuffers::Vector<'a, u8>>>,
     pub version: Option<::flatbuffers::WIPOffset<Version<'a>>>,
+    pub hardware_id: Option<::flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for FirmwareChallengeResponseArgs<'a> {
   #[inline]
@@ -441,6 +452,7 @@ impl<'a> Default for FirmwareChallengeResponseArgs<'a> {
     FirmwareChallengeResponseArgs {
       signature: None,
       version: None,
+      hardware_id: None,
     }
   }
 }
@@ -457,6 +469,10 @@ impl<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> FirmwareChallengeResponseBuil
   #[inline]
   pub fn add_version(&mut self, version: ::flatbuffers::WIPOffset<Version<'b >>) {
     self.fbb_.push_slot_always::<::flatbuffers::WIPOffset<Version>>(FirmwareChallengeResponse::VT_VERSION, version);
+  }
+  #[inline]
+  pub fn add_hardware_id(&mut self, hardware_id: ::flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<::flatbuffers::WIPOffset<_>>(FirmwareChallengeResponse::VT_HARDWARE_ID, hardware_id);
   }
   #[inline]
   pub fn new(_fbb: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>) -> FirmwareChallengeResponseBuilder<'a, 'b, A> {
@@ -478,6 +494,7 @@ impl ::core::fmt::Debug for FirmwareChallengeResponse<'_> {
     let mut ds = f.debug_struct("FirmwareChallengeResponse");
       ds.field("signature", &self.signature());
       ds.field("version", &self.version());
+      ds.field("hardware_id", &self.hardware_id());
       ds.finish()
   }
 }

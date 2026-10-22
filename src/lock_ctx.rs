@@ -601,12 +601,54 @@ impl LockCtx {
                         let _ = self.nvs.remove("session_key");
                         let _ = self.nvs.remove("mqtt_password");
                         let _ = self.nvs.remove("ec_private");
+                        if self.mqtt_service.is_some() {
+                            self.enqueue_announce_message();
+                        }
                         println!("PROVISION_RESULT:{}", json);
                         let _ = std::io::stdout().flush();
                     }
                     Err(e) => {
                         log::error!("PROVISION command failed: {:#}", e);
                         println!("PROVISION_ERROR:{:#}", e);
+                        let _ = std::io::stdout().flush();
+                    }
+                }
+                return;
+            }
+
+            if trimmed.eq_ignore_ascii_case("SOFT_PROVISION") {
+                use std::io::Write;
+                if self.contract.is_some() {
+                    log::warn!(
+                        "Refusing SOFT_PROVISION command while device is under active contract"
+                    );
+                    println!(
+                        "SOFT_PROVISION_ERROR:Cannot soft-provision while under active contract"
+                    );
+                    let _ = std::io::stdout().flush();
+                    return;
+                }
+                match self
+                    .backend
+                    .soft_provision_device(&self.session_token, &self.mqtt_password)
+                {
+                    Ok((new_pk, json)) => {
+                        self.lock_public_key = new_pk;
+                        self.lock_url = None;
+                        self.login_cryptogram = None;
+                        self.login_cryptogram_nonce = None;
+                        let _ = self.nvs.remove("session_key");
+                        let _ = self.nvs.remove("mqtt_password");
+                        let _ = self.nvs.remove("ec_private");
+                        if self.mqtt_service.is_some() {
+                            self.enqueue_announce_message();
+                        }
+                        println!("SOFT_PROVISION_RESULT:{}", json);
+                        let _ = std::io::stdout().flush();
+                    }
+                    Err(e) => {
+                        log::error!("SOFT_PROVISION command failed: {:#}", e);
+                        println!("SOFT_PROVISION_ERROR:{:#}", e);
                         let _ = std::io::stdout().flush();
                     }
                 }

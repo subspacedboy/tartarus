@@ -297,11 +297,16 @@ impl FirmwareManager {
             },
         );
 
+        let hardware_id_offset = backend
+            .hardware_id()
+            .map(|hw_id| builder.create_string(hw_id.as_str()));
+
         let firmware_challenge_offset = FirmwareChallengeResponse::create(
             &mut builder,
             &FirmwareChallengeResponseArgs {
                 signature: signature_offset,
                 version: Some(version_offset),
+                hardware_id: hardware_id_offset,
             },
         );
 
