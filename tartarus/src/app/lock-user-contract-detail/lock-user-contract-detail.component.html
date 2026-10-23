@@ -1,69 +1,175 @@
 @if (contract) {
-  <div class="mx-auto max-w-5xl space-y-6">
-    <div>
-      <p class="mb-2">
-        <a
-          routerLink="/my-lock"
-          class="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground no-underline"
-        >
-          &larr; Back to My Lock
-        </a>
-      </p>
-      <div class="flex flex-wrap items-start justify-between gap-4">
-        <div class="space-y-1">
-          <div class="flex flex-wrap items-center gap-2.5">
-            <h1 class="text-2xl font-bold tracking-tight text-foreground">Contract Details</h1>
-            <code class="rounded border border-border bg-muted px-2 py-0.5 font-mono text-sm text-foreground">
-              {{ contract.name }}
-            </code>
-            <span hlmBadge variant="default">{{ contract.state }}</span>
+  <div class="mx-auto max-w-6xl space-y-6">
+    <!-- 1. Contract Identity & Provenance Header -->
+    <section hlmCard class="p-5 sm:p-6">
+      <div class="space-y-3">
+        <p>
+          <a
+            routerLink="/my-lock"
+            class="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground no-underline"
+          >
+            &larr; Back to My Lock
+          </a>
+        </p>
+
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div class="space-y-1.5">
+            <div class="flex flex-wrap items-center gap-2.5">
+              <h1 class="text-2xl font-bold tracking-tight text-foreground">Contract Details</h1>
+              <code class="rounded border border-border bg-muted px-2.5 py-0.5 font-mono text-sm text-foreground">
+                {{ contract.name }}
+              </code>
+              <span hlmBadge [variant]="stateBadgeVariant">{{ stateLabel }}</span>
+              @if (contract.serialNumber !== undefined || parsedSerialNumber !== undefined) {
+                <span hlmBadge variant="outline" class="font-mono text-xs">
+                  Serial #{{ contract.serialNumber ?? parsedSerialNumber }}
+                </span>
+              }
+            </div>
+            <p class="text-sm text-muted-foreground">
+              Audit cryptographically signed release rules, contract terms, attached automation bots, and lock commands.
+            </p>
           </div>
-          <p class="text-sm text-muted-foreground">Review contract terms, attached bots, and pending lock commands.</p>
+
+          <!-- Cryptographic Provenance Metadata -->
+          <div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            @if (authorPublicKeyB64) {
+              <button
+                type="button"
+                hlmBadge
+                variant="secondary"
+                class="cursor-pointer font-mono"
+                [hlmTooltip]="authorPublicKeyB64"
+                (click)="copyAuthorKey($event)"
+              >
+                ✍️ {{ copiedAuthorKey ? 'Copied Author Key!' : 'Author Key: ' + authorPublicKeyB64.substring(0, 12) + '…' }}
+              </button>
+            }
+            @if (contract.createdAt) {
+              <span class="rounded-md border border-border bg-muted/40 px-2.5 py-1">
+                Created {{ contract.createdAt | date: 'short' }}
+              </span>
+            }
+          </div>
         </div>
       </div>
-    </div>
+    </section>
 
+    <!-- 2. Two-Column Asymmetric Workbench -->
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
-      <!-- Left Column: Terms & Bots -->
+      <!-- Left Column (7 cols): Cryptographic Contract Audit (Safety Rules, Terms, Attached Bots) -->
       <div class="space-y-6 lg:col-span-7">
         @if (contractDescription) {
+          <!-- Safety & Release Rules Card -->
           <section hlmCard>
-            <div hlmCardHeader>
-              <h2 hlmCardTitle class="text-lg">Terms</h2>
-            </div>
-            <div hlmCardContent class="space-y-3 text-sm">
-              <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <div class="rounded-lg border border-border bg-muted/30 p-3">
-                  <span class="text-xs font-medium text-muted-foreground block">Temporary Unlock</span>
-                  <span class="font-semibold text-foreground">
-                    Temporary unlock allowed: {{ contractDescription.isTemporaryUnlockAllowed }}
-                  </span>
-                </div>
-                <div class="rounded-lg border border-border bg-muted/30 p-3">
-                  <span class="text-xs font-medium text-muted-foreground block">Emergency Unlock</span>
-                  <span class="font-semibold text-foreground">
-                    Emergency unlock allowed: {{ contractDescription.isEmergencyUnlockAllowed }}
-                  </span>
-                </div>
+            <div hlmCardHeader class="pb-3">
+              <div class="flex items-center justify-between gap-2">
+                <h2 hlmCardTitle class="text-lg">Safety &amp; Release Rules</h2>
+                <span hlmBadge variant="outline" class="text-xs">Signed Payload</span>
               </div>
+              <p hlmCardDescription>
+                Hardware-enforced unlock permissions and release conditions embedded in this contract.
+              </p>
+            </div>
 
-              <div class="rounded-lg border border-border bg-muted/20 p-3">
-                <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
-                  Signed Terms
-                </span>
-                <p class="whitespace-pre-wrap text-foreground">Terms: {{ contractDescription.terms }}</p>
+            <div hlmCardContent class="space-y-4 text-sm">
+              @if (!contractDescription.isEmergencyUnlockAllowed) {
+                <div hlmAlert variant="destructive">
+                  <h3 hlmAlertTitle>🚨 Emergency Unlock Disabled</h3>
+                  <div hlmAlertDescription>
+                    This contract disables the emergency unlock override on your lock. Only the contract author or an authorized release bot can unlock or release your lock while this contract is active.
+                  </div>
+                </div>
+              }
+
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <!-- Emergency Unlock Tile -->
+                <div
+                  class="rounded-lg border p-3.5 space-y-1.5"
+                  [class.border-emerald-500/40]="contractDescription.isEmergencyUnlockAllowed"
+                  [class.bg-emerald-500/5]="contractDescription.isEmergencyUnlockAllowed"
+                  [class.border-destructive/50]="!contractDescription.isEmergencyUnlockAllowed"
+                  [class.bg-destructive/5]="!contractDescription.isEmergencyUnlockAllowed"
+                >
+                  <div class="flex items-center justify-between gap-1">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Emergency Unlock</span>
+                    @if (contractDescription.isEmergencyUnlockAllowed) {
+                      <span hlmBadge variant="success">Allowed</span>
+                    } @else {
+                      <span hlmBadge variant="destructive">Disabled</span>
+                    }
+                  </div>
+                  <p class="text-xs text-foreground font-medium">
+                    Emergency unlock allowed: {{ contractDescription.isEmergencyUnlockAllowed }}
+                  </p>
+                </div>
+
+                <!-- Temporary / Hygiene Unlock Tile -->
+                <div class="rounded-lg border border-border bg-muted/30 p-3.5 space-y-1.5">
+                  <div class="flex items-center justify-between gap-1">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Temporary Unlock</span>
+                    @if (contractDescription.isTemporaryUnlockAllowed) {
+                      <span hlmBadge variant="success">Allowed</span>
+                    } @else {
+                      <span hlmBadge variant="secondary">Disallowed</span>
+                    }
+                  </div>
+                  <p class="text-xs text-foreground font-medium">
+                    Temporary unlock allowed: {{ contractDescription.isTemporaryUnlockAllowed }}
+                  </p>
+                </div>
+
+                <!-- Release Condition Tile -->
+                <div class="rounded-lg border border-border bg-muted/30 p-3.5 space-y-1.5">
+                  <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground block">Release Condition</span>
+                  <p class="text-sm font-semibold text-foreground">
+                    {{ contractDescription.endCondition }}
+                  </p>
+                </div>
               </div>
             </div>
           </section>
 
+          <!-- Signed Terms & Notes Card -->
+          <section hlmCard>
+            <div hlmCardHeader class="pb-3">
+              <h2 hlmCardTitle class="text-lg">Terms</h2>
+              <p hlmCardDescription>Written contract terms signed by the keyholder.</p>
+            </div>
+            <div hlmCardContent class="space-y-4 text-sm">
+              <div class="rounded-lg border border-border bg-muted/20 p-4">
+                <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-1.5">
+                  Signed Terms
+                </span>
+                <p class="whitespace-pre-wrap text-foreground leading-relaxed">Terms: {{ contractDescription.terms }}</p>
+              </div>
+
+              @if (contract.notes) {
+                <div class="rounded-lg border border-border bg-muted/30 p-3.5">
+                  <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                    Author Notes
+                  </span>
+                  <p class="text-foreground">{{ contract.notes }}</p>
+                </div>
+              }
+            </div>
+          </section>
+
+          <!-- Attached Automation Bots Card -->
           @if (contractDescription.bots && contractDescription.bots.length > 0) {
             <section hlmCard>
-              <div hlmCardHeader>
-                <h2 hlmCardTitle class="text-lg">Attached Bots</h2>
+              <div hlmCardHeader class="pb-3">
+                <div class="flex items-center justify-between gap-2">
+                  <h2 hlmCardTitle class="text-lg">Attached Bots</h2>
+                  <span hlmBadge variant="secondary">{{ contractDescription.bots.length }} Attached</span>
+                </div>
+                <p hlmCardDescription>
+                  Automated services granted cryptographic permission to interact with your lock under this contract.
+                </p>
               </div>
               <div hlmCardContent class="divide-y divide-border p-0">
                 @for (b of contractDescription.bots; track b.name) {
-                  <div class="bot-card p-4 space-y-2">
+                  <div class="bot-card p-4 space-y-2.5">
                     <div class="flex flex-wrap items-start justify-between gap-2">
                       <div class="flex flex-wrap items-center gap-2">
                         <span class="text-base font-semibold text-foreground">{{ b.name }}</span>
@@ -115,9 +221,7 @@
               </div>
             </section>
           }
-        }
-
-        @if (contract.notes) {
+        } @else if (contract.notes) {
           <section hlmCard>
             <div hlmCardHeader>
               <h2 hlmCardTitle class="text-lg">Notes</h2>
@@ -129,29 +233,20 @@
         }
       </div>
 
-      <!-- Right Column: Review Status & Bot Messages -->
+      <!-- Right Column (5 cols): Lifecycle Decision, Pending Commands & Bot Messages -->
       <div class="space-y-6 lg:col-span-5">
-        <section hlmCard>
-          <div hlmCardHeader>
+        <!-- Lifecycle Status & Decision Card -->
+        <section hlmCard class="border-l-4" [class.border-l-amber-500]="contract.state === 'CREATED'" [class.border-l-primary]="contract.state === 'ACCEPTED'" [class.border-l-emerald-500]="contract.state === 'CONFIRMED'" [class.border-l-destructive]="contract.state === 'REJECTED' || contract.state === 'ABORTED'">
+          <div hlmCardHeader class="pb-3">
             <h2 hlmCardTitle class="text-lg">Contract Status</h2>
           </div>
           <div hlmCardContent class="space-y-4">
             @switch (contract.state) {
-              @case ('CONFIRMED') {
-                <div hlmAlert variant="success">
-                  <div hlmAlertDescription>Accepted and confirmed.</div>
-                </div>
-              }
-              @case ('RELEASED') {
-                <div hlmAlert variant="default">
-                  <div hlmAlertDescription>Contract has ended.</div>
-                </div>
-              }
               @case ('CREATED') {
                 <div hlmAlert variant="warning">
                   <h3 hlmAlertTitle>Review Required</h3>
                   <div hlmAlertDescription>
-                    Accepting this contract generates a signed ACCEPT_CONTRACT command for your lock.
+                    Accepting this contract generates a signed <code class="font-mono text-xs">ACCEPT_CONTRACT</code> command for your lock. Review the safety rules and attached bots on the left before deciding.
                   </div>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
@@ -159,14 +254,83 @@
                   <button type="button" hlmBtn variant="destructive" (click)="reject()">Reject</button>
                 </div>
               }
+              @case ('ACCEPTED') {
+                <div hlmAlert variant="info">
+                  <h3 hlmAlertTitle>Step 2 of 2: Sync Contract to Your Lock</h3>
+                  <div hlmAlertDescription>
+                    You have accepted this contract on the coordinator. Now transmit the <code class="font-mono text-xs">ACCEPT_CONTRACT</code> command below to your physical lock via QR code or USB Serial to activate it.
+                  </div>
+                </div>
+              }
+              @case ('CONFIRMED') {
+                <div hlmAlert variant="success">
+                  <h3 hlmAlertTitle>Active on Hardware</h3>
+                  <div hlmAlertDescription>Accepted and confirmed.</div>
+                </div>
+              }
+              @case ('RELEASED') {
+                <div hlmAlert variant="default">
+                  <h3 hlmAlertTitle>Contract Completed</h3>
+                  <div hlmAlertDescription>
+                    Contract has ended.
+                    @if (contract.updatedAt) {
+                      <span class="block mt-1 text-xs text-muted-foreground">Released {{ contract.updatedAt | date: 'short' }}</span>
+                    }
+                  </div>
+                </div>
+              }
+              @case ('REJECTED') {
+                <div hlmAlert variant="destructive">
+                  <h3 hlmAlertTitle>Proposal Rejected</h3>
+                  <div hlmAlertDescription>You declined this contract proposal. It was never loaded onto your lock.</div>
+                </div>
+              }
+              @case ('ABORTED') {
+                <div hlmAlert variant="destructive">
+                  <h3 hlmAlertTitle>Contract Aborted</h3>
+                  <div hlmAlertDescription>This contract was terminated via administrative override.</div>
+                </div>
+              }
+              @default {
+                <div hlmAlert variant="default">
+                  <div hlmAlertDescription>Current state: {{ contract.state }}</div>
+                </div>
+              }
             }
           </div>
         </section>
 
+        <!-- Actionable Pending Commands Card (Right Rail) -->
+        @if (pendingCommands.length > 0) {
+          <section hlmCard class="border-amber-500/40 bg-amber-500/5">
+            <div hlmCardHeader class="pb-3">
+              <div class="flex items-center justify-between gap-2">
+                <h2 hlmCardTitle class="text-base flex items-center gap-1.5">
+                  <span aria-hidden="true">⚡</span>
+                  <span>Pending Lock Commands</span>
+                </h2>
+                <span hlmBadge variant="warning">{{ pendingCommands.length }} Action Required</span>
+              </div>
+              <p hlmCardDescription>
+                Display the QR code to your lock or send directly over USB Serial.
+              </p>
+            </div>
+            <div hlmCardContent class="space-y-3">
+              @for (c of pendingCommands; track c.name) {
+                <app-command-card [command]="c"></app-command-card>
+              }
+            </div>
+          </section>
+        }
+
+        <!-- Bot Messages Feed -->
         @if (contract.messages?.length! > 0) {
           <section hlmCard>
-            <div hlmCardHeader>
-              <h2 hlmCardTitle class="text-lg">Bot Messages</h2>
+            <div hlmCardHeader class="pb-3">
+              <div class="flex items-center justify-between gap-2">
+                <h2 hlmCardTitle class="text-lg">Bot Messages</h2>
+                <span hlmBadge variant="secondary">{{ contract.messages?.length }}</span>
+              </div>
             </div>
             <div hlmCardContent>
               <ul class="divide-y divide-border rounded-lg border border-border bg-muted/20 text-sm">
@@ -177,18 +341,38 @@
             </div>
           </section>
         }
+
+        <!-- Executed Command History -->
+        @if (executedCommands.length > 0) {
+          <section hlmCard>
+            <div hlmCardHeader class="pb-3">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <h2 hlmCardTitle class="text-base">Executed Commands</h2>
+                  <span hlmBadge variant="secondary">{{ executedCommands.length }}</span>
+                </div>
+                <button
+                  type="button"
+                  hlmBtn
+                  variant="ghost"
+                  size="sm"
+                  class="h-7 px-2 text-xs"
+                  (click)="showExecutedCommands = !showExecutedCommands"
+                >
+                  {{ showExecutedCommands || pendingCommands.length === 0 ? 'Hide' : 'Show' }}
+                </button>
+              </div>
+            </div>
+            @if (showExecutedCommands || pendingCommands.length === 0) {
+              <div hlmCardContent class="space-y-3">
+                @for (c of executedCommands; track c.name) {
+                  <app-command-card [command]="c"></app-command-card>
+                }
+              </div>
+            }
+          </section>
+        }
       </div>
     </div>
-
-    @if (commands.length > 0) {
-      <div class="space-y-3 pt-2">
-        <h2 class="text-lg font-semibold text-foreground">Commands</h2>
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          @for (c of commands; track c.name) {
-            <app-command-card [command]="c"></app-command-card>
-          }
-        </div>
-      </div>
-    }
   </div>
 }

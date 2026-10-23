@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
+import { vi } from 'vitest';
 import * as flatbuffers from 'flatbuffers';
 import { LockUserContractDetailComponent } from './lock-user-contract-detail.component';
 import { SignedMessage } from '../club/subjugated/fb/message/signed-message';
@@ -7,7 +9,9 @@ import { Contract } from '../club/subjugated/fb/message/contract';
 import { Bot as FBBot } from '../club/subjugated/fb/message/bot';
 import { Permission } from '../club/subjugated/fb/message/permission';
 import { Contract as ContractModel } from '../models/contract';
+import { Command } from '../models/command';
 import { Bot } from '../models/bot';
+import { TartarusCoordinatorService } from '../tartarus-coordinator.service';
 
 describe('LockUserContractDetailComponent', () => {
   let component: LockUserContractDetailComponent;
@@ -277,5 +281,32 @@ describe('LockUserContractDetailComponent', () => {
     expect(stopPropagationSpy).toHaveBeenCalled();
     expect(writeTextSpy).toHaveBeenCalledWith('test-key-123');
     expect(component.copiedBotName).toBe('My Bot');
+  });
+
+  it('should render Step 2 of 2 sync banner and reload commands when approve() transitions to ACCEPTED', () => {
+    const coordinator = TestBed.inject(TartarusCoordinatorService);
+    vi.spyOn(coordinator, 'approveContract').mockReturnValue(
+      of(new ContractModel({ name: 'contract-accept', state: 'ACCEPTED', serialNumber: 42 }))
+    );
+    const getCommandsSpy = vi.spyOn(coordinator, 'getCommandsForContractForLockUser').mockReturnValue(
+      of([
+        new Command({ name: 'cmd-accept', contractName: 'contract-accept', type: 'ACCEPT_CONTRACT', state: 'PENDING' }),
+        new Command({ name: 'cmd-old', contractName: 'contract-accept', type: 'LOCK', state: 'ACKNOWLEDGED' }),
+      ])
+    );
+
+    component.contractName = 'contract-accept';
+    component.approve();
+    fixture.detectChanges();
+
+    expect(component.contract?.state).toBe('ACCEPTED');
+    expect(getCommandsSpy).toHaveBeenCalledWith('contract-accept');
+    expect(component.pendingCommands.length).toBe(1);
+    expect(component.pendingCommands[0].type).toBe('ACCEPT_CONTRACT');
+    expect(component.executedCommands.length).toBe(1);
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).toContain('Step 2 of 2: Sync Contract to Your Lock');
+    expect(compiled.textContent).toContain('Pending Lock Commands');
   });
 });

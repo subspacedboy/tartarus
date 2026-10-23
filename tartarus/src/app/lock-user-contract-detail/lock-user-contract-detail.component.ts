@@ -15,7 +15,7 @@ import { Command } from '../models/command';
 import { CommandCardComponent } from '../command-card/command-card.component';
 import { Bot } from '../models/bot';
 import { HlmAlertImports } from '../shared/ui/ui-alert-helm';
-import { HlmBadgeDirective } from '../shared/ui/ui-badge-helm';
+import { HlmBadgeDirective, type BadgeVariants } from '../shared/ui/ui-badge-helm';
 import { HlmButtonDirective } from '../shared/ui/ui-button-helm';
 import { HlmCardImports } from '../shared/ui/ui-card-helm';
 import { HlmTooltipTriggerDirective } from '../shared/ui/ui-tooltip-helm';
@@ -43,15 +43,20 @@ export class LockUserContractDetailComponent implements OnInit {
   commands: Command[];
 
   contractDescription?: ContractDescription;
+  parsedSerialNumber?: number;
+  authorPublicKeyB64?: string;
   availableBots: Bot[] = [];
   copiedBotName: string | null = null;
+  copiedAuthorKey = false;
+  showExecutedCommands = false;
 
-  constructor(private tartarusCoordinatorService: TartarusCoordinatorService,
-              private activatedRoute: ActivatedRoute,
-              private userDataService: UserDataService,
-              private cryptoService: CryptoService,
-              private websocketService: WebsocketService) {
-
+  constructor(
+    private tartarusCoordinatorService: TartarusCoordinatorService,
+    private activatedRoute: ActivatedRoute,
+    private userDataService: UserDataService,
+    private cryptoService: CryptoService,
+    private websocketService: WebsocketService,
+  ) {
     this.commands = [];
     this.contractName = String(this.activatedRoute.snapshot.paramMap.get('contractName'));
 
@@ -65,6 +70,50 @@ export class LockUserContractDetailComponent implements OnInit {
     this.websocketService.connect();
     this.refreshData();
     this.fetchBots();
+  }
+
+  get stateBadgeVariant(): BadgeVariants['variant'] {
+    switch (this.contract?.state) {
+      case 'CONFIRMED':
+        return 'success';
+      case 'ACCEPTED':
+        return 'default';
+      case 'CREATED':
+        return 'warning';
+      case 'REJECTED':
+      case 'ABORTED':
+        return 'destructive';
+      case 'RELEASED':
+      default:
+        return 'secondary';
+    }
+  }
+
+  get stateLabel(): string {
+    switch (this.contract?.state) {
+      case 'CONFIRMED':
+        return 'Confirmed & Active';
+      case 'ACCEPTED':
+        return 'Accepted — Awaiting Lock Sync';
+      case 'CREATED':
+        return 'Proposal Awaiting Review';
+      case 'RELEASED':
+        return 'Released / Ended';
+      case 'REJECTED':
+        return 'Rejected';
+      case 'ABORTED':
+        return 'Aborted';
+      default:
+        return this.contract?.state || 'Unknown';
+    }
+  }
+
+  get pendingCommands(): Command[] {
+    return this.commands.filter(c => c.state === 'PENDING' || c.state === 'ERROR');
+  }
+
+  get executedCommands(): Command[] {
+    return this.commands.filter(c => c.state === 'ACKNOWLEDGED');
   }
 
   fetchBots() {
@@ -102,25 +151,31 @@ export class LockUserContractDetailComponent implements OnInit {
 
       this.tartarusCoordinatorService.getCommandsForContractForLockUser(this.contractName).subscribe(commands => {
         this.commands = commands;
-      })
+      });
     });
   }
 
-  handleMessage(message : string) {
-    console.log("Specific contract subscription -> Message: "+ message);
+  handleMessage(message: string) {
+    console.log("Specific contract subscription -> Message: " + message);
     this.refreshData();
   }
 
   approve() {
     this.tartarusCoordinatorService.approveContract(this.contractName).subscribe(contract => {
       this.contract = contract;
-    })
+      this.tartarusCoordinatorService.getCommandsForContractForLockUser(this.contractName).subscribe({
+        next: (commands) => {
+          this.commands = commands;
+        },
+        error: () => {}
+      });
+    });
   }
 
   reject() {
     this.tartarusCoordinatorService.rejectContract(this.contractName).subscribe(contract => {
       this.contract = contract;
-    })
+    });
   }
 
   async copyKey(key?: string, botName?: string, event?: Event): Promise<void> {
@@ -138,6 +193,22 @@ export class LockUserContractDetailComponent implements OnInit {
       }, 2000);
     } catch {
       // Fallback or ignore if clipboard is not accessible
+    }
+  }
+
+  async copyAuthorKey(event?: Event): Promise<void> {
+    if (event) {
+      event.stopPropagation();
+    }
+    if (!this.authorPublicKeyB64) return;
+    try {
+      await navigator.clipboard.writeText(this.authorPublicKeyB64);
+      this.copiedAuthorKey = true;
+      setTimeout(() => {
+        this.copiedAuthorKey = false;
+      }, 2000);
+    } catch {
+      // Ignore clipboard failure
     }
   }
 
@@ -163,7 +234,12 @@ export class LockUserContractDetailComponent implements OnInit {
     const isTemporaryUnlockAllowed = contract.isTemporaryUnlockAllowed();
     const isEmergencyUnlockAllowed = contract.isEmergencyUnlockAllowed();
 
-    let endDescription= "When I Say So 😈";
+    this.parsedSerialNumber = serialNumber;
+    this.authorPublicKeyB64 = publicKey && publicKey.length > 0
+      ? btoa(String.fromCharCode(...publicKey))
+      : undefined;
+
+    let endDescription = "When I Say So 😈";
 
     const bots: ContractBot[] = [];
     const botsLength = contract.botsLength();
@@ -201,4 +277,3 @@ export class LockUserContractDetailComponent implements OnInit {
     );
   }
 }
-
