@@ -1,7 +1,7 @@
 import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { TartarusCoordinatorService } from '../tartarus-coordinator.service';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { UserDataService } from '../user-data.service';
 import { CryptoService } from '../crypto.service';
 import { Contract } from '../models/contract';
@@ -23,6 +23,7 @@ import { HlmTooltipTriggerDirective } from '../shared/ui/ui-tooltip-helm';
 @Component({
   selector: 'app-lock-user-contract-detail',
   imports: [
+    RouterLink,
     CommandCardComponent,
     DatePipe,
     ...HlmAlertImports,
