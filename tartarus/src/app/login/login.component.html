@@ -1,9 +1,22 @@
-<div class="mx-auto max-w-xl py-6">
-  <section hlmCard>
+<div class="mx-auto max-w-xl space-y-4 py-6">
+  <div>
+    <a
+      routerLink="/"
+      class="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+    >
+      <span aria-hidden="true">&larr;</span>
+      <span>Back to Control Center</span>
+    </a>
+  </div>
+
+  <section hlmCard class="border-l-4 border-l-primary">
     <div hlmCardHeader>
-      <h1 hlmCardTitle class="text-2xl">Keyholder Login</h1>
+      <div class="flex items-center justify-between gap-2">
+        <h1 hlmCardTitle class="text-2xl">Keyholder Login</h1>
+        <span hlmBadge variant="outline" class="font-mono text-xs">QR Key Auth</span>
+      </div>
       <p hlmCardDescription>
-        Authenticate by uploading your cryptographic key QR image.
+        Authenticate by uploading your saved Tartarus cryptographic key QR image.
       </p>
     </div>
 
@@ -11,22 +24,44 @@
       @if (alreadyLoggedIn()) {
         <div hlmAlert variant="success">
           <h2 hlmAlertTitle>Already Authenticated</h2>
-          <div hlmAlertDescription>You're already logged in with an active author session.</div>
+          <div hlmAlertDescription>
+            You already have an active keyholder session in this browser.
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-3">
+          <a routerLink="/lock-sessions" hlmBtn variant="default" class="flex-1">
+            Go to Lock Sessions &rarr;
+          </a>
+          <a routerLink="/" hlmBtn variant="outline">
+            Control Center
+          </a>
         </div>
       } @else {
-        <div class="space-y-2">
-          <label hlmLabel for="keyFileInput">Load key from QR image</label>
+        <div class="space-y-2 rounded-xl border border-dashed border-border bg-muted/20 p-4">
+          <label hlmLabel for="keyFileInput">Select your Key QR Image (.png / photo)</label>
           <input
             id="keyFileInput"
             hlmInput
             type="file"
             (change)="onFileSelected($event)"
             accept="image/*"
+            [disabled]="isAuthenticating"
           />
+          <p class="text-xs text-muted-foreground">
+            Your private key is decoded locally in your browser to sign an authentication challenge and is never transmitted over the network.
+          </p>
           <canvas #scanCanvas class="hidden"></canvas>
         </div>
 
-        @if (scannedResult) {
+        @if (errorMessage) {
+          <div hlmAlert variant="destructive">
+            <h2 hlmAlertTitle>Authentication Failed</h2>
+            <div hlmAlertDescription>{{ errorMessage }}</div>
+          </div>
+        }
+
+        @if (scannedResult && !errorMessage) {
           <p class="text-sm text-muted-foreground">
             Scanned QR Code Status: <strong class="font-mono text-foreground">{{ scannedResult }}</strong>
           </p>
@@ -40,7 +75,12 @@
         }
       }
     </div>
+
+    <div hlmCardFooter class="justify-between border-t border-border/60 pt-4 text-xs text-muted-foreground">
+      <span>Don't have a keypair yet?</span>
+      <a routerLink="/keypair" class="font-medium text-primary hover:underline">
+        Generate a New Key &rarr;
+      </a>
+    </div>
   </section>
 </div>
-
-

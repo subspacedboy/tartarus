@@ -2,10 +2,15 @@
   <section hlmCard [class]="'flex h-full flex-col justify-between ' + accentBorderClass">
     <div hlmCardHeader class="pb-3">
       <div class="flex items-start justify-between gap-2">
-        <h3 hlmCardTitle class="font-mono text-sm font-semibold text-foreground">
-          {{ command.type }}
-        </h3>
-        <span hlmBadge [variant]="badgeVariant">
+        <div class="space-y-0.5">
+          <h3 hlmCardTitle class="text-sm font-semibold text-foreground">
+            {{ typeLabel }}
+          </h3>
+          <code class="block font-mono text-[11px] text-muted-foreground">
+            {{ command.type }}
+          </code>
+        </div>
+        <span hlmBadge [variant]="badgeVariant" class="shrink-0">
           @switch (command.state) {
             @case ('PENDING') { Pending }
             @case ('ACKNOWLEDGED') { Acknowledged }
@@ -19,6 +24,12 @@
     <div hlmCardContent class="space-y-3 pb-4 text-sm">
       @switch (command.state) {
         @case ('PENDING') {
+          @if (command.createdAt) {
+            <p class="text-xs text-muted-foreground">
+              Queued {{ command.createdAt | date : 'short' }}
+            </p>
+          }
+
           @if (showQrCodeCommands) {
             <div class="flex flex-col gap-2">
               <div class="qr-quiet-zone-wrapper flex flex-col items-center">

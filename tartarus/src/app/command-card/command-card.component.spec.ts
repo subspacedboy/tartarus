@@ -138,4 +138,23 @@ describe('CommandCardComponent', () => {
     expect(component.serialError).toBe('Lock error');
     expect(toastSpy).toHaveBeenCalledWith('Device error: Lock error');
   });
+
+  it('should provide human-readable typeLabel and show toast on manual acknowledge', () => {
+    const toastSpy = vi.spyOn(toastService, 'showSuccess');
+    vi.spyOn(coordinatorService, 'manuallyAcknowledgeCommand').mockReturnValue(
+      of(new Command({ name: 'cmd-3', contractName: 'contract-1', state: 'ACKNOWLEDGED', type: 'ACCEPT_CONTRACT' }))
+    );
+
+    component.command = new Command({
+      name: 'cmd-3',
+      contractName: 'contract-1',
+      state: 'PENDING',
+      type: 'ACCEPT_CONTRACT',
+    });
+
+    expect(component.typeLabel).toBe('Accept Contract');
+    component.manuallyAcknowledge();
+    expect(component.command.state).toBe('ACKNOWLEDGED');
+    expect(toastSpy).toHaveBeenCalledWith('Command marked as acknowledged');
+  });
 });

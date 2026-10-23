@@ -8,7 +8,7 @@
 
   <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
     <!-- Left Card: Keyholder / Contract Author -->
-    <section hlmCard class="flex flex-col justify-between">
+    <section hlmCard class="flex flex-col justify-between border-l-4 border-l-primary">
       <div hlmCardHeader>
         <div class="flex items-center justify-between gap-2">
           <span hlmBadge variant="default">Keyholder / Author</span>
@@ -18,20 +18,28 @@
         </div>
         <h2 hlmCardTitle class="mt-2 text-xl">I want to write contracts and hold keys...</h2>
         <p hlmCardDescription>
-          Author digitally signed contracts, attach automation bots, and issue lock/unlock commands.
+          Create digitally signed contracts, attach automation bots, and issue lock/unlock commands.
         </p>
       </div>
 
       <div hlmCardContent class="flex-1 space-y-4">
         @if (parent.hasAuthorSession) {
-          <div class="flex flex-wrap items-center gap-3">
-            <a routerLink="lock-sessions" hlmBtn variant="default">
-              View Lock Sessions
+          <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 p-3.5">
+            <div class="space-y-0.5">
+              <span class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Author Workspace
+              </span>
+              <p class="text-sm font-medium text-foreground">
+                {{ confirmedContracts.length }} Active &bull; {{ knownTokens.length }} Saved Sessions
+              </p>
+            </div>
+            <a routerLink="lock-sessions" hlmBtn variant="default" size="sm">
+              Open Lock Sessions &rarr;
             </a>
           </div>
 
           @if (confirmedContracts.length > 0) {
-            <div class="space-y-3 pt-2">
+            <div class="space-y-2.5 pt-1">
               <h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Active Contracts ({{ confirmedContracts.length }})
               </h3>
@@ -40,6 +48,10 @@
                   <app-contract-card [contract]="c" basePath="lock-sessions/{{ c.shareableToken }}/"></app-contract-card>
                 }
               </div>
+            </div>
+          } @else {
+            <div class="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-center text-xs text-muted-foreground">
+              No active contracts right now. Open <strong>Lock Sessions</strong> to connect to a shared token or propose a new contract.
             </div>
           }
         } @else {
@@ -81,7 +93,7 @@
               <div class="space-y-1">
                 <h3 class="font-semibold text-foreground">Open a Shared Session Link</h3>
                 <p class="text-muted-foreground">
-                  When you want to write a contract for someone, they will send you a session link. Follow that link to begin.
+                  When you want to write a contract for a lock owner, they will send you a session link or token.
                 </p>
               </div>
             </li>
@@ -90,16 +102,16 @@
       </div>
     </section>
 
-    <!-- Right Card: Lock Wearer / Holder -->
-    <section hlmCard class="flex flex-col justify-between">
+    <!-- Right Card: Lock Owner -->
+    <section hlmCard class="flex flex-col justify-between border-l-4 border-l-secondary">
       <div hlmCardHeader>
         <div class="flex items-center justify-between gap-2">
-          <span hlmBadge variant="secondary">Lock Wearer / Holder</span>
+          <span hlmBadge variant="secondary">Lock Owner</span>
           @if (parent.hasLockSessions) {
             <span hlmBadge variant="success">Session Active</span>
           }
         </div>
-        <h2 hlmCardTitle class="mt-2 text-xl">I want to have my keys held...</h2>
+        <h2 hlmCardTitle class="mt-2 text-xl">I want to have my lock managed...</h2>
         <p hlmCardDescription>
           Pair your physical Tartarus smart lock, share session links, and review or execute commands.
         </p>
@@ -107,22 +119,62 @@
 
       <div hlmCardContent class="flex-1 space-y-4">
         @if (parent.hasLockSessions) {
-          <div class="flex flex-wrap items-center gap-3">
-            <a routerLink="my-lock" hlmBtn variant="default">
-              Go To My Lock
+          <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 p-3.5">
+            <div class="space-y-0.5">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  My Lock Status
+                </span>
+                @if (myLockSession?.lockState) {
+                  @if (myLockSession?.lockState?.isLocked) {
+                    <span hlmBadge variant="destructive">Locked</span>
+                  } @else {
+                    <span hlmBadge variant="success">Unlocked</span>
+                  }
+                }
+              </div>
+              <p class="text-xs text-muted-foreground">
+                @if (myLockSession?.updatedAt) {
+                  Last heartbeat {{ myLockSession!.updatedAt | dateAgo }}
+                } @else {
+                  Connected to local lock session
+                }
+              </p>
+            </div>
+
+            <a routerLink="my-lock" hlmBtn variant="default" size="sm">
+              Go To My Lock &rarr;
             </a>
           </div>
 
-          @if (reviewPending.length > 0) {
-            <div class="space-y-3 pt-2">
+          @if (activeLockContract; as active) {
+            <div class="space-y-2">
               <h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Pending Contracts ({{ reviewPending.length }})
+                Active Contract
               </h3>
+              <app-contract-card [contract]="active" basePath="my-lock/"></app-contract-card>
+            </div>
+          }
+
+          @if (reviewPending.length > 0) {
+            <div class="space-y-2 pt-1">
+              <div class="flex items-center gap-2">
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Proposals Awaiting Your Review
+                </h3>
+                <span hlmBadge variant="warning">{{ reviewPending.length }}</span>
+              </div>
               <div class="grid grid-cols-1 gap-3">
                 @for (c of reviewPending; track c.name) {
                   <app-contract-card [contract]="c" basePath="my-lock/"></app-contract-card>
                 }
               </div>
+            </div>
+          }
+
+          @if (!activeLockContract && reviewPending.length === 0) {
+            <div class="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-center text-xs text-muted-foreground">
+              Your lock has no active or pending contracts. Open <strong>My Lock</strong> to share your invite link with a keyholder.
             </div>
           }
         } @else {

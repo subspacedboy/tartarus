@@ -4,24 +4,23 @@ import { TartarusCoordinatorService } from '../tartarus-coordinator.service';
 import jsQR from 'jsqr';
 import { IdHelperService } from '../id-helper.service';
 import { CryptoService } from '../crypto.service';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { WebsocketService } from '../websocket.service';
+import { ToastService } from '../toast.service';
 import { HlmAlertImports } from '../shared/ui/ui-alert-helm';
+import { HlmBadgeDirective } from '../shared/ui/ui-badge-helm';
+import { HlmButtonDirective } from '../shared/ui/ui-button-helm';
 import { HlmCardImports } from '../shared/ui/ui-card-helm';
 import { HlmInputDirective } from '../shared/ui/ui-input-helm';
 import { HlmLabelDirective } from '../shared/ui/ui-label-helm';
 
-interface LoadedKeyPair {
-  privateKey: CryptoKey;
-  publicKey: CryptoKey;
-  privateKeyPEM: string;
-  publicKeyPEM: string;
-}
-
 @Component({
   selector: 'app-login',
   imports: [
+    RouterLink,
     ...HlmAlertImports,
+    HlmBadgeDirective,
+    HlmButtonDirective,
     ...HlmCardImports,
     HlmInputDirective,
     HlmLabelDirective,
@@ -32,17 +31,21 @@ interface LoadedKeyPair {
 })
 export class LoginComponent implements OnInit {
   scannedResult: string = '';
+  errorMessage: string | null = null;
+  isAuthenticating: boolean = false;
   loginComplete: boolean = false;
 
   @ViewChild('scanCanvas', { static: false }) scanCanvas!: ElementRef;
 
-  constructor(private userDataService: UserDataService,
-              private tartarusCoordinatorService: TartarusCoordinatorService,
-              private idHelperService: IdHelperService,
-              private cryptoService: CryptoService,
-              private websocketService: WebsocketService,
-              private router: Router) {
-  }
+  constructor(
+    private userDataService: UserDataService,
+    private tartarusCoordinatorService: TartarusCoordinatorService,
+    private idHelperService: IdHelperService,
+    private cryptoService: CryptoService,
+    private websocketService: WebsocketService,
+    private toastService: ToastService,
+    private router: Router,
+  ) {}
 
   ngOnInit() {}
 
@@ -51,8 +54,11 @@ export class LoginComponent implements OnInit {
   }
 
   onFileSelected(event: any) {
-    const file = event.target.files[0];
+    const file = event.target?.files?.[0];
     if (!file) return;
+
+    this.errorMessage = null;
+    this.scannedResult = '';
 
     const reader = new FileReader();
     reader.onload = (e: any) => {
@@ -63,7 +69,8 @@ export class LoginComponent implements OnInit {
     reader.readAsDataURL(file);
   }
 
-  scanQRCode(img: HTMLImageElement) {
+  async scanQRCode(img: HTMLImageElement): Promise<void> {
+    this.errorMessage = null;
     const canvas = this.scanCanvas.nativeElement;
     const ctx = canvas.getContext('2d');
     canvas.width = img.width;
@@ -73,27 +80,47 @@ export class LoginComponent implements OnInit {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const qrCode = jsQR(imageData.data, imageData.width, imageData.height);
 
-    this.cryptoService.importKeyPairForECDSA(qrCode?.data!).then(r => {
-      console.log("Loaded correctly");
-      this.scannedResult = qrCode ? 'Valid key' : 'No QR code found.';
+    if (!qrCode?.data) {
+      this.scannedResult = 'No QR code found.';
+      this.errorMessage = 'No QR code was detected in the selected image. Please choose your saved Tartarus key QR image.';
+      return;
+    }
 
-      let token = this.idHelperService.generateBase32Id();
+    this.isAuthenticating = true;
+    try {
+      const r = await this.cryptoService.importKeyPairForECDSA(qrCode.data);
+      this.scannedResult = 'Valid key';
+
+      const token = this.idHelperService.generateBase32Id();
       const encodedToken = new TextEncoder().encode(token);
-       this.cryptoService.hashAndSignData(r.privateKey, new Uint8Array(encodedToken)).then(signature => {
-          this.cryptoService.generateCompressedPublicKey(r.publicKey).then(compressedPublicKey => {
-            let b64compressed = btoa(String.fromCharCode(...new Uint8Array(compressedPublicKey)));
-            let b64Signature = btoa(String.fromCharCode(...new Uint8Array(signature)));
-            this.tartarusCoordinatorService.createAuthorSession(b64compressed, token, b64Signature).subscribe(session_result => {
-              console.log("Session created");
+      const signature = await this.cryptoService.hashAndSignData(r.privateKey, new Uint8Array(encodedToken));
+      const compressedPublicKey = await this.cryptoService.generateCompressedPublicKey(r.publicKey);
 
-              this.userDataService.addPublicAndPrivateKeyToAuthorSession(r.privateKeyPem, r.publicKeyPem, String(session_result.sessionToken));
-              this.websocketService.reconnect();
-              this.loginComplete = true;
+      const b64compressed = btoa(String.fromCharCode(...new Uint8Array(compressedPublicKey)));
+      const b64Signature = btoa(String.fromCharCode(...new Uint8Array(signature)));
 
-              this.router.navigate(['/']);
-            });
-        })
+      this.tartarusCoordinatorService.createAuthorSession(b64compressed, token, b64Signature).subscribe({
+        next: (session_result) => {
+          this.userDataService.addPublicAndPrivateKeyToAuthorSession(
+            r.privateKeyPem,
+            r.publicKeyPem,
+            String(session_result.sessionToken),
+          );
+          this.websocketService.reconnect();
+          this.isAuthenticating = false;
+          this.loginComplete = true;
+          this.toastService.showSuccess('Authenticated as contract author');
+          this.router.navigate(['/']);
+        },
+        error: () => {
+          this.isAuthenticating = false;
+          this.errorMessage = 'Failed to authenticate with the coordinator. Please try again.';
+        },
       });
-    });
+    } catch {
+      this.isAuthenticating = false;
+      this.scannedResult = 'Invalid key format.';
+      this.errorMessage = 'The QR code in this image is not a valid Tartarus ECDSA keypair.';
+    }
   }
 }

@@ -121,7 +121,6 @@ export class CryptoService {
     const publicKeyMatch = pem.match(/-----BEGIN PUBLIC KEY-----(.*?)-----END PUBLIC KEY-----/s);
 
     if (!privateKeyMatch || !publicKeyMatch) {
-      debugger;
       throw new Error("Invalid PEM format: Missing private or public key");
     }
 

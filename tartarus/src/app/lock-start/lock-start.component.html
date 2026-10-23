@@ -1,56 +1,183 @@
-@if (loaded) {
-  <div class="mx-auto max-w-3xl space-y-6 py-4">
-    <div>
-      <h1 class="text-2xl font-bold tracking-tight text-foreground">Lock Start</h1>
-      <p class="text-sm text-muted-foreground">
-        Your smart lock session is registered. Share one of the links below with your contract author.
-      </p>
-    </div>
-
-    <section hlmCard>
-      <div hlmCardHeader>
-        <h2 hlmCardTitle class="text-lg">Reviewable Contract Share Link</h2>
-        <p hlmCardDescription>
-          Send this link to contract authors when you want the ability to review and approve contracts before they activate.
+<div class="mx-auto max-w-3xl space-y-6 py-4">
+  @if (!loaded && !errorMessage) {
+    <section hlmCard class="py-12 text-center">
+      <div hlmCardContent class="flex flex-col items-center justify-center space-y-3">
+        <hlm-spinner size="md" />
+        <h1 class="text-lg font-semibold text-foreground">Pairing Your Tartarus Smart Lock...</h1>
+        <p class="max-w-md text-sm text-muted-foreground">
+          Generating your local cryptographic session keypair and verifying the lock cryptogram with the coordinator.
         </p>
       </div>
-      <div hlmCardContent class="space-y-3">
-        <div hlmAlert variant="info">
+    </section>
+  }
+
+  @if (errorMessage) {
+    <section hlmCard class="border-l-4 border-l-destructive">
+      <div hlmCardHeader>
+        <h1 hlmCardTitle class="text-xl">Lock Pairing Failed</h1>
+        <p hlmCardDescription>
+          We couldn't verify the lock session cryptogram with the coordinator.
+        </p>
+      </div>
+      <div hlmCardContent class="space-y-4">
+        <div hlmAlert variant="destructive">
+          <h2 hlmAlertTitle>Registration Error</h2>
           <div hlmAlertDescription>
-            <strong>Heads up!</strong> This is the link you send to contract authors when you want the ability to review.
+            {{ errorMessage }}
           </div>
         </div>
-        <div class="space-y-1.5">
-          <label hlmLabel for="lockLink">Share Link</label>
-          <input hlmInput class="font-mono text-xs" id="lockLink" [value]="getShareLink()" [disabled]="true" readonly />
+        <p class="text-sm text-muted-foreground">
+          Try scanning the boot QR code on your Tartarus lock screen again, or retry below.
+        </p>
+        <div class="flex flex-wrap gap-3">
+          <button type="button" hlmBtn variant="default" (click)="registerLockSession()">
+            Retry Pairing
+          </button>
+          <a routerLink="/" hlmBtn variant="outline">
+            Return Home
+          </a>
+        </div>
+      </div>
+    </section>
+  }
+
+  @if (loaded) {
+    <!-- 1. Success Header & Primary Navigation CTA -->
+    <section hlmCard class="border-l-4 border-l-emerald-500">
+      <div class="p-5 sm:p-6">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div class="space-y-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <span hlmBadge variant="success">✓ Lock Paired</span>
+              @if (session) {
+                <code class="rounded border border-border bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground">
+                  {{ session }}
+                </code>
+              }
+            </div>
+            <h1 class="text-2xl font-bold tracking-tight text-foreground">Your Lock Session is Ready</h1>
+            <p class="text-sm text-muted-foreground">
+              Your browser is now cryptographically linked to your lock. Open your lock dashboard or share an invitation link with a keyholder below.
+            </p>
+          </div>
+
+          <a routerLink="/my-lock" hlmBtn variant="default" size="lg" class="w-full sm:w-auto">
+            Continue to My Lock &rarr;
+          </a>
         </div>
       </div>
     </section>
 
+    <!-- 2. Invite a Keyholder Card (Unified Tabbed Switcher with Copy) -->
     <section hlmCard>
-      <div hlmCardHeader>
-        <h2 hlmCardTitle class="text-lg">Total Control Link</h2>
+      <div hlmCardHeader class="pb-3">
+        <div class="flex items-center justify-between gap-2">
+          <h2 hlmCardTitle class="text-lg">Invite a Keyholder</h2>
+          <span hlmBadge variant="secondary">Share Session Link</span>
+        </div>
         <p hlmCardDescription>
-          Send this link only when you want the author to activate contracts immediately without your review.
+          Choose how much authority to grant when sharing your lock session link with a contract author.
         </p>
       </div>
-      <div hlmCardContent class="space-y-3">
-        <div hlmAlert variant="warning">
-          <div hlmAlertDescription>
-            <strong>Heads up!</strong> This is the link you send to contract authors when you DO NOT want the ability to review.
-            If your lock is online, they can simply activate contracts without approval. You've been warned.
+
+      <div hlmCardContent class="space-y-4">
+        <div class="grid grid-cols-2 gap-1.5 rounded-lg border border-border bg-muted/50 p-1" role="tablist" aria-label="Invitation link type">
+          <button
+            type="button"
+            role="tab"
+            [attr.aria-selected]="inviteLinkMode === 'reviewable'"
+            class="rounded-md px-3 py-2 text-xs font-semibold transition-all"
+            [class.bg-card]="inviteLinkMode === 'reviewable'"
+            [class.text-foreground]="inviteLinkMode === 'reviewable'"
+            [class.shadow-sm]="inviteLinkMode === 'reviewable'"
+            [class.text-muted-foreground]="inviteLinkMode !== 'reviewable'"
+            (click)="setInviteLinkMode('reviewable')"
+          >
+            🛡️ Reviewable Link (Recommended)
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            [attr.aria-selected]="inviteLinkMode === 'total-control'"
+            class="rounded-md px-3 py-2 text-xs font-semibold transition-all"
+            [class.bg-amber-500/15]="inviteLinkMode === 'total-control'"
+            [class.text-amber-700]="inviteLinkMode === 'total-control'"
+            [class.dark:text-amber-300]="inviteLinkMode === 'total-control'"
+            [class.shadow-sm]="inviteLinkMode === 'total-control'"
+            [class.text-muted-foreground]="inviteLinkMode !== 'total-control'"
+            (click)="setInviteLinkMode('total-control')"
+          >
+            ⚠️ Total Control Link
+          </button>
+        </div>
+
+        @if (inviteLinkMode === 'reviewable') {
+          <div class="space-y-3">
+            <div hlmAlert variant="info">
+              <div hlmAlertDescription>
+                <strong>Safe Default:</strong> Send this link to contract authors when you want to inspect and approve contracts before they activate on your lock.
+              </div>
+            </div>
+
+            <div class="space-y-1.5">
+              <label hlmLabel for="lockLink">Reviewable Share Link</label>
+              <div class="flex flex-col gap-2 sm:flex-row">
+                <input
+                  hlmInput
+                  class="flex-1 font-mono text-xs"
+                  id="lockLink"
+                  [value]="getShareLink()"
+                  readonly
+                />
+                <button
+                  type="button"
+                  hlmBtn
+                  variant="default"
+                  (click)="copyToClipboard(getShareLink())"
+                >
+                  Copy Reviewable Link
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="space-y-1.5">
-          <label hlmLabel for="lockLink2">Total Control Link</label>
-          <input hlmInput class="font-mono text-xs" id="lockLink2" [value]="getTotalControlLink()" [disabled]="true" readonly />
-        </div>
+        } @else {
+          <div class="space-y-3">
+            <div hlmAlert variant="warning">
+              <div hlmAlertDescription>
+                <strong>Heads up!</strong> Anyone with this link can activate contracts directly on your lock without your approval. Share only with someone you trust completely.
+              </div>
+            </div>
+
+            <div class="space-y-1.5">
+              <label hlmLabel for="lockLink2">Total Control Link</label>
+              <div class="flex flex-col gap-2 sm:flex-row">
+                <input
+                  hlmInput
+                  class="flex-1 font-mono text-xs border-amber-500/50"
+                  id="lockLink2"
+                  [value]="getTotalControlLink()"
+                  readonly
+                />
+                <button
+                  type="button"
+                  hlmBtn
+                  variant="warning"
+                  (click)="copyToClipboard(getTotalControlLink())"
+                >
+                  Copy Total Control Link
+                </button>
+              </div>
+            </div>
+          </div>
+        }
       </div>
     </section>
 
+    <!-- 3. Collapsible Cryptogram Technical Details -->
     <div class="space-y-3">
       <button type="button" hlmBtn variant="outline" size="sm" (click)="showTechnicalDetails()">
-        Show Technical Details
+        {{ showDetails ? 'Hide Technical Details' : 'Show Technical Details' }}
       </button>
 
       @if (showDetails) {
@@ -63,5 +190,5 @@
         </section>
       }
     </div>
-  </div>
-}
+  }
+</div>

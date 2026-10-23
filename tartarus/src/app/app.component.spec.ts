@@ -50,7 +50,7 @@ describe('AppComponent', () => {
 
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.textContent).toContain('Keyholder Active');
-    expect(compiled.textContent).toContain('Wearer Active');
+    expect(compiled.textContent).toContain('Lock Owner Active');
     expect(compiled.textContent).toContain('Lock Sessions');
     expect(compiled.textContent).toContain('My Lock');
     const lockSessionsLink = compiled.querySelector('a[href="/lock-sessions"]');

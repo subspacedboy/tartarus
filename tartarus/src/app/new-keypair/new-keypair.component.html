@@ -1,7 +1,20 @@
-<div class="mx-auto max-w-xl py-6">
-  <section hlmCard>
+<div class="mx-auto max-w-xl space-y-4 py-6">
+  <div>
+    <a
+      routerLink="/"
+      class="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+    >
+      <span aria-hidden="true">&larr;</span>
+      <span>Back to Control Center</span>
+    </a>
+  </div>
+
+  <section hlmCard class="border-l-4 border-l-primary">
     <div hlmCardHeader>
-      <h1 hlmCardTitle class="text-2xl">Key Generator</h1>
+      <div class="flex items-center justify-between gap-2">
+        <h1 hlmCardTitle class="text-2xl">Key Generator</h1>
+        <span hlmBadge variant="outline" class="font-mono text-xs">ECDSA P-256</span>
+      </div>
       <p hlmCardDescription>
         Generate a cryptographic keypair encoded as a downloadable QR code image.
       </p>
@@ -15,8 +28,8 @@
         </div>
       </div>
 
-      <button type="button" hlmBtn variant="default" class="w-full" (click)="generateQRCode()">
-        Generate Key
+      <button type="button" hlmBtn [variant]="showDownloadButton ? 'outline' : 'default'" class="w-full" (click)="generateQRCode()">
+        {{ showDownloadButton ? 'Regenerate New Keypair' : 'Generate Key' }}
       </button>
 
       <div class="flex flex-col items-center justify-center pt-2">
@@ -26,13 +39,53 @@
       </div>
 
       @if (showDownloadButton) {
-        <p class="text-center text-xs text-muted-foreground">
-          Tap and hold the QR image on mobile to save to your camera roll, or download below.
-        </p>
-        <button type="button" hlmBtn variant="secondary" class="w-full" (click)="downloadQRCode()">
-          Download QR Code
-        </button>
+        <div class="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
+          <div class="space-y-2">
+            <span class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Step 1: Back Up Your Key Image
+            </span>
+            <p class="text-xs text-muted-foreground">
+              Download the QR image below (or tap and hold on mobile to save to your camera roll).
+            </p>
+            <button type="button" hlmBtn variant="secondary" class="w-full" (click)="downloadQRCode()">
+              💾 Download QR Code (.png)
+            </button>
+          </div>
+
+          <div class="space-y-3 border-t border-border pt-3">
+            <span class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Step 2: Authenticate Immediately
+            </span>
+            <label class="flex cursor-pointer items-center gap-2.5 text-xs text-foreground">
+              <input
+                type="checkbox"
+                [(ngModel)]="hasBackedUpKey"
+                name="hasBackedUpKey"
+                class="h-4 w-4 rounded border-input text-primary focus:ring-ring"
+              />
+              <span>I have downloaded or saved a backup copy of this key QR image</span>
+            </label>
+
+            <button
+              type="button"
+              hlmBtn
+              variant="default"
+              class="w-full"
+              [disabled]="!hasBackedUpKey || isSigningIn"
+              (click)="loginWithGeneratedKey()"
+            >
+              {{ isSigningIn ? 'Signing In...' : 'Sign In with This Key Now →' }}
+            </button>
+          </div>
+        </div>
       }
+    </div>
+
+    <div hlmCardFooter class="justify-between border-t border-border/60 pt-4 text-xs text-muted-foreground">
+      <span>Already have a saved key image?</span>
+      <a routerLink="/login" class="font-medium text-primary hover:underline">
+        Log in with existing Key QR &rarr;
+      </a>
     </div>
   </section>
 </div>

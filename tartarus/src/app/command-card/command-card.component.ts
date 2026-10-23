@@ -1,5 +1,4 @@
 import { Component, ElementRef, Input, ViewChild, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
-import { Contract } from '../models/contract';
 import { Command } from '../models/command';
 import { DatePipe } from '@angular/common';
 import * as QRCode from 'qrcode';
@@ -7,14 +6,11 @@ import { TartarusCoordinatorService } from '../tartarus-coordinator.service';
 import { UserDataService } from '../user-data.service';
 import { SerialDeviceService } from '../serial-device.service';
 import { ToastService } from '../toast.service';
-import { SignedMessage } from '../club/subjugated/fb/message/signed-message';
 import { HlmAlertImports } from '../shared/ui/ui-alert-helm';
 import { HlmBadgeDirective, type BadgeVariants } from '../shared/ui/ui-badge-helm';
 import { HlmButtonDirective } from '../shared/ui/ui-button-helm';
 import { HlmCardImports } from '../shared/ui/ui-card-helm';
 import { HlmSpinnerComponent } from '../shared/ui/ui-spinner-helm';
-
-import * as flatbuffers from 'flatbuffers';
 
 @Component({
   selector: 'app-command-card',
@@ -41,6 +37,23 @@ export class CommandCardComponent {
   serialError: string | null = null;
 
   @ViewChild('ackBtn') ackBtn!: ElementRef<HTMLButtonElement>;
+
+  get typeLabel(): string {
+    switch (this.command?.type) {
+      case 'ACCEPT_CONTRACT':
+        return 'Accept Contract';
+      case 'LOCK':
+        return 'Lock Mechanism';
+      case 'UNLOCK':
+        return 'Unlock Mechanism';
+      case 'TEMPORARY_UNLOCK':
+        return 'Temporary Unlock';
+      case 'RELEASE':
+        return 'Release Contract';
+      default:
+        return this.command?.type || 'Command';
+    }
+  }
 
   get badgeVariant(): BadgeVariants['variant'] {
     switch (this.command?.state) {
@@ -162,9 +175,7 @@ export class CommandCardComponent {
   }
 
   maybeShowAcknowledge() {
-    if(this.command?.type === 'ACCEPT_CONTRACT') {
-      // There's no way to manually accept a contract without serial/network.
-      // The lock just has to be online or wired.
+    if (this.command?.type === 'ACCEPT_CONTRACT') {
       return;
     }
 
@@ -173,9 +184,19 @@ export class CommandCardComponent {
     }
   }
 
-  manuallyAcknowledge(event: Event): void {
-    this.tartarusCoordinatorService.manuallyAcknowledgeCommand(this.command?.contractName!, this.command?.name!).subscribe(r => {
-      this.command = r;
+  manuallyAcknowledge(_event?: Event): void {
+    if (!this.command?.contractName || !this.command?.name) {
+      return;
+    }
+    this.tartarusCoordinatorService.manuallyAcknowledgeCommand(this.command.contractName, this.command.name).subscribe({
+      next: (r) => {
+        this.command = r;
+        this.toastService.showSuccess('Command marked as acknowledged');
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.toastService.showError('Failed to acknowledge command');
+      }
     });
   }
 }
