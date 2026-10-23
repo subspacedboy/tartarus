@@ -31,6 +31,7 @@ export type SortDirection = 'asc' | 'desc';
 export class BotSelectorComponent {
   @Input() bots: Bot[] = [];
   @Input() selectedBotNames: string[] = [];
+  @Input() showSelectedTray: boolean = true;
 
   @Output() botAdded = new EventEmitter<Bot>();
   @Output() botRemoved = new EventEmitter<string>();

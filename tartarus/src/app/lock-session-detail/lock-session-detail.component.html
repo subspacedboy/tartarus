@@ -61,7 +61,7 @@
             </div>
 
             <p class="text-sm text-muted-foreground">
-              Inspect live lock mechanism state, manage your session label, and author or operate contracts for this wearer.
+              Inspect live lock mechanism state, manage your session label, and create or operate contracts for this lock.
             </p>
           </div>
 
@@ -178,7 +178,7 @@
               This lock already has an active contract and is currently unavailable for a new Total Control assignment.
             }
           } @else {
-            Write a new contract proposal for the wearer to inspect and accept on their lock.
+            Write a new contract proposal for the lock owner to inspect and accept on their lock.
           }
         </p>
       </div>
@@ -256,7 +256,7 @@
             <span hlmBadge variant="warning">{{ pendingProposals.length }} In Review</span>
           </div>
           <span class="text-xs text-muted-foreground">
-            Awaiting wearer acceptance or confirmation before locking commands can be issued
+            Awaiting lock owner acceptance or confirmation before locking commands can be issued
           </span>
         </div>
 

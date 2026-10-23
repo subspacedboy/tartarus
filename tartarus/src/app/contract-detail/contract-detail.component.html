@@ -71,7 +71,7 @@
                 <div hlmAlert variant="destructive">
                   <h3 hlmAlertTitle>🚨 Emergency Unlock Disabled</h3>
                   <div hlmAlertDescription>
-                    Physical emergency release is disabled under this contract. Only your author key or an attached release bot can unlock or release the wearer's lock.
+                    Physical emergency release is disabled under this contract. Only your author key or an attached release bot can unlock or release this lock.
                   </div>
                 </div>
               }
@@ -247,9 +247,9 @@
             @switch (contract.state) {
               @case ('CREATED') {
                 <div hlmAlert variant="info">
-                  <h3 hlmAlertTitle>Waiting for Wearer Acceptance</h3>
+                  <h3 hlmAlertTitle>Waiting for Lock Owner Acceptance</h3>
                   <div hlmAlertDescription>
-                    Contract has been created and is waiting for acceptance. Once the wearer accepts and syncs the contract to their lock, remote Lock/Unlock controls will unlock here.
+                    Contract has been created and is waiting for acceptance. Once the lock owner accepts and syncs the contract to their lock, remote Lock/Unlock controls will unlock here.
                   </div>
                 </div>
               }
@@ -257,7 +257,7 @@
                 <div hlmAlert variant="info">
                   <h3 hlmAlertTitle>Accepted — Awaiting Hardware Sync</h3>
                   <div hlmAlertDescription>
-                    The wearer has accepted your contract proposal! Waiting for their physical lock to acknowledge the <code class="font-mono text-xs">ACCEPT_CONTRACT</code> command.
+                    The lock owner has accepted your contract proposal! Waiting for their physical lock to acknowledge the <code class="font-mono text-xs">ACCEPT_CONTRACT</code> command.
                   </div>
                 </div>
               }
@@ -366,7 +366,7 @@
               @case ('REJECTED') {
                 <div hlmAlert variant="destructive">
                   <h3 hlmAlertTitle>Proposal Rejected</h3>
-                  <div hlmAlertDescription>The wearer declined this contract proposal.</div>
+                  <div hlmAlertDescription>The lock owner declined this contract proposal.</div>
                 </div>
               }
               @case ('ABORTED') {
@@ -396,7 +396,7 @@
                 <span hlmBadge variant="warning">{{ pendingCommands.length }} Pending</span>
               </div>
               <p hlmCardDescription>
-                Commands queued for the wearer's lock or reporting execution errors.
+                Commands queued for the lock or reporting execution errors.
               </p>
             </div>
             <div hlmCardContent class="space-y-3">

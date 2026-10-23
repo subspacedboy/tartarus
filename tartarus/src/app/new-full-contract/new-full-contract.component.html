@@ -1,95 +1,373 @@
-<form [formGroup]="contractForm" (submit)="createContract()">
-  <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
-    <!-- Left Column: Contract Settings & Output -->
-    <div class="space-y-6 lg:col-span-5">
-      <section hlmCard>
-        <div hlmCardHeader>
-          <h2 hlmCardTitle class="text-xl">Contract Builder</h2>
-          <p hlmCardDescription>
-            Configure unlock permissions, contract terms, and cryptographic signing options.
+<div class="mx-auto max-w-6xl space-y-6">
+  <!-- Top Breadcrumb Navigation -->
+  <div>
+    <a
+      [routerLink]="['/lock-sessions', lockSessionToken]"
+      class="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+    >
+      <span aria-hidden="true">&larr;</span>
+      <span>Back to Lock Session ({{ sessionLabel }})</span>
+    </a>
+  </div>
+
+  <!-- 1. Page Header & Session Context Card -->
+  <section
+    hlmCard
+    class="border-l-4"
+    [class.border-l-amber-500]="lockSession?.isTotalControlToken()"
+    [class.border-l-primary]="!lockSession?.isTotalControlToken()"
+  >
+    <div class="p-5 sm:p-6">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div class="space-y-1.5">
+          <div class="flex flex-wrap items-center gap-2">
+            <h1 class="text-2xl font-bold tracking-tight text-foreground">New Contract</h1>
+
+            <code class="rounded border border-border bg-muted px-2 py-0.5 font-mono text-xs text-foreground">
+              {{ sessionLabel }}
+            </code>
+
+            @if (lockSession?.isTotalControlToken()) {
+              <span hlmBadge variant="warning">⚠️ Total Control Assignment</span>
+            } @else {
+              <span hlmBadge variant="secondary">🛡️ Reviewable Proposal</span>
+            }
+
+            @if (lockSession?.validatedFirmware) {
+              <span hlmBadge variant="success">🛡️ Verified Firmware</span>
+            }
+          </div>
+
+          <p class="text-sm text-muted-foreground">
+            Configure hardware safety rules, signed contract terms, and automated bot permissions before signing with your author key.
           </p>
         </div>
 
-        <div hlmCardContent>
-          <fieldset class="space-y-4">
-            <legend class="sr-only">Contract Terms and Unlock Permissions</legend>
-
-            <label
-              for="isTempUnlockAllowed"
-              class="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3 text-sm font-medium text-foreground"
-            >
-              <span>Is temporary unlocking allowed?</span>
-              <input
-                id="isTempUnlockAllowed"
-                type="checkbox"
-                formControlName="isTempUnlockAllowed"
-                class="h-4 w-4 rounded border-input text-primary focus:ring-ring"
-              />
-            </label>
-
-            <label
-              for="isEmergencyUnlockAllowed"
-              class="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3 text-sm font-medium text-foreground"
-            >
-              <span>Is emergency unlock allowed?</span>
-              <input
-                id="isEmergencyUnlockAllowed"
-                type="checkbox"
-                formControlName="isEmergencyUnlockAllowed"
-                class="h-4 w-4 rounded border-input text-primary focus:ring-ring"
-              />
-            </label>
-
-            <div class="space-y-1.5">
-              <label hlmLabel for="terms">Terms</label>
-              <textarea
-                id="terms"
-                hlmInput
-                formControlName="terms"
-                placeholder="Part of the contract body. Will be digitally signed."
-                rows="4"
-              ></textarea>
-            </div>
-
-            <div class="space-y-1.5">
-              <label hlmLabel for="notes">Notes</label>
-              <textarea
-                id="notes"
-                hlmInput
-                formControlName="notes"
-                placeholder="Only shown on website"
-                rows="3"
-              ></textarea>
-            </div>
-
-            <button hlmBtn variant="default" size="lg" class="w-full" type="submit">
-              Save Contract
-            </button>
-          </fieldset>
+        <div class="flex items-center gap-2">
+          <span hlmBadge variant="outline" class="font-mono text-xs">
+            🔑 ECDSA Author Signature
+          </span>
         </div>
-      </section>
+      </div>
 
-      <!-- Generated Contract Canvas -->
-      <section hlmCard #hiddenDiv hidden>
-        <div hlmCardHeader>
-          <h3 hlmCardTitle class="text-base">Contract QR Code</h3>
-        </div>
-        <div hlmCardContent class="flex justify-center">
-          <div class="qr-quiet-zone">
-            <canvas #canvas></canvas>
+      @if (lockSession?.isTotalControlToken()) {
+        <div hlmAlert variant="warning" class="mt-4">
+          <h2 hlmAlertTitle>Direct Total Control Assignment</h2>
+          <div hlmAlertDescription>
+            You are using a Total Control token. Saving this contract will bind the lock immediately without prompting the lock owner for review.
           </div>
         </div>
-      </section>
+      }
     </div>
+  </section>
 
-    <!-- Right Column: Bot Selection -->
-    <div class="lg:col-span-7">
-      <app-bot-selector
-        [bots]="bots"
-        [selectedBotNames]="selectedBotNames"
-        (botAdded)="addBot($event)"
-        (botRemoved)="removeBotByName($event)"
-      ></app-bot-selector>
+  <!-- 2. Main 2-Column Authoring Workbench -->
+  <form [formGroup]="contractForm" (submit)="createContract()">
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
+      <!-- Left Column (5 cols): Safety Rules, Signed Terms, Off-Chain Notes & Submit -->
+      <div class="space-y-6 lg:col-span-5">
+        <!-- Step 1: Hardware Safety & Unlock Rules -->
+        <section hlmCard>
+          <div hlmCardHeader class="pb-3">
+            <div class="flex items-center justify-between gap-2">
+              <h2 hlmCardTitle class="text-base">1. Hardware Safety &amp; Unlock Rules</h2>
+              <span hlmBadge variant="outline" class="text-[11px]">Signed On-Lock</span>
+            </div>
+            <p hlmCardDescription>
+              Define the physical safety boundaries enforced directly by the lock firmware.
+            </p>
+          </div>
+
+          <div hlmCardContent class="space-y-3">
+            <fieldset class="space-y-3">
+              <legend class="sr-only">Hardware Safety and Unlock Permissions</legend>
+
+              <!-- Emergency Unlock Toggle Card -->
+              <label
+                for="isEmergencyUnlockAllowed"
+                class="flex cursor-pointer items-start justify-between gap-3 rounded-xl border p-3.5 transition-colors"
+                [class.border-border]="isEmergencyUnlockAllowed"
+                [class.bg-muted/20]="isEmergencyUnlockAllowed"
+                [class.border-destructive/50]="!isEmergencyUnlockAllowed"
+                [class.bg-destructive/5]="!isEmergencyUnlockAllowed"
+              >
+                <div class="space-y-1">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-semibold text-foreground">Emergency Unlock Allowed</span>
+                    <span hlmBadge [variant]="isEmergencyUnlockAllowed ? 'success' : 'destructive'">
+                      {{ isEmergencyUnlockAllowed ? 'Enabled' : 'Disabled' }}
+                    </span>
+                  </div>
+                  <p class="text-xs text-muted-foreground">
+                    Permits the lock owner to release the lock in an emergency using a one-time emergency unlock key.
+                  </p>
+                </div>
+                <input
+                  id="isEmergencyUnlockAllowed"
+                  type="checkbox"
+                  formControlName="isEmergencyUnlockAllowed"
+                  class="mt-1 h-4 w-4 shrink-0 rounded border-input text-primary focus:ring-ring"
+                />
+              </label>
+
+              @if (!isEmergencyUnlockAllowed) {
+                <div hlmAlert variant="destructive" class="py-2.5 px-3 text-xs">
+                  <h3 hlmAlertTitle class="text-xs font-semibold">🚨 High-Risk Safety Configuration</h3>
+                  <div hlmAlertDescription class="text-xs">
+                    Disabling emergency unlock prevents emergency keys from opening this lock. The lock owner will be shown a high-severity warning on their contract audit screen.
+                  </div>
+                </div>
+              }
+
+              <!-- Temporary Unlock Toggle Card -->
+              <label
+                for="isTempUnlockAllowed"
+                class="flex cursor-pointer items-start justify-between gap-3 rounded-xl border border-border bg-muted/20 p-3.5 transition-colors"
+              >
+                <div class="space-y-1">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-semibold text-foreground">Temporary Unlock Allowed</span>
+                    <span hlmBadge [variant]="isTempUnlockAllowed ? 'success' : 'secondary'">
+                      {{ isTempUnlockAllowed ? 'Allowed' : 'Disallowed' }}
+                    </span>
+                  </div>
+                  <p class="text-xs text-muted-foreground">
+                    Permits temporary unlock and re-lock cycles while keeping the contract active.
+                  </p>
+                </div>
+                <input
+                  id="isTempUnlockAllowed"
+                  type="checkbox"
+                  formControlName="isTempUnlockAllowed"
+                  class="mt-1 h-4 w-4 shrink-0 rounded border-input text-primary focus:ring-ring"
+                />
+              </label>
+            </fieldset>
+          </div>
+        </section>
+
+        <!-- Step 2: Cryptographically Signed Terms -->
+        <section hlmCard>
+          <div hlmCardHeader class="pb-3">
+            <div class="flex items-center justify-between gap-2">
+              <h2 hlmCardTitle class="text-base">2. Signed Contract Terms</h2>
+              <span hlmBadge variant="outline" class="text-[11px]">🔒 Signed On-Lock</span>
+            </div>
+            <p hlmCardDescription>
+              Embedded into the binary contract payload and cryptographically signed with your ECDSA key.
+            </p>
+          </div>
+
+          <div hlmCardContent class="space-y-2">
+            <div class="flex items-center justify-between">
+              <label hlmLabel for="terms">Contract Terms</label>
+              <span class="font-mono text-xs text-muted-foreground">{{ termsLength }} chars</span>
+            </div>
+            <textarea
+              id="terms"
+              hlmInput
+              formControlName="terms"
+              placeholder="Write the binding terms of this contract (e.g. duration, release conditions, expectations)..."
+              rows="4"
+            ></textarea>
+          </div>
+        </section>
+
+        <!-- Step 3: Coordinator Notes (Off-Chain) -->
+        <section hlmCard>
+          <div hlmCardHeader class="pb-3">
+            <div class="flex items-center justify-between gap-2">
+              <h2 hlmCardTitle class="text-base">3. Coordinator Notes</h2>
+              <span hlmBadge variant="secondary" class="text-[11px]">🌐 Website Only</span>
+            </div>
+            <p hlmCardDescription>
+              Saved on the coordinator website for convenience; not included in the binary lock payload.
+            </p>
+          </div>
+
+          <div hlmCardContent class="space-y-2">
+            <label hlmLabel for="notes">Session / Contract Notes</label>
+            <textarea
+              id="notes"
+              hlmInput
+              formControlName="notes"
+              placeholder="Optional notes visible on the website dashboard..."
+              rows="3"
+            ></textarea>
+          </div>
+        </section>
+
+        <!-- Step 4: Contract Summary & Sign CTA -->
+        <section hlmCard class="border-t-4 border-t-primary">
+          <div hlmCardContent class="space-y-4 pt-5">
+            <div class="grid grid-cols-3 gap-2 rounded-lg border border-border bg-muted/30 p-3 text-center text-xs">
+              <div>
+                <span class="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Emergency</span>
+                <strong [class.text-destructive]="!isEmergencyUnlockAllowed" [class.text-foreground]="isEmergencyUnlockAllowed">
+                  {{ isEmergencyUnlockAllowed ? 'Allowed' : 'Disabled' }}
+                </strong>
+              </div>
+              <div class="border-x border-border">
+                <span class="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Temp Unlock</span>
+                <strong class="text-foreground">{{ isTempUnlockAllowed ? 'Allowed' : 'No' }}</strong>
+              </div>
+              <div>
+                <span class="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Bots</span>
+                <strong class="text-foreground">{{ selectedBots.length }} Attached</strong>
+              </div>
+            </div>
+
+            <div class="flex flex-col gap-2.5 sm:flex-row">
+              <a
+                [routerLink]="['/lock-sessions', lockSessionToken]"
+                hlmBtn
+                variant="outline"
+                size="lg"
+                class="sm:w-1/3"
+              >
+                Cancel
+              </a>
+              <button
+                hlmBtn
+                variant="default"
+                size="lg"
+                class="flex-1"
+                type="submit"
+                [disabled]="isSubmitting"
+              >
+                @if (isSubmitting) {
+                  Signing &amp; Saving...
+                } @else if (lockSession?.isTotalControlToken()) {
+                  Sign &amp; Assign Contract &rarr;
+                } @else {
+                  Sign &amp; Propose Contract &rarr;
+                }
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Right Column (7 cols): Attached Bots & Permissions + Bot Directory -->
+      <div class="space-y-6 lg:col-span-7">
+        <!-- Attached Bots & Granular Permissions Matrix -->
+        <section hlmCard class="border-l-4 border-l-primary">
+          <div hlmCardHeader class="pb-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 hlmCardTitle class="text-base">Attached Bots &amp; Permissions</h2>
+                <p hlmCardDescription>
+                  Configure which hardware commands and telemetry events each attached bot is authorized to use.
+                </p>
+              </div>
+              <span hlmBadge [variant]="selectedBots.length > 0 ? 'default' : 'secondary'">
+                {{ selectedBots.length }} Attached
+              </span>
+            </div>
+          </div>
+
+          <div hlmCardContent formArrayName="bots">
+            @if (selectedBotGroups.length === 0) {
+              <div class="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-6 text-center text-sm text-muted-foreground">
+                <p class="font-medium text-foreground">No bots attached to this contract</p>
+                <p class="mt-1 text-xs">
+                  You can manage this contract manually with your author key, or attach one or more automated bots from the directory below.
+                </p>
+              </div>
+            } @else {
+              <div class="space-y-3">
+                @for (botGroup of selectedBotGroups; track botGroup.value.name; let i = $index) {
+                  <div
+                    [formGroupName]="i"
+                    class="rounded-xl border border-border bg-muted/20 p-4 space-y-3"
+                  >
+                    <div class="flex flex-wrap items-start justify-between gap-2">
+                      <div class="space-y-0.5">
+                        <div class="flex items-center gap-2">
+                          <span class="font-mono text-sm font-semibold text-foreground">
+                            🤖 {{ botGroup.value.name }}
+                          </span>
+                          <span hlmBadge variant="success">Attached</span>
+                        </div>
+                        @if (getBotDescription(botGroup.value.name); as desc) {
+                          <p class="text-xs text-muted-foreground">{{ desc }}</p>
+                        }
+                      </div>
+
+                      <button
+                        type="button"
+                        hlmBtn
+                        variant="outline"
+                        size="sm"
+                        class="h-7 px-2.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        (click)="removeBot(i)"
+                      >
+                        Remove Bot
+                      </button>
+                    </div>
+
+                    <!-- 4-Permission Checkboxes -->
+                    <div class="grid grid-cols-2 gap-2 pt-1 sm:grid-cols-4">
+                      <label
+                        class="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted/40"
+                      >
+                        <input
+                          type="checkbox"
+                          formControlName="receiveEvents"
+                          class="h-3.5 w-3.5 rounded border-input text-primary focus:ring-ring"
+                        />
+                        <span>📡 Receive Events</span>
+                      </label>
+
+                      <label
+                        class="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted/40"
+                      >
+                        <input
+                          type="checkbox"
+                          formControlName="canLock"
+                          class="h-3.5 w-3.5 rounded border-input text-primary focus:ring-ring"
+                        />
+                        <span>🔒 Can Lock</span>
+                      </label>
+
+                      <label
+                        class="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted/40"
+                      >
+                        <input
+                          type="checkbox"
+                          formControlName="canUnlock"
+                          class="h-3.5 w-3.5 rounded border-input text-primary focus:ring-ring"
+                        />
+                        <span>🔓 Can Unlock</span>
+                      </label>
+
+                      <label
+                        class="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted/40"
+                      >
+                        <input
+                          type="checkbox"
+                          formControlName="canRelease"
+                          class="h-3.5 w-3.5 rounded border-input text-primary focus:ring-ring"
+                        />
+                        <span>🕊️ Can Release</span>
+                      </label>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </section>
+
+        <!-- Bot Directory Selector -->
+        <app-bot-selector
+          [bots]="bots"
+          [selectedBotNames]="selectedBotNames"
+          [showSelectedTray]="false"
+          (botAdded)="addBot($event)"
+          (botRemoved)="removeBotByName($event)"
+        ></app-bot-selector>
+      </div>
     </div>
-  </div>
-</form>
+  </form>
+</div>

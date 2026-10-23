@@ -11,7 +11,7 @@
 
   <div hlmCardContent class="space-y-4">
     <!-- Selected Bots Tray -->
-    @if (selectedBotNames.length > 0) {
+    @if (showSelectedTray && selectedBotNames.length > 0) {
       <div class="rounded-lg border border-border bg-muted/40 p-3">
         <div class="mb-2 flex items-center justify-between">
           <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
