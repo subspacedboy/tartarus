@@ -1,103 +1,315 @@
 @if (lockSession) {
-  <div class="mx-auto max-w-5xl space-y-6">
-    <div class="flex flex-wrap items-start justify-between gap-4">
-      <div class="space-y-1">
-        <div class="flex items-center gap-2.5">
-          <h1 class="text-2xl font-bold tracking-tight text-foreground">Lock Session</h1>
-          <code class="rounded border border-border bg-muted px-2 py-0.5 font-mono text-sm text-foreground">
-            {{ sessionToken }}
-          </code>
-          @if (lockSession.isTotalControlToken()) {
-            <span hlmBadge variant="warning">Total Control</span>
-          }
-        </div>
-        <p class="text-sm text-muted-foreground">
-          Manage session notes and contracts you've written for this lock and holder.
-        </p>
-      </div>
-
-      <div>
-        @if (lockSession.isTotalControlToken()) {
-          @if (lockSession.availableForContract) {
-            <button type="button" hlmBtn variant="default" (click)="navToNewContract()">
-              + New Contract
-            </button>
-          } @else {
-            <span hlmBadge variant="warning">Unavailable for new contract</span>
-          }
-        } @else {
-          <button type="button" hlmBtn variant="default" (click)="navToNewContract()">
-            + New Contract
-          </button>
-        }
-      </div>
+  <div class="mx-auto max-w-6xl space-y-6">
+    <!-- Top Breadcrumb Navigation -->
+    <div>
+      <a
+        routerLink="/lock-sessions"
+        class="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <span aria-hidden="true">&larr;</span>
+        <span>Back to Lock Sessions</span>
+      </a>
     </div>
 
-    @if (lockSession.isStale()) {
-      <div hlmAlert variant="warning">
-        <h2 hlmAlertTitle>Stale Lock Session</h2>
-        <div hlmAlertDescription>
-          <p>Heads up! This lock session hasn't updated for over a day. It might not be online or it's been reset.</p>
-          <p class="mt-1 text-xs">Last update {{ lockSession.updatedAt | dateAgo }}</p>
-        </div>
-      </div>
-    }
+    <!-- 1. Unified Session Identity & Hardware Telemetry Header -->
+    <section
+      hlmCard
+      class="overflow-hidden border-l-4"
+      [class.border-l-destructive]="lockSession.lockState?.isLocked"
+      [class.border-l-emerald-500]="!lockSession.lockState?.isLocked"
+    >
+      <div class="p-5 sm:p-6">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div class="space-y-1.5">
+            <div class="flex flex-wrap items-center gap-2">
+              <h1 class="text-2xl font-bold tracking-tight text-foreground">
+                {{ sessionTitle }}
+              </h1>
 
-    @if (lockSession.isTotalControlToken()) {
-      <div hlmAlert variant="warning">
-        <h2 hlmAlertTitle>Total Control Token</h2>
-        <div hlmAlertDescription>
-          Note: You have a total control token. This means you can assign a contract directly to the lock without prompting the lock owner.
-        </div>
-      </div>
-    }
+              <!-- Token Pill + Copy -->
+              <div class="inline-flex items-center gap-1 rounded border border-border bg-muted px-2 py-0.5">
+                <code class="font-mono text-xs text-foreground">{{ sessionToken }}</code>
+                <button
+                  type="button"
+                  class="ml-1 text-xs font-medium text-primary hover:underline"
+                  (click)="copySessionToken()"
+                  aria-label="Copy session token"
+                >
+                  Copy
+                </button>
+              </div>
 
-    <section hlmCard>
-      <div hlmCardHeader>
-        <h2 hlmCardTitle class="text-lg">Session Label / Notes</h2>
-        <p hlmCardDescription>Assign a friendly name so this session is easy to identify.</p>
-      </div>
-      <div hlmCardContent>
-        <form [formGroup]="knownTokenForm" (submit)="saveNotes()" class="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <div class="flex-1 space-y-1.5">
-            <label hlmLabel for="notes">Notes</label>
-            <input
-              id="notes"
-              hlmInput
-              type="text"
-              formControlName="notes"
-              placeholder="Name this session so it's easy to remember"
-            />
+              @if (lockSession.isTotalControlToken()) {
+                <span hlmBadge variant="warning">⚠️ Total Control</span>
+              } @else {
+                <span hlmBadge variant="secondary">🛡️ Reviewable Session</span>
+              }
+
+              @if (lockSession.availableForContract === false) {
+                <span hlmBadge variant="secondary">Contract Active</span>
+              } @else {
+                <span hlmBadge variant="success">Available for Contract</span>
+              }
+
+              @if (lockSession.validatedFirmware) {
+                <span hlmBadge variant="success">🛡️ Verified Firmware</span>
+              }
+
+              @if (lockSession.currentFirmware) {
+                <span hlmBadge variant="outline" class="font-mono text-xs">{{ lockSession.currentFirmware }}</span>
+              }
+            </div>
+
+            <p class="text-sm text-muted-foreground">
+              Inspect live lock mechanism state, manage your session label, and author or operate contracts for this wearer.
+            </p>
           </div>
-          <button hlmBtn variant="secondary" type="submit">
-            Save
+
+          <!-- Physical Mechanism Hero Pill -->
+          <div class="flex items-center gap-3.5 rounded-xl border border-border bg-muted/40 px-4 py-3">
+            @if (lockSession.lockState?.isLocked) {
+              <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-destructive/15 text-destructive">
+                <svg
+                  role="img"
+                  aria-label="Lock is currently locked"
+                  class="h-6 w-6 fill-current"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 50 50"
+                >
+                  <path d="M 25 3 C 18.363281 3 13 8.363281 13 15 L 13 20 L 9 20 C 7.355469 20 6 21.355469 6 23 L 6 47 C 6 48.644531 7.355469 50 9 50 L 41 50 C 42.644531 50 44 48.644531 44 47 L 44 23 C 44 21.355469 42.644531 20 41 20 L 37 20 L 37 15 C 37 8.363281 31.636719 3 25 3 Z M 25 5 C 30.566406 5 35 9.433594 35 15 L 35 20 L 15 20 L 15 15 C 15 9.433594 19.433594 5 25 5 Z M 9 22 L 41 22 C 41.554688 22 42 22.445313 42 23 L 42 47 C 42 47.554688 41.554688 48 41 48 L 9 48 C 8.445313 48 8 47.554688 8 47 L 8 23 C 8 22.445313 8.445313 22 9 22 Z M 25 30 C 23.300781 30 22 31.300781 22 33 C 22 33.898438 22.398438 34.6875 23 35.1875 L 23 38 C 23 39.101563 23.898438 40 25 40 C 26.101563 40 27 39.101563 27 38 L 27 35.1875 C 27.601563 34.6875 28 33.898438 28 33 C 28 31.300781 26.699219 30 25 30 Z"></path>
+                </svg>
+              </span>
+            } @else {
+              <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                <svg
+                  role="img"
+                  aria-label="Lock is currently unlocked"
+                  class="h-6 w-6 fill-current"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 50 50"
+                >
+                  <path d="M 22.78125 0 C 21.605469 -0.00390625 20.40625 0.164063 19.21875 0.53125 C 12.902344 2.492188 9.289063 9.269531 11.25 15.59375 L 11.25 15.65625 C 11.507813 16.367188 12.199219 18.617188 12.625 20 L 9 20 C 7.355469 20 6 21.355469 6 23 L 6 47 C 6 48.644531 7.355469 50 9 50 L 41 50 C 42.644531 50 44 48.644531 44 47 L 44 23 C 44 21.355469 42.644531 20 41 20 L 14.75 20 C 14.441406 19.007813 13.511719 16.074219 13.125 15 L 13.15625 15 C 11.519531 9.722656 14.5 4.109375 19.78125 2.46875 C 25.050781 0.832031 30.695313 3.796875 32.34375 9.0625 C 32.34375 9.066406 32.34375 9.089844 32.34375 9.09375 C 32.570313 9.886719 33.65625 13.40625 33.65625 13.40625 C 33.746094 13.765625 34.027344 14.050781 34.386719 14.136719 C 34.75 14.226563 35.128906 14.109375 35.375 13.832031 C 35.621094 13.550781 35.695313 13.160156 35.5625 12.8125 C 35.5625 12.8125 34.433594 9.171875 34.25 8.53125 L 34.25 8.5 C 32.78125 3.761719 28.601563 0.542969 23.9375 0.0625 C 23.550781 0.0234375 23.171875 0 22.78125 0 Z M 9 22 L 41 22 C 41.554688 22 42 22.445313 42 23 L 42 47 C 42 47.554688 41.554688 48 41 48 L 9 48 C 8.445313 48 8 47.554688 8 47 L 8 23 C 8 22.445313 8.445313 22 9 22 Z M 25 30 C 23.300781 30 22 31.300781 22 33 C 22 33.898438 22.398438 34.6875 23 35.1875 L 23 38 C 23 39.101563 23.898438 40 25 40 C 26.101563 40 27 39.101563 27 38 L 27 35.1875 C 27.601563 34.6875 28 33.898438 28 33 C 28 31.300781 26.699219 30 25 30 Z"></path>
+                </svg>
+              </span>
+            }
+
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mechanism</span>
+                @if (lockSession.lockState?.isLocked) {
+                  <span hlmBadge variant="destructive">Locked</span>
+                } @else {
+                  <span hlmBadge variant="success">Unlocked</span>
+                }
+              </div>
+              <div class="mt-0.5 text-xs text-muted-foreground">
+                Last Update: <strong class="text-foreground">{{ lockSession.updatedAt | dateAgo }}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Alerts (Emergency Unlock, Stale, Total Control) -->
+        @if (lockSession.lockState?.emergencyUnlocked) {
+          <div hlmAlert variant="destructive" class="mt-4">
+            <h2 hlmAlertTitle>🚨 Emergency Unlocked!</h2>
+            <div hlmAlertDescription>
+              This lock was unlocked via emergency unlock. It requires an explicit LOCK command before other commands can be processed.
+            </div>
+          </div>
+        }
+
+        @if (lockSession.isStale()) {
+          <div hlmAlert variant="warning" class="mt-4">
+            <h2 hlmAlertTitle>Stale Lock Session</h2>
+            <div hlmAlertDescription>
+              <p>Heads up! This lock session hasn't updated for over a day. It might not be online or it's been reset.</p>
+              <p class="mt-1 text-xs">Last update {{ lockSession.updatedAt | dateAgo }}</p>
+            </div>
+          </div>
+        }
+
+        @if (lockSession.isTotalControlToken()) {
+          <div hlmAlert variant="warning" class="mt-4">
+            <h2 hlmAlertTitle>Total Control Token</h2>
+            <div hlmAlertDescription>
+              Note: You have a total control token. This means you can assign a contract directly to the lock without prompting the lock owner.
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Inline Session Label / Notes Bar -->
+      <div class="border-t border-border/60 bg-muted/20 px-5 py-3.5 sm:px-6">
+        <form [formGroup]="knownTokenForm" (submit)="saveNotes()" class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <label hlmLabel for="notes" class="shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Session Label:
+          </label>
+          <input
+            id="notes"
+            hlmInput
+            type="text"
+            formControlName="notes"
+            placeholder="Name this session so it's easy to remember (e.g. Alex's Lock)"
+            class="h-9 flex-1 text-sm"
+          />
+          <button hlmBtn variant="secondary" size="sm" type="submit" class="shrink-0">
+            Save Label
           </button>
         </form>
       </div>
     </section>
 
-    <div class="space-y-3">
-      <h2 class="text-lg font-semibold text-foreground">Contracts</h2>
-      @if (contracts && contracts.length > 0) {
+    <!-- 2. Authoring CTA Bar -->
+    <div class="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-4 shadow-xs">
+      <div class="space-y-0.5">
+        <h2 class="text-sm font-semibold text-foreground">
+          @if (lockSession.isTotalControlToken()) {
+            Direct Contract Assignment
+          } @else {
+            Contract Proposals &amp; Operations
+          }
+        </h2>
+        <p class="text-xs text-muted-foreground">
+          @if (lockSession.isTotalControlToken()) {
+            @if (lockSession.availableForContract) {
+              This lock is available. You can assign a contract that takes effect immediately.
+            } @else {
+              This lock already has an active contract and is currently unavailable for a new Total Control assignment.
+            }
+          } @else {
+            Write a new contract proposal for the wearer to inspect and accept on their lock.
+          }
+        </p>
+      </div>
+
+      <div>
+        @if (canCreateContract) {
+          <button type="button" hlmBtn variant="default" (click)="navToNewContract()">
+            {{ lockSession.isTotalControlToken() ? '+ Assign New Contract' : '+ New Contract' }}
+          </button>
+        } @else {
+          <span hlmBadge variant="warning">Unavailable for new contract</span>
+        }
+      </div>
+    </div>
+
+    <!-- 3. Active Contract Spotlight (CONFIRMED or ACCEPTED) -->
+    @if (activeContract; as active) {
+      <section hlmCard class="border-l-4 border-l-primary">
+        <div hlmCardHeader class="pb-3">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="space-y-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xs font-semibold uppercase tracking-wider text-primary">Active Contract</span>
+                <span hlmBadge [variant]="active.state === 'CONFIRMED' ? 'success' : 'default'">
+                  {{ active.state === 'CONFIRMED' ? 'Confirmed & Active' : 'Accepted (Awaiting Confirmation)' }}
+                </span>
+                @if (active.serialNumber !== undefined) {
+                  <span hlmBadge variant="outline" class="font-mono text-xs">Next Counter: #{{ active.serialNumber }}</span>
+                }
+              </div>
+              <h2 hlmCardTitle class="font-mono text-xl">{{ active.name }}</h2>
+            </div>
+
+            <a
+              [routerLink]="['contract', active.name]"
+              hlmBtn
+              variant="default"
+              size="sm"
+            >
+              Open Contract Workbench &rarr;
+            </a>
+          </div>
+        </div>
+
+        <div hlmCardContent class="space-y-3">
+          @if (active.notes) {
+            <div class="rounded-lg border border-border bg-muted/30 p-3 text-sm">
+              <span class="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Contract Notes</span>
+              <p class="text-foreground">{{ active.notes }}</p>
+            </div>
+          }
+
+          @if (active.messages && active.messages.length > 0) {
+            <div class="space-y-1.5">
+              <span class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Recent Bot Messages ({{ active.messages.length }})
+              </span>
+              <ul class="divide-y divide-border rounded-lg border border-border bg-muted/20 text-sm">
+                @for (m of active.messages; track m.name) {
+                  <li class="px-3.5 py-2 text-foreground">{{ m.body }}</li>
+                }
+              </ul>
+            </div>
+          }
+        </div>
+      </section>
+    }
+
+    <!-- 4. Pending Proposals (CREATED) -->
+    @if (pendingProposals.length > 0) {
+      <section class="space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <h2 class="text-lg font-semibold text-foreground">Pending Proposals</h2>
+            <span hlmBadge variant="warning">{{ pendingProposals.length }} In Review</span>
+          </div>
+          <span class="text-xs text-muted-foreground">
+            Awaiting wearer acceptance or confirmation before locking commands can be issued
+          </span>
+        </div>
+
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          @for (c of contracts; track c.name) {
+          @for (c of pendingProposals; track c.name) {
             <app-contract-card [contract]="c"></app-contract-card>
           }
         </div>
-      } @else {
-        <section hlmCard class="py-6 text-center">
-          <div hlmCardContent class="text-sm text-muted-foreground">
-            No contracts written for this lock session yet.
+      </section>
+    }
+
+    <!-- Empty Active State -->
+    @if (!activeContract && pendingProposals.length === 0) {
+      <section hlmCard class="py-10 text-center">
+        <div hlmCardContent class="mx-auto max-w-md space-y-2 text-sm text-muted-foreground">
+          <div class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <span aria-hidden="true">📜</span>
           </div>
-        </section>
-      }
-    </div>
+          <h2 class="text-base font-semibold text-foreground">No Active or Pending Contracts</h2>
+          <p>
+            You don't have any active or proposed contracts for this lock session right now.
+          </p>
+        </div>
+      </section>
+    }
+
+    <!-- 5. Historical Contracts Archive (RELEASED, REJECTED, ABORTED) -->
+    @if (historicalContracts.length > 0) {
+      <section class="space-y-3 border-t border-border pt-6">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <h2 class="text-base font-semibold text-foreground">Contract History</h2>
+            <span hlmBadge variant="secondary">{{ historicalContracts.length }}</span>
+          </div>
+          <button
+            type="button"
+            hlmBtn
+            variant="ghost"
+            size="sm"
+            (click)="showHistory = !showHistory"
+          >
+            {{ showHistory || (!activeContract && pendingProposals.length === 0) ? 'Hide History' : 'Show History' }}
+          </button>
+        </div>
+
+        @if (showHistory || (!activeContract && pendingProposals.length === 0)) {
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            @for (c of historicalContracts; track c.name) {
+              <app-contract-card [contract]="c"></app-contract-card>
+            }
+          </div>
+        }
+      </section>
+    }
   </div>
 }
-
-
-
-
-
-
-

@@ -1,38 +1,88 @@
 @if (knownToken) {
-  <section hlmCard class="flex h-full flex-col justify-between border-l-4 border-l-primary transition-shadow hover:shadow-md">
+  <section
+    hlmCard
+    class="flex h-full flex-col justify-between border-l-4 transition-shadow hover:shadow-md"
+    [class.border-l-primary]="hasCustomLabel"
+    [class.border-l-muted-foreground]="!hasCustomLabel"
+  >
     <div hlmCardHeader class="pb-3">
       <div class="flex items-start justify-between gap-2">
-        <h3
-          hlmCardTitle
-          class="truncate text-base font-semibold text-foreground"
-          [title]="knownToken.notes || knownToken.name"
-        >
-          {{ knownToken.notes || knownToken.name }}
-        </h3>
-        <span hlmBadge variant="secondary" class="shrink-0">Lock Session</span>
+        <div class="min-w-0 space-y-0.5">
+          <h3
+            hlmCardTitle
+            class="truncate text-base font-semibold"
+            [class.text-foreground]="hasCustomLabel"
+            [class.text-muted-foreground]="!hasCustomLabel"
+            [class.italic]="!hasCustomLabel"
+            [title]="displayTitle"
+          >
+            {{ displayTitle }}
+          </h3>
+          @if (knownToken.name) {
+            <p class="truncate font-mono text-xs text-muted-foreground" [title]="knownToken.name">
+              ID: {{ knownToken.name }}
+            </p>
+          }
+        </div>
+        <span hlmBadge [variant]="hasCustomLabel ? 'secondary' : 'outline'" class="shrink-0">
+          {{ hasCustomLabel ? 'Saved Session' : 'No Label' }}
+        </span>
       </div>
     </div>
 
-    <div hlmCardContent class="space-y-2 pb-3 text-sm">
-      <div class="flex items-center gap-2">
-        <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Token:</span>
-        <code class="select-all rounded border border-border bg-muted px-2 py-0.5 font-mono text-xs text-foreground">
-          {{ knownToken.shareableToken }}
-        </code>
+    <div hlmCardContent class="space-y-2.5 pb-3 text-sm">
+      <div class="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/40 px-2.5 py-1.5">
+        <div class="min-w-0">
+          <span class="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Session Token
+          </span>
+          <code class="block truncate select-all font-mono text-xs text-foreground" [title]="knownToken.shareableToken">
+            {{ knownToken.shareableToken }}
+          </code>
+        </div>
+        <button
+          type="button"
+          hlmBtn
+          variant="ghost"
+          size="sm"
+          class="h-7 shrink-0 px-2 text-xs"
+          (click)="copyToken($event)"
+          aria-label="Copy session token"
+        >
+          Copy
+        </button>
       </div>
+
       @if (knownToken.createdAt) {
         <p class="text-xs text-muted-foreground">
-          Added {{ knownToken.createdAt | date: 'short' }}
+          Added {{ knownToken.createdAt | date: 'mediumDate' }}
+        </p>
+      } @else if (!hasCustomLabel) {
+        <p class="text-xs text-muted-foreground">
+          Open this session to add a recognizable label.
         </p>
       }
     </div>
 
     <div hlmCardFooter class="justify-between gap-2 border-t border-border/60 pt-3">
-      <a [routerLink]="['/lock-sessions', knownToken.shareableToken]" hlmBtn variant="default" size="sm">
-        Details
+      <a
+        [routerLink]="['/lock-sessions', knownToken.shareableToken]"
+        hlmBtn
+        variant="default"
+        size="sm"
+        class="flex-1"
+      >
+        Open Session &rarr;
       </a>
-      <button type="button" hlmBtn variant="destructive" size="sm" (click)="onDelete($event)">
-        Delete
+      <button
+        type="button"
+        hlmBtn
+        variant="outline"
+        size="sm"
+        class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+        (click)="onDelete($event)"
+      >
+        Remove
       </button>
     </div>
   </section>

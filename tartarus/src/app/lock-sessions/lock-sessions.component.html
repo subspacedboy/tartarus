@@ -1,28 +1,107 @@
-<div class="space-y-6">
-  <div>
-    <h1 class="text-2xl font-bold tracking-tight text-foreground">Lock Sessions</h1>
-    <p class="text-sm text-muted-foreground">
-      Saved lock sessions shared with your author key.
-    </p>
+<div class="mx-auto max-w-6xl space-y-6">
+  <!-- 1. Page Header -->
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div class="space-y-1">
+      <div class="flex flex-wrap items-center gap-2.5">
+        <h1 class="text-2xl font-bold tracking-tight text-foreground">Lock Sessions</h1>
+        <span hlmBadge variant="secondary">{{ knownTokens.length }} Saved</span>
+        @if (knownTokens.length > 0 && labeledCount < knownTokens.length) {
+          <span hlmBadge variant="outline">{{ knownTokens.length - labeledCount }} Unlabeled</span>
+        }
+      </div>
+      <p class="text-sm text-muted-foreground">
+        Manage lock sessions shared with your author key or connect directly to a new invite token.
+      </p>
+    </div>
   </div>
 
+  <!-- 2. Quick-Connect to Shared Session Bar -->
+  <section hlmCard class="border-l-4 border-l-primary">
+    <div hlmCardContent class="p-4 sm:p-5">
+      <form (ngSubmit)="connectToSession()" class="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div class="flex-1 space-y-1.5">
+          <label hlmLabel for="connectSessionInput" class="text-xs font-semibold uppercase tracking-wider text-primary">
+            Connect to a Shared Lock Session
+          </label>
+          <input
+            id="connectSessionInput"
+            name="connectSessionInput"
+            hlmInput
+            type="text"
+            [(ngModel)]="connectInput"
+            placeholder="Paste a session token or full invite link (e.g. https://.../lock-sessions/QAAAB3...)"
+            class="font-mono text-xs sm:text-sm"
+          />
+        </div>
+        <button
+          type="submit"
+          hlmBtn
+          variant="default"
+          [disabled]="!connectInput.trim()"
+          class="shrink-0"
+        >
+          Open Session &rarr;
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <!-- 3. Saved Lock Sessions Directory -->
   @if (knownTokens.length === 0) {
-    <section hlmCard class="py-8 text-center">
-      <div hlmCardContent class="space-y-2 text-sm text-muted-foreground">
-        <p class="font-medium text-foreground">No lock sessions yet</p>
+    <section hlmCard class="py-12 text-center">
+      <div hlmCardContent class="mx-auto max-w-md space-y-2 text-sm text-muted-foreground">
+        <div class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <span aria-hidden="true">🔑</span>
+        </div>
+        <h2 class="text-base font-semibold text-foreground">No Saved Lock Sessions Yet</h2>
         <p>
-          You'll need a lock session link to write a contract. Ask a lock wearer to share their Tartarus session link with you.
+          Ask a lock wearer to share their Tartarus session link or token with you, then paste it above to inspect their lock and author a contract.
         </p>
       </div>
     </section>
   } @else {
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      @for (k of knownTokens; track k.name) {
-        <app-lock-session-card
-          class="block h-full"
-          [knownToken]="k"
-          (delete)="confirmDelete(k)"
-        ></app-lock-session-card>
+    <div class="space-y-4">
+      <!-- Search / Filter Bar -->
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="relative flex-1 sm:max-w-md">
+          <label for="sessionSearchInput" class="sr-only">Search lock sessions</label>
+          <input
+            id="sessionSearchInput"
+            name="sessionSearchInput"
+            hlmInput
+            type="search"
+            [(ngModel)]="searchQuery"
+            placeholder="Filter by session label, token, or ID..."
+            class="w-full text-sm"
+          />
+        </div>
+        <div class="text-xs text-muted-foreground">
+          Showing <strong class="text-foreground">{{ filteredKnownTokens.length }}</strong> of {{ knownTokens.length }} saved sessions
+        </div>
+      </div>
+
+      @if (filteredKnownTokens.length === 0) {
+        <section hlmCard class="py-8 text-center">
+          <div hlmCardContent class="space-y-3 text-sm text-muted-foreground">
+            <p class="font-medium text-foreground">No matching lock sessions found</p>
+            <p>No saved sessions matched <code class="font-mono text-xs text-foreground">"{{ searchQuery }}"</code>.</p>
+            <div>
+              <button type="button" hlmBtn variant="outline" size="sm" (click)="clearSearch()">
+                Clear Filter
+              </button>
+            </div>
+          </div>
+        </section>
+      } @else {
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          @for (k of filteredKnownTokens; track k.name) {
+            <app-lock-session-card
+              class="block h-full"
+              [knownToken]="k"
+              (delete)="confirmDelete(k)"
+            ></app-lock-session-card>
+          }
+        </div>
       }
     </div>
   }
@@ -34,18 +113,18 @@
   (closed)="cancelDelete()"
 >
   <div hlmDialogHeader>
-    <h2 hlmDialogTitle>Delete Lock Session</h2>
+    <h2 hlmDialogTitle>Remove Saved Lock Session</h2>
     <p hlmDialogDescription>
       Are you sure you want to remove
       <strong class="text-foreground">{{ tokenToDelete?.notes || tokenToDelete?.shareableToken || tokenToDelete?.name }}</strong>
-      from your lock sessions?
+      from your saved lock sessions?
     </p>
   </div>
   <p class="text-xs text-muted-foreground">
-    You can re-add it at any time by revisiting its shareable link.
+    Removing this bookmark does not cancel active contracts. You can re-add the session at any time by pasting its shareable token or link.
   </p>
   <div hlmDialogFooter>
     <button type="button" hlmBtn variant="outline" (click)="cancelDelete()">Cancel</button>
-    <button type="button" hlmBtn variant="destructive" (click)="confirmDeleteAction()">Delete</button>
+    <button type="button" hlmBtn variant="destructive" (click)="confirmDeleteAction()">Remove Session</button>
   </div>
 </hlm-dialog>
