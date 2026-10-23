@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 import * as flatbuffers from 'flatbuffers';
 import { ContractDetailComponent } from './contract-detail.component';
 import { SignedMessage } from '../club/subjugated/fb/message/signed-message';
@@ -7,6 +8,8 @@ import { Contract } from '../club/subjugated/fb/message/contract';
 import { Bot as FBBot } from '../club/subjugated/fb/message/bot';
 import { Permission } from '../club/subjugated/fb/message/permission';
 import { Contract as ContractModel } from '../models/contract';
+import { Command } from '../models/command';
+import { Message } from '../models/message';
 import { Bot } from '../models/bot';
 
 describe('ContractDetailComponent', () => {
@@ -276,5 +279,50 @@ describe('ContractDetailComponent', () => {
     expect(stopPropagationSpy).toHaveBeenCalled();
     expect(writeTextSpy).toHaveBeenCalledWith('author-bot-pubkey');
     expect(component.copiedBotName).toBe('Test Bot');
+  });
+
+  it('should guard Release Contract behind a confirmation modal and call release() on confirm', () => {
+    const releaseSpy = vi.spyOn(component, 'release').mockImplementation(() => {});
+    component.contract = new ContractModel({
+      name: 'contract-confirm-release',
+      state: 'CONFIRMED',
+      nextCounter: 3
+    });
+    fixture.detectChanges();
+
+    expect(component.showReleaseConfirmModal).toBe(false);
+    component.openReleaseConfirm();
+    expect(component.showReleaseConfirmModal).toBe(true);
+
+    component.cancelReleaseConfirm();
+    expect(component.showReleaseConfirmModal).toBe(false);
+    expect(releaseSpy).not.toHaveBeenCalled();
+
+    component.openReleaseConfirm();
+    component.confirmRelease();
+    expect(component.showReleaseConfirmModal).toBe(false);
+    expect(releaseSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('should separate pending/error commands from executed commands and render bot messages', () => {
+    component.contract = new ContractModel({
+      name: 'contract-with-feed',
+      state: 'ACCEPTED',
+      messages: [new Message({ name: 'm1', body: 'Sentry Bot: Check-in verified' })]
+    });
+    component.commands = [
+      new Command({ name: 'c1', type: 'ACCEPT_CONTRACT', state: 'PENDING' }),
+      new Command({ name: 'c2', type: 'UNLOCK', state: 'ERROR', message: 'Counter mismatch' }),
+      new Command({ name: 'c3', type: 'LOCK', state: 'ACKNOWLEDGED' }),
+    ];
+    fixture.detectChanges();
+
+    expect(component.pendingCommands.length).toBe(2);
+    expect(component.executedCommands.length).toBe(1);
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).toContain('Accepted — Awaiting Hardware Sync');
+    expect(compiled.textContent).toContain('In-Flight & Error Commands');
+    expect(compiled.textContent).toContain('Sentry Bot: Check-in verified');
   });
 });

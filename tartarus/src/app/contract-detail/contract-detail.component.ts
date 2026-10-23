@@ -2,7 +2,7 @@ import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { TartarusCoordinatorService } from '../tartarus-coordinator.service';
 import { Contract } from '../models/contract';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { UserDataService } from '../user-data.service';
 import * as flatbuffers from 'flatbuffers';
 import { CryptoService } from '../crypto.service';
@@ -20,14 +20,16 @@ import { ToastService } from '../toast.service';
 import { DateAgoPipe } from "../date-ago.pipe";
 import { Bot } from '../models/bot';
 import { HlmAlertImports } from '../shared/ui/ui-alert-helm';
-import { HlmBadgeDirective } from '../shared/ui/ui-badge-helm';
+import { HlmBadgeDirective, type BadgeVariants } from '../shared/ui/ui-badge-helm';
 import { HlmButtonDirective } from '../shared/ui/ui-button-helm';
 import { HlmCardImports } from '../shared/ui/ui-card-helm';
+import { HlmDialogImports } from '../shared/ui/ui-dialog-helm';
 import { HlmTooltipTriggerDirective } from '../shared/ui/ui-tooltip-helm';
 
 @Component({
   selector: 'app-contract-detail',
   imports: [
+    RouterLink,
     CommandCardComponent,
     DateAgoPipe,
     DatePipe,
@@ -35,6 +37,7 @@ import { HlmTooltipTriggerDirective } from '../shared/ui/ui-tooltip-helm';
     HlmBadgeDirective,
     HlmButtonDirective,
     ...HlmCardImports,
+    ...HlmDialogImports,
     HlmTooltipTriggerDirective,
   ],
   templateUrl: './contract-detail.component.html',
@@ -44,20 +47,25 @@ import { HlmTooltipTriggerDirective } from '../shared/ui/ui-tooltip-helm';
 export class ContractDetailComponent implements OnInit {
   contractName: string;
   contract?: Contract;
-  lockSessionShareableToken? : string;
+  lockSessionShareableToken?: string;
 
-  commands : Command[];
+  commands: Command[];
 
   contractDescription?: ContractDescription;
+  parsedSerialNumber?: number;
   availableBots: Bot[] = [];
   copiedBotName: string | null = null;
+  showReleaseConfirmModal = false;
+  showExecutedCommands = false;
 
-  constructor(private tartarusCoordinatorService: TartarusCoordinatorService,
-              private activatedRoute: ActivatedRoute,
-              private userDataService: UserDataService,
-              private cryptoService: CryptoService,
-              private websocketService: WebsocketService,
-              private toastService: ToastService,) {
+  constructor(
+    private tartarusCoordinatorService: TartarusCoordinatorService,
+    private activatedRoute: ActivatedRoute,
+    private userDataService: UserDataService,
+    private cryptoService: CryptoService,
+    private websocketService: WebsocketService,
+    private toastService: ToastService,
+  ) {
     this.contractName = String(this.activatedRoute.snapshot.paramMap.get('contractName'));
     this.lockSessionShareableToken = String(this.activatedRoute.snapshot.paramMap.get('sessionToken'));
     this.commands = [];
@@ -72,6 +80,50 @@ export class ContractDetailComponent implements OnInit {
       next: (message) => this.handleMessage(message),
       error: (err) => console.error('WebSocket error:', err),
     });
+  }
+
+  get stateBadgeVariant(): BadgeVariants['variant'] {
+    switch (this.contract?.state) {
+      case 'CONFIRMED':
+        return 'success';
+      case 'ACCEPTED':
+        return 'default';
+      case 'CREATED':
+        return 'warning';
+      case 'REJECTED':
+      case 'ABORTED':
+        return 'destructive';
+      case 'RELEASED':
+      default:
+        return 'secondary';
+    }
+  }
+
+  get stateLabel(): string {
+    switch (this.contract?.state) {
+      case 'CONFIRMED':
+        return 'Confirmed & Active';
+      case 'ACCEPTED':
+        return 'Accepted — Awaiting Lock Sync';
+      case 'CREATED':
+        return 'Proposal Awaiting Wearer Review';
+      case 'RELEASED':
+        return 'Released / Ended';
+      case 'REJECTED':
+        return 'Rejected by Wearer';
+      case 'ABORTED':
+        return 'Aborted';
+      default:
+        return this.contract?.state || 'Unknown';
+    }
+  }
+
+  get pendingCommands(): Command[] {
+    return this.commands.filter(c => c.state === 'PENDING' || c.state === 'ERROR');
+  }
+
+  get executedCommands(): Command[] {
+    return this.commands.filter(c => c.state === 'ACKNOWLEDGED');
   }
 
   fetchBots() {
@@ -102,14 +154,21 @@ export class ContractDetailComponent implements OnInit {
     }
   }
 
-  refreshData()  {
+  refreshData() {
     this.tartarusCoordinatorService.getContractByNameForAuthor(this.contractName).subscribe(contract => {
       this.contract = contract;
       this.parseContract();
 
-      this.tartarusCoordinatorService.getCommandsForContractForAuthor(this.contractName).subscribe(commands => {
+      this.refreshCommands();
+    });
+  }
+
+  refreshCommands() {
+    this.tartarusCoordinatorService.getCommandsForContractForAuthor(this.contractName).subscribe({
+      next: (commands) => {
         this.commands = commands;
-      })
+      },
+      error: () => {}
     });
   }
 
@@ -153,7 +212,9 @@ export class ContractDetailComponent implements OnInit {
     const isTemporaryUnlockAllowed = contract.isTemporaryUnlockAllowed();
     const isEmergencyUnlockAllowed = contract.isEmergencyUnlockAllowed();
 
-    let endDescription= "When I Say So 😈";
+    this.parsedSerialNumber = serialNumber;
+
+    let endDescription = "When I Say So 😈";
 
     const bots: ContractBot[] = [];
     const botsLength = contract.botsLength();
@@ -192,7 +253,7 @@ export class ContractDetailComponent implements OnInit {
   }
 
   handleMessage(message: string) {
-    console.log("Specific contract subscription -> Message: "+ message);
+    console.log("Specific contract subscription -> Message: " + message);
     this.refreshData();
   }
 
@@ -201,12 +262,27 @@ export class ContractDetailComponent implements OnInit {
     this.toastService.showSuccess("Counter bumped by 10");
   }
 
+  openReleaseConfirm() {
+    this.showReleaseConfirmModal = true;
+  }
+
+  cancelReleaseConfirm() {
+    this.showReleaseConfirmModal = false;
+  }
+
+  confirmRelease() {
+    this.showReleaseConfirmModal = false;
+    this.release();
+  }
+
   unlock() {
     const authorName = this.userDataService.getAuthorName();
     this.makeUnlockMessage().then(unlockSignedMessage => {
       this.tartarusCoordinatorService.saveCommand(this.contractName, authorName, this.lockSessionShareableToken!, unlockSignedMessage).subscribe(r => {
         console.log("Unlock code saved");
         this.contract!.nextCounter = (this.contract?.nextCounter ?? 0) + 1;
+        this.toastService.showSuccess("Signed UNLOCK command queued");
+        this.refreshCommands();
       });
     });
   }
@@ -217,6 +293,8 @@ export class ContractDetailComponent implements OnInit {
       this.tartarusCoordinatorService.saveCommand(this.contractName, authorName, this.lockSessionShareableToken!, lockSignedMessage).subscribe(r => {
         console.log("Lock code saved");
         this.contract!.nextCounter = (this.contract?.nextCounter ?? 0) + 1;
+        this.toastService.showSuccess("Signed LOCK command queued");
+        this.refreshCommands();
       });
     });
   }
@@ -227,11 +305,13 @@ export class ContractDetailComponent implements OnInit {
       this.tartarusCoordinatorService.saveCommand(this.contractName, authorName, this.lockSessionShareableToken!, releaseSignedMessage).subscribe(r => {
         console.log("Release code saved");
         this.contract!.nextCounter = (this.contract?.nextCounter ?? 0) + 1;
+        this.toastService.showSuccess("Signed RELEASE command queued");
+        this.refreshCommands();
       });
     });
   }
 
-  async makeUnlockMessage() : Promise<Uint8Array> {
+  async makeUnlockMessage(): Promise<Uint8Array> {
     const builder = new flatbuffers.Builder(1024);
 
     const {privatePem, publicPem} = this.userDataService.getAuthorKeypair();
@@ -246,7 +326,7 @@ export class ContractDetailComponent implements OnInit {
     const unlockOffset = UnlockCommand.endUnlockCommand(builder);
     builder.finish(unlockOffset);
 
-    const signature = await this.cryptoService.hashAndSignFb(ecdsKeys.privateKey, builder.asUint8Array())
+    const signature = await this.cryptoService.hashAndSignFb(ecdsKeys.privateKey, builder.asUint8Array());
     const signatureOffset = SignedMessage.createSignatureVector(builder, new Uint8Array(signature));
 
     SignedMessage.startSignedMessage(builder);
@@ -261,7 +341,7 @@ export class ContractDetailComponent implements OnInit {
     return finishedSignedMessageBytes;
   }
 
-  async makeLockMessage() : Promise<Uint8Array> {
+  async makeLockMessage(): Promise<Uint8Array> {
     const builder = new flatbuffers.Builder(1024);
 
     const {privatePem, publicPem} = this.userDataService.getAuthorKeypair();
@@ -276,7 +356,7 @@ export class ContractDetailComponent implements OnInit {
     const lockOffset = LockCommand.endLockCommand(builder);
     builder.finish(lockOffset);
 
-    const signature = await this.cryptoService.hashAndSignFb(ecdsKeys.privateKey, builder.asUint8Array())
+    const signature = await this.cryptoService.hashAndSignFb(ecdsKeys.privateKey, builder.asUint8Array());
     const signatureOffset = SignedMessage.createSignatureVector(builder, new Uint8Array(signature));
 
     SignedMessage.startSignedMessage(builder);
@@ -291,7 +371,7 @@ export class ContractDetailComponent implements OnInit {
     return finishedSignedMessageBytes;
   }
 
-  async makeReleaseMessage() : Promise<Uint8Array> {
+  async makeReleaseMessage(): Promise<Uint8Array> {
     const builder = new flatbuffers.Builder(1024);
 
     const {privatePem, publicPem} = this.userDataService.getAuthorKeypair();
@@ -306,7 +386,7 @@ export class ContractDetailComponent implements OnInit {
     const releaseOffset = ReleaseCommand.endReleaseCommand(builder);
     builder.finish(releaseOffset);
 
-    const signature = await this.cryptoService.hashAndSignFb(ecdsKeys.privateKey, builder.asUint8Array())
+    const signature = await this.cryptoService.hashAndSignFb(ecdsKeys.privateKey, builder.asUint8Array());
     const signatureOffset = SignedMessage.createSignatureVector(builder, new Uint8Array(signature));
 
     SignedMessage.startSignedMessage(builder);
