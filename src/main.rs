@@ -15,7 +15,6 @@ mod fb_helper;
 mod firmware_generated;
 mod firmware_updater;
 mod generated;
-mod generated_ui;
 mod internal_config;
 mod internal_contract;
 mod internal_firmware;
@@ -26,7 +25,7 @@ pub mod provisioning;
 mod screen_ids;
 use screen_ids::ScreenId;
 mod servo;
-mod slint_platform;
+pub mod ui;
 mod storage_backend;
 mod verifier;
 mod wifi_manager;
@@ -257,7 +256,7 @@ fn main() {
     log::info!("Ready :-)");
     const SLEEP_DURATION: Duration = Duration::from_millis(150);
 
-    let (window, ui) = slint_platform::init_slint_platform();
+    let mut ui = ui::AppWindow::new();
     let stdin_rx = start_stdin_reader();
     let mut lock_ctx = LockCtx::new(nvs, security_backend, servo);
 
@@ -265,10 +264,8 @@ fn main() {
     let mut last_rendered_qr_url: Option<String> = None;
     if !lock_ctx.needs_configuration() {
         if let Ok(url) = lock_ctx.get_lock_url() {
-            if let Some(qr_img) = slint_platform::generate_qr_image(url) {
-                ui.set_qr_code_image(qr_img);
-                last_rendered_qr_url = Some(url.to_string());
-            }
+            ui.set_qr_content(Some(url.to_string()));
+            last_rendered_qr_url = Some(url.to_string());
         }
     }
 
@@ -465,22 +462,14 @@ fn main() {
         if lock_ctx.current_screen == ScreenId::QrCode && !lock_ctx.needs_configuration() {
             if let Ok(url) = lock_ctx.get_lock_url() {
                 if last_rendered_qr_url.as_deref() != Some(url) {
-                    if let Some(qr_img) = slint_platform::generate_qr_image(url) {
-                        ui.set_qr_code_image(qr_img);
-                        last_rendered_qr_url = Some(url.to_string());
-                    }
+                    ui.set_qr_content(Some(url.to_string()));
+                    last_rendered_qr_url = Some(url.to_string());
                 }
             }
         }
 
-        // Render Slint UI
-        slint::platform::update_timers_and_animations();
-        window.draw_if_needed(|renderer| {
-            renderer.render_by_line(slint_platform::DisplayWrapper {
-                display: &mut display,
-                line_buffer: [slint::platform::software_renderer::Rgb565Pixel(0); 240],
-            });
-        });
+        // Render UI via embedded-graphics
+        let _ = ui.render_if_dirty(&mut display);
 
         sleep(SLEEP_DURATION);
     }

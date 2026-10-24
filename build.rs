@@ -1,5 +1,6 @@
+use std::fs;
 use std::path::Path;
-use std::{env, fs};
+use std::env;
 
 fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
@@ -28,13 +29,131 @@ fn main() {
     let dest_path = Path::new(&out_dir).join("key_parts.rs");
     fs::write(dest_path, file_content).unwrap();
 
-    let config = slint_build::CompilerConfiguration::new()
-        .embed_resources(slint_build::EmbedResourcesKind::EmbedForSoftwareRenderer);
-    slint_build::compile_with_config("ui/app.slint", config).unwrap();
+    generate_fonts(&out_dir);
 
     sync_esp_idf_sys_files(Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap()), &out_dir);
 
     embuild::espidf::sysenv::output();
+}
+
+fn generate_fonts(out_dir: &str) {
+    let font_path = "ui/fonts/DejaVuSans.ttf";
+    println!("cargo:rerun-if-changed={}", font_path);
+
+    let font_data = fs::read(font_path).expect("Failed to read DejaVuSans.ttf");
+    let font = rusttype::Font::try_from_bytes(&font_data).expect("Failed to parse DejaVuSans.ttf");
+
+    let sizes: [u8; 9] = [9, 10, 11, 12, 13, 14, 15, 18, 22];
+
+    let mut out = String::new();
+    out.push_str("// Auto-generated pre-rasterized DejaVuSans font tables\n\n");
+    out.push_str("#[derive(Clone, Copy)]\n");
+    out.push_str("pub struct Glyph {\n");
+    out.push_str("    pub advance: u8,\n");
+    out.push_str("    pub width: u8,\n");
+    out.push_str("    pub height: u8,\n");
+    out.push_str("    pub x_offset: i8,\n");
+    out.push_str("    pub y_offset: i8,\n");
+    out.push_str("    pub bitmap: &'static [u8],\n");
+    out.push_str("}\n\n");
+    out.push_str("#[derive(Clone, Copy)]\n");
+    out.push_str("pub struct FontFace {\n");
+    out.push_str("    pub size: u8,\n");
+    out.push_str("    pub glyphs: &'static [Glyph; 95],\n");
+    out.push_str("}\n\n");
+    out.push_str("impl FontFace {\n");
+    out.push_str("    #[inline]\n");
+    out.push_str("    pub fn get_glyph(&self, ch: char) -> &'static Glyph {\n");
+    out.push_str("        let code = ch as usize;\n");
+    out.push_str("        if (32..=126).contains(&code) {\n");
+    out.push_str("            &self.glyphs[code - 32]\n");
+    out.push_str("        } else {\n");
+    out.push_str("            &self.glyphs[b'?' as usize - 32]\n");
+    out.push_str("        }\n");
+    out.push_str("    }\n");
+    out.push_str("}\n\n");
+
+    for &sz in &sizes {
+        let scale = rusttype::Scale::uniform(sz as f32);
+        let v_metrics = font.v_metrics(scale);
+
+        out.push_str(&format!("// --- Font size {}px ---\n", sz));
+        for code in 32u8..=126u8 {
+            let ch = code as char;
+            let glyph = font
+                .glyph(ch)
+                .scaled(scale)
+                .positioned(rusttype::point(0.0, v_metrics.ascent));
+
+            if let Some(bb) = glyph.pixel_bounding_box() {
+                let w = (bb.max.x - bb.min.x) as usize;
+                let h = (bb.max.y - bb.min.y) as usize;
+                let mut bmp = vec![0u8; w * h];
+                glyph.draw(|gx, gy, cov| {
+                    if gx < w as u32 && gy < h as u32 {
+                        bmp[gy as usize * w + gx as usize] = (cov * 255.0).round() as u8;
+                    }
+                });
+                out.push_str(&format!(
+                    "static GLYPH_{}_{}_DATA: [u8; {}] = {:?};\n",
+                    sz, code, bmp.len(), bmp
+                ));
+            }
+        }
+
+        out.push_str(&format!("static GLYPHS_{}: [Glyph; 95] = [\n", sz));
+        for code in 32u8..=126u8 {
+            let ch = code as char;
+            let glyph = font
+                .glyph(ch)
+                .scaled(scale)
+                .positioned(rusttype::point(0.0, v_metrics.ascent));
+            let adv = glyph.unpositioned().h_metrics().advance_width.round() as u8;
+
+            if let Some(bb) = glyph.pixel_bounding_box() {
+                let w = (bb.max.x - bb.min.x) as u8;
+                let h = (bb.max.y - bb.min.y) as u8;
+                let ox = bb.min.x as i8;
+                let oy = bb.min.y as i8;
+                out.push_str(&format!(
+                    "    Glyph {{ advance: {}, width: {}, height: {}, x_offset: {}, y_offset: {}, bitmap: &GLYPH_{}_{}_DATA }},\n",
+                    adv, w, h, ox, oy, sz, code
+                ));
+            } else {
+                out.push_str(&format!(
+                    "    Glyph {{ advance: {}, width: 0, height: 0, x_offset: 0, y_offset: 0, bitmap: &[] }},\n",
+                    adv
+                ));
+            }
+        }
+        out.push_str("];\n\n");
+        out.push_str(&format!(
+            "pub static FONT_{}: FontFace = FontFace {{ size: {}, glyphs: &GLYPHS_{} }};\n\n",
+            sz, sz, sz
+        ));
+    }
+
+    out.push_str("pub fn get_font_face(size: u32) -> &'static FontFace {\n");
+    out.push_str("    match size {\n");
+    out.push_str("        9 => &FONT_9,\n");
+    out.push_str("        10 => &FONT_10,\n");
+    out.push_str("        11 => &FONT_11,\n");
+    out.push_str("        12 => &FONT_12,\n");
+    out.push_str("        13 => &FONT_13,\n");
+    out.push_str("        14 => &FONT_14,\n");
+    out.push_str("        15 => &FONT_15,\n");
+    out.push_str("        18 => &FONT_18,\n");
+    out.push_str("        22 => &FONT_22,\n");
+    out.push_str("        _ if size < 10 => &FONT_9,\n");
+    out.push_str("        _ if size < 12 => &FONT_11,\n");
+    out.push_str("        _ if size < 15 => &FONT_13,\n");
+    out.push_str("        _ if size < 20 => &FONT_18,\n");
+    out.push_str("        _ => &FONT_22,\n");
+    out.push_str("    }\n");
+    out.push_str("}\n");
+
+    let dest = Path::new(out_dir).join("dejavu_fonts.rs");
+    fs::write(dest, out).expect("Write dejavu_fonts.rs");
 }
 
 fn sync_esp_idf_sys_files(manifest_dir: &Path, out_dir: &str) {
