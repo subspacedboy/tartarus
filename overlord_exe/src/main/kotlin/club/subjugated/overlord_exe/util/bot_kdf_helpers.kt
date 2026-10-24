@@ -1,5 +1,6 @@
 package club.subjugated.overlord_exe.util
 
+import org.bouncycastle.asn1.sec.ECPrivateKey as BcECPrivateKey
 import org.bouncycastle.asn1.sec.SECNamedCurves
 import org.bouncycastle.asn1.x9.X9ECParameters
 import org.bouncycastle.crypto.digests.SHA256Digest
@@ -96,23 +97,45 @@ fun deriveBotKeyPair(
     return deriveBotKeyPairFromSeed(seed, internalName, keyVersion)
 }
 
-fun loadKeyPairFromBase64Pkcs8(base64Pkcs8: String): KeyPair {
+fun loadKeyPairFromBase64Pkcs8(base64Key: String): KeyPair {
     Security.addProvider(BouncyCastleProvider())
     val cleaned =
-        base64Pkcs8
+        base64Key
             .replace("-----BEGIN PRIVATE KEY-----", "")
             .replace("-----END PRIVATE KEY-----", "")
+            .replace("-----BEGIN EC PRIVATE KEY-----", "")
+            .replace("-----END EC PRIVATE KEY-----", "")
             .replace("\\s".toRegex(), "")
-    val pkcs8Bytes = Base64.getDecoder().decode(cleaned)
-    val keyFactory = KeyFactory.getInstance("EC", "BC")
-    val privateKey = keyFactory.generatePrivate(PKCS8EncodedKeySpec(pkcs8Bytes)) as ECPrivateKey
-    return keyPairFromRawScalar(privateKey.s)
+    val keyBytes = Base64.getDecoder().decode(cleaned)
+    val scalar: BigInteger =
+        if (keyBytes.size == 32) {
+            BigInteger(1, keyBytes)
+        } else {
+            try {
+                val keyFactory = KeyFactory.getInstance("EC", "BC")
+                val privateKey =
+                    keyFactory.generatePrivate(PKCS8EncodedKeySpec(keyBytes)) as ECPrivateKey
+                privateKey.s
+            } catch (_: Exception) {
+                val sec1Key = BcECPrivateKey.getInstance(keyBytes)
+                sec1Key.key
+            }
+        }
+    return keyPairFromRawScalar(scalar)
 }
 
-fun loadPrivateKeyFromPkcs8Bytes(pkcs8Bytes: ByteArray): PrivateKey {
+fun loadPrivateKeyFromPkcs8Bytes(keyBytes: ByteArray): PrivateKey {
     Security.addProvider(BouncyCastleProvider())
-    val keyFactory = KeyFactory.getInstance("EC", "BC")
-    return keyFactory.generatePrivate(PKCS8EncodedKeySpec(pkcs8Bytes))
+    if (keyBytes.size == 32) {
+        return keyPairFromRawScalar(BigInteger(1, keyBytes)).private
+    }
+    return try {
+        val keyFactory = KeyFactory.getInstance("EC", "BC")
+        keyFactory.generatePrivate(PKCS8EncodedKeySpec(keyBytes))
+    } catch (_: Exception) {
+        val sec1Key = BcECPrivateKey.getInstance(keyBytes)
+        keyPairFromRawScalar(sec1Key.key).private
+    }
 }
 
 fun signDoubleSha256Raw(privateKey: PrivateKey, data: ByteArray): ByteArray {

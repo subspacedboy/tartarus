@@ -10,6 +10,9 @@
         Deterministically derive and manage bots tied to your Author keypair via HKDF-SHA256. All contracts created by your bots are automatically managed under your Author session.
       </p>
     </div>
+    <button type="button" hlmBtn variant="outline" size="sm" (click)="copyAuthorMasterKeyBase64()">
+      Copy Master Key (Base64)
+    </button>
   </div>
 
   <!-- Create / Derive Bot Card -->
@@ -87,9 +90,9 @@
                 }
                 <span
                   hlmBadge
-                  [variant]="bot.state === 'VERIFIED' ? 'default' : bot.state === 'PAUSED' ? 'destructive' : 'secondary'"
+                  [variant]="bot.state === 'ACTIVE' ? 'default' : bot.state === 'PAUSED' || bot.state === 'REVOKED' ? 'destructive' : 'secondary'"
                 >
-                  {{ bot.state || 'UNVERIFIED' }}
+                  {{ bot.state || 'ACTIVE' }}
                 </span>
               </div>
             </div>

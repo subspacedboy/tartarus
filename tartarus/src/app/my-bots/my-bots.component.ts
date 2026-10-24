@@ -98,7 +98,7 @@ export class MyBotsComponent implements OnInit {
 
   togglePause(bot: Bot) {
     if (!bot.name) return;
-    const nextState = bot.state === 'PAUSED' ? 'UNVERIFIED' : 'PAUSED';
+    const nextState = bot.state === 'PAUSED' ? 'ACTIVE' : 'PAUSED';
     this.coordinatorService.updateBot(bot.name, { state: nextState }).subscribe({
       next: (updated) => {
         bot.state = updated.state;
@@ -163,5 +163,18 @@ export class MyBotsComponent implements OnInit {
   async copyText(value: string, label: string) {
     await navigator.clipboard.writeText(value);
     this.toastService.showSuccess(`Copied ${label} to clipboard`);
+  }
+
+  async copyAuthorMasterKeyBase64() {
+    const authorKeys = this.userDataService.getAuthorKeypair();
+    if (!authorKeys.privatePem) {
+      this.toastService.showError('No Author private key found in localStorage ("private_pem")');
+      return;
+    }
+    const base64Only = authorKeys.privatePem
+      .replace('-----BEGIN PRIVATE KEY-----', '')
+      .replace('-----END PRIVATE KEY-----', '')
+      .replace(/\s+/g, '');
+    await this.copyText(base64Only, 'Author Master Key (Base64)');
   }
 }

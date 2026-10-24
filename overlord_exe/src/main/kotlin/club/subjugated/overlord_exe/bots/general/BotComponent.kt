@@ -54,7 +54,7 @@ import java.util.concurrent.TimeUnit
 @Serializable
 data class BotEventWsPayload(
     val type: String? = null,
-    val eventId: Long? = null,
+    val eventId: String? = null,
     val botName: String? = null,
     val contractName: String? = null,
     val contractSerial: Int? = null,
@@ -234,6 +234,9 @@ class BotComponent(
     }
 
     fun handleWebSocketMessage(text: String) {
+        if (!text.trimStart().startsWith("{")) {
+            return
+        }
         transactionTemplate.execute { status ->
             try {
                 val wsPayload = jsonParser.decodeFromString<BotEventWsPayload>(text)
@@ -326,40 +329,49 @@ class BotComponent(
         }
     }
 
-    fun handleAccept(botMap: BotMap, signedEvent: SignedEvent) {
-        logger.info("Handled accept")
+    private fun resolveOrSyncContract(
+        botMap: BotMap,
+        signedEvent: SignedEvent,
+        forceSync: Boolean = false,
+    ): Contract {
+        val e = signedEvent.payload!!
+        val commonMetadata = e.metadata!!
+        val serial = commonMetadata.contractSerialNumber.toInt()
+        val lockSession = commonMetadata.lockSession!!
 
-        val scope = CoroutineScope(Dispatchers.Default)
-        val exceptionHandler = CoroutineExceptionHandler { _, e ->
-            logger.error("Unhandled exception: $e")
+        if (!forceSync) {
+            contractService.findContract(botMap.externalName, serial)?.let { return it }
         }
-        scope.async(exceptionHandler) {
-            val e = signedEvent.payload!!
-            val commonMetadata = e.metadata!!
 
+        return runBlocking {
             val contractInfo = requestContract(
                 botMap.externalName,
-                commonMetadata.lockSession!!,
+                lockSession,
                 commonMetadata.contractSerialNumber,
             )
             logger.debug("Got contract info {}", contractInfo)
 
             val contract = contractService.getOrCreateContract(
                 botMap.externalName,
-                commonMetadata.lockSession!!,
-                commonMetadata.contractSerialNumber.toInt(),
+                lockSession,
+                serial,
             )
             contractService.updateContractWithGetContractResponse(contract, contractInfo)
-
-            val handler = handlers[botMap]!!
-            handler.handleAccept(contract)
         }
+    }
+
+    fun handleAccept(botMap: BotMap, signedEvent: SignedEvent) {
+        logger.info("Handled accept")
+        val contract = resolveOrSyncContract(botMap, signedEvent, forceSync = true)
+        val handler = handlers[botMap]!!
+        handler.handleAccept(contract)
     }
 
     fun handleRelease(botMap: BotMap, signedEvent: SignedEvent) {
         logger.info("Handle release")
         val e = signedEvent.payload!!
         val commonMetadata = e.metadata!!
+        resolveOrSyncContract(botMap, signedEvent)
 
         val contract = contractService.markReleased(botMap.externalName, commonMetadata.contractSerialNumber.toInt())
 
@@ -369,16 +381,7 @@ class BotComponent(
 
     fun handleLock(botMap: BotMap, signedEvent: SignedEvent) {
         logger.info("Handle Lock")
-        val e = signedEvent.payload!!
-        val commonMetadata = e.metadata!!
-
-        // Lock gets some special behavior because it happens
-        // _immediately_ on accept and might trigger an NPE because
-        // the database hasn't saved it yet.
-        val contract: Contract = retryOnNullPointer {
-            println("Trying ${commonMetadata.contractSerialNumber}")
-            contractService.getContract(botMap.externalName, commonMetadata.contractSerialNumber.toInt())
-        }
+        val contract = resolveOrSyncContract(botMap, signedEvent)
 
         val handler = handlers[botMap]!!
         handler.handleLock(contract)
@@ -386,10 +389,7 @@ class BotComponent(
 
     fun handleUnlock(botMap: BotMap, signedEvent: SignedEvent) {
         logger.info("Handle Unlock")
-        val e = signedEvent.payload!!
-        val commonMetadata = e.metadata!!
-
-        val contract = contractService.getContract(botMap.externalName, commonMetadata.contractSerialNumber.toInt())
+        val contract = resolveOrSyncContract(botMap, signedEvent)
 
         val handler = handlers[botMap]!!
         handler.handleUnlock(contract)
@@ -397,10 +397,7 @@ class BotComponent(
 
     fun handleEmergencyUnlock(botMap: BotMap, signedEvent: SignedEvent) {
         logger.info("Handle Emergency Unlock")
-        val e = signedEvent.payload!!
-        val commonMetadata = e.metadata!!
-
-        val contract = contractService.getContract(botMap.externalName, commonMetadata.contractSerialNumber.toInt())
+        val contract = resolveOrSyncContract(botMap, signedEvent)
 
         val handler = handlers[botMap]
         handler?.handleEmergencyUnlock(contract)

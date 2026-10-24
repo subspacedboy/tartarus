@@ -92,7 +92,7 @@ class BotMapService(
 
     fun getOrCreateBotMap(internalName: String, description: String): BotMap {
         val existing = botMapRepository.findByInternalNameAndCoordinator(internalName, coordinator)
-        if (existing != null) {
+        if (existing != null && environment.activeProfiles.contains("test")) {
             return existing
         }
 
@@ -112,17 +112,29 @@ class BotMapService(
                         logger.warn(
                             "Coordinator registration failed for $internalName (${e.message}); using local placeholder until coordinator is reachable"
                         )
-                        NewBotResponse(name = generateId("b-"), clearTextPassword = "")
+                        NewBotResponse(
+                            name = existing?.externalName ?: generateId("b-"),
+                            clearTextPassword = existing?.password ?: "",
+                        )
                     }
                 }
 
-            createBotMap(
-                internalName,
-                newBot.name,
-                newBot.clearTextPassword ?: "",
-                keyPair.private.encoded,
-                keyPair.public.encoded,
-            )
+            if (existing != null) {
+                existing.externalName = newBot.name
+                existing.password = newBot.clearTextPassword ?: ""
+                existing.privateKey = keyPair.private.encoded
+                existing.publicKey = keyPair.public.encoded
+                existing.updatedAt = timeSource.nowInUtc()
+                botMapRepository.save(existing)
+            } else {
+                createBotMap(
+                    internalName,
+                    newBot.name,
+                    newBot.clearTextPassword ?: "",
+                    keyPair.private.encoded,
+                    keyPair.public.encoded,
+                )
+            }
         }
     }
 

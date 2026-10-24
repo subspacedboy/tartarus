@@ -97,4 +97,18 @@ describe('CryptoService', () => {
     const decrypted = await cipher.decrypt(ciphertext);
     expect(decrypted).toBe(plaintext);
   });
+
+  it('should deterministically derive P-256 bot keypair via deriveBotKeyPair', async () => {
+    const authorKeyPair = await service.generateKeyPair();
+    const derived1 = await service.deriveBotKeyPair(authorKeyPair.privateKeyPEM, 'announcer', 1);
+    const derived2 = await service.deriveBotKeyPair(authorKeyPair.privateKeyPEM, 'announcer', 1);
+    const derivedV2 = await service.deriveBotKeyPair(authorKeyPair.privateKeyPEM, 'announcer', 2);
+
+    expect(derived1.compressedPublicKeyBase64).toBe(derived2.compressedPublicKeyBase64);
+    expect(derived1.privateKeyPEM).toBe(derived2.privateKeyPEM);
+    expect(derived1.publicKeyPEM).toBe(derived2.publicKeyPEM);
+    expect(derived1.compressedPublicKeyBase64).not.toBe(derivedV2.compressedPublicKeyBase64);
+    expect(derived1.privateKeyPEM).toContain('-----BEGIN PRIVATE KEY-----');
+    expect(derived1.publicKeyPEM).toContain('-----BEGIN PUBLIC KEY-----');
+  });
 });

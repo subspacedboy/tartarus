@@ -75,6 +75,10 @@ class ContractService(
             ?: run { createContract(botName, lockSessionToken, serialNumber) }
     }
 
+    fun findContract(botName: String, serialNumber: Int): Contract? {
+        return contractRepository.findByBotNameAndSerialNumber(botName, serialNumber)
+    }
+
     fun getContract(botName: String, serialNumber: Int): Contract {
         return contractRepository.findByBotNameAndSerialNumber(botName, serialNumber)!!
     }
