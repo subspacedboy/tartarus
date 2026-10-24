@@ -1,8 +1,6 @@
 package club.subjugated.tartarus_coordinator.services
 
-import club.subjugated.fb.bots.BotApiMessage
 import club.subjugated.fb.message.firmware.FirmwareMessage
-import club.subjugated.tartarus_coordinator.api.bots.BotApiController
 import club.subjugated.tartarus_coordinator.api.firmware.FirmwareApiController
 import club.subjugated.tartarus_coordinator.api.messages.NewLockSessionMessage
 import club.subjugated.tartarus_coordinator.events.NewCommandEvent
@@ -16,7 +14,6 @@ import jakarta.annotation.PreDestroy
 import java.nio.ByteBuffer
 import java.util.Base64
 import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import org.eclipse.paho.client.mqttv3.MqttClient
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
@@ -84,7 +81,6 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
     @Autowired(required = false) var unitRepository: ProvisionedHardwareUnitRepository? = null
     @Autowired lateinit var timeSource: TimeSource
 
-    @Autowired lateinit var botApiController: BotApiController
     @Autowired lateinit var firmwareApiController: FirmwareApiController
     @Autowired lateinit var eventService: EventService
 
@@ -92,68 +88,8 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
 
     private val executorService = Executors.newSingleThreadExecutor()
 
-    private val botExecutorWatchdogService = Executors.newSingleThreadScheduledExecutor()
-
-    @Value("\${tartarus.hivemq.local_tcp_port}") val localTcpPort: Long = 0
-
-    // TODO Remove this duped brokerUrl and consolidate the client code. Main lock updates should
-    // also have watchdog
-    private fun brokerUrl(): String {
-        return "tcp://localhost:${localTcpPort}"
-    }
-
-    fun createBotApiExecutor(): ScheduledExecutorService {
-        return Executors.newSingleThreadScheduledExecutor().apply {
-            val client = MqttClient(brokerUrl(), "bot_processor", null)
-            val options =
-                MqttConnectOptions().apply {
-                    isCleanSession = false
-                    userName = "bot_processor"
-                    password = internalMqttSubscriberPassword.toCharArray()
-                }
-
-            client.connect(options)
-            client.subscribe("coordinator/inbox") { topic, message ->
-                transactionTemplate.execute { status ->
-                    try {
-                        val apiMessage =
-                            BotApiMessage.getRootAsBotApiMessage(ByteBuffer.wrap(message.payload))
-                        println("🧫 Got Bot API message -> ${apiMessage}")
-
-                        val response = botApiController.routeRequest(apiMessage)
-
-                        client.publish(
-                            "bots/inbox_api_${apiMessage.name!!}",
-                            MqttMessage(response.byteBuffer.array()),
-                        )
-                    } catch (ex: Exception) {
-                        println("Encountered exception in processing BOT MQTT")
-                        ex.printStackTrace()
-                        status.setRollbackOnly()
-                    }
-                }
-            }
-        }
-    }
-
     @PostConstruct
     fun start() {
-        var executor = createBotApiExecutor()
-
-        botExecutorWatchdogService.scheduleAtFixedRate(
-            {
-                if (
-                    botExecutorWatchdogService.isTerminated || botExecutorWatchdogService.isShutdown
-                ) {
-                    println("Bot executor stopped unexpectedly, restarting...")
-                    executor = createBotApiExecutor()
-                }
-            },
-            1,
-            5,
-            TimeUnit.SECONDS,
-        )
-
         executorService.submit {
             val options =
                 MqttConnectOptions().apply {
@@ -444,7 +380,6 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
 
     @PreDestroy
     fun stop() {
-        botExecutorWatchdogService.shutdown()
         executorService.shutdown()
     }
 }

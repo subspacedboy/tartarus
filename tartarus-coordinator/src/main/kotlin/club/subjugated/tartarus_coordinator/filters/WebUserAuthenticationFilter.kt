@@ -1,7 +1,9 @@
 package club.subjugated.tartarus_coordinator.filters
 
+import club.subjugated.tartarus_coordinator.models.BotState
 import club.subjugated.tartarus_coordinator.services.AdminSessionService
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
+import club.subjugated.tartarus_coordinator.services.BotService
 import club.subjugated.tartarus_coordinator.services.LockUserSessionService
 import club.subjugated.tartarus_coordinator.util.getECPublicKeyFromCompressedKeyByteArray
 import com.nimbusds.jose.crypto.ECDSAVerifier
@@ -12,7 +14,6 @@ import jakarta.servlet.ServletException
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import java.io.IOException
-import java.util.*
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
@@ -28,6 +29,7 @@ class WebUserAuthenticationFilter(
     private val authorSessionService: AuthorSessionService,
     private val lockUserSessionService: LockUserSessionService,
     private val adminSessionService: AdminSessionService,
+    private val botService: BotService? = null,
 ) : OncePerRequestFilter() {
 
     private val filterLogger: Logger =
@@ -40,65 +42,64 @@ class WebUserAuthenticationFilter(
         filterChain: FilterChain,
     ) {
         val authHeader = request.getHeader("Authorization")
-
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            val token = authHeader.substring(7)
-
-            try {
-                val signedJWT = SignedJWT.parse(token)
-                val claimsSet = signedJWT.jwtClaimsSet
-
-                val sessionTokenName = claimsSet.subject
-                val (publicKey, authorities: List<GrantedAuthority>) =
-                    when {
-                        sessionTokenName.startsWith("as-") -> {
-                            val authorSession = authorSessionService.findByName(sessionTokenName)
-                            authorSession.decodePublicKey() to emptyList<GrantedAuthority>()
-                        }
-                        sessionTokenName.startsWith("u-") -> {
-                            val lockUserSession =
-                                lockUserSessionService.findByName(sessionTokenName)
-                            lockUserSession.decodePublicKey() to emptyList<GrantedAuthority>()
-                        }
-                        sessionTokenName.startsWith("ad-") -> {
-                            val adminSession = adminSessionService.findByName(sessionTokenName)
-                            adminSession.decodePublicKey() to
-                                listOf<GrantedAuthority>(SimpleGrantedAuthority("ADMIN"))
-                        }
-                        else ->
-                            throw IllegalArgumentException(
-                                "Unknown session token prefix: $sessionTokenName"
-                            )
-                    }
-
-                val sessionPublicECKey = getECPublicKeyFromCompressedKeyByteArray(publicKey)
-                val verifier = ECDSAVerifier(sessionPublicECKey)
-                if (signedJWT.verify(verifier)) {
-                    val userDetails: UserDetails =
-                        User.withUsername(claimsSet.subject)
-                            .password("")
-                            .authorities(authorities)
-                            .build()
-
-                    val authentication =
-                        UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null,
-                            userDetails.authorities,
-                        )
-                    authentication.details = WebAuthenticationDetailsSource().buildDetails(request)
-
-                    SecurityContextHolder.getContext().authentication = authentication
-                }
-            } catch (ex: java.text.ParseException) {
-                this.filterLogger.warn("Malformed JWT token in Authorization header: ${ex.message}")
-            } catch (ex: PersistenceException) {
-                this.filterLogger.warn("We got a token but no backing session. $ex")
-            } catch (ex: Exception) {
-                this.filterLogger.warn("Error processing authentication token: ${ex.message}")
-            }
+            authenticateBearerToken(authHeader.substring(7), request)
         }
-
         filterChain.doFilter(request, response)
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    private fun authenticateBearerToken(token: String, request: HttpServletRequest) {
+        try {
+            val signedJWT = SignedJWT.parse(token)
+            val sessionTokenName = signedJWT.jwtClaimsSet.subject
+            val (publicKey, authorities) = resolveSessionKeyAndAuthorities(sessionTokenName)
+
+            val sessionPublicECKey = getECPublicKeyFromCompressedKeyByteArray(publicKey)
+            if (signedJWT.verify(ECDSAVerifier(sessionPublicECKey))) {
+                val userDetails: UserDetails =
+                    User.withUsername(sessionTokenName)
+                        .password("")
+                        .authorities(authorities)
+                        .build()
+
+                val authentication =
+                    UsernamePasswordAuthenticationToken(userDetails, null, userDetails.authorities)
+                authentication.details = WebAuthenticationDetailsSource().buildDetails(request)
+                SecurityContextHolder.getContext().authentication = authentication
+            }
+        } catch (ex: java.text.ParseException) {
+            this.filterLogger.warn("Malformed JWT token in Authorization header: ${ex.message}")
+        } catch (ex: PersistenceException) {
+            this.filterLogger.warn("We got a token but no backing session. $ex")
+        } catch (ex: Exception) {
+            this.filterLogger.warn("Error processing authentication token: ${ex.message}")
+        }
+    }
+
+    private fun resolveSessionKeyAndAuthorities(
+        sessionTokenName: String
+    ): Pair<ByteArray, List<GrantedAuthority>> {
+        return when {
+            sessionTokenName.startsWith("as-") -> {
+                val authorSession = authorSessionService.findByName(sessionTokenName)
+                authorSession.decodePublicKey() to emptyList()
+            }
+            sessionTokenName.startsWith("u-") -> {
+                val lockUserSession = lockUserSessionService.findByName(sessionTokenName)
+                lockUserSession.decodePublicKey() to emptyList()
+            }
+            sessionTokenName.startsWith("ad-") -> {
+                val adminSession = adminSessionService.findByName(sessionTokenName)
+                adminSession.decodePublicKey() to listOf(SimpleGrantedAuthority("ADMIN"))
+            }
+            sessionTokenName.startsWith("b-") && botService != null -> {
+                val bot = botService.getByName(sessionTokenName)
+                check(bot.state == BotState.ACTIVE) { "Bot is not active: $sessionTokenName" }
+                bot.decodePublicKey() to listOf(SimpleGrantedAuthority("BOT"))
+            }
+            else ->
+                throw IllegalArgumentException("Unknown session token prefix: $sessionTokenName")
+        }
     }
 }

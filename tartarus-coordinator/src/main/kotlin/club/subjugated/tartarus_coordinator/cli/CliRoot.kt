@@ -5,7 +5,7 @@ import picocli.CommandLine
 
 @CommandLine.Command(
     name = "tartarus",
-    subcommands = [AddAdminKeyCommand::class, AddFirmwareImage::class, MakePasswordsForBots::class],
+    subcommands = [AddAdminKeyCommand::class, AddFirmwareImage::class],
     description = ["Tartarus CLI entry point"],
 )
 @Component

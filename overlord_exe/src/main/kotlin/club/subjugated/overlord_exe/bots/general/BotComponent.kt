@@ -1,75 +1,111 @@
 package club.subjugated.overlord_exe.bots.general
 
-import club.subjugated.fb.bots.BotApiMessage
-import club.subjugated.fb.bots.GetContractResponse
-import club.subjugated.fb.bots.MessagePayload
 import club.subjugated.fb.event.EventType
 import club.subjugated.fb.event.SignedEvent
+import club.subjugated.overlord_exe.events.BotRestAction
 import club.subjugated.overlord_exe.events.SendBotBytes
 import club.subjugated.overlord_exe.models.BotMap
 import club.subjugated.overlord_exe.models.Contract
 import club.subjugated.overlord_exe.models.ContractState
+import club.subjugated.overlord_exe.services.BotContractInfo
 import club.subjugated.overlord_exe.services.BotMapService
 import club.subjugated.overlord_exe.services.ContractService
-import club.subjugated.overlord_exe.util.TimeSource
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.contentType
+import io.ktor.http.isSuccess
+import io.ktor.serialization.kotlinx.json.json
 import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
-import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
-import org.eclipse.paho.client.mqttv3.MqttCallback
-import org.eclipse.paho.client.mqttv3.MqttCallbackExtended
-import org.eclipse.paho.client.mqttv3.MqttClient
-import org.eclipse.paho.client.mqttv3.MqttConnectOptions
-import org.eclipse.paho.client.mqttv3.MqttMessage
-import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
-import org.ocpsoft.prettytime.PrettyTime
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.event.EventListener
+import org.springframework.core.env.Environment
 import org.springframework.stereotype.Component
 import org.springframework.transaction.support.TransactionTemplate
+import java.net.URI
+import java.net.http.WebSocket
 import java.nio.ByteBuffer
+import java.util.Base64
+import java.util.concurrent.CompletionStage
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
-import kotlin.random.Random
+
+@Serializable
+data class BotEventWsPayload(
+    val type: String? = null,
+    val eventId: Long? = null,
+    val botName: String? = null,
+    val contractName: String? = null,
+    val contractSerial: Int? = null,
+    val lockSession: String? = null,
+    val counter: Int? = null,
+    val eventType: String? = null,
+    val correlationId: String? = null,
+    val rawSignedEventBase64: String? = null,
+)
+
+@Serializable
+data class BotCreateContractPayload(
+    val shareableToken: String,
+    val signedMessageBase64: String,
+)
+
+@Serializable
+data class BotCreateCommandPayload(
+    val contractName: String,
+    val shareableToken: String? = null,
+    val signedMessageBase64: String,
+)
+
+@Serializable
+data class BotCreateMessagePayload(
+    val message: String,
+)
 
 @Component
 class BotComponent(
     private var contractService: ContractService,
+    private var botMapService: BotMapService,
     private var transactionTemplate: TransactionTemplate,
-    @Value("\${overlord.mqtt_broker_uri}") private val mqttBrokerUrl: String,
+    private val environment: Environment,
+    @Value("\${overlord.coordinator}") private val coordinator: String,
+    @Value("\${overlord.ws_uri:ws://localhost:8080/ws/events}") private val wsUri: String,
 ) {
     private val logger: Logger = LoggerFactory.getLogger(BotComponent::class.java)
 
+    private val jsonParser = Json { ignoreUnknownKeys = true }
+
     lateinit var botExecutorWatchdogService: ScheduledExecutorService
 
-    val pendingRequests = ConcurrentHashMap<Long, CompletableDeferred<BotApiMessage>>()
+    var runningBots: ConcurrentHashMap<BotMap, ScheduledExecutorService> = ConcurrentHashMap()
+    var handlers: ConcurrentHashMap<BotMap, MessageHandler> = ConcurrentHashMap()
 
-    var runningBots : HashMap<BotMap, ScheduledExecutorService> = HashMap()
-    var handlers : HashMap<BotMap, MessageHandler> = HashMap()
-    var botsToClients : HashMap<BotMap, MqttClient> = HashMap<BotMap, MqttClient>()
+    @Volatile private var activeWebSocket: WebSocket? = null
+    @Volatile private var webSocketConnecting: Boolean = false
 
-    fun startBot(botMap : BotMap, handler : MessageHandler) {
-        logger.info("Starting bot: ${botMap.internalName}")
-        botsToClients[botMap]?.let { existingClient ->
-            try {
-                if (existingClient.isConnected) {
-                    existingClient.disconnectForcibly(1000)
-                }
-                existingClient.close()
-            } catch (e: Exception) {
-                logger.warn("Error disconnecting old client for ${botMap.internalName}: $e")
-            }
-        }
+    fun startBot(botMap: BotMap, handler: MessageHandler) {
+        logger.info("Starting bot: ${botMap.internalName} (${botMap.externalName})")
         runningBots[botMap]?.let { existingExecutor ->
             try {
                 existingExecutor.shutdownNow()
@@ -77,27 +113,21 @@ class BotComponent(
                 logger.warn("Error shutting down old executor for ${botMap.internalName}: $e")
             }
         }
-        var executor = createBotApiExecutor(botMap)
-        runningBots.put(botMap, executor)
-        handlers.put(botMap, handler)
+        val executor = Executors.newSingleThreadScheduledExecutor()
+        runningBots[botMap] = executor
+        handlers[botMap] = handler
+
+        ensureWebSocketConnected()
     }
 
     @PostConstruct
     fun start() {
         botExecutorWatchdogService = Executors.newSingleThreadScheduledExecutor()
         botExecutorWatchdogService.scheduleAtFixedRate({
-            for ((bot, executor) in runningBots) {
-                if (executor.isTerminated || executor.isShutdown) {
-                    logger.warn("Bot (${bot.name}) executor stopped unexpectedly, restarting...")
-                    botsToClients[bot]?.let { oldClient ->
-                        try {
-                            if (oldClient.isConnected) oldClient.disconnectForcibly(1000)
-                            oldClient.close()
-                        } catch (e: Exception) {
-                            logger.warn("Error closing old client during restart for ${bot.name}: $e")
-                        }
-                    }
-                    runningBots[bot] = createBotApiExecutor(bot)
+            if (!environment.activeProfiles.contains("test") && handlers.isNotEmpty()) {
+                val ws = activeWebSocket
+                if (ws == null || ws.isInputClosed || ws.isOutputClosed) {
+                    ensureWebSocketConnected()
                 }
             }
         }, 1, 5, TimeUnit.SECONDS)
@@ -111,15 +141,18 @@ class BotComponent(
                     logger.error("Unhandled exception: $e")
                 }
 
-                handlers.forEach { botMap, handler ->
+                handlers.forEach { (botMap, handler) ->
                     logger.info("Reviewing ${botMap.internalName}")
 
                     val contracts = contractService.getLiveContractsForBot(botMap.externalName)
                     scope.async(exceptionHandler) {
                         contracts.forEach { c ->
-                            val specificClient = botsToClients[botMap]!!
-                            val contractInfo = requestContract(botMap.externalName, c.lockSessionToken!!, c.serialNumber.toUShort(), specificClient)
-                            if(contractInfo.state == "ABORTED") {
+                            val contractInfo = requestContract(
+                                botMap.externalName,
+                                c.lockSessionToken!!,
+                                c.serialNumber.toUShort(),
+                            )
+                            if (contractInfo.state == "ABORTED") {
                                 logger.info("Aborted contract: ${c.externalContractName}")
                                 c.state = ContractState.ABORTED
                                 contractService.save(c)
@@ -129,177 +162,166 @@ class BotComponent(
 
                     try {
                         handler.reviewContracts(contracts)
-                    } catch (ex : Exception) {
+                    } catch (ex: Exception) {
                         logger.error("Unhandled exception in reviewing contracts: $ex")
                         ex.printStackTrace()
                         status.setRollbackOnly()
                     }
                 }
             }
+        }, 0, 1, TimeUnit.MINUTES)
+    }
+
+    @Synchronized
+    private fun ensureWebSocketConnected() {
+        if (environment.activeProfiles.contains("test")) {
+            return
         }
-        , 0, 1, TimeUnit.MINUTES)
+        val current = activeWebSocket
+        if (webSocketConnecting || (current != null && !current.isInputClosed && !current.isOutputClosed)) {
+            return
+        }
+        webSocketConnecting = true
+        try {
+            val authorJwt = runBlocking { botMapService.getAuthorJwt() }
+            val fullUri = URI.create("$wsUri?authorJwt=$authorJwt")
+            val httpClient = java.net.http.HttpClient.newHttpClient()
+            val messageBuffer = StringBuilder()
+
+            httpClient.newWebSocketBuilder()
+                .buildAsync(fullUri, object : WebSocket.Listener {
+                    override fun onOpen(webSocket: WebSocket) {
+                        logger.info("Connected to Tartarus Coordinator WebSocket at $wsUri")
+                        activeWebSocket = webSocket
+                        webSocketConnecting = false
+                        webSocket.request(1)
+                    }
+
+                    override fun onText(webSocket: WebSocket, data: CharSequence, last: Boolean): CompletionStage<*>? {
+                        messageBuffer.append(data)
+                        if (last) {
+                            val text = messageBuffer.toString()
+                            messageBuffer.setLength(0)
+                            handleWebSocketMessage(text)
+                        }
+                        webSocket.request(1)
+                        return null
+                    }
+
+                    override fun onClose(webSocket: WebSocket, statusCode: Int, reason: String): CompletionStage<*>? {
+                        logger.warn("WebSocket closed ($statusCode): $reason")
+                        activeWebSocket = null
+                        webSocketConnecting = false
+                        return null
+                    }
+
+                    override fun onError(webSocket: WebSocket, error: Throwable) {
+                        logger.warn("WebSocket error: ${error.message}")
+                        activeWebSocket = null
+                        webSocketConnecting = false
+                    }
+                })
+                .exceptionally { ex ->
+                    logger.warn("Failed to connect WebSocket to $wsUri: ${ex.message}")
+                    activeWebSocket = null
+                    webSocketConnecting = false
+                    null
+                }
+        } catch (e: Exception) {
+            logger.warn("Error initiating WebSocket connection: ${e.message}")
+            webSocketConnecting = false
+        }
+    }
+
+    fun handleWebSocketMessage(text: String) {
+        transactionTemplate.execute { status ->
+            try {
+                val wsPayload = jsonParser.decodeFromString<BotEventWsPayload>(text)
+                if (wsPayload.type != "bot_event" || wsPayload.rawSignedEventBase64 == null) {
+                    return@execute
+                }
+                val botMap = handlers.keys.find { it.externalName == wsPayload.botName }
+                if (botMap == null) {
+                    logger.debug("Ignoring bot_event for unmanaged bot ${wsPayload.botName}")
+                    return@execute
+                }
+
+                val rawBytes = Base64.getDecoder().decode(wsPayload.rawSignedEventBase64)
+                val signedEvent = SignedEvent.getRootAsSignedEvent(ByteBuffer.wrap(rawBytes))
+
+                val e = signedEvent.payload!!
+                val commonMetadata = e.metadata!!
+                logger.debug("Event -> ${commonMetadata.lockSession} ${commonMetadata.contractSerialNumber}")
+
+                when (e.eventType) {
+                    EventType.AcceptContract -> handleAccept(botMap, signedEvent)
+                    EventType.ReleaseContract -> handleRelease(botMap, signedEvent)
+                    EventType.Lock -> handleLock(botMap, signedEvent)
+                    EventType.Unlock -> handleUnlock(botMap, signedEvent)
+                    EventType.EmergencyUnlock -> handleEmergencyUnlock(botMap, signedEvent)
+                }
+            } catch (ex: Exception) {
+                logger.error("Encountered exception in processing WebSocket bot event", ex)
+                ex.printStackTrace()
+                status.setRollbackOnly()
+            }
+        }
     }
 
     @PreDestroy
     fun stop() {
         botExecutorWatchdogService.shutdown()
 
-        runningBots.forEach { botMap, executor ->
+        runningBots.forEach { (botMap, executor) ->
             logger.info("Stopping ${botMap.internalName}")
             executor.shutdown()
             executor.awaitTermination(3, TimeUnit.SECONDS)
         }
 
-        botsToClients.forEach { (botMap, client) ->
-            try {
-                if (client.isConnected) {
-                    client.disconnectForcibly(1000)
-                }
-                client.close()
-            } catch (ex: Exception) {
-                logger.warn("Error closing client for ${botMap.internalName}: $ex")
-            }
+        try {
+            activeWebSocket?.sendClose(WebSocket.NORMAL_CLOSURE, "Shutting down")
+        } catch (ex: Exception) {
+            logger.warn("Error closing WebSocket: $ex")
         }
-        botsToClients.clear()
+        activeWebSocket = null
         runningBots.clear()
         handlers.clear()
-        pendingRequests.clear()
 
         logger.info("All bots stopped")
     }
 
-    fun createBotApiExecutor(botMap: BotMap): ScheduledExecutorService {
-        return Executors.newSingleThreadScheduledExecutor().apply {
-            val client = MqttClient(mqttBrokerUrl, botMap.externalName, MemoryPersistence())
-            botsToClients.put(botMap, client)
-
-            val options =
-                MqttConnectOptions().apply {
-                    isCleanSession = false
-                    userName = botMap.externalName
-                    password = botMap.password.toCharArray()
-                    keepAliveInterval = 45
-                    isAutomaticReconnect = true
-                }
-
-            client.setCallback(object : MqttCallbackExtended {
-                override fun connectComplete(reconnect: Boolean, serverURI: String?) {
-                    logger.info("MQTT connect complete for ${botMap.internalName} / ${botMap.externalName} (reconnect=$reconnect)")
-                    try {
-                        client.subscribe("bots/inbox_events_${botMap.externalName}")
-                        client.subscribe("bots/inbox_api_${botMap.externalName}")
-                    } catch (e: Exception) {
-                        logger.error("Failed to subscribe on connectComplete for ${botMap.internalName}: $e")
-                    }
-                }
-
-                override fun connectionLost(cause: Throwable?) {
-                    logger.warn("Disconnected (${botMap.internalName} / ${botMap.externalName}): $cause")
-                }
-
-                override fun messageArrived(topic: String?, message: MqttMessage?) {
-                    logger.debug("\uD83D\uDCE8 Received on $topic: ${message!!.id}")
-
-                    transactionTemplate.execute { status ->
-                        try {
-                            if (topic!!.contains("_events_")) {
-                                val signedEvent = SignedEvent.getRootAsSignedEvent(ByteBuffer.wrap(message.payload))
-
-                                val e = signedEvent.payload!!
-                                val commonMetadata = e.metadata!!
-                                logger.debug("Event -> ${commonMetadata.lockSession} ${commonMetadata.contractSerialNumber}")
-
-                                when (e.eventType) {
-                                    EventType.AcceptContract -> {
-                                        handleAccept(botMap, signedEvent)
-                                    }
-                                    EventType.ReleaseContract -> {
-                                        handleRelease(botMap, signedEvent)
-                                    }
-                                    EventType.Lock -> {
-                                        handleLock(botMap, signedEvent)
-                                    }
-                                    EventType.Unlock -> {
-                                        handleUnlock(botMap, signedEvent)
-                                    }
-                                    EventType.EmergencyUnlock -> {
-                                        handleEmergencyUnlock(botMap, signedEvent)
-                                    }
-                                }
-                            }
-
-                            if (topic.contains("_api_")) {
-                                val botApiMessage = BotApiMessage.getRootAsBotApiMessage(ByteBuffer.wrap(message.payload))
-                                val deferred = pendingRequests.remove(botApiMessage.requestId)
-                                if (deferred != null) {
-                                    deferred.complete(botApiMessage)
-                                } else {
-                                    logger.warn("Received BotApiMessage for requestId ${botApiMessage.requestId} but no pending request found")
-                                }
-                            }
-                        } catch (ex : Exception) {
-                            logger.error("Encountered exception in processing MQTT", ex)
-                            ex.printStackTrace()
-                            status.setRollbackOnly()
-                        }
-                    }
-                }
-
-                override fun deliveryComplete(token: IMqttDeliveryToken?) {}
-            })
-
-            try {
-                val connResult = client.connectWithResult(options)
-                val sessionPresent = connResult.sessionPresent
-                logger.debug("Session present: $sessionPresent for ${botMap.internalName}")
-
-                client.subscribe("bots/inbox_events_${botMap.externalName}")
-                client.subscribe("bots/inbox_api_${botMap.externalName}")
-            } catch (e: Exception) {
-                logger.warn("Initial MQTT connect failed for ${botMap.internalName} (${botMap.externalName}): ${e.message}. Automatic reconnect will continue in background.")
-            }
-        }
-    }
-
-    suspend fun requestContract(botName : String, lockSession: String, serial : UShort, client : MqttClient) : GetContractResponse {
+    suspend fun requestContract(
+        botName: String,
+        lockSession: String,
+        serial: UShort,
+    ): BotContractInfo {
         val handler = CoroutineExceptionHandler { _, exception ->
             logger.error("Request contract coroutine failed for $botName", exception)
         }
 
         return withContext(Dispatchers.IO + handler) {
-            val requestId = Random.nextLong(Long.MAX_VALUE)
-            val deferred = CompletableDeferred<BotApiMessage>()
-            pendingRequests[requestId] = deferred
+            val botMap = handlers.keys.find { it.externalName == botName }
+            val jwt = if (botMap != null) {
+                botMapService.getBotJwt(botMap)
+            } else {
+                botMapService.getAuthorJwt()
+            }
 
+            val client = HttpClient(OkHttp) {
+                install(ContentNegotiation) {
+                    json(jsonParser)
+                }
+            }
             try {
-                val requestBody = contractService.makeContractRequest(
-                    botName,
-                    lockSession,
-                    serial,
-                    requestId
-                )
-                if (!client.isConnected) {
-                    client.reconnect()
+                val response = client.get("$coordinator/bots/$botName/contracts/bySession/$lockSession/$serial") {
+                    header(HttpHeaders.Authorization, "Bearer $jwt")
                 }
-                client.publish("coordinator/inbox", MqttMessage(requestBody))
-                val botApiMessage = withTimeoutOrNull(10000) {
-                    deferred.await()
-                } ?: throw java.util.concurrent.TimeoutException("Timeout waiting for contract response for $botName (requestId=$requestId)")
-
-                val response : GetContractResponse = when(botApiMessage.payloadType){
-                    MessagePayload.GetContractResponse -> {
-                        val response = GetContractResponse()
-                        botApiMessage.payload(response)
-                        response
-                    }
-                    else -> {
-                        throw IllegalStateException("Unexpected payload type: ${botApiMessage.payloadType}")
-                    }
+                if (!response.status.isSuccess()) {
+                    throw IllegalStateException("Failed to fetch contract for $botName ($lockSession/$serial): HTTP ${response.status} - ${response.bodyAsText()}")
                 }
-
-                response
+                response.body<BotContractInfo>()
             } finally {
-                pendingRequests.remove(requestId)
+                client.close()
             }
         }
     }
@@ -315,14 +337,21 @@ class BotComponent(
             val e = signedEvent.payload!!
             val commonMetadata = e.metadata!!
 
-            val specificClient = botsToClients[botMap]!!
-            val contractInfo = requestContract(botMap.externalName, commonMetadata.lockSession!!, commonMetadata.contractSerialNumber, specificClient)
+            val contractInfo = requestContract(
+                botMap.externalName,
+                commonMetadata.lockSession!!,
+                commonMetadata.contractSerialNumber,
+            )
             logger.debug("Got contract info {}", contractInfo)
 
-            val contract = contractService.getOrCreateContract(botMap.externalName, commonMetadata.lockSession!!, commonMetadata.contractSerialNumber.toInt())
+            val contract = contractService.getOrCreateContract(
+                botMap.externalName,
+                commonMetadata.lockSession!!,
+                commonMetadata.contractSerialNumber.toInt(),
+            )
             contractService.updateContractWithGetContractResponse(contract, contractInfo)
 
-            val handler = handlers.get(botMap)!!
+            val handler = handlers[botMap]!!
             handler.handleAccept(contract)
         }
     }
@@ -334,11 +363,11 @@ class BotComponent(
 
         val contract = contractService.markReleased(botMap.externalName, commonMetadata.contractSerialNumber.toInt())
 
-        val handler = handlers.get(botMap)!!
+        val handler = handlers[botMap]!!
         handler.handleRelease(contract)
     }
 
-    fun handleLock(botMap : BotMap, signedEvent: SignedEvent) {
+    fun handleLock(botMap: BotMap, signedEvent: SignedEvent) {
         logger.info("Handle Lock")
         val e = signedEvent.payload!!
         val commonMetadata = e.metadata!!
@@ -346,12 +375,12 @@ class BotComponent(
         // Lock gets some special behavior because it happens
         // _immediately_ on accept and might trigger an NPE because
         // the database hasn't saved it yet.
-        val contract : Contract = retryOnNullPointer {
+        val contract: Contract = retryOnNullPointer {
             println("Trying ${commonMetadata.contractSerialNumber}")
             contractService.getContract(botMap.externalName, commonMetadata.contractSerialNumber.toInt())
         }
 
-        val handler = handlers.get(botMap)!!
+        val handler = handlers[botMap]!!
         handler.handleLock(contract)
     }
 
@@ -362,7 +391,7 @@ class BotComponent(
 
         val contract = contractService.getContract(botMap.externalName, commonMetadata.contractSerialNumber.toInt())
 
-        val handler = handlers.get(botMap)!!
+        val handler = handlers[botMap]!!
         handler.handleUnlock(contract)
     }
 
@@ -373,25 +402,75 @@ class BotComponent(
 
         val contract = contractService.getContract(botMap.externalName, commonMetadata.contractSerialNumber.toInt())
 
-        val handler = handlers.get(botMap)
+        val handler = handlers[botMap]
         handler?.handleEmergencyUnlock(contract)
     }
 
     @EventListener
     fun handleSendMessage(event: SendBotBytes) {
-        val specificClient = this.botsToClients[event.botMap]
-        if (specificClient == null) {
-            logger.error("No MQTT client found for bot ${event.botMap.internalName}")
+        if (environment.activeProfiles.contains("test")) {
             return
         }
+        val action = event.action
+
         try {
-            if (!specificClient.isConnected) {
-                logger.warn("Client for ${event.botMap.internalName} is not connected, attempting reconnect before publish")
-                specificClient.reconnect()
+            val botJwt = botMapService.getBotJwt(event.botMap)
+            val botName = event.botMap.externalName
+
+            runBlocking {
+                val client = HttpClient(OkHttp) {
+                    install(ContentNegotiation) {
+                        json(jsonParser)
+                    }
+                }
+                try {
+                    val response = when (action) {
+                        is BotRestAction.CreateContract -> {
+                            client.post("$coordinator/bots/$botName/contracts") {
+                                header(HttpHeaders.Authorization, "Bearer $botJwt")
+                                contentType(ContentType.Application.Json)
+                                setBody(
+                                    BotCreateContractPayload(
+                                        shareableToken = action.shareableToken,
+                                        signedMessageBase64 = action.signedMessageBase64,
+                                    )
+                                )
+                            }
+                        }
+                        is BotRestAction.CreateCommand -> {
+                            client.post("$coordinator/bots/$botName/commands") {
+                                header(HttpHeaders.Authorization, "Bearer $botJwt")
+                                contentType(ContentType.Application.Json)
+                                setBody(
+                                    BotCreateCommandPayload(
+                                        contractName = action.contractName,
+                                        shareableToken = action.shareableToken,
+                                        signedMessageBase64 = action.signedMessageBase64,
+                                    )
+                                )
+                            }
+                        }
+                        is BotRestAction.CreateMessage -> {
+                            client.post("$coordinator/bots/$botName/contracts/${action.contractName}/messages") {
+                                header(HttpHeaders.Authorization, "Bearer $botJwt")
+                                contentType(ContentType.Application.Json)
+                                setBody(
+                                    BotCreateMessagePayload(
+                                        message = action.message,
+                                    )
+                                )
+                            }
+                        }
+                    }
+                    if (!response.status.isSuccess()) {
+                        logger.error("Failed REST action $action for ${event.botMap.internalName}: HTTP ${response.status} - ${response.bodyAsText()}")
+                    }
+                } finally {
+                    client.close()
+                }
             }
-            specificClient.publish("coordinator/inbox", event.message)
         } catch (e: Exception) {
-            logger.error("Failed to publish SendBotBytes for ${event.botMap.internalName}: $e", e)
+            logger.error("Failed to dispatch SendBotBytes for ${event.botMap.internalName}: $e", e)
         }
     }
 }

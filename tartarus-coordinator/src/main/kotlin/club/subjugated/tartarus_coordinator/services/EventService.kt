@@ -1,6 +1,8 @@
 package club.subjugated.tartarus_coordinator.services
 
 import club.subjugated.fb.event.EventType
+import club.subjugated.tartarus_coordinator.components.EventWebSocketHandler
+import club.subjugated.tartarus_coordinator.models.BotState
 import club.subjugated.tartarus_coordinator.models.Contract
 import club.subjugated.tartarus_coordinator.models.Event
 import club.subjugated.tartarus_coordinator.models.EventDelivery
@@ -9,10 +11,11 @@ import club.subjugated.tartarus_coordinator.storage.ContractRepository
 import club.subjugated.tartarus_coordinator.storage.EventDeliveryRepository
 import club.subjugated.tartarus_coordinator.storage.EventRepository
 import club.subjugated.tartarus_coordinator.util.verifySignedEvent
+import com.fasterxml.jackson.databind.ObjectMapper
 import java.nio.ByteBuffer
 import java.time.OffsetDateTime
+import java.util.Base64
 import org.eclipse.paho.client.mqttv3.MqttClient
-import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
@@ -22,13 +25,15 @@ import org.springframework.transaction.annotation.Transactional
 @Transactional
 class EventService {
     private val logger = LoggerFactory.getLogger(EventService::class.java)
+    private val objectMapper = ObjectMapper()
 
     @Autowired lateinit var eventRepository: EventRepository
     @Autowired lateinit var eventDeliveryRepository: EventDeliveryRepository
     @Autowired lateinit var contractRepository: ContractRepository
     @Autowired lateinit var lockSessionService: LockSessionService
     @Autowired lateinit var botRepository: BotRepository
-    @Autowired lateinit var mqttClient: MqttClient
+    @Autowired(required = false) var mqttClient: MqttClient? = null
+    @Autowired(required = false) var eventWebSocketHandler: EventWebSocketHandler? = null
 
     fun processIncomingLockEvent(sessionToken: String, payloadBytes: ByteArray): Event? {
         val lockSession = lockSessionService.findBySessionToken(sessionToken)
@@ -118,39 +123,90 @@ class EventService {
             )
         val savedEvent = eventRepository.save(event)
 
-        // Fan out to authorized contract bots
+        // Fan out to authorized contract bots over WebSocket
         if (contract != null) {
-            val embeddedBots = contract.getEmbeddedBots()
-            for (embeddedBot in embeddedBots) {
-                if (embeddedBot.permissions?.receiveEvents == true) {
-                    val botName = embeddedBot.name ?: continue
-                    val botEntity = botRepository.findByName(botName)
-
-                    val delivery =
-                        EventDelivery(
-                            event = savedEvent,
-                            bot = botEntity,
-                            contract = contract,
-                            delivered = false,
-                        )
-                    eventDeliveryRepository.save(delivery)
-
-                    // Publish to bot's inbox
-                    try {
-                        val topic = "bots/inbox_events_${botName}"
-                        mqttClient.publish(topic, MqttMessage(payloadBytes))
-                        delivery.delivered = true
-                        delivery.deliveredAt = OffsetDateTime.now()
-                        eventDeliveryRepository.save(delivery)
-                        logger.info("Fanned out event {} to bot {}", savedEvent.name, botName)
-                    } catch (e: Exception) {
-                        logger.error("Failed to publish event to bot {}: {}", botName, e.message)
-                    }
-                }
-            }
+            fanOutEventToContractBots(contract, savedEvent, payloadBytes)
         }
 
         return savedEvent
+    }
+
+    private fun fanOutEventToContractBots(
+        contract: Contract,
+        savedEvent: Event,
+        payloadBytes: ByteArray,
+    ) {
+        val embeddedBots =
+            contract.getEmbeddedBots().filter {
+                it.permissions?.receiveEvents == true && !it.name.isNullOrBlank()
+            }
+        val rawSignedEventB64 = Base64.getEncoder().encodeToString(payloadBytes)
+        for (embeddedBot in embeddedBots) {
+            val botName = embeddedBot.name!!
+            val botEntity = botRepository.findByName(botName)
+            if (botEntity.state != BotState.ACTIVE) {
+                logger.info("Skipping event fanout to non-active bot {}", botName)
+            } else {
+                deliverEventToSingleBot(contract, savedEvent, botEntity, rawSignedEventB64)
+            }
+        }
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    private fun deliverEventToSingleBot(
+        contract: Contract,
+        savedEvent: Event,
+        botEntity: club.subjugated.tartarus_coordinator.models.Bot,
+        rawSignedEventB64: String,
+    ) {
+        val delivery =
+            EventDelivery(
+                event = savedEvent,
+                bot = botEntity,
+                contract = contract,
+                delivered = false,
+            )
+        eventDeliveryRepository.save(delivery)
+
+        try {
+            val wsPayload =
+                objectMapper.writeValueAsString(
+                    mapOf(
+                        "type" to "bot_event",
+                        "eventId" to savedEvent.name,
+                        "botName" to botEntity.name,
+                        "contractName" to contract.name,
+                        "contractSerial" to savedEvent.contractSerialNumber,
+                        "lockSession" to savedEvent.sessionToken,
+                        "counter" to savedEvent.counter,
+                        "eventType" to savedEvent.eventType,
+                        "correlationId" to savedEvent.correlationId,
+                        "rawSignedEventBase64" to rawSignedEventB64,
+                    )
+                )
+            val sent =
+                eventWebSocketHandler?.sendBotMessage(
+                    botEntity.name,
+                    botEntity.authorSession?.name,
+                    wsPayload,
+                ) ?: false
+            if (sent) {
+                delivery.delivered = true
+                delivery.deliveredAt = OffsetDateTime.now()
+                eventDeliveryRepository.save(delivery)
+                logger.info(
+                    "Fanned out event {} to bot {} over WebSocket",
+                    savedEvent.name,
+                    botEntity.name,
+                )
+            }
+        } catch (e: Exception) {
+            logger.error(
+                "Failed to deliver WebSocket event to bot {}: {}",
+                botEntity.name,
+                e.message,
+            )
+        }
     }
 
     @Transactional(readOnly = true)

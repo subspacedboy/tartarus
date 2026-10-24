@@ -11,9 +11,10 @@ import org.springframework.web.socket.handler.TextWebSocketHandler
 class EventWebSocketHandler : TextWebSocketHandler() {
     private val sessions = CopyOnWriteArraySet<WebSocketSession>()
 
-    private val authorSessions = ConcurrentHashMap<String, WebSocketSession>()
+    private val authorSessions = ConcurrentHashMap<String, CopyOnWriteArraySet<WebSocketSession>>()
     private val lockUserSessions = ConcurrentHashMap<String, WebSocketSession>()
     private val adminSessions = ConcurrentHashMap<String, WebSocketSession>()
+    private val botSessions = ConcurrentHashMap<String, CopyOnWriteArraySet<WebSocketSession>>()
 
     override fun afterConnectionEstablished(session: WebSocketSession) {
         sessions.add(session)
@@ -25,12 +26,17 @@ class EventWebSocketHandler : TextWebSocketHandler() {
 
         if (session.attributes.containsKey("authorSession")) {
             val token: String = session.attributes["authorSession"].toString()
-            authorSessions[token] = session
+            authorSessions.computeIfAbsent(token) { CopyOnWriteArraySet() }.add(session)
         }
 
         if (session.attributes.containsKey("adminSession")) {
             val token: String = session.attributes["adminSession"].toString()
             adminSessions[token] = session
+        }
+
+        if (session.attributes.containsKey("botSession")) {
+            val token: String = session.attributes["botSession"].toString()
+            botSessions.computeIfAbsent(token) { CopyOnWriteArraySet() }.add(session)
         }
     }
 
@@ -47,17 +53,54 @@ class EventWebSocketHandler : TextWebSocketHandler() {
 
         if (session.attributes.containsKey("authorSession")) {
             val token: String = session.attributes["authorSession"].toString()
-            authorSessions.remove(token)
+            authorSessions[token]?.remove(session)
         }
 
         if (session.attributes.containsKey("adminSession")) {
             val token: String = session.attributes["adminSession"].toString()
             adminSessions.remove(token)
         }
+
+        if (session.attributes.containsKey("botSession")) {
+            val token: String = session.attributes["botSession"].toString()
+            botSessions[token]?.remove(session)
+        }
     }
 
-    fun sendAuthorMessage(authorName: String, message: String) {
-        authorSessions[authorName]?.sendMessage(TextMessage(message))
+    fun sendAuthorMessage(authorName: String, message: String): Boolean {
+        val targetSessions = authorSessions[authorName] ?: return false
+        var sent = false
+        val textMessage = TextMessage(message)
+        for (ws in targetSessions) {
+            if (ws.isOpen) {
+                ws.sendMessage(textMessage)
+                sent = true
+            }
+        }
+        return sent
+    }
+
+    fun sendBotMessage(botName: String, ownerAuthorName: String?, message: String): Boolean {
+        var delivered = false
+        val textMessage = TextMessage(message)
+
+        botSessions[botName]?.forEach { ws ->
+            if (ws.isOpen) {
+                ws.sendMessage(textMessage)
+                delivered = true
+            }
+        }
+
+        if (!ownerAuthorName.isNullOrBlank()) {
+            authorSessions[ownerAuthorName]?.forEach { ws ->
+                if (ws.isOpen) {
+                    ws.sendMessage(textMessage)
+                    delivered = true
+                }
+            }
+        }
+
+        return delivered
     }
 
     fun sendLockUserMessage(lockUserName: String, message: String) {

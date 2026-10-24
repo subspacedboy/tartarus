@@ -55,8 +55,7 @@ class OverlordConversationHandler(
                 }
                 runBlocking {
                     scope.async(exceptionHandler) {
-                        val client = botComponent.botsToClients[botMap]!!
-                        val contractInfo = botComponent.requestContract(botMap.externalName, lockSession, serialNumber.toUShort(), client)
+                        val contractInfo = botComponent.requestContract(botMap.externalName, lockSession, serialNumber.toUShort())
                         val contract = contractService.getOrCreateContract(botMap.externalName, lockSession, serialNumber.toInt())
                         contractService.updateContractWithGetContractResponse(contract, contractInfo)
                     }

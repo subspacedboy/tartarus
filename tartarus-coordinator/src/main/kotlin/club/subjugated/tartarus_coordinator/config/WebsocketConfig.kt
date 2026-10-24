@@ -4,6 +4,7 @@ import club.subjugated.tartarus_coordinator.components.EventWebSocketHandler
 import club.subjugated.tartarus_coordinator.filters.JwtHandshakeInterceptor
 import club.subjugated.tartarus_coordinator.services.AdminSessionService
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
+import club.subjugated.tartarus_coordinator.services.BotService
 import club.subjugated.tartarus_coordinator.services.LockUserSessionService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Configuration
@@ -18,6 +19,7 @@ class WebsocketConfig(private val webSocketHandler: EventWebSocketHandler) : Web
     @Autowired lateinit var lockUserSessionService: LockUserSessionService
     @Autowired lateinit var authorSessionService: AuthorSessionService
     @Autowired lateinit var adminSessionService: AdminSessionService
+    @Autowired lateinit var botService: BotService
 
     override fun registerWebSocketHandlers(registry: WebSocketHandlerRegistry) {
         registry
@@ -27,6 +29,7 @@ class WebsocketConfig(private val webSocketHandler: EventWebSocketHandler) : Web
                     authorSessionService,
                     lockUserSessionService,
                     adminSessionService,
+                    botService,
                 )
             )
             .setAllowedOrigins("*")

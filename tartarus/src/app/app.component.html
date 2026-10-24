@@ -53,6 +53,13 @@
           >
             Lock Sessions
           </a>
+          <a
+            routerLink="/bots"
+            routerLinkActive="bg-accent text-accent-foreground"
+            class="inline-flex h-9 items-center rounded-md px-3 text-sm font-medium text-foreground/80 no-underline transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            My Bots
+          </a>
         }
 
         @if (hasLockSessions) {
@@ -107,6 +114,7 @@
 
           @if (hasAuthorSession) {
             <a hlmMenuItem routerLink="/lock-sessions">Lock Sessions</a>
+            <a hlmMenuItem routerLink="/bots">My Bots</a>
           }
 
           @if (hasLockSessions) {

@@ -1,0 +1,174 @@
+<div class="mx-auto max-w-6xl space-y-6">
+  <!-- Header -->
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div class="space-y-1">
+      <div class="flex flex-wrap items-center gap-2.5">
+        <h1 class="text-2xl font-bold tracking-tight text-foreground">My Bots</h1>
+        <span hlmBadge variant="secondary">{{ bots.length }} Owned</span>
+      </div>
+      <p class="text-sm text-muted-foreground">
+        Deterministically derive and manage bots tied to your Author keypair via HKDF-SHA256. All contracts created by your bots are automatically managed under your Author session.
+      </p>
+    </div>
+  </div>
+
+  <!-- Create / Derive Bot Card -->
+  <section hlmCard class="border-l-4 border-l-primary">
+    <div hlmCardContent class="p-4 sm:p-5">
+      <form (ngSubmit)="createBot()" class="grid grid-cols-1 gap-4 sm:grid-cols-12 sm:items-end">
+        <div class="space-y-1.5 sm:col-span-4">
+          <label hlmLabel for="botInternalNameInput" class="text-xs font-semibold uppercase tracking-wider text-primary">
+            Internal Derivation Name
+          </label>
+          <input
+            id="botInternalNameInput"
+            name="botInternalNameInput"
+            hlmInput
+            type="text"
+            [(ngModel)]="newInternalName"
+            placeholder="e.g. timer_bot, simple_proxy"
+            class="font-mono text-xs sm:text-sm"
+          />
+        </div>
+        <div class="space-y-1.5 sm:col-span-5">
+          <label hlmLabel for="botDescriptionInput" class="text-xs font-semibold uppercase tracking-wider text-primary">
+            Display Description
+          </label>
+          <input
+            id="botDescriptionInput"
+            name="botDescriptionInput"
+            hlmInput
+            type="text"
+            [(ngModel)]="newDescription"
+            placeholder="e.g. Timer Bot (Auto-Release)"
+            class="text-xs sm:text-sm"
+          />
+        </div>
+        <div class="sm:col-span-3">
+          <button
+            type="submit"
+            hlmBtn
+            variant="default"
+            [disabled]="isCreating || !newInternalName.trim() || !newDescription.trim()"
+            class="w-full"
+          >
+            Derive &amp; Register Bot
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- Bot List -->
+  @if (bots.length === 0) {
+    <section hlmCard class="py-12 text-center">
+      <div hlmCardContent class="mx-auto max-w-md space-y-2 text-sm text-muted-foreground">
+        <h2 class="text-base font-semibold text-foreground">No Bots Registered Yet</h2>
+        <p>
+          Enter an internal derivation name and description above to deterministically derive a bot keypair from your Author key and register it with the coordinator.
+        </p>
+      </div>
+    </section>
+  } @else {
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+      @for (bot of bots; track bot.name) {
+        <section hlmCard class="flex flex-col justify-between">
+          <div hlmCardHeader class="space-y-2 pb-3">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <h2 hlmCardTitle class="text-base font-semibold text-foreground">
+                  {{ bot.description || bot.internalName || bot.name }}
+                </h2>
+                <p class="font-mono text-xs text-muted-foreground">{{ bot.name }}</p>
+              </div>
+              <div class="flex items-center gap-1.5">
+                @if (bot.keyVersion) {
+                  <span hlmBadge variant="outline">v{{ bot.keyVersion }}</span>
+                }
+                <span
+                  hlmBadge
+                  [variant]="bot.state === 'VERIFIED' ? 'default' : bot.state === 'PAUSED' ? 'destructive' : 'secondary'"
+                >
+                  {{ bot.state || 'UNVERIFIED' }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div hlmCardContent class="space-y-2 text-xs">
+            @if (bot.internalName) {
+              <div class="flex items-center justify-between rounded bg-muted/50 px-2.5 py-1.5">
+                <span class="text-muted-foreground">Derivation Path</span>
+                <code class="font-mono text-foreground">{{ bot.internalName }}:{{ bot.keyVersion || 1 }}</code>
+              </div>
+            }
+            <div class="flex items-center justify-between rounded bg-muted/50 px-2.5 py-1.5">
+              <span class="text-muted-foreground">Public Key</span>
+              <code class="max-w-[220px] truncate font-mono text-foreground" [title]="bot.publicKey || ''">
+                {{ bot.publicKey }}
+              </code>
+            </div>
+          </div>
+
+          <div hlmCardFooter class="flex flex-wrap items-center justify-end gap-2 pt-2">
+            @if (bot.internalName) {
+              <button type="button" hlmBtn variant="outline" size="sm" (click)="showDerivedKeyModal(bot)">
+                Inspect Derived Keys
+              </button>
+              <button type="button" hlmBtn variant="outline" size="sm" (click)="rotateBotKey(bot)">
+                Rotate Key (v{{ (bot.keyVersion || 1) + 1 }})
+              </button>
+            }
+            <button
+              type="button"
+              hlmBtn
+              [variant]="bot.state === 'PAUSED' ? 'default' : 'secondary'"
+              size="sm"
+              (click)="togglePause(bot)"
+            >
+              {{ bot.state === 'PAUSED' ? 'Resume Bot' : 'Pause Bot' }}
+            </button>
+          </div>
+        </section>
+      }
+    </div>
+  }
+</div>
+
+<hlm-dialog
+  [open]="!!selectedBotForKey"
+  aria-label="Derived Bot Keypair"
+  (closed)="closeDerivedKeyModal()"
+>
+  <div hlmDialogHeader>
+    <h2 hlmDialogTitle>
+      Derived Keys for {{ selectedBotForKey?.internalName }} ({{ selectedBotForKey?.name }})
+    </h2>
+    <p hlmDialogDescription>
+      Re-derived deterministically in your browser from your Author keypair using HKDF-SHA256 (<code>{{ selectedBotForKey?.internalName }}:{{ selectedBotForKey?.keyVersion || 1 }}</code>).
+    </p>
+  </div>
+  <div class="space-y-3 text-xs">
+    <div class="space-y-1">
+      <div class="flex items-center justify-between">
+        <span class="font-semibold text-foreground">Private Key (PKCS#8 PEM)</span>
+        <button type="button" hlmBtn variant="outline" size="sm" (click)="copyText(derivedPrivatePem, 'Private Key PEM')">
+          Copy PEM
+        </button>
+      </div>
+      <pre class="max-h-36 overflow-auto rounded bg-muted p-2 font-mono text-[11px]">{{ derivedPrivatePem }}</pre>
+    </div>
+    <div class="space-y-1">
+      <div class="flex items-center justify-between">
+        <span class="font-semibold text-foreground">Public Key (SPKI PEM)</span>
+        <button type="button" hlmBtn variant="outline" size="sm" (click)="copyText(derivedPublicPem, 'Public Key PEM')">
+          Copy PEM
+        </button>
+      </div>
+      <pre class="max-h-28 overflow-auto rounded bg-muted p-2 font-mono text-[11px]">{{ derivedPublicPem }}</pre>
+    </div>
+  </div>
+  <div hlmDialogFooter>
+    <button type="button" hlmBtn variant="default" (click)="closeDerivedKeyModal()">Close</button>
+  </div>
+</hlm-dialog>

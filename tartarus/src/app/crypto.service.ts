@@ -247,4 +247,187 @@ export class CryptoService {
       iv
     };
   }
+
+  /**
+   * Deterministically derives a secp256r1 (P-256) bot keypair from the Author's PKCS#8 private key PEM
+   * using HKDF-SHA256 (salt = "tartarus-bot-kdf-v1", info = "${internalName}:${keyVersion}", L = 48 bytes).
+   */
+  async deriveBotKeyPair(
+    authorPrivateKeyPem: string,
+    internalName: string,
+    keyVersion: number = 1
+  ): Promise<{
+    compressedPublicKeyBase64: string;
+    privateKeyPEM: string;
+    publicKeyPEM: string;
+  }> {
+    const privateKeyBuffer = this.pemToArrayBuffer(authorPrivateKeyPem);
+    const authorPrivKey = await crypto.subtle.importKey(
+      "pkcs8",
+      privateKeyBuffer,
+      { name: "ECDSA", namedCurve: "P-256" },
+      true,
+      ["sign"]
+    );
+    const authorJwk = await crypto.subtle.exportKey("jwk", authorPrivKey);
+    if (!authorJwk.d) {
+      throw new Error("Failed to extract private scalar from Author key");
+    }
+
+    const ikm = this.base64UrlToBytes(authorJwk.d);
+    const salt = new TextEncoder().encode("tartarus-bot-kdf-v1");
+    const info = new TextEncoder().encode(`${internalName}:${keyVersion}`);
+
+    const hkdfKey = await crypto.subtle.importKey("raw", ikm as BufferSource, { name: "HKDF" }, false, ["deriveBits"]);
+    const okmBuffer = await crypto.subtle.deriveBits(
+      {
+        name: "HKDF",
+        hash: "SHA-256",
+        salt: salt as BufferSource,
+        info: info as BufferSource,
+      },
+      hkdfKey,
+      48 * 8
+    );
+    const okm = new Uint8Array(okmBuffer);
+
+    const n = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551n;
+    const okmBigInt = this.bytesToBigInt(okm);
+    const dBot = (okmBigInt % (n - 1n)) + 1n;
+
+    const { x, y } = this.p256ScalarBaseMult(dBot);
+    const dBytes = this.bigIntTo32Bytes(dBot);
+    const xBytes = this.bigIntTo32Bytes(x);
+    const yBytes = this.bigIntTo32Bytes(y);
+
+    const prefix = (y & 1n) === 0n ? 0x02 : 0x03;
+    const compressedPub = new Uint8Array(33);
+    compressedPub[0] = prefix;
+    compressedPub.set(xBytes, 1);
+    const compressedPublicKeyBase64 = btoa(String.fromCharCode(...compressedPub));
+
+    const botPrivJwk: JsonWebKey = {
+      kty: "EC",
+      crv: "P-256",
+      x: this.bytesToBase64Url(xBytes),
+      y: this.bytesToBase64Url(yBytes),
+      d: this.bytesToBase64Url(dBytes),
+      ext: true,
+    };
+    const botPubJwk: JsonWebKey = {
+      kty: "EC",
+      crv: "P-256",
+      x: this.bytesToBase64Url(xBytes),
+      y: this.bytesToBase64Url(yBytes),
+      ext: true,
+    };
+
+    const botPrivCryptoKey = await crypto.subtle.importKey(
+      "jwk",
+      botPrivJwk,
+      { name: "ECDSA", namedCurve: "P-256" },
+      true,
+      ["sign"]
+    );
+    const botPubCryptoKey = await crypto.subtle.importKey(
+      "jwk",
+      botPubJwk,
+      { name: "ECDSA", namedCurve: "P-256" },
+      true,
+      ["verify"]
+    );
+
+    const pkcs8Der = await crypto.subtle.exportKey("pkcs8", botPrivCryptoKey);
+    const spkiDer = await crypto.subtle.exportKey("spki", botPubCryptoKey);
+
+    return {
+      compressedPublicKeyBase64,
+      privateKeyPEM: this.derToPem(new Uint8Array(pkcs8Der), "PRIVATE KEY"),
+      publicKeyPEM: this.derToPem(new Uint8Array(spkiDer), "PUBLIC KEY"),
+    };
+  }
+
+  private base64UrlToBytes(b64url: string): Uint8Array {
+    const pad = "=".repeat((4 - (b64url.length % 4)) % 4);
+    const b64 = (b64url + pad).replace(/-/g, "+").replace(/_/g, "/");
+    const bin = atob(b64);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) {
+      out[i] = bin.charCodeAt(i);
+    }
+    return out;
+  }
+
+  private bytesToBase64Url(bytes: Uint8Array): string {
+    return btoa(String.fromCharCode(...bytes))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+  }
+
+  private bytesToBigInt(bytes: Uint8Array): bigint {
+    let res = 0n;
+    for (const b of bytes) {
+      res = (res << 8n) | BigInt(b);
+    }
+    return res;
+  }
+
+  private bigIntTo32Bytes(val: bigint): Uint8Array {
+    const out = new Uint8Array(32);
+    let temp = val;
+    for (let i = 31; i >= 0; i--) {
+      out[i] = Number(temp & 0xffn);
+      temp >>= 8n;
+    }
+    return out;
+  }
+
+  private p256ScalarBaseMult(k: bigint): { x: bigint; y: bigint } {
+    const p = 0xFFFFFFFF00000000000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFFn;
+    const a = p - 3n;
+    const Gx = 0x6B17D1F2E12C4247F8BCE6E563A440F277037D812DEB33A0F4A13945D898C296n;
+    const Gy = 0x4FE342E2FE1A7F9B8EE7EB4A7C0F9E162BCE33576B315ECECBB6406837BF51F5n;
+
+    const mod = (n: bigint) => ((n % p) + p) % p;
+    const modInv = (num: bigint): bigint => {
+      let [t, newT] = [0n, 1n];
+      let [r, newR] = [p, mod(num)];
+      while (newR !== 0n) {
+        const q = r / newR;
+        [t, newT] = [newT, t - q * newT];
+        [r, newR] = [newR, r - q * newR];
+      }
+      return mod(t);
+    };
+
+    type Point = { x: bigint; y: bigint } | null;
+    const pointAdd = (P: Point, Q: Point): Point => {
+      if (!P) return Q;
+      if (!Q) return P;
+      if (P.x === Q.x && P.y !== Q.y) return null;
+      const lam =
+        P.x === Q.x
+          ? mod((3n * P.x * P.x + a) * modInv(2n * P.y))
+          : mod((Q.y - P.y) * modInv(Q.x - P.x));
+      const rx = mod(lam * lam - P.x - Q.x);
+      const ry = mod(lam * (P.x - rx) - P.y);
+      return { x: rx, y: ry };
+    };
+
+    let result: Point = null;
+    let addend: Point = { x: Gx, y: Gy };
+    let scalar = k;
+    while (scalar > 0n) {
+      if ((scalar & 1n) === 1n) {
+        result = pointAdd(result, addend);
+      }
+      addend = pointAdd(addend, addend);
+      scalar >>= 1n;
+    }
+    if (!result) {
+      throw new Error("Invalid scalar multiplication result");
+    }
+    return result;
+  }
 }

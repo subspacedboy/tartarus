@@ -9,6 +9,7 @@ import club.subjugated.tartarus_coordinator.events.ContractChangeEvent
 import club.subjugated.tartarus_coordinator.events.NewCommandEvent
 import club.subjugated.tartarus_coordinator.models.AuthorSession
 import club.subjugated.tartarus_coordinator.models.Bot
+import club.subjugated.tartarus_coordinator.models.BotState
 import club.subjugated.tartarus_coordinator.models.Command
 import club.subjugated.tartarus_coordinator.models.CommandState
 import club.subjugated.tartarus_coordinator.models.CommandType
@@ -18,6 +19,7 @@ import club.subjugated.tartarus_coordinator.models.LockSession
 import club.subjugated.tartarus_coordinator.models.Message
 import club.subjugated.tartarus_coordinator.models.MessageType
 import club.subjugated.tartarus_coordinator.models.SafetyKey
+import club.subjugated.tartarus_coordinator.storage.BotRepository
 import club.subjugated.tartarus_coordinator.storage.ContractRepository
 import club.subjugated.tartarus_coordinator.util.TimeSource
 import club.subjugated.tartarus_coordinator.util.ValidatedPayload
@@ -44,6 +46,7 @@ class ContractService {
     @Autowired lateinit var commandQueueService: CommandQueueService
     @Autowired lateinit var timeSource: TimeSource
     @Autowired lateinit var publisher: ApplicationEventPublisher
+    @Autowired(required = false) var botRepository: BotRepository? = null
 
     fun saveContract(
         newContractMessage: NewContractMessage,
@@ -178,6 +181,14 @@ class ContractService {
         signedMessage: String,
     ) {
         val decodedData = Base64.getDecoder().decode(signedMessage)
+        val sm = SignedMessage.getRootAsSignedMessage(ByteBuffer.wrap(decodedData))
+        val authorityId = sm.authorityIdentifier
+        if (!authorityId.isNullOrBlank() && authorityId.startsWith("b-") && botRepository != null) {
+            val bot = botRepository!!.findByName(authorityId)
+            saveCommandForBot(bot, contract, signedMessage)
+            return
+        }
+
         val authorPubKey = Base64.getDecoder().decode(authorSession.publicKey)
         val buf = ByteBuffer.wrap(decodedData)
 
@@ -246,6 +257,95 @@ class ContractService {
             }
             else -> {}
         }
+    }
+
+    @Suppress("LongMethod")
+    fun saveCommandForBot(bot: Bot, contract: Contract, signedMessage: String) {
+        require(bot.state == BotState.ACTIVE) { "Bot is not active" }
+        val embeddedBot =
+            contract.getEmbeddedBots().firstOrNull { it.name == bot.name }
+                ?: throw IllegalArgumentException("Bot is not listed in the contract")
+
+        val decodedData = Base64.getDecoder().decode(signedMessage)
+        val buf = ByteBuffer.wrap(decodedData)
+        val sessionToken = contract.lockSession.sessionToken!!
+        val perms = embeddedBot.permissions
+        val incoming = signedMessageBytesValidatorWithExternalKey(buf, bot.decodePublicKey())
+
+        val (command, ignoreDupes) =
+            when (incoming) {
+                is ValidatedPayload.UnlockCommandPayload -> {
+                    require(perms?.canUnlock == true) { "Bot lacks unlock permission" }
+                    val c = incoming.unlockCommand
+                    buildBotCommand(
+                        bot,
+                        contract,
+                        CommandType.UNLOCK,
+                        c.serialNumber,
+                        c.counter,
+                        decodedData,
+                    ) to false
+                }
+                is ValidatedPayload.LockCommandPayload -> {
+                    require(perms?.canLock == true) { "Bot lacks lock permission" }
+                    val c = incoming.lockCommand
+                    buildBotCommand(
+                        bot,
+                        contract,
+                        CommandType.LOCK,
+                        c.serialNumber,
+                        c.counter,
+                        decodedData,
+                    ) to false
+                }
+                is ValidatedPayload.ReleaseCommandPayload -> {
+                    require(perms?.canRelease == true) { "Bot lacks release permission" }
+                    val c = incoming.releaseCommand
+                    buildBotCommand(
+                        bot,
+                        contract,
+                        CommandType.RELEASE,
+                        c.serialNumber,
+                        c.counter,
+                        decodedData,
+                    ) to true
+                }
+                else -> throw IllegalArgumentException("Invalid bot command signature or payload")
+            }
+
+        val saved =
+            if (ignoreDupes) {
+                commandQueueService.saveCommandIgnoreDupes(command)
+            } else {
+                commandQueueService.saveCommand(command)
+                true
+            }
+        if (saved) {
+            publisher.publishEvent(NewCommandEvent(this, sessionToken))
+        }
+    }
+
+    private fun buildBotCommand(
+        bot: Bot,
+        contract: Contract,
+        type: CommandType,
+        serialNumber: UShort,
+        counter: UShort,
+        decodedData: ByteArray,
+    ): Command {
+        require(serialNumber.toInt() != 0) { "Serial number must not be zero" }
+        return Command(
+            commandQueue = contract.lockSession.commandQueue.first(),
+            state = CommandState.PENDING,
+            type = type,
+            serialNumber = serialNumber.toInt(),
+            counter = counter.toInt(),
+            body = decodedData,
+            authorSession = bot.authorSession ?: contract.authorSession,
+            createdAt = timeSource.nowInUtc(),
+            updatedAt = timeSource.nowInUtc(),
+            contract = contract,
+        )
     }
 
     fun findContractsByAuthorSessionAndState(

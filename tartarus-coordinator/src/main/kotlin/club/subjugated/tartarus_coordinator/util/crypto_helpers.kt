@@ -4,7 +4,9 @@ import java.io.File
 import java.io.StringReader
 import java.io.StringWriter
 import java.math.BigInteger
+import java.nio.charset.StandardCharsets
 import java.security.*
+import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 import java.security.spec.*
 import org.bouncycastle.asn1.ASN1InputStream
@@ -12,7 +14,10 @@ import org.bouncycastle.asn1.ASN1Integer
 import org.bouncycastle.asn1.ASN1Sequence
 import org.bouncycastle.asn1.sec.SECNamedCurves
 import org.bouncycastle.asn1.x9.X9ECParameters
+import org.bouncycastle.crypto.digests.SHA256Digest
+import org.bouncycastle.crypto.generators.HKDFBytesGenerator
 import org.bouncycastle.crypto.generators.SCrypt
+import org.bouncycastle.crypto.params.HKDFParameters
 import org.bouncycastle.crypto.signers.StandardDSAEncoding
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -227,4 +232,80 @@ fun signEcdsaSha256(privateKey: PrivateKey, data: ByteArray): ByteArray {
     signer.initSign(privateKey)
     signer.update(hash)
     return signer.sign()
+}
+
+const val BOT_KDF_SALT = "tartarus-bot-kdf-v1"
+
+fun bigIntToFixed32Bytes(b: BigInteger): ByteArray {
+    val full = ByteArray(32)
+    val raw = b.toByteArray()
+    val src = if (raw.size > 32) raw.copyOfRange(raw.size - 32, raw.size) else raw
+    System.arraycopy(src, 0, full, 32 - src.size, src.size)
+    return full
+}
+
+fun extractRawScalarFromPrivateKey(privateKey: PrivateKey): ByteArray {
+    Security.addProvider(BouncyCastleProvider())
+    val ecPriv =
+        when (privateKey) {
+            is ECPrivateKey -> privateKey
+            else -> {
+                val keyFactory = KeyFactory.getInstance("EC", "BC")
+                keyFactory.generatePrivate(PKCS8EncodedKeySpec(privateKey.encoded)) as ECPrivateKey
+            }
+        }
+    return bigIntToFixed32Bytes(ecPriv.s)
+}
+
+fun keyPairFromRawScalar(scalar: BigInteger): KeyPair {
+    Security.addProvider(BouncyCastleProvider())
+    val params: X9ECParameters = SECNamedCurves.getByName("secp256r1")
+    val ecSpec = ECNamedCurveSpec("secp256r1", params.curve, params.g, params.n, params.h)
+    val keyFactory = KeyFactory.getInstance("EC", "BC")
+
+    val privSpec = ECPrivateKeySpec(scalar, ecSpec)
+    val privateKey = keyFactory.generatePrivate(privSpec)
+
+    val qPoint = params.g.multiply(scalar).normalize()
+    val pubPoint = ECPoint(qPoint.affineXCoord.toBigInteger(), qPoint.affineYCoord.toBigInteger())
+    val pubSpec = ECPublicKeySpec(pubPoint, ecSpec)
+    val publicKey = keyFactory.generatePublic(pubSpec)
+
+    return KeyPair(publicKey, privateKey)
+}
+
+private const val BOT_KDF_OKM_BYTES = 48
+
+fun deriveBotKeyPairFromSeed(
+    masterSeed32Bytes: ByteArray,
+    internalName: String,
+    keyVersion: Int = 1,
+): KeyPair {
+    require(masterSeed32Bytes.size == 32) { "Master seed must be 32 bytes" }
+    require(internalName.isNotBlank()) { "Bot internalName must not be blank" }
+    require(keyVersion >= 1) { "keyVersion must be >= 1" }
+
+    val saltBytes = BOT_KDF_SALT.toByteArray(StandardCharsets.UTF_8)
+    val infoBytes = "$internalName:$keyVersion".toByteArray(StandardCharsets.UTF_8)
+
+    val hkdf = HKDFBytesGenerator(SHA256Digest())
+    hkdf.init(HKDFParameters(masterSeed32Bytes, saltBytes, infoBytes))
+    val okm = ByteArray(BOT_KDF_OKM_BYTES)
+    hkdf.generateBytes(okm, 0, okm.size)
+
+    val params: X9ECParameters = SECNamedCurves.getByName("secp256r1")
+    val nMinusOne = params.n.subtract(BigInteger.ONE)
+    val k = BigInteger(1, okm)
+    val scalar = k.mod(nMinusOne).add(BigInteger.ONE)
+
+    return keyPairFromRawScalar(scalar)
+}
+
+fun deriveBotKeyPair(
+    authorPrivateKey: PrivateKey,
+    internalName: String,
+    keyVersion: Int = 1,
+): KeyPair {
+    val seed = extractRawScalarFromPrivateKey(authorPrivateKey)
+    return deriveBotKeyPairFromSeed(seed, internalName, keyVersion)
 }

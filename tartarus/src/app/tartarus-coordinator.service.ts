@@ -360,6 +360,50 @@ export class TartarusCoordinatorService {
     }));
   }
 
+  public getMyBots(): Observable<Bot[]> {
+    const uri = `${this.baseUrl}/bots/mine`;
+    return this.http.get(uri, {
+      headers: new HttpHeaders({ 'X-Require-Author': 'requires authorization tokens' }),
+    }).pipe(map((res: any) => {
+      return res.map((datum: any) => new Bot(datum));
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public createBot(publicKey: string, description: string, internalName?: string, keyVersion: number = 1): Observable<Bot> {
+    const uri = `${this.baseUrl}/bots/`;
+    const body = JSON.stringify({
+      publicKey,
+      description,
+      internalName: internalName || null,
+      keyVersion,
+    });
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'X-Require-Author': 'requires authorization tokens',
+    });
+    return this.http.post(uri, body, { headers }).pipe(map((res: any) => {
+      return new Bot(res);
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
+  public updateBot(botName: string, update: { description?: string; state?: string; publicKey?: string; keyVersion?: number }): Observable<Bot> {
+    const uri = `${this.baseUrl}/bots/${botName}`;
+    const body = JSON.stringify(update);
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'X-Require-Author': 'requires authorization tokens',
+    });
+    return this.http.put(uri, body, { headers }).pipe(map((res: any) => {
+      return new Bot(res);
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
   // Admin sessions
 
   public confirmAdminSession(public_key: string, session_token: string, signature : string) : Observable<AdminSession> {

@@ -1,210 +1,245 @@
-import asyncio
 import argparse
+import asyncio
 import base64
-import ssl
-import paho.mqtt.client as mqtt
-import random
-import os
 from datetime import datetime, timedelta, timezone
+import json
+import random
 import traceback
+import urllib.request
 
-from club.subjugated.fb.bots.GetLockSessionResponse import GetLockSessionResponse
-from club.subjugated.fb.event.SignedEvent import SignedEvent
+import websockets
+
 from club.subjugated.fb.event.EventType import EventType
-from club.subjugated.fb.bots.BotApiMessage import BotApiMessage
 from club.subjugated.fb.event.SignedEvent import SignedEvent
 
+from tartarus_bot_example.api_helper import (
+    make_signed_contract_bytes,
+    make_signed_message_bytes,
+    make_signed_release_command_bytes,
+)
 from tartarus_bot_example.file_database import FileDatabase
 from tartarus_bot_example.signer import Signer
-from tartarus_bot_example.api_helper import make_create_contract_request, make_contract_request, make_get_lock_session_request, make_new_message_request, make_release_command_request, response_as_create_contract_response, response_as_get_contract_response, response_as_get_lock_session_response
 
-signer = Signer()
 
 def has_callable(obj, method_name):
     return hasattr(obj, method_name) and callable(getattr(obj, method_name))
 
+
 class AsyncTartarusClient:
-    def __init__(self, bot_name, password, broker, port, websocket_path="/mqtt", callback_obj=None, require_tls=False):
-        self.broker = broker
-        self.port = port
+    def __init__(
+        self,
+        bot_name: str,
+        signer: Signer,
+        coordinator_url: str = "http://localhost:8080",
+        ws_url: str = "ws://localhost:8080/ws/events",
+        callback_obj=None,
+    ):
         self.bot_name = bot_name
-        self.client = mqtt.Client(
-            client_id=f"{bot_name}",
-            transport="websockets",)
-        self.client.username = self.bot_name
-        self.client.password = password
-        self.client.keepalive = 30
-
-        self.client.ws_set_options(path=websocket_path)
-
-        if require_tls:
-            self.client.tls_set(cert_reqs=ssl.CERT_REQUIRED)
-
-        self.client.on_connect = self.on_connect
-        self.client.on_message = self.on_message
-
+        self.signer = signer
+        self.coordinator_url = coordinator_url.rstrip("/")
+        self.ws_url = ws_url
         self.callback_obj = callback_obj
-        self.loop = asyncio.get_event_loop()
 
-        self.responses = {}
+    def _auth_headers(self) -> dict[str, str]:
+        jwt = self.signer.create_jwt(self.bot_name)
+        return {
+            "Authorization": f"Bearer {jwt}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
 
-    def on_connect(self, client, userdata, flags, rc):
-        print(f"Connected!")
-        client.subscribe(f"bots/inbox_events_{self.bot_name}")
-        client.subscribe(f"bots/inbox_api_{self.bot_name}")
+    def _sync_request(self, method: str, path: str, body: dict | None = None) -> dict:
+        url = f"{self.coordinator_url}{path}"
+        data = json.dumps(body).encode("utf-8") if body is not None else None
+        req = urllib.request.Request(url, data=data, headers=self._auth_headers(), method=method)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            raw = resp.read().decode("utf-8")
+            return json.loads(raw) if raw else {}
 
-    def on_message(self, client, userdata, msg):
-        print(f"Received message on: {msg.topic}")
+    async def get_lock_session(self, shareable_token: str) -> dict:
+        return await asyncio.to_thread(
+            self._sync_request,
+            "GET",
+            f"/bots/{self.bot_name}/lock_sessions/{shareable_token}",
+        )
 
-        if "events" in msg.topic:
-            se = SignedEvent.GetRootAsSignedEvent(msg.payload)
+    async def create_contract(self, lock_session_token: str, signed_contract_bytes: bytes) -> dict:
+        payload = {
+            "lockSessionToken": lock_session_token,
+            "signedMessageBase64": base64.b64encode(signed_contract_bytes).decode("ascii"),
+        }
+        return await asyncio.to_thread(
+            self._sync_request,
+            "POST",
+            f"/bots/{self.bot_name}/contracts",
+            payload,
+        )
 
-            e = se.Payload()
-            common_metadata = e.Metadata()
-            print(common_metadata.LockSession())
-            print(common_metadata.ContractSerialNumber())
-            
-            match e.EventType():
-                case EventType.AcceptContract:
-                    print("Event -> Contract accepted")
-                    if has_callable(self.callback_obj, 'on_accept'):
-                        asyncio.run_coroutine_threadsafe(self.callback_obj.on_accept(self, se), self.loop)
-                case EventType.LocalLock:
-                    print("Event -> Local lock")
-                    if has_callable(self.callback_obj, 'on_local_lock'):
-                        asyncio.run_coroutine_threadsafe(self.callback_obj.on_local_lock(self, se), self.loop)
-                case EventType.LocalUnlock:
-                    print("Event -> Local Unlock")
-                    if has_callable(self.callback_obj, 'on_local_unlock'):
-                        asyncio.run_coroutine_threadsafe(self.callback_obj.on_local_unlock(self, se), self.loop)
-                case EventType.ReleaseContract:
-                    print("Event -> Contract released")
-                    if has_callable(self.callback_obj, 'on_release'):
-                        asyncio.run_coroutine_threadsafe(self.callback_obj.on_release(self, se), self.loop)
-                case EventType.Lock:
-                    print("Event -> Locked via command")
-                    if has_callable(self.callback_obj, 'on_lock'):
-                        asyncio.run_coroutine_threadsafe(self.callback_obj.on_lock(self, se), self.loop)
-                case EventType.Unlock:
-                    print("Event -> Unlocked via command")
-                    if has_callable(self.callback_obj, 'on_unlock'):
-                        asyncio.run_coroutine_threadsafe(self.callback_obj.on_unlock(self, se), self.loop)
-                case EventType.EmergencyUnlock:
-                    print("Event -> Emergency unlocked")
-                    if has_callable(self.callback_obj, 'on_emergency_unlock'):
-                        asyncio.run_coroutine_threadsafe(self.callback_obj.on_emergency_unlock(self, se), self.loop)
-        if "api" in msg.topic:
-            api_message = BotApiMessage.GetRootAsBotApiMessage(msg.payload)
+    async def get_contract(self, lock_session: str, contract_serial_number: int) -> dict:
+        return await asyncio.to_thread(
+            self._sync_request,
+            "GET",
+            f"/bots/{self.bot_name}/contracts/bySession/{lock_session}/{contract_serial_number}",
+        )
 
-            if api_message.RequestId() in self.responses:
-                queue = self.responses[api_message.RequestId()]
-                del self.responses[api_message.RequestId()]
-                self.loop.call_soon_threadsafe(queue.put_nowait, api_message)
-            else:
-                print("WARN: We got an API response for something we don't have a request ID for")
+    async def create_command(
+        self,
+        lock_session_token: str,
+        contract_serial_number: int,
+        signed_command_bytes: bytes,
+    ) -> dict:
+        payload = {
+            "lockSessionToken": lock_session_token,
+            "contractSerialNumber": contract_serial_number,
+            "signedMessageBase64": base64.b64encode(signed_command_bytes).decode("ascii"),
+        }
+        return await asyncio.to_thread(
+            self._sync_request,
+            "POST",
+            f"/bots/{self.bot_name}/commands",
+            payload,
+        )
 
-    def make_api_request(self, message: BotApiMessage, queue):
-        self.client.publish("coordinator/inbox", message._tab.Bytes)
-        self.responses[message.RequestId()] = queue
+    async def add_message(
+        self,
+        contract_name: str,
+        message_text: str,
+        signed_message_bytes: bytes,
+    ) -> dict:
+        payload = {
+            "message": message_text,
+            "signedMessageBase64": base64.b64encode(signed_message_bytes).decode("ascii"),
+        }
+        return await asyncio.to_thread(
+            self._sync_request,
+            "POST",
+            f"/bots/{self.bot_name}/contracts/{contract_name}/messages",
+            payload,
+        )
+
+    async def _handle_ws_message(self, raw_text: str):
+        msg = json.loads(raw_text)
+        if msg.get("type") != "bot_event" or not msg.get("rawSignedEventBase64"):
+            return
+
+        raw_bytes = base64.b64decode(msg["rawSignedEventBase64"])
+        se = SignedEvent.GetRootAsSignedEvent(raw_bytes, 0)
+        e = se.Payload()
+        common_metadata = e.Metadata()
+        print(common_metadata.LockSession())
+        print(common_metadata.ContractSerialNumber())
+
+        match e.EventType():
+            case EventType.AcceptContract:
+                print("Event -> Contract accepted")
+                if has_callable(self.callback_obj, "on_accept"):
+                    await self.callback_obj.on_accept(self, se)
+            case EventType.LocalLock:
+                print("Event -> Local lock")
+                if has_callable(self.callback_obj, "on_local_lock"):
+                    await self.callback_obj.on_local_lock(self, se)
+            case EventType.LocalUnlock:
+                print("Event -> Local Unlock")
+                if has_callable(self.callback_obj, "on_local_unlock"):
+                    await self.callback_obj.on_local_unlock(self, se)
+            case EventType.ReleaseContract:
+                print("Event -> Contract released")
+                if has_callable(self.callback_obj, "on_release"):
+                    await self.callback_obj.on_release(self, se)
+            case EventType.Lock:
+                print("Event -> Locked via command")
+                if has_callable(self.callback_obj, "on_lock"):
+                    await self.callback_obj.on_lock(self, se)
+            case EventType.Unlock:
+                print("Event -> Unlocked via command")
+                if has_callable(self.callback_obj, "on_unlock"):
+                    await self.callback_obj.on_unlock(self, se)
+            case EventType.EmergencyUnlock:
+                print("Event -> Emergency unlocked")
+                if has_callable(self.callback_obj, "on_emergency_unlock"):
+                    await self.callback_obj.on_emergency_unlock(self, se)
 
     async def start(self):
-        self.client.connect(self.broker, self.port, 60)
-        self.client.loop_start()
+        while True:
+            try:
+                bot_jwt = self.signer.create_jwt(self.bot_name)
+                uri = f"{self.ws_url}?botJwt={bot_jwt}"
+                async with websockets.connect(uri) as ws:
+                    print(f"Connected to {self.ws_url} as {self.bot_name}!")
+                    async for raw_text in ws:
+                        await self._handle_ws_message(raw_text)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                print(f"WebSocket connection lost ({e}), reconnecting in 3s...")
+                await asyncio.sleep(3)
 
-        try:
-            while True:
-                await asyncio.sleep(1)
-        except asyncio.CancelledError:
-            self.client.loop_stop()
-            self.client.disconnect()
 
-
-class TimerBot():
-    def __init__(self, bot_name, work_dir):
-        self.response_queue = asyncio.Queue()
+class TimerBot:
+    def __init__(self, bot_name: str, work_dir: str, signer: Signer):
         self.bot_name = bot_name
-        self.tartarus = None
+        self.signer = signer
+        self.tartarus: AsyncTartarusClient | None = None
         self.db = FileDatabase(work_dir)
 
-    async def issue_contract(self, shareableToken) -> dict:
-        signer = Signer()
+    async def issue_contract(self, shareable_token: str) -> dict:
         serial_number = random.getrandbits(16)
 
         # Make the record first because it's possible that the accept_contract event
         # will arrive before the response.
         self.db.save(serial_number, {})
 
-        message = make_create_contract_request(shareableToken, serial_number, self.bot_name, signer)
+        signed_contract = make_signed_contract_bytes(serial_number, self.bot_name, self.signer)
         print("Making create contract request")
-        self.tartarus.make_api_request(message, self.response_queue)
+        response = await self.tartarus.create_contract(shareable_token, signed_contract)
+        print(f"Received response: {response}")
 
-        try:
-            response : BotApiMessage = await asyncio.wait_for(self.response_queue.get(), timeout=5.0)
-            print(f"Received response: {response}")
+        data = {
+            "contract_name": response["name"],
+            "shareable_token": shareable_token,
+        }
+        self.db.save(serial_number, data)
+        return data
 
-            data = response_as_create_contract_response(response)
-            data['shareable_token'] = shareableToken
-            self.db.save(serial_number, data)
-            return data
-
-        except asyncio.TimeoutError:
-            print("Response timeout!")
-
-    async def add_message(self, contract_name, message_body):
+    async def add_message(self, contract_name: str, message_body: str):
         print("Make API request from bot")
-        message = make_new_message_request(self.bot_name, message_body, contract_name)
-        print(f"message {message}")
-        self.tartarus.make_api_request(message, self.response_queue)
+        signed_msg = make_signed_message_bytes(self.bot_name, message_body, self.signer)
+        response = await self.tartarus.add_message(contract_name, message_body, signed_msg)
+        print(f"Received response: {response}")
 
-        try:
-            response = await asyncio.wait_for(self.response_queue.get(), timeout=5.0)
-            print(f"Received response: {response}")
-            
-        except asyncio.TimeoutError as t:
-            print("Response timeout!")
-            raise t
-
-    async def get_lock_session(self, shareableToken):
-        message = make_get_lock_session_request(self.bot_name, shareableToken)
+    async def get_lock_session(self, shareable_token: str):
         print("Making lock session request")
-        self.tartarus.make_api_request(message, self.response_queue)
+        data = await self.tartarus.get_lock_session(shareable_token)
+        print(f"Received response: {data}")
+        self.db.save(data["name"], data)
+        return data
 
-        try:
-            response : BotApiMessage = await asyncio.wait_for(self.response_queue.get(), timeout=5.0)
-            print(f"Received response: {response}")
-
-            data = response_as_get_lock_session_response(response)
-            print(data)
-            self.db.save(data['name'], data)
-
-        except asyncio.TimeoutError:
-            print("Response timeout!")
-
-    async def get_contract(self, lock_session, contract_serial_number):
+    async def get_contract(self, lock_session: str, contract_serial_number: int) -> dict:
         print("Make API request from bot")
-        message = make_contract_request(self.bot_name, lock_session, contract_serial_number)
-        print(f"message {message}")
-        self.tartarus.make_api_request(message, self.response_queue)
+        response = await self.tartarus.get_contract(lock_session, contract_serial_number)
+        print(f"Received response: {response}")
+        return {
+            "name": response["name"],
+            "state": response["state"],
+            "next_counter": response.get("nextCounter", 0),
+        }
 
-        try:
-            response = await asyncio.wait_for(self.response_queue.get(), timeout=5.0)
-            print(f"Received response: {response}")
-            return response_as_get_contract_response(response)
-        except asyncio.TimeoutError as t:
-            print("Response timeout!")
-            raise t
-
-    async def release_contract(self, contract_name, shareable_token, serial_number : int, counter):
-        signer = Signer()
-        message = make_release_command_request(self.bot_name, contract_name, shareable_token, serial_number, counter, signer)
+    async def release_contract(
+        self,
+        contract_name: str,
+        shareable_token: str,
+        serial_number: int,
+        counter: int,
+    ):
+        signed_cmd = make_signed_release_command_bytes(
+            self.bot_name,
+            serial_number,
+            counter,
+            self.signer,
+        )
         print("Making release contract request")
-        self.tartarus.make_api_request(message, self.response_queue)
-
-        try:
-            response : BotApiMessage = await asyncio.wait_for(self.response_queue.get(), timeout=5.0)
-            print(f"Received response: {response}")
-        except asyncio.TimeoutError:
-            print("Response timeout!")
+        response = await self.tartarus.create_command(shareable_token, serial_number, signed_cmd)
+        print(f"Received response: {response}")
 
     async def on_accept(self, tartarus, event):
         print("Contract accepted")
@@ -219,35 +254,27 @@ class TimerBot():
             num_minutes = 2
             release_time = now + timedelta(minutes=num_minutes)
 
-            await self.add_message(data['contract_name'], f"Your lockup time was decided: {num_minutes} minutes")
+            await self.add_message(
+                data["contract_name"],
+                f"Your lockup time was decided: {num_minutes} minutes",
+            )
 
-            data['now'] = now
-            data['release_time'] = release_time
-            data['lock_session'] = common_metadata.LockSession().decode('utf-8')
+            data["now"] = now
+            data["release_time"] = release_time
+            data["lock_session"] = common_metadata.LockSession().decode("utf-8")
             self.db.save(common_metadata.ContractSerialNumber(), data)
             print("Saved release time")
             print(data)
         except Exception as e:
             print(f"Encountered exception: {e}")
 
-
     async def on_lock(self, tartarus, event):
         print("TimerBot on_lock")
         e = event.Payload()
         common_metadata = e.Metadata()
-        print(common_metadata.LockSession())
-        print(common_metadata.ContractSerialNumber())
-
-        print("Make API request from bot")
-        message = make_contract_request(self.bot_name, common_metadata.LockSession(),common_metadata.ContractSerialNumber())
-        print(f"message {message}")
-        tartarus.make_api_request(message, self.response_queue)
-
-        try:
-            response = await asyncio.wait_for(self.response_queue.get(), timeout=5.0)
-            print(f"Received response: {response}")
-        except asyncio.TimeoutError:
-            print("Response timeout!")
+        lock_session = common_metadata.LockSession().decode("utf-8")
+        serial = common_metadata.ContractSerialNumber()
+        await self.get_contract(lock_session, serial)
 
     async def on_unlock(self, tartarus, event):
         print("TimerBot un_lock")
@@ -262,20 +289,25 @@ class TimerBot():
         # generated event.
         self.db.delete(common_metadata.ContractSerialNumber())
 
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Process a shareable token.")
     parser.add_argument("shareableToken", type=str, help="A shareable token string")
+    parser.add_argument("--bot-name", type=str, default="b-42R6AGO", help="Bot external name (b-...)")
+    parser.add_argument("--author-key", type=str, default=None, help="Path to Author private key PEM for deterministic derivation")
+    parser.add_argument("--internal-name", type=str, default="timer_bot", help="Internal bot name for HKDF derivation")
+    parser.add_argument("--key-version", type=int, default=1, help="Bot key version for HKDF derivation")
+    parser.add_argument("--coordinator-url", type=str, default="http://localhost:8080", help="Tartarus Coordinator HTTP URL")
+    parser.add_argument("--ws-url", type=str, default="ws://localhost:8080/ws/events", help="Tartarus Coordinator WebSocket URL")
     return parser.parse_args()
 
-async def call_timer_method(timer: TimerBot, shareable):
-    # while True:
-    await asyncio.sleep(1)  # Adjust the interval as needed
-    print("Calling timer method...")
-    contract_data = await timer.issue_contract(shareable)  # Replace with your actual timer method
-    await timer.add_message(contract_data['contract_name'], "Hello!")
 
-    # await timer.get_lock_session(shareable)  # Replace with your actual timer method
-    # await timer.release_contract("c-AQP0MJG", "s-RVVHU4O", 25798, 100)
+async def call_timer_method(timer: TimerBot, shareable: str):
+    await asyncio.sleep(1)
+    print("Calling timer method...")
+    contract_data = await timer.issue_contract(shareable)
+    await timer.add_message(contract_data["contract_name"], "Hello!")
+
 
 async def scan_contracts_and_release(timer: TimerBot):
     while True:
@@ -288,19 +320,20 @@ async def scan_contracts_and_release(timer: TimerBot):
                 print(contract)
 
                 now = datetime.now(timezone.utc)
-                
-                if 'release_time' in contract:
-                    if now > contract['release_time']:
+
+                if "release_time" in contract:
+                    if now > contract["release_time"]:
                         print("Release time has passed")
-                        updated_contract = await timer.get_contract(contract['lock_session'], int(c))
+                        updated_contract = await timer.get_contract(contract["lock_session"], int(c))
                         print(f"Updated contract {updated_contract}")
-                        if updated_contract['state'] != 'RELEASED' and updated_contract['state'] != 'ABORTED':
-                            await timer.add_message(contract['contract_name'], "You've done your time.")
-                            await timer.release_contract(contract['contract_name'], contract['shareable_token'], int(c), 2000)
-                        else:
-                            pass
-                            # Already ended.
-                            # timer.db.delete(c)
+                        if updated_contract["state"] != "RELEASED" and updated_contract["state"] != "ABORTED":
+                            await timer.add_message(contract["contract_name"], "You've done your time.")
+                            await timer.release_contract(
+                                contract["contract_name"],
+                                contract["shareable_token"],
+                                int(c),
+                                updated_contract.get("next_counter", 2000),
+                            )
                 else:
                     print(f"Waiting for {c} to be accepted.")
 
@@ -309,22 +342,25 @@ async def scan_contracts_and_release(timer: TimerBot):
                 traceback.print_exception(e)
         await asyncio.sleep(20)
 
+
 async def main():
     args = parse_args()
 
-    # bot_name = "b-JKSMF9G" # Production bot name
+    if args.author_key:
+        bot_signer = Signer.from_author_key(args.author_key, args.internal_name, args.key_version)
+    else:
+        bot_signer = Signer()
 
-    bot_name = "b-42R6AGO" # Local development
-    password = "V24S25R6SJQERMRX"
-
-    # make_create_contract_request(args.shareableToken, "b-42R6AGO")
-    # make_get_lock_session_request(bot_name, args.shareableToken)
-
-    timer = TimerBot(bot_name=bot_name, work_dir="/tmp/workspace")
+    timer = TimerBot(bot_name=args.bot_name, work_dir="/tmp/workspace", signer=bot_signer)
 
     try:
-        client = AsyncTartarusClient(bot_name=bot_name, password=password, broker="localhost", port=4447, callback_obj=timer)
-        # client = AsyncTartarusClient(bot_name=bot_name, broker="tartarus-mqtt.subjugated.club", port=4447, callback_obj=timer, require_tls=True)
+        client = AsyncTartarusClient(
+            bot_name=args.bot_name,
+            signer=bot_signer,
+            coordinator_url=args.coordinator_url,
+            ws_url=args.ws_url,
+            callback_obj=timer,
+        )
         timer.tartarus = client
         asyncio.create_task(call_timer_method(timer, args.shareableToken))
         asyncio.create_task(scan_contracts_and_release(timer))
@@ -335,6 +371,5 @@ async def main():
         raise e
 
 
-
-asyncio.run(main())
-
+if __name__ == "__main__":
+    asyncio.run(main())

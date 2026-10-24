@@ -18,6 +18,8 @@ class AuthorSession(
     var knownTokens: MutableList<KnownToken> = mutableListOf(),
     @OneToMany(mappedBy = "authorSession", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     var commands: MutableList<Command> = mutableListOf(),
+    @OneToMany(mappedBy = "authorSession", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    var bots: MutableList<Bot> = mutableListOf(),
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
 ) : PublicKeyProvider {

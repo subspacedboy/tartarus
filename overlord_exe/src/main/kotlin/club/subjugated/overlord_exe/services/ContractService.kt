@@ -1,20 +1,13 @@
 package club.subjugated.overlord_exe.services
 
-import club.subjugated.fb.bots.BotApiMessage
-import club.subjugated.fb.bots.CreateCommandRequest
-import club.subjugated.fb.bots.CreateContractRequest
-import club.subjugated.fb.bots.CreateMessageRequest
-import club.subjugated.fb.bots.GetContractRequest
-import club.subjugated.fb.bots.GetContractResponse
-import club.subjugated.fb.bots.MessagePayload
 import club.subjugated.fb.message.Bot
 import club.subjugated.fb.message.LockCommand
 import club.subjugated.fb.message.Permission
 import club.subjugated.fb.message.ReleaseCommand
 import club.subjugated.fb.message.SignedMessage
 import club.subjugated.fb.message.UnlockCommand
-import club.subjugated.overlord_exe.components.BSkyDmMonitor
 import club.subjugated.overlord_exe.events.AddMessageToContract
+import club.subjugated.overlord_exe.events.BotRestAction
 import club.subjugated.overlord_exe.events.IssueContract
 import club.subjugated.overlord_exe.events.IssueLock
 import club.subjugated.overlord_exe.events.IssueRelease
@@ -29,50 +22,64 @@ import club.subjugated.overlord_exe.util.derToRawSignature
 import club.subjugated.overlord_exe.util.encodePublicKeySecp1
 import club.subjugated.overlord_exe.util.loadECPublicKeyFromPkcs8
 import com.google.flatbuffers.FlatBufferBuilder
-import io.ktor.util.moveToByteArray
-import org.eclipse.paho.client.mqttv3.MqttMessage
+import kotlinx.serialization.Serializable
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
-import org.springframework.context.annotation.Profile
 import org.springframework.context.event.EventListener
 import org.springframework.core.env.Environment
 import org.springframework.stereotype.Service
 import java.security.KeyFactory
 import java.security.MessageDigest
 import java.security.Signature
-import java.security.spec.PKCS8EncodedKeySpec
-import kotlin.random.Random
 import java.security.interfaces.ECPublicKey
-import kotlin.contracts.contract
+import java.security.spec.PKCS8EncodedKeySpec
+import java.util.Base64
+import kotlin.random.Random
 
+@Serializable
+data class BotContractInfo(
+    val name: String,
+    val shareableToken: String? = null,
+    val state: String? = null,
+    val authorSessionName: String? = null,
+    val body: String? = null,
+    val nextCounter: Int = 0,
+    val serialNumber: Int? = null,
+    val lockSessionToken: String? = null,
+)
 
 @Service
 class ContractService(
     private var contractRepository: ContractRepository,
     private var botMapService: BotMapService,
     private var timeSource: TimeSource,
-    private val applicationEventPublisher : ApplicationEventPublisher,
+    private val applicationEventPublisher: ApplicationEventPublisher,
     private val environment: Environment,
     private val logger: Logger = LoggerFactory.getLogger(ContractService::class.java),
 ) {
 
-    fun getLiveContractsForBot(botName : String) : List<Contract> {
-        return contractRepository.findByBotNameAndStateIn(botName, listOf(ContractState.ACCEPTED, ContractState.CONFIRMED))
+    fun getLiveContractsForBot(botName: String): List<Contract> {
+        return contractRepository.findByBotNameAndStateIn(
+            botName,
+            listOf(ContractState.ACCEPTED, ContractState.CONFIRMED),
+        )
     }
 
-    fun getOrCreateContract(botName : String, lockSessionToken: String, serialNumber : Int) : Contract {
-        return contractRepository.findByBotNameAndSerialNumber(botName, serialNumber) ?: run {
-            createContract(botName, lockSessionToken, serialNumber)
-        }
+    fun getOrCreateContract(
+        botName: String,
+        lockSessionToken: String,
+        serialNumber: Int,
+    ): Contract {
+        return contractRepository.findByBotNameAndSerialNumber(botName, serialNumber)
+            ?: run { createContract(botName, lockSessionToken, serialNumber) }
     }
 
-    fun getContract(botName: String, serialNumber: Int) : Contract {
+    fun getContract(botName: String, serialNumber: Int): Contract {
         return contractRepository.findByBotNameAndSerialNumber(botName, serialNumber)!!
     }
 
-    fun markReleased(botName: String, serialNumber: Int) : Contract {
+    fun markReleased(botName: String, serialNumber: Int): Contract {
         val contract = getContract(botName, serialNumber)
         contract.state = ContractState.RELEASED
         contract.updatedAt = timeSource.nowInUtc()
@@ -80,114 +87,161 @@ class ContractService(
         return contract
     }
 
-    fun save(contract: Contract) : Contract {
+    fun save(contract: Contract): Contract {
         return contractRepository.save(contract)
     }
 
-    fun updateContractWithGetContractResponse(contract: Contract, response: GetContractResponse) : Contract {
-        contract.signedMessage = response.signedMessageAsByteBuffer?.moveToByteArray()
-
+    fun updateContractWithGetContractResponse(
+        contract: Contract,
+        response: BotContractInfo,
+    ): Contract {
+        contract.signedMessage = response.body?.let { Base64.getDecoder().decode(it) }
         contract.state = ContractState.valueOf(response.state!!)
         contract.externalContractName = response.name
         contract.shareableToken = response.shareableToken
+        contract.nextCounter = response.nextCounter
         contractRepository.save(contract)
         return contract
     }
 
     @EventListener
     fun handleIssueContractRequest(event: IssueContract) {
-        val compressedPublicKey = encodePublicKeySecp1(loadECPublicKeyFromPkcs8(event.botMap.publicKey!!) as ECPublicKey)
-        val wrapper = makeCreateContractCommand(event.botMap.externalName, event.shareableToken, event.terms, false, event.botMap.privateKey!!, compressedPublicKey, event.public)
+        val compressedPublicKey =
+            encodePublicKeySecp1(
+                loadECPublicKeyFromPkcs8(event.botMap.publicKey!!) as ECPublicKey
+            )
+        val wrapper =
+            makeCreateContractCommand(
+                event.botMap.externalName,
+                event.shareableToken,
+                event.terms,
+                false,
+                event.botMap.privateKey!!,
+                compressedPublicKey,
+                event.public,
+            )
 
         event.serialNumberRecorder(wrapper.contractSerialNumber)
 
-        applicationEventPublisher.publishEvent(SendBotBytes(
-            source = this,
-            botMap = event.botMap,
-            message = MqttMessage(wrapper.messageBytes)
-        ))
+        val signedMessageBase64 = Base64.getEncoder().encodeToString(wrapper.messageBytes)
+        applicationEventPublisher.publishEvent(
+            SendBotBytes(
+                source = this,
+                botMap = event.botMap,
+                action =
+                    BotRestAction.CreateContract(
+                        shareableToken = event.shareableToken,
+                        signedMessageBase64 = signedMessageBase64,
+                    ),
+            )
+        )
     }
 
     @EventListener
     fun handleAddMessageRequest(event: AddMessageToContract) {
-        val requestBody = makeAddMessageToContractMessage(
-            event.botMap.externalName,
-            event.contract.externalContractName!!,
-            event.message
+        applicationEventPublisher.publishEvent(
+            SendBotBytes(
+                source = this,
+                botMap = event.botMap,
+                action =
+                    BotRestAction.CreateMessage(
+                        contractName = event.contract.externalContractName!!,
+                        message = event.message,
+                    ),
+            )
         )
-
-        applicationEventPublisher.publishEvent(SendBotBytes(
-            source = this,
-            botMap = event.botMap,
-            message = MqttMessage(requestBody)
-        ))
     }
 
     @EventListener
-    fun handleIssueRelease(event : IssueRelease) {
+    fun handleIssueRelease(event: IssueRelease) {
         logger.info("Issuing Release")
         if (environment.activeProfiles.contains("test")) {
             logger.info("Test environment. Early escape from issue.")
             return
         }
 
-        val releaseCommand = makeReleaseCommand(event.botMap.externalName, event.contract.externalContractName!!, event.contract.serialNumber, event.botMap.privateKey!!)
-        applicationEventPublisher.publishEvent(SendBotBytes(
-            source = this,
-            botMap = event.botMap,
-            message = MqttMessage(releaseCommand)
-        ))
+        val releaseCommandBytes =
+            makeReleaseCommand(
+                event.botMap.externalName,
+                event.contract.externalContractName!!,
+                event.contract.serialNumber,
+                event.botMap.privateKey!!,
+            )
+        val signedMessageBase64 = Base64.getEncoder().encodeToString(releaseCommandBytes)
+        applicationEventPublisher.publishEvent(
+            SendBotBytes(
+                source = this,
+                botMap = event.botMap,
+                action =
+                    BotRestAction.CreateCommand(
+                        contractName = event.contract.externalContractName!!,
+                        shareableToken = event.contract.shareableToken,
+                        signedMessageBase64 = signedMessageBase64,
+                    ),
+            )
+        )
     }
 
     @EventListener
-    fun handleIssueUnlock(event : IssueUnlock) {
+    fun handleIssueUnlock(event: IssueUnlock) {
         if (environment.activeProfiles.contains("test")) return
 
-        val releaseCommand = makeUnlockCommand(event.botMap.externalName, event.contract.externalContractName!!, event.contract.serialNumber, event.contract.nextCounter, event.botMap.privateKey!!)
-        applicationEventPublisher.publishEvent(SendBotBytes(
-            source = this,
-            botMap = event.botMap,
-            message = MqttMessage(releaseCommand)
-        ))
+        val unlockCommandBytes =
+            makeUnlockCommand(
+                event.botMap.externalName,
+                event.contract.externalContractName!!,
+                event.contract.serialNumber,
+                event.contract.nextCounter,
+                event.botMap.privateKey!!,
+            )
+        val signedMessageBase64 = Base64.getEncoder().encodeToString(unlockCommandBytes)
+        applicationEventPublisher.publishEvent(
+            SendBotBytes(
+                source = this,
+                botMap = event.botMap,
+                action =
+                    BotRestAction.CreateCommand(
+                        contractName = event.contract.externalContractName!!,
+                        shareableToken = event.contract.shareableToken,
+                        signedMessageBase64 = signedMessageBase64,
+                    ),
+            )
+        )
     }
 
     @EventListener
-    fun handleIssueLock(event : IssueLock) {
+    fun handleIssueLock(event: IssueLock) {
         if (environment.activeProfiles.contains("test")) return
 
-        val releaseCommand = makeLockCommand(event.botMap.externalName, event.contract.externalContractName!!, event.contract.serialNumber, event.contract.nextCounter, event.botMap.privateKey!!)
-        applicationEventPublisher.publishEvent(SendBotBytes(
-            source = this,
-            botMap = event.botMap,
-            message = MqttMessage(releaseCommand)
-        ))
+        val lockCommandBytes =
+            makeLockCommand(
+                event.botMap.externalName,
+                event.contract.externalContractName!!,
+                event.contract.serialNumber,
+                event.contract.nextCounter,
+                event.botMap.privateKey!!,
+            )
+        val signedMessageBase64 = Base64.getEncoder().encodeToString(lockCommandBytes)
+        applicationEventPublisher.publishEvent(
+            SendBotBytes(
+                source = this,
+                botMap = event.botMap,
+                action =
+                    BotRestAction.CreateCommand(
+                        contractName = event.contract.externalContractName!!,
+                        shareableToken = event.contract.shareableToken,
+                        signedMessageBase64 = signedMessageBase64,
+                    ),
+            )
+        )
     }
 
-    fun makeContractRequest(botName : String, lockSession : String, contractSerialNumber : UShort, requestId: Long = Random.nextLong()) : ByteArray {
-        val builder = FlatBufferBuilder(1024)
-
-        val lockSessionOffset = builder.createString(lockSession)
-
-        GetContractRequest.startGetContractRequest(builder)
-        GetContractRequest.addLockSession(builder, lockSessionOffset)
-        GetContractRequest.addContractSerialNumber(builder, contractSerialNumber)
-        val contractRequestOffset = GetContractRequest.endGetContractRequest(builder)
-
-        val botNameOffset = builder.createString(botName)
-
-        BotApiMessage.startBotApiMessage(builder)
-        BotApiMessage.addName(builder, botNameOffset)
-        BotApiMessage.addPayload(builder, contractRequestOffset)
-        BotApiMessage.addPayloadType(builder, MessagePayload.GetContractRequest)
-        BotApiMessage.addRequestId(builder, requestId)
-        val botApiMessageOffset = BotApiMessage.endBotApiMessage(builder)
-
-        builder.finish(botApiMessageOffset)
-
-        return builder.sizedByteArray()
-    }
-
-    fun makeReleaseCommand(botName : String, contractName : String, contractSerialNumber: Int, privateKey : ByteArray) : ByteArray {
+    fun makeReleaseCommand(
+        botName: String,
+        contractName: String,
+        contractSerialNumber: Int,
+        privateKey: ByteArray,
+    ): ByteArray {
         val builder = FlatBufferBuilder(1024)
 
         // --- Build ReleaseCommand ---
@@ -210,12 +264,15 @@ class ContractService(
 
         val keySpec = PKCS8EncodedKeySpec(privateKey)
         val keyFactory = KeyFactory.getInstance("EC", "BC")
-        val privateKey = keyFactory.generatePrivate(keySpec)
+        val ecPrivateKey = keyFactory.generatePrivate(keySpec)
 
-        var signature = Signature.getInstance("SHA256withECDSA", "BC").apply {
-            initSign(privateKey)
-            update(hash)
-        }.sign()
+        var signature =
+            Signature.getInstance("SHA256withECDSA", "BC")
+                .apply {
+                    initSign(ecPrivateKey)
+                    update(hash)
+                }
+                .sign()
         signature = derToRawSignature(signature)
 
         val signatureOffset = builder.createByteVector(signature)
@@ -224,41 +281,24 @@ class ContractService(
         SignedMessage.startSignedMessage(builder)
         SignedMessage.addSignature(builder, signatureOffset)
         SignedMessage.addPayload(builder, releaseOffset)
-        SignedMessage.addPayloadType(builder, club.subjugated.fb.message.MessagePayload.ReleaseCommand)
+        SignedMessage.addPayloadType(
+            builder,
+            club.subjugated.fb.message.MessagePayload.ReleaseCommand,
+        )
         SignedMessage.addAuthorityIdentifier(builder, botAuthorityIdentifer)
         val signedMessageOffset = SignedMessage.endSignedMessage(builder)
 
         builder.finish(signedMessageOffset)
-        val signedMessageBytes = builder.sizedByteArray()
-
-        // --- Build CreateCommandRequest ---
-        val builder3 = FlatBufferBuilder(1024)
-        val commandOffset = builder3.createByteVector(signedMessageBytes)
-        val contractNameOffset = builder3.createString(contractName)
-//        val shareableTokenOffset = builder3.createString(shareableToken)
-
-        CreateCommandRequest.startCreateCommandRequest(builder3)
-        CreateCommandRequest.addCommandBody(builder3, commandOffset)
-        CreateCommandRequest.addContractName(builder3, contractNameOffset)
-//        CreateCommandRequest.addShareableToken(builder3, shareableTokenOffset)
-        val createRequestOffset = CreateCommandRequest.endCreateCommandRequest(builder3)
-
-        // --- Build BotApiMessage ---
-        val botNameOffset = builder3.createString(botName)
-        val requestId = Random.nextLong(Long.MAX_VALUE)
-
-        BotApiMessage.startBotApiMessage(builder3)
-        BotApiMessage.addName(builder3, botNameOffset)
-        BotApiMessage.addPayloadType(builder3, MessagePayload.CreateCommandRequest)
-        BotApiMessage.addPayload(builder3, createRequestOffset)
-        BotApiMessage.addRequestId(builder3, requestId)
-        val botApiMessageOffset = BotApiMessage.endBotApiMessage(builder3)
-
-        builder3.finish(botApiMessageOffset)
-        return builder3.sizedByteArray()
+        return builder.sizedByteArray()
     }
 
-    fun makeUnlockCommand(botName : String, contractName : String, contractSerialNumber: Int, counter: Int, privateKey : ByteArray) : ByteArray {
+    fun makeUnlockCommand(
+        botName: String,
+        contractName: String,
+        contractSerialNumber: Int,
+        counter: Int,
+        privateKey: ByteArray,
+    ): ByteArray {
         val builder = FlatBufferBuilder(1024)
 
         // --- Build UnlockCommand ---
@@ -281,12 +321,15 @@ class ContractService(
 
         val keySpec = PKCS8EncodedKeySpec(privateKey)
         val keyFactory = KeyFactory.getInstance("EC", "BC")
-        val privateKey = keyFactory.generatePrivate(keySpec)
+        val ecPrivateKey = keyFactory.generatePrivate(keySpec)
 
-        var signature = Signature.getInstance("SHA256withECDSA", "BC").apply {
-            initSign(privateKey)
-            update(hash)
-        }.sign()
+        var signature =
+            Signature.getInstance("SHA256withECDSA", "BC")
+                .apply {
+                    initSign(ecPrivateKey)
+                    update(hash)
+                }
+                .sign()
         signature = derToRawSignature(signature)
 
         val signatureOffset = builder.createByteVector(signature)
@@ -295,41 +338,24 @@ class ContractService(
         SignedMessage.startSignedMessage(builder)
         SignedMessage.addSignature(builder, signatureOffset)
         SignedMessage.addPayload(builder, unlockOffset)
-        SignedMessage.addPayloadType(builder, club.subjugated.fb.message.MessagePayload.UnlockCommand)
+        SignedMessage.addPayloadType(
+            builder,
+            club.subjugated.fb.message.MessagePayload.UnlockCommand,
+        )
         SignedMessage.addAuthorityIdentifier(builder, botAuthorityIdentifer)
         val signedMessageOffset = SignedMessage.endSignedMessage(builder)
 
         builder.finish(signedMessageOffset)
-        val signedMessageBytes = builder.sizedByteArray()
-
-        // --- Build CreateCommandRequest ---
-        val builder3 = FlatBufferBuilder(1024)
-        val commandOffset = builder3.createByteVector(signedMessageBytes)
-        val contractNameOffset = builder3.createString(contractName)
-//        val shareableTokenOffset = builder3.createString(shareableToken)
-
-        CreateCommandRequest.startCreateCommandRequest(builder3)
-        CreateCommandRequest.addCommandBody(builder3, commandOffset)
-        CreateCommandRequest.addContractName(builder3, contractNameOffset)
-//        CreateCommandRequest.addShareableToken(builder3, shareableTokenOffset)
-        val createRequestOffset = CreateCommandRequest.endCreateCommandRequest(builder3)
-
-        // --- Build BotApiMessage ---
-        val botNameOffset = builder3.createString(botName)
-        val requestId = Random.nextLong(Long.MAX_VALUE)
-
-        BotApiMessage.startBotApiMessage(builder3)
-        BotApiMessage.addName(builder3, botNameOffset)
-        BotApiMessage.addPayloadType(builder3, MessagePayload.CreateCommandRequest)
-        BotApiMessage.addPayload(builder3, createRequestOffset)
-        BotApiMessage.addRequestId(builder3, requestId)
-        val botApiMessageOffset = BotApiMessage.endBotApiMessage(builder3)
-
-        builder3.finish(botApiMessageOffset)
-        return builder3.sizedByteArray()
+        return builder.sizedByteArray()
     }
 
-    fun makeLockCommand(botName : String, contractName : String, contractSerialNumber: Int, counter: Int, privateKey : ByteArray) : ByteArray {
+    fun makeLockCommand(
+        botName: String,
+        contractName: String,
+        contractSerialNumber: Int,
+        counter: Int,
+        privateKey: ByteArray,
+    ): ByteArray {
         val builder = FlatBufferBuilder(1024)
 
         // --- Build LockCommand ---
@@ -352,12 +378,15 @@ class ContractService(
 
         val keySpec = PKCS8EncodedKeySpec(privateKey)
         val keyFactory = KeyFactory.getInstance("EC", "BC")
-        val privateKey = keyFactory.generatePrivate(keySpec)
+        val ecPrivateKey = keyFactory.generatePrivate(keySpec)
 
-        var signature = Signature.getInstance("SHA256withECDSA", "BC").apply {
-            initSign(privateKey)
-            update(hash)
-        }.sign()
+        var signature =
+            Signature.getInstance("SHA256withECDSA", "BC")
+                .apply {
+                    initSign(ecPrivateKey)
+                    update(hash)
+                }
+                .sign()
         signature = derToRawSignature(signature)
 
         val signatureOffset = builder.createByteVector(signature)
@@ -366,46 +395,31 @@ class ContractService(
         SignedMessage.startSignedMessage(builder)
         SignedMessage.addSignature(builder, signatureOffset)
         SignedMessage.addPayload(builder, lockOffset)
-        SignedMessage.addPayloadType(builder, club.subjugated.fb.message.MessagePayload.LockCommand)
+        SignedMessage.addPayloadType(
+            builder,
+            club.subjugated.fb.message.MessagePayload.LockCommand,
+        )
         SignedMessage.addAuthorityIdentifier(builder, botAuthorityIdentifer)
         val signedMessageOffset = SignedMessage.endSignedMessage(builder)
 
         builder.finish(signedMessageOffset)
-        val signedMessageBytes = builder.sizedByteArray()
-
-        // --- Build CreateCommandRequest ---
-        val builder3 = FlatBufferBuilder(1024)
-        val commandOffset = builder3.createByteVector(signedMessageBytes)
-        val contractNameOffset = builder3.createString(contractName)
-//        val shareableTokenOffset = builder3.createString(shareableToken)
-
-        CreateCommandRequest.startCreateCommandRequest(builder3)
-        CreateCommandRequest.addCommandBody(builder3, commandOffset)
-        CreateCommandRequest.addContractName(builder3, contractNameOffset)
-//        CreateCommandRequest.addShareableToken(builder3, shareableTokenOffset)
-        val createRequestOffset = CreateCommandRequest.endCreateCommandRequest(builder3)
-
-        // --- Build BotApiMessage ---
-        val botNameOffset = builder3.createString(botName)
-        val requestId = Random.nextLong(Long.MAX_VALUE)
-
-        BotApiMessage.startBotApiMessage(builder3)
-        BotApiMessage.addName(builder3, botNameOffset)
-        BotApiMessage.addPayloadType(builder3, MessagePayload.CreateCommandRequest)
-        BotApiMessage.addPayload(builder3, createRequestOffset)
-        BotApiMessage.addRequestId(builder3, requestId)
-        val botApiMessageOffset = BotApiMessage.endBotApiMessage(builder3)
-
-        builder3.finish(botApiMessageOffset)
-        return builder3.sizedByteArray()
+        return builder.sizedByteArray()
     }
 
-    fun makeCreateContractCommand(botName : String, shareableToken: String, terms: String, temporaryUnlock: Boolean, privateKey: ByteArray, publicKey : ByteArray, public: Boolean) : ContractCommandWrapper {
+    fun makeCreateContractCommand(
+        botName: String,
+        shareableToken: String,
+        terms: String,
+        temporaryUnlock: Boolean,
+        privateKey: ByteArray,
+        publicKey: ByteArray,
+        public: Boolean,
+    ): ContractCommandWrapper {
         val builder = FlatBufferBuilder(1024)
 
-        var announcerBotOffset : Int? = 0
+        var announcerBotOffset: Int? = 0
 
-        if(public) {
+        if (public) {
             val announcerBotMap = botMapService.getBotMap("announcer")
 
             // Build permission for Announcer
@@ -416,7 +430,10 @@ class ContractService(
             val announcerPermissionOffset = Permission.endPermission(builder)
 
             val announcerBotName = builder.createString(announcerBotMap.externalName)
-            val compressedPublicKeyBytes = encodePublicKeySecp1(loadECPublicKeyFromPkcs8(announcerBotMap.publicKey!!) as ECPublicKey)
+            val compressedPublicKeyBytes =
+                encodePublicKeySecp1(
+                    loadECPublicKeyFromPkcs8(announcerBotMap.publicKey!!) as ECPublicKey
+                )
             val pubKeyOffset = builder.createByteVector(compressedPublicKeyBytes)
 
             Bot.startBot(builder)
@@ -443,16 +460,17 @@ class ContractService(
         val botOffset = Bot.endBot(builder)
 
         val termsOffset = builder.createString(terms)
-        val botsVectorOffset = if(public) {
-            club.subjugated.fb.message.Contract.startBotsVector(builder, 2)
-            builder.addOffset(botOffset)
-            builder.addOffset(announcerBotOffset!!)
-            builder.endVector()
-        } else {
-            club.subjugated.fb.message.Contract.startBotsVector(builder, 1)
-            builder.addOffset(botOffset)
-            builder.endVector()
-        }
+        val botsVectorOffset =
+            if (public) {
+                club.subjugated.fb.message.Contract.startBotsVector(builder, 2)
+                builder.addOffset(botOffset)
+                builder.addOffset(announcerBotOffset!!)
+                builder.endVector()
+            } else {
+                club.subjugated.fb.message.Contract.startBotsVector(builder, 1)
+                builder.addOffset(botOffset)
+                builder.endVector()
+            }
 
         val serialNumber = Random.nextInt(0, 1 shl 16)
 
@@ -476,12 +494,15 @@ class ContractService(
 
         val keySpec = PKCS8EncodedKeySpec(privateKey)
         val keyFactory = KeyFactory.getInstance("EC", "BC")
-        val privateKey = keyFactory.generatePrivate(keySpec)
+        val ecPrivateKey = keyFactory.generatePrivate(keySpec)
 
-        var signature = Signature.getInstance("SHA256withECDSA", "BC").apply {
-            initSign(privateKey)
-            update(hash)
-        }.sign()
+        var signature =
+            Signature.getInstance("SHA256withECDSA", "BC")
+                .apply {
+                    initSign(ecPrivateKey)
+                    update(hash)
+                }
+                .sign()
         signature = derToRawSignature(signature)
 
         val signatureOffset = builder.createByteVector(signature)
@@ -489,7 +510,10 @@ class ContractService(
         SignedMessage.startSignedMessage(builder)
         SignedMessage.addSignature(builder, signatureOffset)
         SignedMessage.addPayload(builder, contractOffset)
-        SignedMessage.addPayloadType(builder, club.subjugated.fb.message.MessagePayload.Contract)
+        SignedMessage.addPayloadType(
+            builder,
+            club.subjugated.fb.message.MessagePayload.Contract,
+        )
         // NB: Even if a bot is the issuer of the contract we don't set the authority identifier
         // because that will break contract acceptance. The lock will try and validate against a key
         // it doesn't have.
@@ -499,67 +523,19 @@ class ContractService(
         builder.finish(signedMessageOffset)
         val signedMessageBytes = builder.sizedByteArray()
 
-        // --- Build CreateCommandRequest ---
-        val builder3 = FlatBufferBuilder(1024)
-        val contractAsSignedMessageOffset = builder3.createByteVector(signedMessageBytes)
-
-        val shareableTokenOffset = builder3.createString(shareableToken)
-
-        CreateContractRequest.startCreateContractRequest(builder3)
-        CreateContractRequest.addShareableToken(builder3, shareableTokenOffset)
-        CreateContractRequest.addContract(builder3, contractAsSignedMessageOffset)
-        val createContractOffset = CreateContractRequest.endCreateContractRequest(builder3)
-
-        // --- Build BotApiMessage ---
-        val botNameOffset = builder3.createString(botName)
-        val requestId = Random.nextLong(Long.MAX_VALUE)
-
-        BotApiMessage.startBotApiMessage(builder3)
-        BotApiMessage.addName(builder3, botNameOffset)
-        BotApiMessage.addPayloadType(builder3, MessagePayload.CreateContractRequest)
-        BotApiMessage.addPayload(builder3, createContractOffset)
-        BotApiMessage.addRequestId(builder3, requestId)
-        val botApiMessageOffset = BotApiMessage.endBotApiMessage(builder3)
-
-        builder3.finish(botApiMessageOffset)
-        return ContractCommandWrapper(builder3.sizedByteArray(), serialNumber)
+        return ContractCommandWrapper(signedMessageBytes, serialNumber)
     }
 
-    fun makeAddMessageToContractMessage(botName: String, contractName: String, message: String) : ByteArray {
-        val builder3 = FlatBufferBuilder(1024)
-
-        val contractNameOffset = builder3.createString(contractName)
-        val messageOffset = builder3.createString(message)
-
-        CreateMessageRequest.startCreateMessageRequest(builder3)
-        CreateMessageRequest.addContractName(builder3, contractNameOffset)
-        CreateMessageRequest.addMessage(builder3, messageOffset)
-        val createRequestOffset = CreateMessageRequest.endCreateMessageRequest(builder3)
-
-        // --- Build BotApiMessage ---
-        val botNameOffset = builder3.createString(botName)
-        val requestId = Random.nextLong(Long.MAX_VALUE)
-
-        BotApiMessage.startBotApiMessage(builder3)
-        BotApiMessage.addName(builder3, botNameOffset)
-        BotApiMessage.addPayloadType(builder3, MessagePayload.CreateMessageRequest)
-        BotApiMessage.addPayload(builder3, createRequestOffset)
-        BotApiMessage.addRequestId(builder3, requestId)
-        val botApiMessageOffset = BotApiMessage.endBotApiMessage(builder3)
-
-        builder3.finish(botApiMessageOffset)
-        return builder3.sizedByteArray()
-    }
-
-    fun createContract(botName : String, lockSessionToken: String, serialNumber: Int) : Contract {
-        val contract = Contract(
-            botName = botName,
-            lockSessionToken = lockSessionToken,
-            serialNumber = serialNumber,
-            createdAt = timeSource.nowInUtc(),
-            updatedAt = timeSource.nowInUtc(),
-            state = ContractState.UNSPECIFIED
-        )
+    fun createContract(botName: String, lockSessionToken: String, serialNumber: Int): Contract {
+        val contract =
+            Contract(
+                botName = botName,
+                lockSessionToken = lockSessionToken,
+                serialNumber = serialNumber,
+                createdAt = timeSource.nowInUtc(),
+                updatedAt = timeSource.nowInUtc(),
+                state = ContractState.UNSPECIFIED,
+            )
         contractRepository.save(contract)
         return contract
     }

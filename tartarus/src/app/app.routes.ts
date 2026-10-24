@@ -27,6 +27,7 @@ import {AdminLockSessionDetailComponent} from './admin/admin-lock-session-detail
 import {UpdaterComponent} from './updater/updater.component';
 import {ConsoleComponent} from './console/console.component';
 import {HardwareProvisioningComponent} from './admin/hardware/hardware-provisioning.component';
+import {MyBotsComponent} from './my-bots/my-bots.component';
 
 export const routes: Routes = [
   {
@@ -61,6 +62,11 @@ export const routes: Routes = [
   {
     path: 'lock-sessions',
     component: LockSessionsComponent
+  },
+  {
+    path: 'bots',
+    canActivate: [authGuard],
+    component: MyBotsComponent
   },
   {
     path: 'lock-session',

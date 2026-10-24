@@ -3,6 +3,7 @@ package club.subjugated.tartarus_coordinator.config
 import club.subjugated.tartarus_coordinator.filters.WebUserAuthenticationFilter
 import club.subjugated.tartarus_coordinator.services.AdminSessionService
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
+import club.subjugated.tartarus_coordinator.services.BotService
 import club.subjugated.tartarus_coordinator.services.LockUserSessionService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Bean
@@ -22,6 +23,7 @@ class SecurityConfiguration() {
     @Autowired lateinit var lockUserSessionService: LockUserSessionService
     @Autowired lateinit var authorSessionService: AuthorSessionService
     @Autowired lateinit var adminSessionService: AdminSessionService
+    @Autowired lateinit var botService: BotService
 
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
@@ -30,6 +32,7 @@ class SecurityConfiguration() {
                 authorSessionService,
                 lockUserSessionService,
                 adminSessionService,
+                botService,
             )
 
         http

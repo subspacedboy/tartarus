@@ -29,10 +29,13 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
 import java.util.*
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
+
+private val logger = LoggerFactory.getLogger(HiveMqMqttBroker::class.java)
 
 fun isLockUser(username: String?): Boolean {
     if (username.isNullOrEmpty()) {
@@ -71,11 +74,15 @@ class AuthExtension(
             val password = input.connectPacket.password
 
             if (password.isEmpty) {
+                logger.warn(
+                    "❌ (HiveMQ) Client '$clientId' failed authentication: no password provided"
+                )
                 output.failAuthentication()
                 return
             }
 
             if (clientId != username) {
+                logger.warn("❌ (HiveMQ) Auth failed: clientId '$clientId' != username '$username'")
                 output.failAuthentication()
                 return
             }
@@ -83,34 +90,39 @@ class AuthExtension(
             val actualPassword =
                 StandardCharsets.UTF_8.decode(input.connectPacket.password.get()).toString()
 
-            val isInternalUser = username == "internal" || username == "bot_processor"
+            val isInternalUser = username == "internal"
             if (isInternalUser && actualPassword == internalPassword) {
+                logger.info("🤖 (HiveMQ) Internal user '$username' authenticated successfully")
                 output.authenticateSuccessfully()
                 return
-            }
-
-            if (username.startsWith("b-")) {
-                val bot = botService.getByName(username)
-                if (bot.checkPassword(actualPassword)) {
-                    output.authenticateSuccessfully()
-                    return
-                }
             }
 
             if (isLockUser(username)) {
                 val session = lockSessionService.findBySessionToken(username)
                 if (session == null) {
+                    logger.info(
+                        "ℹ️ (HiveMQ) Lock user '$username' connected without existing session record"
+                    )
                     output.authenticateSuccessfully()
                     return
                 }
 
                 if (session.shouldCheckPassword()) {
                     if (session.checkPassword(actualPassword)) {
+                        logger.info(
+                            "🔑 (HiveMQ) Lock session '$username' authenticated successfully"
+                        )
                         output.authenticateSuccessfully()
                     } else {
+                        logger.warn(
+                            "❌ (HiveMQ) Lock session '$username' authentication failed: password mismatch"
+                        )
                         output.failAuthentication()
                     }
                 } else {
+                    logger.info(
+                        "🔑 (HiveMQ) Lock session '$username' registered initial MQTT password"
+                    )
                     session.setPassword(actualPassword)
                     lockSessionService.saveLockSession(session)
                     output.authenticateSuccessfully()
@@ -119,6 +131,7 @@ class AuthExtension(
                 return
             }
 
+            logger.warn("❌ (HiveMQ) Auth failed for user '$username' (clientId='$clientId')")
             output.failAuthentication()
         }
     }
@@ -132,18 +145,10 @@ class AuthExtension(
             val client = p0!!.clientInformation
             val topicName = p0.subscription.topicFilter
 
-            val internalUser = client.clientId == "bot_processor" || client.clientId == "internal"
+            val internalUser = client.clientId == "internal"
             if (internalUser) {
                 p1!!.authorizeSuccessfully()
                 return
-            }
-
-            if (client.clientId.startsWith("b-")) {
-                val bot = botService.getByName(client.clientId)
-                if (bot.canReadMqtt(topicName)) {
-                    p1!!.authorizeSuccessfully()
-                    return
-                }
             }
 
             if (topicName.toString() == "locks/${client.clientId}") {
@@ -160,24 +165,21 @@ class AuthExtension(
                 p1!!.authorizeSuccessfully()
                 return
             }
+
+            logger.warn(
+                "❌ (HiveMQ) Client '${client.clientId}' failed subscribe authorization on topic '$topicName'"
+            )
+            p1!!.failAuthorization()
         }
 
         override fun authorizePublish(p0: PublishAuthorizerInput?, p1: PublishAuthorizerOutput?) {
             val client = p0!!.clientInformation
             val topicName = p0.publishPacket.topic
 
-            val internalUser = client.clientId == "bot_processor" || client.clientId == "internal"
+            val internalUser = client.clientId == "internal"
             if (internalUser) {
                 p1!!.authorizeSuccessfully()
                 return
-            }
-
-            if (client.clientId.startsWith("b-")) {
-                val bot = botService.getByName(client.clientId)
-                if (bot.canWriteMqtt(topicName)) {
-                    p1!!.authorizeSuccessfully()
-                    return
-                }
             }
 
             if (isLockUser(client.clientId)) {
@@ -202,17 +204,15 @@ class AuthExtension(
                     return
                 }
 
-                if (topicName!!.startsWith("bots/inbox_events_b-")) {
-                    p1!!.authorizeSuccessfully()
-                    return
-                }
-
                 if (topicName.toString() == "devices/status") {
                     p1!!.authorizeSuccessfully()
                     return
                 }
             }
 
+            logger.warn(
+                "❌ (HiveMQ) Client '${client.clientId}' failed publish authorization on topic '$topicName'"
+            )
             p1!!.failAuthorization()
         }
     }

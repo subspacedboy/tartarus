@@ -181,8 +181,8 @@ class SimpleProxyService(
             }
 
             scope.async(exceptionHandler) {
-                val response = botComponent.requestContract(botMap.externalName, contract.lockSessionToken!!, contract.serialNumber.toUShort(), botComponent.botsToClients[botMap]!!)
-                contract.nextCounter = response.nextCounter.toInt()
+                val response = botComponent.requestContract(botMap.externalName, contract.lockSessionToken!!, contract.serialNumber.toUShort())
+                contract.nextCounter = response.nextCounter
 
                 applicationEventPublisher.publishEvent(IssueUnlock(
                     source = this,
@@ -211,8 +211,8 @@ class SimpleProxyService(
             }
 
             scope.async(exceptionHandler) {
-                val response = botComponent.requestContract(botMap.externalName, contract.lockSessionToken!!, contract.serialNumber.toUShort(), botComponent.botsToClients[botMap]!!)
-                contract.nextCounter = response.nextCounter.toInt()
+                val response = botComponent.requestContract(botMap.externalName, contract.lockSessionToken!!, contract.serialNumber.toUShort())
+                contract.nextCounter = response.nextCounter
 
                 applicationEventPublisher.publishEvent(IssueLock(
                     source = this,
