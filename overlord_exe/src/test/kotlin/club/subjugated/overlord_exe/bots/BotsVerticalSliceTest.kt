@@ -316,4 +316,74 @@ class BotsVerticalSliceTest {
         announcer.onRelease(botContext, contract)
         verify(blueSkyService).post("@sub1.bsky.social has been released")
     }
+
+    @Test
+    fun `bots declare native Bedrock ToolSpecification intents inline and execute via IntentService`() {
+        val keyHolder = BSkyUser(id = 1L, did = "did:plc:kh", handle = "@kh.bsky.social", convoId = "convo-kh")
+        val sub = BSkyUser(id = 2L, did = "did:plc:sub", handle = "@sub.bsky.social", convoId = "convo-sub", shareableToken = "s-SUB7777")
+        val userSvc = mock<BSkyUserService> {
+            on { findByHandle("@sub.bsky.social") } doAnswer { sub }
+            on { findOrCreateByDid("did:plc:kh") } doAnswer { keyHolder }
+        }
+        val contract = Contract(
+            id = 99L,
+            name = "bc-PROXY99",
+            externalContractName = "c-PROXY99",
+            botName = "b-TESTBOT",
+            lockSessionToken = "ls-PROXY",
+            shareableToken = "s-SUB7777",
+            serialNumber = 888,
+            state = ContractState.CREATED,
+        )
+        whenever(botContext.issueContract(eq("s-SUB7777"), any(), eq(true), any(), any())).thenReturn(contract)
+
+        val timerBot = TimerBot(
+            engagementRepository = engagementRepo,
+            timeSource = timeSource,
+            botMapService = botMapService,
+            botComponent = botComponent,
+            urlService = UrlService("http://localhost:8090"),
+        )
+        val proxyBot = SimpleProxyBot(
+            engagementRepository = engagementRepo,
+            botMapService = botMapService,
+            botComponent = botComponent,
+            contractService = contractService,
+            timeSource = timeSource,
+            bSkyUserService = userSvc,
+            urlService = UrlService("http://localhost:8090"),
+        )
+
+        val intentService = club.subjugated.overlord_exe.services.IntentService(
+            intentProviders = listOf(timerBot, proxyBot),
+        )
+        val toolConfig = intentService.buildToolConfiguration()!!
+        val toolNames = toolConfig.tools.map { it.asToolSpec().name }
+        assertTrue(toolNames.containsAll(listOf("timer", "proxy_contract", "proxy_unlock", "proxy_lock", "proxy_release")))
+
+        val msg = mock<work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageView>()
+        val ctx = club.subjugated.overlord_exe.convo.ConversationContext(
+            bskyUser = keyHolder,
+            convoId = "convo-kh",
+            currentMessage = msg,
+        )
+
+        // Dispatch zero-arg timer tool
+        val timerCall = intentService.reifyToolUse("timer", aws.smithy.kotlin.runtime.content.Document(emptyMap()))
+        val timerResp = intentService.dispatch(ctx, timerCall)
+        assertTrue(timerResp.text.startsWith("http://localhost:8090/timer/tbr-"))
+
+        // Dispatch structured proxy_contract tool
+        val proxyCall = intentService.reifyToolUse(
+            "proxy_contract",
+            aws.smithy.kotlin.runtime.content.Document(
+                mapOf(
+                    "otherUser" to aws.smithy.kotlin.runtime.content.Document("@sub.bsky.social"),
+                    "public" to aws.smithy.kotlin.runtime.content.Document(true),
+                )
+            ),
+        )
+        val proxyResp = intentService.dispatch(ctx, proxyCall)
+        assertEquals("Done!", proxyResp.text)
+    }
 }

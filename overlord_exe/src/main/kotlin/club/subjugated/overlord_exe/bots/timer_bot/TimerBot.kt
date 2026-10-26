@@ -1,9 +1,10 @@
 package club.subjugated.overlord_exe.bots.timer_bot
 
 import club.subjugated.overlord_exe.bots.general.BotComponent
-import club.subjugated.overlord_exe.bots.timer_bot.convo.Timer
 import club.subjugated.overlord_exe.convo.ConversationContext
 import club.subjugated.overlord_exe.convo.ConversationResponse
+import club.subjugated.overlord_exe.convo.IntentSpec
+import club.subjugated.overlord_exe.convo.unitIntent
 import club.subjugated.overlord_exe.models.BotEngagement
 import club.subjugated.overlord_exe.models.BotMap
 import club.subjugated.overlord_exe.models.Contract
@@ -13,7 +14,6 @@ import club.subjugated.overlord_exe.runtime.BotContext
 import club.subjugated.overlord_exe.runtime.BotDescriptor
 import club.subjugated.overlord_exe.runtime.OverlordBot
 import club.subjugated.overlord_exe.services.BotMapService
-import club.subjugated.overlord_exe.services.Intent
 import club.subjugated.overlord_exe.services.UrlService
 import club.subjugated.overlord_exe.storage.BotEngagementRepository
 import club.subjugated.overlord_exe.util.TimeSource
@@ -28,11 +28,9 @@ import org.ocpsoft.prettytime.PrettyTime
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageView
 import java.time.Duration
 import java.time.temporal.ChronoUnit
 import kotlin.random.Random
-import kotlin.reflect.KClass
 
 data class TimeForm(
     var name: String,
@@ -71,8 +69,12 @@ class TimerBot(
     private val botMapService: BotMapService,
     private val botComponent: BotComponent,
     private val urlService: UrlService = UrlService(),
-    private val logger: Logger = LoggerFactory.getLogger(TimerBot::class.java),
+    private val logger: Logger = LoggerFactory.getLogger(TimerFixedLogName),
 ) : OverlordBot {
+
+    companion object {
+        private val TimerFixedLogName = TimerBot::class.java
+    }
 
     override val descriptor = BotDescriptor(
         internalName = "timer",
@@ -81,6 +83,20 @@ class TimerBot(
     )
 
     override val commands: Set<String> = setOf("timer")
+
+    override val intents: List<IntentSpec<*>> = listOf(
+        unitIntent(
+            name = "timer",
+            description = "The user is trying to self-lock for a period of time. Trigger immediately without asking follow-up questions.",
+            examples = listOf(
+                "I want to self lock.",
+                "Lock me for a few hours.",
+                "Lock me up for a few hours daddy.",
+            ),
+        ) { ctx ->
+            ConversationResponse(text = startTimerIntakeUrl(ctx))
+        }
+    )
 
     val botContext: BotContext
         get() = botComponent.contextFor(this)
@@ -97,21 +113,14 @@ class TimerBot(
 
     // --- BlueSky DM & Intent Handling ---
 
-    override fun handle(convoId: String, message: ConvoDefsMessageView): String {
-        val engagement = createInitialPlaceholderSession(message.sender.did, convoId)
-        return urlService.generateUrl("timer/${engagement.name}")
+    override fun handleCommand(ctx: ConversationContext, command: String, args: List<String>): String {
+        return startTimerIntakeUrl(ctx)
     }
 
-    override fun getIntents(): List<KClass<out Intent>> = listOf(Timer::class)
-
-    override fun handleIntent(ctx: ConversationContext, intent: Intent): ConversationResponse {
-        return when (intent) {
-            is Timer -> {
-                val engagement = createInitialPlaceholderSession(ctx.bskyUser!!.did, ctx.convoId)
-                ConversationResponse(text = urlService.generateUrl("timer/${engagement.name}"))
-            }
-            else -> throw IllegalStateException("Unknown intent: $intent")
-        }
+    private fun startTimerIntakeUrl(ctx: ConversationContext): String {
+        val did = ctx.bskyUser?.did ?: ctx.currentMessage.sender.did
+        val engagement = createInitialPlaceholderSession(did, ctx.convoId)
+        return urlService.generateUrl("timer/${engagement.name}")
     }
 
     // --- Session & Intake Lifecycle ---

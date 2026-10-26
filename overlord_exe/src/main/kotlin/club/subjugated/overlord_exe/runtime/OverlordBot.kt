@@ -1,16 +1,17 @@
 package club.subjugated.overlord_exe.runtime
 
-import club.subjugated.overlord_exe.convo.ConversationContext
+import club.subjugated.fb.event.PeriodicUpdate
+import club.subjugated.fb.event.StartedUpdate
 import club.subjugated.overlord_exe.convo.ConversationHandler
-import club.subjugated.overlord_exe.convo.ConversationResponse
 import club.subjugated.overlord_exe.models.Contract
-import club.subjugated.overlord_exe.services.Intent
-import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageView
 import java.time.Duration
-import kotlin.reflect.KClass
 
 /**
- * Metadata describing a logical bot hosted within the Overlord umbrella runtime.
+ * Metadata describing an independent bot managed under the Overlord umbrella runtime.
+ *
+ * @property internalName Stable internal identifier used for deterministic HKDF key derivation and database lookup.
+ * @property description Human-readable description sent during coordinator registration.
+ * @property reviewInterval Optional interval for periodic contract review. If `null`, this bot does not run periodic reviews.
  */
 data class BotDescriptor(
     val internalName: String,
@@ -31,59 +32,65 @@ data class CoBotGrant(
 )
 
 /**
- * Unified SPI for logical bots hosted inside the Overlord runtime.
+ * Unified interface for a bot hosted inside the Overlord umbrella runtime.
  *
- * Combines Coordinator contract lifecycle hooks ([onAccept], [onRelease], [onAbort], [reviewContracts])
- * with BlueSky DM command and LLM intent handling ([ConversationHandler]).
+ * Every [OverlordBot] is also a [ConversationHandler] (with no-op defaults for bots like AnnouncerBot
+ * that do not handle BlueSky DMs or intents).
  */
 interface OverlordBot : ConversationHandler {
     val descriptor: BotDescriptor
 
-    // --- BlueSky DM & Intent defaults (override in bots that accept DM commands/intents) ---
-    override val commands: Set<String>
-        get() = emptySet()
+    // --- Coordinator Contract Lifecycle ---
 
-    override fun handle(convoId: String, message: ConvoDefsMessageView): String = ""
-
-    override fun getIntents(): List<KClass<out Intent>> = emptyList()
-
-    override fun handleIntent(ctx: ConversationContext, intent: Intent): ConversationResponse =
-        ConversationResponse("")
-
-    // --- Coordinator Contract lifecycle hooks ---
     fun onStart(ctx: BotContext) {}
-
-    fun onAccept(ctx: BotContext, contract: Contract) {
-        handleAccept(contract)
-    }
-
-    fun onRelease(ctx: BotContext, contract: Contract) {
-        handleRelease(contract)
-    }
-
-    fun onLock(ctx: BotContext, contract: Contract) {
-        handleLock(contract)
-    }
-
-    fun onUnlock(ctx: BotContext, contract: Contract) {
-        handleUnlock(contract)
-    }
-
-    fun onEmergencyUnlock(ctx: BotContext, contract: Contract) {
-        handleEmergencyUnlock(contract)
-    }
-
-    fun onAbort(ctx: BotContext, contract: Contract) {}
 
     fun reviewContracts(ctx: BotContext, contracts: List<Contract>) {
         reviewContracts(contracts)
     }
 
-    // Convenience overloads for direct unit/integration test calls
-    fun handleAccept(contract: Contract) {}
-    fun handleRelease(contract: Contract) {}
-    fun handleLock(contract: Contract) {}
-    fun handleUnlock(contract: Contract) {}
-    fun handleEmergencyUnlock(contract: Contract) {}
     fun reviewContracts(contracts: List<Contract>) {}
+
+    fun onAccept(ctx: BotContext, contract: Contract) {
+        handleAccept(contract)
+    }
+
+    fun handleAccept(contract: Contract) {}
+
+    fun onRelease(ctx: BotContext, contract: Contract) {
+        handleRelease(contract)
+    }
+
+    fun handleRelease(contract: Contract) {}
+
+    fun onLock(ctx: BotContext, contract: Contract) {
+        handleLock(contract)
+    }
+
+    fun handleLock(contract: Contract) {}
+
+    fun onUnlock(ctx: BotContext, contract: Contract) {
+        handleUnlock(contract)
+    }
+
+    fun handleUnlock(contract: Contract) {}
+
+    fun onEmergencyUnlock(ctx: BotContext, contract: Contract) {
+        handleEmergencyUnlock(contract)
+    }
+
+    fun handleEmergencyUnlock(contract: Contract) {}
+
+    fun onStartedUpdate(ctx: BotContext, contract: Contract, update: StartedUpdate) {
+        handleStartedUpdate(contract, update)
+    }
+
+    fun handleStartedUpdate(contract: Contract, update: StartedUpdate) {}
+
+    fun onPeriodicUpdate(ctx: BotContext, contract: Contract, update: PeriodicUpdate) {
+        handlePeriodicUpdate(contract, update)
+    }
+
+    fun handlePeriodicUpdate(contract: Contract, update: PeriodicUpdate) {}
+
+    fun onAbort(ctx: BotContext, contract: Contract) {}
 }

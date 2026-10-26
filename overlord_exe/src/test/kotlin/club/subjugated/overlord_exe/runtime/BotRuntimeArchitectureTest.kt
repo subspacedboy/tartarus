@@ -1,5 +1,9 @@
 package club.subjugated.overlord_exe.runtime
 
+import club.subjugated.fb.event.CommonMetadata
+import club.subjugated.fb.event.Event
+import club.subjugated.fb.event.EventType
+import club.subjugated.fb.event.SignedEvent
 import club.subjugated.fb.message.Contract as FbContract
 import club.subjugated.fb.message.LockCommand
 import club.subjugated.fb.message.MessagePayload
@@ -10,6 +14,7 @@ import club.subjugated.overlord_exe.bots.general.BotComponent
 import club.subjugated.overlord_exe.models.BotMap
 import club.subjugated.overlord_exe.models.Contract
 import club.subjugated.overlord_exe.models.ContractState
+import club.subjugated.overlord_exe.services.AuthorSessionResponse
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.services.BotContractInfo
 import club.subjugated.overlord_exe.services.BotMapService
@@ -397,5 +402,100 @@ class BotRuntimeArchitectureTest {
         assertEquals(1, activeReviewed.size)
         assertEquals(102, activeReviewed.first().serialNumber)
         assertEquals(5, activeReviewed.first().nextCounter)
+    }
+
+    @OptIn(ExperimentalUnsignedTypes::class)
+    @Test
+    fun `WebSocket routes StartedUpdate and PeriodicUpdate events to OverlordBot hooks`() {
+        whenever(coordinatorGateway.createAuthorSession(any())).thenReturn(
+            AuthorSessionResponse(name = "as-AUTHOR1")
+        )
+        whenever(coordinatorGateway.getMyBots(any())).thenReturn(emptyList())
+        whenever(coordinatorGateway.registerBot(any(), any())).thenReturn(
+            NewBotResponse(name = "b-TIMER")
+        )
+
+        var receivedStartedLocked: Boolean? = null
+        var receivedStartedLocal: Boolean? = null
+        var receivedPeriodicLocked: Boolean? = null
+        var receivedPeriodicUptime: ULong? = null
+
+        val timerBot = object : OverlordBot {
+            override val descriptor = BotDescriptor("timer", "Timer")
+            override fun onStartedUpdate(
+                ctx: BotContext,
+                contract: Contract,
+                update: club.subjugated.fb.event.StartedUpdate,
+            ) {
+                receivedStartedLocked = update.isLocked
+                receivedStartedLocal = update.startedWithLocalContract
+            }
+
+            override fun onPeriodicUpdate(
+                ctx: BotContext,
+                contract: Contract,
+                update: club.subjugated.fb.event.PeriodicUpdate,
+            ) {
+                receivedPeriodicLocked = update.isLocked
+                receivedPeriodicUptime = update.deviceUptime
+            }
+        }
+
+        val timerMap = botMapService.getOrCreateBotMap("timer", "Timer")
+        botComponent.startBot(timerMap, timerBot)
+
+        val existingContract = Contract(
+            id = 55L,
+            name = "bc-55",
+            externalContractName = "c-55",
+            botName = "b-TIMER",
+            lockSessionToken = "ls-55",
+            serialNumber = 555,
+            state = ContractState.ACCEPTED,
+        )
+        savedContracts.add(existingContract)
+
+        // Build a SignedEvent with EventType.StartedUpdate
+        val startedB64 = run {
+            val builder = com.google.flatbuffers.FlatBufferBuilder(256)
+            val lsOff = builder.createString("ls-55")
+            val evIdOff = builder.createString("ev-start-1")
+            val corrOff = builder.createString("corr-1")
+            val pubKeyOff = club.subjugated.fb.event.StartedUpdate.createPublicKeyVector(builder, ubyteArrayOf(1u, 2u, 3u))
+            val metaOff = CommonMetadata.createCommonMetadata(builder, lsOff, 555u, 1u, 0u, evIdOff, corrOff)
+            val startedOff = club.subjugated.fb.event.StartedUpdate.createStartedUpdate(builder, pubKeyOff, true, true)
+            val eventOff = Event.createEvent(builder, metaOff, EventType.StartedUpdate, startedOff)
+            val sigOff = SignedEvent.createSignatureVector(builder, UByteArray(64))
+            val rootOff = SignedEvent.createSignedEvent(builder, sigOff, eventOff)
+            builder.finish(rootOff)
+            Base64.getEncoder().encodeToString(builder.sizedByteArray())
+        }
+
+        // Build a SignedEvent with EventType.PeriodicUpdate
+        val periodicB64 = run {
+            val builder = com.google.flatbuffers.FlatBufferBuilder(256)
+            val lsOff = builder.createString("ls-55")
+            val evIdOff = builder.createString("ev-periodic-1")
+            val corrOff = builder.createString("corr-2")
+            val metaOff = CommonMetadata.createCommonMetadata(builder, lsOff, 555u, 1u, 0u, evIdOff, corrOff)
+            val periodicOff = club.subjugated.fb.event.PeriodicUpdate.createPeriodicUpdate(builder, true, false, 3600UL)
+            val eventOff = Event.createEvent(builder, metaOff, EventType.PeriodicUpdate, periodicOff)
+            val sigOff = SignedEvent.createSignatureVector(builder, UByteArray(64))
+            val rootOff = SignedEvent.createSignedEvent(builder, sigOff, eventOff)
+            builder.finish(rootOff)
+            Base64.getEncoder().encodeToString(builder.sizedByteArray())
+        }
+
+        botComponent.handleWebSocketMessage(
+            """{"type":"bot_event","botName":"b-TIMER","eventType":"StartedUpdate","lockSession":"ls-55","contractSerial":555,"rawSignedEventBase64":"$startedB64"}"""
+        )
+        botComponent.handleWebSocketMessage(
+            """{"type":"bot_event","botName":"b-TIMER","eventType":"PeriodicUpdate","lockSession":"ls-55","contractSerial":555,"deviceUptime":3600,"rawSignedEventBase64":"$periodicB64"}"""
+        )
+
+        assertEquals(true, receivedStartedLocked)
+        assertEquals(true, receivedStartedLocal)
+        assertEquals(true, receivedPeriodicLocked)
+        assertEquals(3600UL, receivedPeriodicUptime)
     }
 }

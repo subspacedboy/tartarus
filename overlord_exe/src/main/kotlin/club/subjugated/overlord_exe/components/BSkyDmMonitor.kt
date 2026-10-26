@@ -98,14 +98,21 @@ class BSkyDmMonitor @Autowired constructor(
         bskyUser.handle = handle
         bSkyUserService.save(bskyUser)
 
+        val ctx = ConversationContext(
+            bskyUser = bskyUser,
+            convoId = convoId,
+            currentMessage = message,
+        )
+
         if (message.text.startsWith("!")) {
-            val messageMinusBang = message.text.replaceFirst("!", "").trim()
-            val chunks = messageMinusBang.split("\\s+".toRegex())
-            val cmd = chunks[0].lowercase()
+            val messageMinusBang = message.text.removePrefix("!").trim()
+            val chunks = if (messageMinusBang.isEmpty()) emptyList() else messageMinusBang.split("\\s+".toRegex())
+            val cmd = chunks.firstOrNull()?.lowercase() ?: ""
+            val args = if (chunks.size > 1) chunks.drop(1) else emptyList()
 
             val registeredHandler = resolveCommandHandler(cmd)
             val response: String = when {
-                registeredHandler != null -> registeredHandler.handle(convoId, message)
+                registeredHandler != null -> registeredHandler.handleCommand(ctx, cmd, args)
                 cmd == "hello" -> "Hello 😈"
                 else -> ""
             }
@@ -117,15 +124,10 @@ class BSkyDmMonitor @Autowired constructor(
                 val response = intentService.resolve(convoId, message.text)
 
                 val responseText = if (response.intent != null) {
-                    val ctx = ConversationContext(
-                        bskyUser = bskyUser,
-                        convoId = convoId,
-                        currentMessage = message,
-                    )
                     val r = intentService.dispatch(ctx, response.intent)
                     r.text
                 } else {
-                    response.chat!!
+                    response.chat ?: ""
                 }
 
                 if (!ignoreSend && responseText.isNotBlank()) {

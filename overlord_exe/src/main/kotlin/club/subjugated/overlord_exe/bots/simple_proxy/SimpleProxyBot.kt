@@ -1,12 +1,13 @@
 package club.subjugated.overlord_exe.bots.simple_proxy
 
 import club.subjugated.overlord_exe.bots.general.BotComponent
-import club.subjugated.overlord_exe.bots.simple_proxy.convo.ProxyContractIntent
-import club.subjugated.overlord_exe.bots.simple_proxy.convo.ProxyLockIntent
-import club.subjugated.overlord_exe.bots.simple_proxy.convo.ProxyReleaseIntent
-import club.subjugated.overlord_exe.bots.simple_proxy.convo.ProxyUnlockIntent
 import club.subjugated.overlord_exe.convo.ConversationContext
 import club.subjugated.overlord_exe.convo.ConversationResponse
+import club.subjugated.overlord_exe.convo.IntentParam
+import club.subjugated.overlord_exe.convo.IntentSpec
+import club.subjugated.overlord_exe.convo.ParamType
+import club.subjugated.overlord_exe.convo.intent
+import club.subjugated.overlord_exe.convo.stringIntent
 import club.subjugated.overlord_exe.models.BSkyUser
 import club.subjugated.overlord_exe.models.BotEngagement
 import club.subjugated.overlord_exe.models.BotMap
@@ -20,7 +21,6 @@ import club.subjugated.overlord_exe.services.BSkyUserService
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.services.BotMapService
 import club.subjugated.overlord_exe.services.ContractService
-import club.subjugated.overlord_exe.services.Intent
 import club.subjugated.overlord_exe.services.UrlService
 import club.subjugated.overlord_exe.storage.BotEngagementRepository
 import club.subjugated.overlord_exe.util.TimeSource
@@ -29,12 +29,15 @@ import jakarta.annotation.PostConstruct
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageView
-import kotlin.reflect.KClass
 
 data class SimpleProxyIntakeForm(
     var name: String,
     var public: Boolean = false,
+)
+
+data class ProxyIntakeParams(
+    val otherUser: String,
+    val public: Boolean,
 )
 
 @Service
@@ -58,6 +61,78 @@ class SimpleProxyBot(
 
     override val commands: Set<String> = setOf("token", "own", "submit", "release", "unlock", "lock")
 
+    override val intents: List<IntentSpec<*>> = listOf(
+        intent(
+            name = "proxy_contract",
+            description = "The user is trying to own, lock, or put another user under a new contract.",
+            parameters = listOf(
+                IntentParam(
+                    name = "otherUser",
+                    type = ParamType.STRING,
+                    description = "Bluesky handle of the other user to put under contract (e.g. @user.bsky.social)",
+                ),
+                IntentParam(
+                    name = "public",
+                    type = ParamType.BOOLEAN,
+                    description = "Whether the contract events should be public (true or false)",
+                ),
+            ),
+            examples = listOf(
+                "I want to publicly lock @subspacedboy.subjugated.club",
+            ),
+            parser = { map ->
+                ProxyIntakeParams(
+                    otherUser = map["otherUser"]!!.asString().trim(),
+                    public = map["public"]!!.asBoolean(),
+                )
+            },
+        ) { ctx, params ->
+            val userSvc = bSkyUserService ?: return@intent ConversationResponse("")
+            val subUser = userSvc.findByHandle(params.otherUser)
+            if (subUser == null) {
+                ConversationResponse(
+                    text = "User (${params.otherUser}) hasn't signed up... Have them message me.",
+                )
+            } else {
+                val engagement = createInitialRecord(ctx.bskyUser!!, subUser)
+                processIntakeForm(
+                    SimpleProxyIntakeForm(
+                        name = engagement.name,
+                        public = params.public,
+                    )
+                )
+                ConversationResponse(text = "Done!")
+            }
+        },
+        stringIntent(
+            name = "proxy_unlock",
+            paramName = "otherUserHandle",
+            paramDescription = "Bluesky handle of the user to unlock",
+            description = "The user is trying to unlock another user.",
+            examples = listOf("I want to unlock @subspacedboy.subjugated.club"),
+        ) { ctx, otherUserHandle ->
+            executePairAction(ctx, otherUserHandle, "Unlocked", ::unlock)
+        },
+        stringIntent(
+            name = "proxy_lock",
+            paramName = "otherUserHandle",
+            paramDescription = "Bluesky handle of the user to relock",
+            description = "The user is trying to relock another user that is already under contract. If you are not sure whether it is a new contract, ask first.",
+            examples = listOf("Lock @subspacedboy.subjugated.club"),
+        ) { ctx, otherUserHandle ->
+            executePairAction(ctx, otherUserHandle, "Locked", ::lock)
+        },
+        stringIntent(
+            name = "proxy_release",
+            paramName = "otherUserHandle",
+            paramDescription = "Bluesky handle of the user to release from contract",
+            description = "The user is trying to release another user from contract.",
+            examples = listOf("I want to release @subspacedboy.subjugated.club"),
+        ) { ctx, otherUserHandle ->
+            executePairAction(ctx, otherUserHandle, "Released", ::release)
+        },
+    )
+
     val botContext: BotContext
         get() = botComponent.contextFor(this)
 
@@ -73,43 +148,63 @@ class SimpleProxyBot(
 
     // --- BlueSky DM & Intent Handling ---
 
-    override fun handle(convoId: String, message: ConvoDefsMessageView): String {
+    private fun executePairAction(
+        ctx: ConversationContext,
+        otherUserHandle: String,
+        pastTenseVerb: String,
+        action: (BSkyUser, BSkyUser) -> Result<Unit>,
+    ): ConversationResponse {
+        val userSvc = bSkyUserService ?: return ConversationResponse("")
+        val subUser = userSvc.findByHandle(otherUserHandle)
+        return if (subUser == null) {
+            ConversationResponse(
+                text = "User ($otherUserHandle) hasn't signed up... Have them message me.",
+            )
+        } else {
+            val result = action(ctx.bskyUser!!, subUser)
+            if (result.isSuccess) {
+                ConversationResponse(text = "$pastTenseVerb $otherUserHandle")
+            } else {
+                ConversationResponse(text = result.exceptionOrNull()?.message ?: "Unknown error")
+            }
+        }
+    }
+
+    override fun handleCommand(ctx: ConversationContext, command: String, args: List<String>): String {
         val userSvc = bSkyUserService ?: return ""
-        val messageMinusBang = message.text.replaceFirst("!", "").trim()
-        val chunks = messageMinusBang.split("\\s+".toRegex())
+        val bskyUser = ctx.bskyUser ?: userSvc.findOrCreateByDid(ctx.currentMessage.sender.did).also { u ->
+            u.convoId = ctx.convoId
+            u.handle = blueSkyService?.resolveDidToHandle(u.did) ?: u.handle
+            userSvc.save(u)
+        }
+        val arg = args.firstOrNull() ?: return "Missing argument"
 
-        val bskyUser = userSvc.findOrCreateByDid(message.sender.did)
-        val handle = blueSkyService?.resolveDidToHandle(bskyUser.did) ?: bskyUser.handle
-        bskyUser.convoId = convoId
-        bskyUser.handle = handle
-        userSvc.save(bskyUser)
-
-        return when (chunks[0].lowercase()) {
+        return when (command) {
             "token" -> {
-                bskyUser.shareableToken = chunks[1]
+                bskyUser.shareableToken = arg
                 userSvc.save(bskyUser)
                 "Token recorded - ${bskyUser.shareableToken}"
             }
             "own" -> {
-                val subUser = userSvc.findByHandle(chunks[1])
+                val subUser = userSvc.findByHandle(arg)
                 if (subUser == null) {
-                    "User (${chunks[1]}) hasn't signed up... Have them message me."
+                    "User ($arg) hasn't signed up... Have them message me."
                 } else {
                     val engagement = createInitialRecord(bskyUser, subUser)
                     urlService.generateUrl("simpleproxy/${engagement.name}")
                 }
             }
             "submit" -> {
-                val otherUser = userSvc.findByHandle(chunks[1])
+                val otherUser = userSvc.findByHandle(arg)
                 if (otherUser == null) {
-                    "User (${chunks[1]}) hasn't signed up... Have them message me."
+                    "User ($arg) hasn't signed up... Have them message me."
                 } else {
                     createInitialRecord(otherUser, bskyUser)
                     "Issuing contract"
                 }
             }
             "release" -> {
-                val subUser = userSvc.findByHandle(chunks[1])
+                val subUser = userSvc.findByHandle(arg)
                 if (subUser == null) {
                     "User hasn't signed up..."
                 } else {
@@ -118,7 +213,7 @@ class SimpleProxyBot(
                 }
             }
             "unlock" -> {
-                val subUser = userSvc.findByHandle(chunks[1])
+                val subUser = userSvc.findByHandle(arg)
                 if (subUser == null) {
                     "User hasn't signed up..."
                 } else {
@@ -127,7 +222,7 @@ class SimpleProxyBot(
                 }
             }
             "lock" -> {
-                val subUser = userSvc.findByHandle(chunks[1])
+                val subUser = userSvc.findByHandle(arg)
                 if (subUser == null) {
                     "User hasn't signed up..."
                 } else {
@@ -136,82 +231,6 @@ class SimpleProxyBot(
                 }
             }
             else -> "Unknown command"
-        }
-    }
-
-    override fun getIntents(): List<KClass<out Intent>> = listOf(
-        ProxyContractIntent::class,
-        ProxyUnlockIntent::class,
-        ProxyLockIntent::class,
-        ProxyReleaseIntent::class,
-    )
-
-    override fun handleIntent(ctx: ConversationContext, intent: Intent): ConversationResponse {
-        val userSvc = bSkyUserService ?: return ConversationResponse("")
-        return when (intent) {
-            is ProxyContractIntent -> {
-                val subUser = userSvc.findByHandle(intent.proxyIntakeData.otherUser!!)
-                if (subUser == null) {
-                    ConversationResponse(
-                        text = "User (${intent.proxyIntakeData.otherUser}) hasn't signed up... Have them message me.",
-                    )
-                } else {
-                    val engagement = createInitialRecord(ctx.bskyUser!!, subUser)
-                    processIntakeForm(
-                        SimpleProxyIntakeForm(
-                            name = engagement.name,
-                            public = intent.proxyIntakeData.public!!,
-                        )
-                    )
-                    ConversationResponse(text = "Done!")
-                }
-            }
-            is ProxyUnlockIntent -> {
-                val subUser = userSvc.findByHandle(intent.proxyData.otherUserHandle)
-                if (subUser == null) {
-                    ConversationResponse(
-                        text = "User (${intent.proxyData.otherUserHandle}) hasn't signed up... Have them message me.",
-                    )
-                } else {
-                    val result = unlock(ctx.bskyUser!!, subUser)
-                    if (result.isSuccess) {
-                        ConversationResponse(text = "Unlocked ${intent.proxyData.otherUserHandle}")
-                    } else {
-                        ConversationResponse(text = result.exceptionOrNull()?.message ?: "Unknown error")
-                    }
-                }
-            }
-            is ProxyLockIntent -> {
-                val subUser = userSvc.findByHandle(intent.proxyData.otherUserHandle)
-                if (subUser == null) {
-                    ConversationResponse(
-                        text = "User (${intent.proxyData.otherUserHandle}) hasn't signed up... Have them message me.",
-                    )
-                } else {
-                    val result = lock(ctx.bskyUser!!, subUser)
-                    if (result.isSuccess) {
-                        ConversationResponse(text = "Locked ${intent.proxyData.otherUserHandle}")
-                    } else {
-                        ConversationResponse(text = result.exceptionOrNull()?.message ?: "Unknown error")
-                    }
-                }
-            }
-            is ProxyReleaseIntent -> {
-                val subUser = userSvc.findByHandle(intent.proxyData.otherUserHandle)
-                if (subUser == null) {
-                    ConversationResponse(
-                        text = "User (${intent.proxyData.otherUserHandle}) hasn't signed up... Have them message me.",
-                    )
-                } else {
-                    val result = release(ctx.bskyUser!!, subUser)
-                    if (result.isSuccess) {
-                        ConversationResponse(text = "Released ${intent.proxyData.otherUserHandle}")
-                    } else {
-                        ConversationResponse(text = result.exceptionOrNull()?.message ?: "Unknown error")
-                    }
-                }
-            }
-            else -> throw IllegalStateException("Unknown intent: $intent")
         }
     }
 

@@ -1,9 +1,10 @@
 package club.subjugated.overlord_exe.bots.superbot
 
 import club.subjugated.overlord_exe.bots.general.BotComponent
-import club.subjugated.overlord_exe.bots.superbot.convo.SuperbotIntent
 import club.subjugated.overlord_exe.convo.ConversationContext
 import club.subjugated.overlord_exe.convo.ConversationResponse
+import club.subjugated.overlord_exe.convo.IntentSpec
+import club.subjugated.overlord_exe.convo.unitIntent
 import club.subjugated.overlord_exe.models.BotEngagement
 import club.subjugated.overlord_exe.models.BotMap
 import club.subjugated.overlord_exe.models.Contract
@@ -16,7 +17,6 @@ import club.subjugated.overlord_exe.runtime.BotDescriptor
 import club.subjugated.overlord_exe.runtime.OverlordBot
 import club.subjugated.overlord_exe.services.BSkyUserService
 import club.subjugated.overlord_exe.services.BotMapService
-import club.subjugated.overlord_exe.services.Intent
 import club.subjugated.overlord_exe.services.UrlService
 import club.subjugated.overlord_exe.storage.BotEngagementRepository
 import club.subjugated.overlord_exe.util.TimeSource
@@ -26,9 +26,7 @@ import jakarta.validation.constraints.Size
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageView
 import java.time.Duration
-import kotlin.reflect.KClass
 
 data class IntakeForm(
     var name: String,
@@ -58,6 +56,20 @@ class SuperBot(
 
     override val commands: Set<String> = setOf("superbot")
 
+    override val intents: List<IntentSpec<*>> = listOf(
+        unitIntent(
+            name = "superbot",
+            description = "The user wants to be owned, controlled, or locked by Overlord-exe for Bluesky tasks. Trigger immediately without asking follow-up questions.",
+            examples = listOf(
+                "Can you own me?",
+                "Lock me for tasks on Bluesky.",
+                "Can you lock me and make me do some tasks?",
+            ),
+        ) { ctx ->
+            ConversationResponse(text = startSuperBotIntakeUrl(ctx))
+        }
+    )
+
     val botContext: BotContext
         get() = botComponent.contextFor(this)
 
@@ -73,21 +85,14 @@ class SuperBot(
 
     // --- BlueSky DM & Intent Handling ---
 
-    override fun handle(convoId: String, message: ConvoDefsMessageView): String {
-        val name = createPlaceholder(message.sender.did, convoId)
-        return urlService.generateUrl("superbot/$name")
+    override fun handleCommand(ctx: ConversationContext, command: String, args: List<String>): String {
+        return startSuperBotIntakeUrl(ctx)
     }
 
-    override fun getIntents(): List<KClass<out Intent>> = listOf(SuperbotIntent::class)
-
-    override fun handleIntent(ctx: ConversationContext, intent: Intent): ConversationResponse {
-        return when (intent) {
-            is SuperbotIntent -> {
-                val name = createPlaceholder(ctx.bskyUser!!.did, ctx.convoId)
-                ConversationResponse(text = urlService.generateUrl("superbot/$name"))
-            }
-            else -> throw IllegalStateException("Unknown intent: $intent")
-        }
+    private fun startSuperBotIntakeUrl(ctx: ConversationContext): String {
+        val did = ctx.bskyUser?.did ?: ctx.currentMessage.sender.did
+        val name = createPlaceholder(did, ctx.convoId)
+        return urlService.generateUrl("superbot/$name")
     }
 
     // --- Session & Intake Lifecycle ---

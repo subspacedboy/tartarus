@@ -1,7 +1,9 @@
 package club.subjugated.overlord_exe.bots.general
 
 import club.subjugated.fb.event.EventType
+import club.subjugated.fb.event.PeriodicUpdate
 import club.subjugated.fb.event.SignedEvent
+import club.subjugated.fb.event.StartedUpdate
 import club.subjugated.overlord_exe.models.BotMap
 import club.subjugated.overlord_exe.models.Contract
 import club.subjugated.overlord_exe.models.ContractState
@@ -45,8 +47,14 @@ data class BotEventWsPayload(
     val botName: String? = null,
     val eventId: String? = null,
     val contractName: String? = null,
+    val contractSerial: Int? = null,
     val contractSerialNumber: Int? = null,
+    val lockSession: String? = null,
     val lockSessionToken: String? = null,
+    val counter: Int? = null,
+    val eventType: String? = null,
+    val correlationId: String? = null,
+    val deviceUptime: Long? = null,
     val rawSignedEventBase64: String? = null,
 )
 
@@ -314,8 +322,8 @@ class BotComponent @Autowired constructor(
                     EventType.Lock -> handleLock(botMap, signedEvent)
                     EventType.Unlock -> handleUnlock(botMap, signedEvent)
                     EventType.EmergencyUnlock -> handleEmergencyUnlock(botMap, signedEvent)
-                    EventType.StartedUpdate -> logger.debug("Received StartedUpdate for ${commonMetadata.lockSession}")
-                    EventType.PeriodicUpdate -> logger.debug("Received PeriodicUpdate for ${commonMetadata.lockSession}")
+                    EventType.StartedUpdate -> handleStartedUpdate(botMap, signedEvent)
+                    EventType.PeriodicUpdate -> handlePeriodicUpdate(botMap, signedEvent)
                 }
             } catch (ex: Exception) {
                 logger.error("Encountered exception in processing WebSocket bot event", ex)
@@ -446,5 +454,39 @@ class BotComponent @Autowired constructor(
         val bot = handlers[botMap]
         val ctx = contextsByBotMap[botMap] ?: contextFor(botMap.internalName, botMap.internalName)
         bot?.onEmergencyUnlock(ctx, contract)
+    }
+
+    fun handleStartedUpdate(botMap: BotMap, signedEvent: SignedEvent) {
+        val e = signedEvent.payload!!
+        val commonMetadata = e.metadata!!
+        val startedUpdate = StartedUpdate()
+        if (e.event(startedUpdate) == null) {
+            logger.warn("StartedUpdate event union payload was null for ${commonMetadata.lockSession}")
+            return
+        }
+        logger.info(
+            "Started update received for ${botMap.internalName} (${botMap.externalName}): session=${commonMetadata.lockSession}, serial=${commonMetadata.contractSerialNumber}, isLocked=${startedUpdate.isLocked}, startedWithLocalContract=${startedUpdate.startedWithLocalContract}"
+        )
+        val contract = resolveOrSyncContract(botMap, signedEvent)
+        val bot = handlers[botMap]
+        val ctx = contextsByBotMap[botMap] ?: contextFor(botMap.internalName, botMap.internalName)
+        bot?.onStartedUpdate(ctx, contract, startedUpdate)
+    }
+
+    fun handlePeriodicUpdate(botMap: BotMap, signedEvent: SignedEvent) {
+        val e = signedEvent.payload!!
+        val commonMetadata = e.metadata!!
+        val periodicUpdate = PeriodicUpdate()
+        if (e.event(periodicUpdate) == null) {
+            logger.warn("PeriodicUpdate event union payload was null for ${commonMetadata.lockSession}")
+            return
+        }
+        logger.info(
+            "Periodic update received for ${botMap.internalName} (${botMap.externalName}): session=${commonMetadata.lockSession}, serial=${commonMetadata.contractSerialNumber}, isLocked=${periodicUpdate.isLocked}, emergencyUnlocked=${periodicUpdate.emergencyUnlocked}, deviceUptime=${periodicUpdate.deviceUptime}s"
+        )
+        val contract = resolveOrSyncContract(botMap, signedEvent)
+        val bot = handlers[botMap]
+        val ctx = contextsByBotMap[botMap] ?: contextFor(botMap.internalName, botMap.internalName)
+        bot?.onPeriodicUpdate(ctx, contract, periodicUpdate)
     }
 }

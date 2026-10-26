@@ -4,15 +4,14 @@ import club.subjugated.overlord_exe.bots.general.BotComponent
 import club.subjugated.overlord_exe.convo.ConversationContext
 import club.subjugated.overlord_exe.convo.ConversationHandler
 import club.subjugated.overlord_exe.convo.ConversationResponse
-import club.subjugated.overlord_exe.runtime.OverlordBot
+import club.subjugated.overlord_exe.convo.IntentSpec
+import club.subjugated.overlord_exe.convo.stringIntent
+import club.subjugated.overlord_exe.convo.unitIntent
 import club.subjugated.overlord_exe.services.BSkyUserService
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.services.BotMapService
 import club.subjugated.overlord_exe.services.ContractService
-import club.subjugated.overlord_exe.services.Intent
 import org.springframework.stereotype.Component
-import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageView
-import kotlin.reflect.KClass
 
 @Component
 class OverlordConversationHandler(
@@ -25,34 +24,61 @@ class OverlordConversationHandler(
 
     override val commands: Set<String> = setOf("hello", "contract", "accept", "add", "remove")
 
-    override fun handle(
-        convoId: String,
-        message: ConvoDefsMessageView,
+    override val intents: List<IntentSpec<*>> = listOf(
+        unitIntent(
+            name = "hello",
+            description = "The user is saying hello or asking who you are.",
+            examples = listOf("Hello", "Who are you?"),
+        ) {
+            ConversationResponse(text = "Hello 😈! I'm Overlord-exe.")
+        },
+        stringIntent(
+            name = "add_list",
+            paramName = "listName",
+            paramDescription = "Name of the Bluesky list to join ('Doms', 'Subs', or 'Public Property')",
+            description = "The user wants to be added to a Bluesky list. Available lists are: 'Doms', 'Subs', 'Public Property'.",
+            examples = listOf("I want to be added to subs"),
+        ) { ctx, listName ->
+            val did = ctx.bskyUser?.did ?: ctx.currentMessage.sender.did
+            val atUri = blueSkyService.listNameToUri(listName)
+            blueSkyService.addToList(did, atUri)
+            ConversationResponse(text = "Added to $listName")
+        },
+        stringIntent(
+            name = "remove_list",
+            paramName = "listName",
+            paramDescription = "Name of the Bluesky list to leave ('Doms', 'Subs', or 'Public Property')",
+            description = "The user wants to be removed from a Bluesky list. Available lists are: 'Doms', 'Subs', 'Public Property'.",
+            examples = listOf("I want to be removed from subs"),
+        ) { ctx, listName ->
+            val did = ctx.bskyUser?.did ?: ctx.currentMessage.sender.did
+            val atUri = blueSkyService.listNameToUri(listName)
+            blueSkyService.removeFromList(did, atUri)
+            ConversationResponse(text = "Removed from $listName")
+        },
+    )
+
+    override fun handleCommand(
+        ctx: ConversationContext,
+        command: String,
+        args: List<String>,
     ): String {
-        val messageMinusBang = message.text.replaceFirst("!", "").trim()
-        val chunks = messageMinusBang.split("\\s+".toRegex())
-
-        val bskyUser = bSkyUserService.findOrCreateByDid(message.sender.did)
-        val handle = blueSkyService.resolveDidToHandle(bskyUser.did)
-        bskyUser.convoId = convoId
-        bskyUser.handle = handle
-        bSkyUserService.save(bskyUser)
-
-        return when (chunks[0].lowercase()) {
+        val senderDid = ctx.bskyUser?.did ?: ctx.currentMessage.sender.did
+        return when (command) {
             "hello" -> "Hello 😈"
             "contract" -> {
-                val botInternalName = chunks[1]
-                val lockSession = chunks[2]
-                val serialNumber = chunks[3].toInt()
+                val botInternalName = args[0]
+                val lockSession = args[1]
+                val serialNumber = args[2].toInt()
 
-                val ctx = botComponent.contextFor(botInternalName)
-                ctx.syncContract(lockSession, serialNumber)
+                val botCtx = botComponent.contextFor(botInternalName)
+                botCtx.syncContract(lockSession, serialNumber)
                 "Refreshed"
             }
             "accept" -> {
-                val botInternalName = chunks[1]
-                val lockSession = chunks[2]
-                val serialNumber = chunks[3].toInt()
+                val botInternalName = args[0]
+                val lockSession = args[1]
+                val serialNumber = args[2].toInt()
 
                 val botMap = botMapService.getBotMap(botInternalName)
                 val contract = contractService.getOrCreateContract(botMap.externalName, lockSession, serialNumber)
@@ -61,56 +87,26 @@ class OverlordConversationHandler(
                 "Reprocessed accept"
             }
             "add" -> {
-                val list = chunks.slice(1 until chunks.size).joinToString(" ").lowercase()
+                val list = args.joinToString(" ").lowercase()
                 try {
                     val atUri = blueSkyService.listNameToUri(list)
-                    blueSkyService.addToList(message.sender.did, atUri)
+                    blueSkyService.addToList(senderDid, atUri)
                     "Added"
                 } catch (_: Exception) {
                     "Unknown list: $list"
                 }
             }
             "remove" -> {
-                val list = chunks.slice(1 until chunks.size).joinToString(" ").lowercase()
+                val list = args.joinToString(" ").lowercase()
                 try {
                     val atUri = blueSkyService.listNameToUri(list)
-                    blueSkyService.removeFromList(message.sender.did, atUri)
+                    blueSkyService.removeFromList(senderDid, atUri)
                     "Removed"
                 } catch (_: Exception) {
                     "Unknown list: $list"
                 }
             }
             else -> "Unknown command"
-        }
-    }
-
-    override fun getIntents(): List<KClass<out Intent>> {
-        return listOf(
-            AddToListIntent::class,
-            RemoveFromListIntent::class,
-            SayHelloIntent::class,
-        )
-    }
-
-    override fun handleIntent(
-        ctx: ConversationContext,
-        intent: Intent,
-    ): ConversationResponse {
-        return when (intent) {
-            is SayHelloIntent -> {
-                ConversationResponse(text = "Hello 😈! I'm Overlord-exe.")
-            }
-            is AddToListIntent -> {
-                val atUri = blueSkyService.listNameToUri(intent.addToListData.listName!!)
-                blueSkyService.addToList(ctx.bskyUser!!.did, atUri)
-                ConversationResponse(text = "Added to ${intent.addToListData.listName}")
-            }
-            is RemoveFromListIntent -> {
-                val atUri = blueSkyService.listNameToUri(intent.removeFromListData.listName!!)
-                blueSkyService.removeFromList(ctx.bskyUser!!.did, atUri)
-                ConversationResponse(text = "Removed from ${intent.removeFromListData.listName}")
-            }
-            else -> throw IllegalStateException("Unknown intent")
         }
     }
 }
