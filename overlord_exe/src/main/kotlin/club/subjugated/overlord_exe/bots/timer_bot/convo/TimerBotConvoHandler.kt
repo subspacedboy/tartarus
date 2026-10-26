@@ -1,6 +1,6 @@
 package club.subjugated.overlord_exe.bots.timer_bot.convo
 
-import club.subjugated.overlord_exe.bots.timer_bot.TimerBotRecordService
+import club.subjugated.overlord_exe.bots.timer_bot.TimerBot
 import club.subjugated.overlord_exe.convo.ConversationContext
 import club.subjugated.overlord_exe.convo.ConversationHandler
 import club.subjugated.overlord_exe.convo.ConversationResponse
@@ -12,16 +12,19 @@ import kotlin.reflect.KClass
 
 @Component
 class TimerBotConvoHandler(
-    val timerBotRecordService: TimerBotRecordService,
-    val urlService: UrlService
+    val timerBot: TimerBot,
+    val urlService: UrlService,
 ) : ConversationHandler {
+
+    override val commands: Set<String> = setOf("timer")
+
     override fun handle(
         convoId: String,
-        message: ConvoDefsMessageView
+        message: ConvoDefsMessageView,
     ): String {
         val authorDid = message.sender.did
-        val record = timerBotRecordService.createInitialPlaceholderRecord(authorDid, convoId)
-        return urlService.generateUrl("timer/${record.name}")
+        val session = timerBot.createInitialPlaceholderSession(authorDid, convoId)
+        return urlService.generateUrl("timer/${session.name}")
     }
 
     override fun getIntents(): List<KClass<out Intent>> {
@@ -30,21 +33,16 @@ class TimerBotConvoHandler(
 
     override fun handleIntent(
         ctx: ConversationContext,
-        intent: Intent
+        intent: Intent,
     ): ConversationResponse {
-        val response = when(intent) {
+        return when (intent) {
             is Timer -> {
                 val authorDid = ctx.bskyUser!!.did
-                val record = timerBotRecordService.createInitialPlaceholderRecord(authorDid, ctx.convoId)
-                val url = urlService.generateUrl("timer/${record.name}")
-                ConversationResponse(
-                    text = url
-                )
+                val session = timerBot.createInitialPlaceholderSession(authorDid, ctx.convoId)
+                val url = urlService.generateUrl("timer/${session.name}")
+                ConversationResponse(text = url)
             }
-            else -> {
-                throw IllegalStateException("Unknown type")
-            }
+            else -> throw IllegalStateException("Unknown type")
         }
-        return response
     }
 }

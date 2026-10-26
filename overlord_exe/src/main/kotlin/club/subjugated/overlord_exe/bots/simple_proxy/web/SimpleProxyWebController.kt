@@ -1,9 +1,7 @@
 package club.subjugated.overlord_exe.bots.simple_proxy.web
 
-import club.subjugated.overlord_exe.bots.simple_proxy.SimpleProxyService
+import club.subjugated.overlord_exe.bots.simple_proxy.SimpleProxyBot
 import club.subjugated.overlord_exe.bots.simple_proxy.SimpleProxyState
-import club.subjugated.overlord_exe.bots.superbot.SuperBotRecordState
-import club.subjugated.overlord_exe.bots.superbot.web.IntakeForm
 import jakarta.validation.Valid
 import jakarta.validation.constraints.Size
 import jakarta.ws.rs.core.MediaType
@@ -24,11 +22,11 @@ data class SimpleProxyIntakeForm(
 @RequestMapping("/simpleproxy")
 @Controller
 class SimpleProxyWebController(
-    private val simpleProxyService: SimpleProxyService
+    private val simpleProxyBot: SimpleProxyBot
 ) {
     @GetMapping("/{token}", produces = [MediaType.APPLICATION_JSON])
     fun getPage(@PathVariable token: String, model: Model): String {
-        val record = simpleProxyService.findByName(token)
+        val record = simpleProxyBot.findByName(token)
 
         if(record.state != SimpleProxyState.CREATED) {
             return "no_more_edits"
@@ -54,7 +52,7 @@ class SimpleProxyWebController(
             "simpleproxy/form" // return to the form page
         }
 
-        simpleProxyService.processIntakeForm(form)
+        simpleProxyBot.processIntakeForm(form)
         return "all_done"
     }
 }

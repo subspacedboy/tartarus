@@ -3,10 +3,14 @@ package club.subjugated.overlord_exe.components
 import club.subjugated.overlord_exe.bots.simple_proxy.convo.SimpleProxyConvoHandler
 import club.subjugated.overlord_exe.bots.superbot.convo.SuperBotConvoHandler
 import club.subjugated.overlord_exe.bots.timer_bot.convo.TimerBotConvoHandler
+import club.subjugated.overlord_exe.convo.ConversationContext
+import club.subjugated.overlord_exe.convo.ConversationHandler
+import club.subjugated.overlord_exe.convo.ConversationResponse
 import club.subjugated.overlord_exe.intents.OverlordConversationHandler
 import club.subjugated.overlord_exe.models.BSkyUser
 import club.subjugated.overlord_exe.services.BSkyUserService
 import club.subjugated.overlord_exe.services.BlueSkyService
+import club.subjugated.overlord_exe.services.Intent
 import club.subjugated.overlord_exe.services.IntentService
 import club.subjugated.overlord_exe.services.ResolvedIntent
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -23,6 +27,7 @@ import org.mockito.kotlin.whenever
 import org.quartz.DisallowConcurrentExecution
 import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageView
 import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageViewSender
+import kotlin.reflect.KClass
 
 class BSkyDmMonitorTest {
 
@@ -111,5 +116,36 @@ class BSkyDmMonitorTest {
 
         monitor.handleDm("convo-1", message)
         verify(blueSkyService, times(1)).sendDm("convo-1", "I can lock and unlock devices for you.")
+    }
+
+    @Test
+    fun `dynamically routes bang commands to ConversationHandlers declaring matching commands`() {
+        val customHandler = object : ConversationHandler {
+            override val commands: Set<String> = setOf("custombot")
+            override fun handle(convoId: String, message: ConvoDefsMessageView): String =
+                "http://localhost:8090/custom/123"
+            override fun getIntents(): List<KClass<out Intent>> = emptyList()
+            override fun handleIntent(ctx: ConversationContext, intent: Intent): ConversationResponse =
+                ConversationResponse("")
+        }
+
+        val dynamicMonitor = BSkyDmMonitor(
+            blueSkyService = blueSkyService,
+            bSkyUserService = bSkyUserService,
+            intentService = intentService,
+            conversationHandlers = listOf(customHandler),
+        )
+
+        val sender = mock<ConvoDefsMessageViewSender> {
+            on { did } doReturn "did:plc:test1234"
+        }
+        val message = mock<ConvoDefsMessageView> {
+            on { id } doReturn "msg-custom-1"
+            on { text } doReturn "!custombot start"
+            on { this.sender } doReturn sender
+        }
+
+        dynamicMonitor.handleDm("convo-99", message)
+        verify(blueSkyService, times(1)).sendDm("convo-99", "http://localhost:8090/custom/123")
     }
 }

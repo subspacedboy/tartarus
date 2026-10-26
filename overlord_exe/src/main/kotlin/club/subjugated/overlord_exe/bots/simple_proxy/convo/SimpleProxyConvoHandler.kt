@@ -1,7 +1,6 @@
 package club.subjugated.overlord_exe.bots.simple_proxy.convo
 
-import aws.smithy.kotlin.runtime.util.mapErr
-import club.subjugated.overlord_exe.bots.simple_proxy.SimpleProxyService
+import club.subjugated.overlord_exe.bots.simple_proxy.SimpleProxyBot
 import club.subjugated.overlord_exe.bots.simple_proxy.web.SimpleProxyIntakeForm
 import club.subjugated.overlord_exe.convo.ConversationContext
 import club.subjugated.overlord_exe.convo.ConversationHandler
@@ -16,17 +15,19 @@ import kotlin.reflect.KClass
 
 @Component
 class SimpleProxyConvoHandler(
-    private val simpleProxyService: SimpleProxyService,
+    private val simpleProxyBot: SimpleProxyBot,
     private val blueSkyService: BlueSkyService,
     private val bSkyUserService: BSkyUserService,
-    private val urlService: UrlService
+    private val urlService: UrlService,
 ) : ConversationHandler {
+
+    override val commands: Set<String> = setOf("token", "own", "submit", "release", "unlock", "lock")
 
     override fun handle(
         convoId: String,
-        message: ConvoDefsMessageView
+        message: ConvoDefsMessageView,
     ): String {
-        val messageMinusBang = message.text.replaceFirst("!","").trim()
+        val messageMinusBang = message.text.replaceFirst("!", "").trim()
         val chunks = messageMinusBang.split("\\s+".toRegex())
 
         val bskyUser = bSkyUserService.findOrCreateByDid(message.sender.did)
@@ -35,69 +36,60 @@ class SimpleProxyConvoHandler(
         bskyUser.handle = handle
         bSkyUserService.save(bskyUser)
 
-        val command = chunks[0]
+        val command = chunks[0].lowercase()
 
-        when(command) {
+        return when (command) {
             "token" -> {
                 bskyUser.shareableToken = chunks[1]
                 bSkyUserService.save(bskyUser)
-                return "Token recorded - ${bskyUser.shareableToken}"
+                "Token recorded - ${bskyUser.shareableToken}"
             }
             "own" -> {
                 val subUser = bSkyUserService.findByHandle(chunks[1])
-                val response = if(subUser == null) {
+                if (subUser == null) {
                     "User (${chunks[1]}) hasn't signed up... Have them message me."
                 } else {
-                    // Current user is key holder, second user is sub
-                    val record = simpleProxyService.createInitialRecord(bskyUser, subUser)
-                    val url = urlService.generateUrl("simpleproxy/${record.name}")
-                    return url
+                    val record = simpleProxyBot.createInitialRecord(bskyUser, subUser)
+                    urlService.generateUrl("simpleproxy/${record.name}")
                 }
-                return response
             }
             "submit" -> {
                 val otherUser = bSkyUserService.findByHandle(chunks[1])
-                val response = if(otherUser == null) {
+                if (otherUser == null) {
                     "User (${chunks[1]}) hasn't signed up... Have them message me."
                 } else {
-                    simpleProxyService.createInitialRecord(otherUser, bskyUser)
+                    simpleProxyBot.createInitialRecord(otherUser, bskyUser)
                     "Issuing contract"
                 }
-                return response
             }
             "release" -> {
                 val subUser = bSkyUserService.findByHandle(chunks[1])
-                val response = if(subUser == null) {
+                if (subUser == null) {
                     "User hasn't signed up..."
                 } else {
-                    simpleProxyService.release(bskyUser, subUser)
+                    simpleProxyBot.release(bskyUser, subUser)
                     "Issuing release"
                 }
-                return response
             }
             "unlock" -> {
                 val subUser = bSkyUserService.findByHandle(chunks[1])
-                val response = if(subUser == null) {
+                if (subUser == null) {
                     "User hasn't signed up..."
                 } else {
-                    simpleProxyService.unlock(bskyUser, subUser)
+                    simpleProxyBot.unlock(bskyUser, subUser)
                     "Unlocking"
                 }
-                return response
             }
             "lock" -> {
                 val subUser = bSkyUserService.findByHandle(chunks[1])
-                val response = if(subUser == null) {
+                if (subUser == null) {
                     "User hasn't signed up..."
                 } else {
-                    simpleProxyService.lock(bskyUser, subUser)
+                    simpleProxyBot.lock(bskyUser, subUser)
                     "Locking"
                 }
-                return response
             }
-            else -> {
-                return "Unknown command"
-            }
+            else -> "Unknown command"
         }
     }
 
@@ -106,92 +98,74 @@ class SimpleProxyConvoHandler(
             ProxyContractIntent::class,
             ProxyUnlockIntent::class,
             ProxyLockIntent::class,
-            ProxyReleaseIntent::class
+            ProxyReleaseIntent::class,
         )
     }
 
-    override fun handleIntent(ctx : ConversationContext, intent: Intent) : ConversationResponse {
-        val response = when(intent) {
+    override fun handleIntent(ctx: ConversationContext, intent: Intent): ConversationResponse {
+        return when (intent) {
             is ProxyContractIntent -> {
                 val subUser = bSkyUserService.findByHandle(intent.proxyIntakeData.otherUser!!)
-                if(subUser == null) {
+                if (subUser == null) {
                     ConversationResponse(
-                        text = "User (${intent.proxyIntakeData.otherUser}) hasn't signed up... Have them message me."
+                        text = "User (${intent.proxyIntakeData.otherUser}) hasn't signed up... Have them message me.",
                     )
                 } else {
-                    // Current user is key holder, second user is sub
-                    val record = simpleProxyService.createInitialRecord(ctx.bskyUser!!, subUser)
+                    val record = simpleProxyBot.createInitialRecord(ctx.bskyUser!!, subUser)
                     val fakeForm = SimpleProxyIntakeForm(
                         name = record.name,
-                        public = intent.proxyIntakeData.public!!
+                        public = intent.proxyIntakeData.public!!,
                     )
-                    simpleProxyService.processIntakeForm(fakeForm)
-                    ConversationResponse(
-                        text = "Done!"
-                    )
+                    simpleProxyBot.processIntakeForm(fakeForm)
+                    ConversationResponse(text = "Done!")
                 }
             }
             is ProxyUnlockIntent -> {
                 val subUser = bSkyUserService.findByHandle(intent.proxyData.otherUserHandle)
-                if(subUser == null) {
+                if (subUser == null) {
                     ConversationResponse(
-                        text = "User (${intent.proxyData.otherUserHandle}) hasn't signed up... Have them message me."
+                        text = "User (${intent.proxyData.otherUserHandle}) hasn't signed up... Have them message me.",
                     )
                 } else {
-                    val result = simpleProxyService.unlock(ctx.bskyUser!!, subUser)
-                    if(result.isSuccess) {
-                        ConversationResponse(
-                            text = "Unlocked ${intent.proxyData.otherUserHandle}"
-                        )
+                    val result = simpleProxyBot.unlock(ctx.bskyUser!!, subUser)
+                    if (result.isSuccess) {
+                        ConversationResponse(text = "Unlocked ${intent.proxyData.otherUserHandle}")
                     } else {
-                        ConversationResponse(
-                            text = result.exceptionOrNull()?.message ?: "Unknown error"
-                        )
+                        ConversationResponse(text = result.exceptionOrNull()?.message ?: "Unknown error")
                     }
                 }
             }
             is ProxyLockIntent -> {
                 val subUser = bSkyUserService.findByHandle(intent.proxyData.otherUserHandle)
-                if(subUser == null) {
+                if (subUser == null) {
                     ConversationResponse(
-                        text = "User (${intent.proxyData.otherUserHandle}) hasn't signed up... Have them message me."
+                        text = "User (${intent.proxyData.otherUserHandle}) hasn't signed up... Have them message me.",
                     )
                 } else {
-                    val result = simpleProxyService.lock(ctx.bskyUser!!, subUser)
-                    if(result.isSuccess) {
-                        ConversationResponse(
-                            text = "Locked ${intent.proxyData.otherUserHandle}"
-                        )
+                    val result = simpleProxyBot.lock(ctx.bskyUser!!, subUser)
+                    if (result.isSuccess) {
+                        ConversationResponse(text = "Locked ${intent.proxyData.otherUserHandle}")
                     } else {
-                        ConversationResponse(
-                            text = result.exceptionOrNull()?.message ?: "Unknown error"
-                        )
+                        ConversationResponse(text = result.exceptionOrNull()?.message ?: "Unknown error")
                     }
                 }
             }
             is ProxyReleaseIntent -> {
                 val subUser = bSkyUserService.findByHandle(intent.proxyData.otherUserHandle)
-                if(subUser == null) {
+                if (subUser == null) {
                     ConversationResponse(
-                        text = "User (${intent.proxyData.otherUserHandle}) hasn't signed up... Have them message me."
+                        text = "User (${intent.proxyData.otherUserHandle}) hasn't signed up... Have them message me.",
                     )
                 } else {
-                    val result = simpleProxyService.release(ctx.bskyUser!!, subUser)
-                    if(result.isSuccess) {
-                        ConversationResponse(
-                            text = "Released ${intent.proxyData.otherUserHandle}"
-                        )
+                    val result = simpleProxyBot.release(ctx.bskyUser!!, subUser)
+                    if (result.isSuccess) {
+                        ConversationResponse(text = "Released ${intent.proxyData.otherUserHandle}")
                     } else {
-                        ConversationResponse(
-                            text = result.exceptionOrNull()?.message ?: "Unknown error"
-                        )
+                        ConversationResponse(text = result.exceptionOrNull()?.message ?: "Unknown error")
                     }
                 }
             }
-            else -> {
-                throw IllegalStateException("Unknown type")
-            }
+            else -> throw IllegalStateException("Unknown type")
         }
-        return response
     }
 }

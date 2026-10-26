@@ -1,6 +1,8 @@
 package club.subjugated.overlord_exe.services
 
 import club.subjugated.overlord_exe.models.BotMap
+import club.subjugated.overlord_exe.runtime.CoordinatorBotDto
+import club.subjugated.overlord_exe.runtime.CoordinatorGateway
 import club.subjugated.overlord_exe.storage.BotMapRepository
 import club.subjugated.overlord_exe.util.TimeSource
 import club.subjugated.overlord_exe.util.createEs256Jwt
@@ -11,22 +13,7 @@ import club.subjugated.overlord_exe.util.generateId
 import club.subjugated.overlord_exe.util.loadKeyPairFromBase64Pkcs8
 import club.subjugated.overlord_exe.util.loadPrivateKeyFromPkcs8Bytes
 import club.subjugated.overlord_exe.util.signDoubleSha256Raw
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.engine.okhttp.OkHttp
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.contentType
-import io.ktor.serialization.kotlinx.json.*
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -36,6 +23,7 @@ import java.nio.charset.StandardCharsets
 import java.security.KeyPair
 import java.security.interfaces.ECPublicKey
 import java.util.Base64
+import java.util.concurrent.ConcurrentHashMap
 
 @Serializable
 data class NewAuthorSessionRequest(
@@ -72,6 +60,7 @@ class BotMapService(
     @Value("\${overlord.author_private_key:}") private val authorPrivateKeyB64: String,
     private val timeSource: TimeSource,
     private val environment: Environment,
+    private val coordinatorGateway: CoordinatorGateway,
 ) {
     private val logger: Logger = LoggerFactory.getLogger(BotMapService::class.java)
 
@@ -85,60 +74,86 @@ class BotMapService(
     }
 
     @Volatile private var cachedAuthorSessionName: String? = null
+    private val botCache = ConcurrentHashMap<String, BotMap>()
 
-    fun getBotMap(internalName: String): BotMap {
-        return botMapRepository.findByInternalNameAndCoordinator(internalName, coordinator)!!
+    fun findBotMap(internalName: String): BotMap? {
+        botCache[internalName]?.let { return it }
+        return botMapRepository.findByInternalNameAndCoordinator(internalName, coordinator)?.also {
+            botCache[internalName] = it
+        }
     }
 
-    fun getOrCreateBotMap(internalName: String, description: String): BotMap {
+    fun getBotMap(internalName: String): BotMap {
+        return findBotMap(internalName)
+            ?: throw IllegalStateException("No BotMap registered for internalName='$internalName' at coordinator='$coordinator'")
+    }
+
+    fun getOrCreateBotMap(
+        internalName: String,
+        description: String,
+        preferredKeyVersion: Int? = null,
+    ): BotMap {
         val existing = botMapRepository.findByInternalNameAndCoordinator(internalName, coordinator)
-        if (existing != null && environment.activeProfiles.contains("test")) {
-            return existing
+
+        val remoteBots: List<CoordinatorBotDto> = try {
+            if (environment.activeProfiles.contains("test")) {
+                emptyList()
+            } else {
+                coordinatorGateway.getMyBots(getAuthorJwt())
+            }
+        } catch (e: Exception) {
+            logger.debug("Could not fetch remote bots from coordinator (${e.message})")
+            emptyList()
         }
 
-        return runBlocking {
-            val keyPair = deriveBotKeyPair(authorKeyPair.private, internalName, 1)
-            val encodedKey =
-                Base64.getEncoder()
-                    .encodeToString(encodePublicKeySecp1(keyPair.public as ECPublicKey))
+        val remoteMatch = remoteBots.find { it.internalName == internalName }
+        val keyVersion = preferredKeyVersion ?: remoteMatch?.keyVersion ?: 1
 
-            val newBot =
-                if (environment.activeProfiles.contains("test")) {
-                    NewBotResponse(name = generateId("b-"), clearTextPassword = "")
-                } else {
-                    try {
-                        register(encodedKey, description, internalName, 1)
-                    } catch (e: Exception) {
-                        logger.warn(
-                            "Coordinator registration failed for $internalName (${e.message}); using local placeholder until coordinator is reachable"
-                        )
-                        NewBotResponse(
-                            name = existing?.externalName ?: generateId("b-"),
-                            clearTextPassword = existing?.password ?: "",
-                        )
-                    }
-                }
+        val keyPair = deriveBotKeyPair(authorKeyPair.private, internalName, keyVersion)
+        val encodedKey = Base64.getEncoder()
+            .encodeToString(encodePublicKeySecp1(keyPair.public as ECPublicKey))
 
-            if (existing != null) {
-                existing.externalName = newBot.name
-                existing.password = newBot.clearTextPassword ?: ""
-                existing.privateKey = keyPair.private.encoded
-                existing.publicKey = keyPair.public.encoded
-                existing.updatedAt = timeSource.nowInUtc()
-                botMapRepository.save(existing)
-            } else {
-                createBotMap(
-                    internalName,
-                    newBot.name,
-                    newBot.clearTextPassword ?: "",
-                    keyPair.private.encoded,
-                    keyPair.public.encoded,
+        val newBot = if (environment.activeProfiles.contains("test")) {
+            NewBotResponse(
+                name = existing?.externalName ?: remoteMatch?.name ?: generateId("b-"),
+                clearTextPassword = existing?.password ?: "",
+            )
+        } else {
+            try {
+                register(encodedKey, description, internalName, keyVersion)
+            } catch (e: Exception) {
+                logger.warn(
+                    "Coordinator registration failed for $internalName (${e.message}); using local placeholder until coordinator is reachable"
+                )
+                NewBotResponse(
+                    name = remoteMatch?.name ?: existing?.externalName ?: generateId("b-"),
+                    clearTextPassword = existing?.password ?: "",
                 )
             }
         }
+
+        val saved = if (existing != null) {
+            existing.externalName = newBot.name
+            existing.password = newBot.clearTextPassword ?: ""
+            existing.privateKey = keyPair.private.encoded
+            existing.publicKey = keyPair.public.encoded
+            existing.updatedAt = timeSource.nowInUtc()
+            botMapRepository.save(existing)
+        } else {
+            createBotMap(
+                internalName = internalName,
+                externalName = newBot.name,
+                password = newBot.clearTextPassword ?: "",
+                privateKey = keyPair.private.encoded,
+                publicKey = keyPair.public.encoded,
+            )
+        }
+
+        botCache[internalName] = saved
+        return saved
     }
 
-    suspend fun ensureAuthorSession(): String {
+    fun ensureAuthorSession(): String {
         cachedAuthorSessionName?.let { return it }
 
         if (environment.activeProfiles.contains("test")) {
@@ -147,43 +162,28 @@ class BotMapService(
             return testSession
         }
 
-        val compressedAuthorPub =
-            Base64.getEncoder()
-                .encodeToString(encodePublicKeySecp1(authorKeyPair.public as ECPublicKey))
+        val compressedAuthorPub = Base64.getEncoder()
+            .encodeToString(encodePublicKeySecp1(authorKeyPair.public as ECPublicKey))
         val sessionToken = generateId("")
-        val rawSig =
-            signDoubleSha256Raw(
-                authorKeyPair.private,
-                sessionToken.toByteArray(StandardCharsets.UTF_8),
-            )
+        val rawSig = signDoubleSha256Raw(
+            authorKeyPair.private,
+            sessionToken.toByteArray(StandardCharsets.UTF_8),
+        )
         val sigB64 = Base64.getEncoder().encodeToString(rawSig)
 
-        val client =
-            HttpClient(OkHttp) {
-                install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
-            }
-        try {
-            val response: HttpResponse =
-                client.post("$coordinator/author_sessions/") {
-                    contentType(ContentType.Application.Json)
-                    setBody(
-                        NewAuthorSessionRequest(
-                            publicKey = compressedAuthorPub,
-                            sessionToken = sessionToken,
-                            signature = sigB64,
-                        )
-                    )
-                }
-            val body: AuthorSessionResponse = response.body()
-            val name = body.name ?: body.sessionToken ?: error("Empty AuthorSession response")
-            cachedAuthorSessionName = name
-            return name
-        } finally {
-            client.close()
-        }
+        val body = coordinatorGateway.createAuthorSession(
+            NewAuthorSessionRequest(
+                publicKey = compressedAuthorPub,
+                sessionToken = sessionToken,
+                signature = sigB64,
+            )
+        )
+        val name = body.name ?: body.sessionToken ?: error("Empty AuthorSession response")
+        cachedAuthorSessionName = name
+        return name
     }
 
-    suspend fun getAuthorJwt(): String {
+    fun getAuthorJwt(): String {
         val authorSessionName = ensureAuthorSession()
         return createEs256Jwt(authorSessionName, authorKeyPair.private)
     }
@@ -193,39 +193,20 @@ class BotMapService(
         return createEs256Jwt(botMap.externalName, privateKey)
     }
 
-    suspend fun register(
+    fun register(
         encodedKey: String,
         description: String,
         internalName: String? = null,
         keyVersion: Int = 1,
     ): NewBotResponse {
         val authorJwt = getAuthorJwt()
-        val newBotRequest =
-            NewBotRequest(
-                publicKey = encodedKey,
-                description = description,
-                internalName = internalName,
-                keyVersion = keyVersion,
-            )
-        val client =
-            HttpClient(OkHttp) {
-                install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
-            }
-        try {
-            val response: HttpResponse =
-                client.post("$coordinator/bots/") {
-                    header(HttpHeaders.Authorization, "Bearer $authorJwt")
-                    contentType(ContentType.Application.Json)
-                    setBody(newBotRequest)
-                }
-
-            println("Status: ${response.status}")
-            println("Response: ${response.bodyAsText()}")
-
-            return response.body()
-        } finally {
-            client.close()
-        }
+        val newBotRequest = NewBotRequest(
+            publicKey = encodedKey,
+            description = description,
+            internalName = internalName,
+            keyVersion = keyVersion,
+        )
+        return coordinatorGateway.registerBot(authorJwt, newBotRequest)
     }
 
     fun createBotMap(
@@ -235,19 +216,19 @@ class BotMapService(
         privateKey: ByteArray,
         publicKey: ByteArray,
     ): BotMap {
-        val botMap =
-            BotMap(
-                internalName = internalName,
-                externalName = externalName,
-                coordinator = coordinator,
-                password = password,
-                privateKey = privateKey,
-                publicKey = publicKey,
-                createdAt = timeSource.nowInUtc(),
-                updatedAt = timeSource.nowInUtc(),
-            )
+        val botMap = BotMap(
+            internalName = internalName,
+            externalName = externalName,
+            coordinator = coordinator,
+            password = password,
+            privateKey = privateKey,
+            publicKey = publicKey,
+            createdAt = timeSource.nowInUtc(),
+            updatedAt = timeSource.nowInUtc(),
+        )
 
-        botMapRepository.save(botMap)
-        return botMap
+        val saved = botMapRepository.save(botMap)
+        botCache[internalName] = saved
+        return saved
     }
 }

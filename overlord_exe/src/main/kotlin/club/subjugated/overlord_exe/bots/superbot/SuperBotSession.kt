@@ -14,15 +14,17 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
+import jakarta.persistence.Table
 import org.hibernate.annotations.Type
 import java.time.OffsetDateTime
 
 @Entity
-class SuperBotRecord(
+@Table(name = "super_bot_record")
+class SuperBotSession(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) var id: Long = 0,
     var name: String = generateId("sb-"),
-    @Enumerated(EnumType.STRING) var state: SuperBotRecordState = SuperBotRecordState.UNSPECIFIED,
-    var shareableToken : String? = "",
+    @Enumerated(EnumType.STRING) var state: SuperBotSessionState = SuperBotSessionState.UNSPECIFIED,
+    var shareableToken: String? = "",
     var contractSerialNumber: Int,
     var contractId: Long? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
@@ -30,22 +32,22 @@ class SuperBotRecord(
     var did: String,
     var convoId: String,
     @Type(value = JsonType::class)
-    var configuration: SuperBotConfig = SuperBotConfig()
+    var configuration: SuperBotConfig = SuperBotConfig(),
 ) {
-    fun chooseObjective() : Pair<ContextForm, String> {
+    fun chooseObjective(): Pair<ContextForm, String> {
         val objective = configuration.objectives.random()
-        when(objective) {
+        when (objective) {
             "bsky_likes" -> {
                 val form = BSkyLikesForm(
                     did = did,
-                    goal = 100
+                    goal = 100,
                 )
                 return Pair(form, BSkyLikesStateMachine::class.qualifiedName!!)
             }
             "bsky_crowd_time" -> {
                 val form = BSkyCrowdTimeForm(
                     name = "",
-                    subjectDid = did
+                    subjectDid = did,
                 )
                 return Pair(form, BSkyCrowdTimeStateMachine::class.qualifiedName!!)
             }

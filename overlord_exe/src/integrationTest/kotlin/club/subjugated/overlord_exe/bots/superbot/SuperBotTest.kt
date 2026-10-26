@@ -50,7 +50,7 @@ class SuperBotTest {
     @Autowired lateinit var bSkyUserService: BSkyUserService
     @Autowired lateinit var blueSkyService: BlueSkyService
     @Autowired lateinit var infoRequestWebController: InfoRequestWebController
-    @Autowired lateinit var superBotService: SuperBotService
+    @Autowired lateinit var superBot: SuperBot
     @Autowired lateinit var contractService: ContractService
 
     @Autowired lateinit var mockMvc: MockMvc
@@ -107,7 +107,7 @@ class SuperBotTest {
         )
             .andExpect(status().isOk)
 
-        val serialNumber = superBotService.findByName(token).contractSerialNumber
+        val serialNumber = superBot.findByName(token).contractSerialNumber
 
         var contract = Contract(
             botName = "superbot",
@@ -116,7 +116,7 @@ class SuperBotTest {
         )
         contract = contractService.save(contract)
 
-        superBotService.handleAccept(contract)
+        superBot.handleAccept(contract)
 
         // This will trigger an info request
 
@@ -144,15 +144,15 @@ class SuperBotTest {
         ctx.goal = 0
         stateMachineService.save(sm.first())
 
-        superBotService.reviewContracts(listOf(contract))
+        superBot.reviewContracts(listOf(contract))
 
-        superBotService.handleRelease(contract)
+        superBot.handleRelease(contract)
 
         // All the asserts
         val stateMachine = stateMachineService.findByOwnedBy(contract.name).first()
         assertThat(stateMachine.state).isEqualTo(StateMachineState.COMPLETE)
         assertThat(stateMachine.currentState).isEqualTo("COMPLETE")
-        assertThat(superBotService.findByName(token).state).isEqualTo(SuperBotRecordState.COMPLETE)
+        assertThat(superBot.findByName(token).state).isEqualTo(SuperBotSessionState.COMPLETE)
 
         println("DONE")
     }

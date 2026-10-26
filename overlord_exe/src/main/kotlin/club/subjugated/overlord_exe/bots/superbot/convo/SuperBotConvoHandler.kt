@@ -1,6 +1,6 @@
 package club.subjugated.overlord_exe.bots.superbot.convo
 
-import club.subjugated.overlord_exe.bots.superbot.SuperBotService
+import club.subjugated.overlord_exe.bots.superbot.SuperBot
 import club.subjugated.overlord_exe.convo.ConversationContext
 import club.subjugated.overlord_exe.convo.ConversationHandler
 import club.subjugated.overlord_exe.convo.ConversationResponse
@@ -12,12 +12,15 @@ import kotlin.reflect.KClass
 
 @Component
 class SuperBotConvoHandler(
-    private val superBotService: SuperBotService,
-    private val urlService: UrlService
+    private val superBot: SuperBot,
+    private val urlService: UrlService,
 ) : ConversationHandler {
-    override fun handle(convoId: String, message: ConvoDefsMessageView) : String {
+
+    override val commands: Set<String> = setOf("superbot")
+
+    override fun handle(convoId: String, message: ConvoDefsMessageView): String {
         val authorDid = message.sender.did
-        val name = superBotService.createPlaceholder(authorDid, convoId)
+        val name = superBot.createPlaceholder(authorDid, convoId)
         return urlService.generateUrl("superbot/$name")
     }
 
@@ -27,21 +30,17 @@ class SuperBotConvoHandler(
 
     override fun handleIntent(
         ctx: ConversationContext,
-        intent: Intent
+        intent: Intent,
     ): ConversationResponse {
-        val response = when(intent) {
+        return when (intent) {
             is SuperbotIntent -> {
                 val authorDid = ctx.bskyUser!!.did
-                val name = superBotService.createPlaceholder(authorDid, ctx.convoId)
+                val name = superBot.createPlaceholder(authorDid, ctx.convoId)
                 ConversationResponse(
-                    text = urlService.generateUrl("superbot/$name")
+                    text = urlService.generateUrl("superbot/$name"),
                 )
             }
-            else -> {
-                throw IllegalStateException("Unknown intent")
-            }
+            else -> throw IllegalStateException("Unknown intent")
         }
-
-        return response
     }
 }

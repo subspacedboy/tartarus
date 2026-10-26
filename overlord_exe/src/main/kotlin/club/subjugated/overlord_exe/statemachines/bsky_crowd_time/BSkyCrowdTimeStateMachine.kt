@@ -8,7 +8,6 @@ import club.subjugated.overlord_exe.models.StateMachineState
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.services.UrlService
 import club.subjugated.overlord_exe.statemachines.ContextProvider
-import club.subjugated.overlord_exe.statemachines.bsky_likes.BSkyLikesStates
 import club.subjugated.overlord_exe.util.TimeSource
 import club.subjugated.overlord_exe.util.formatDuration
 import org.springframework.context.ApplicationEventPublisher
@@ -23,17 +22,38 @@ class BSkyCrowdTimeStateMachine(
     private val applicationEventPublisher: ApplicationEventPublisher,
     private val blueSkyService: BlueSkyService,
     private val urlService: UrlService,
+) : ContextProvider<BSkyCrowdTimeForm, BSkyCrowdTimeStateMachineContext> {
 
-) : ContextProvider<BSkyCrowdTimeForm, BSkyCrowdTimeStateMachineContext>{
+    override val objectiveId: String = "bsky_crowd_time"
+    override val formTypeName: String = BSkyCrowdTimeForm::class.qualifiedName!!
+    override val templateName: String = "info/bskycrowdtimeform"
+
+    override fun createEmptyForm(requestName: String): BSkyCrowdTimeForm {
+        return BSkyCrowdTimeForm(name = requestName)
+    }
+
+    override fun bindForm(params: Map<String, String>): BSkyCrowdTimeForm {
+        return BSkyCrowdTimeForm(
+            perLikeAdd = params["perLikeAdd"]?.toLongOrNull() ?: 1L,
+            perLikeAddUnit = params["perLikeAddUnit"] ?: "MINUTES",
+            perRepostAdd = params["perRepostAdd"]?.toLongOrNull() ?: 1L,
+            perRepostAddUnit = params["perRepostAddUnit"] ?: "HOURS",
+            openPeriodAmount = params["openPeriodAmount"]?.toLongOrNull() ?: 1L,
+            openPeriodUnit = params["openPeriodUnit"] ?: "HOURS",
+            subjectDid = params["subjectDid"] ?: "",
+            name = params["name"] ?: "",
+        )
+    }
+
     override fun createContext(
         stateMachineId: Long,
-        form: BSkyCrowdTimeForm
+        form: BSkyCrowdTimeForm,
     ): BSkyCrowdTimeStateMachineContext {
         val record = BSkyCrowdTimeStateMachineContext(
             stateMachineId = stateMachineId,
             subjectDid = form.subjectDid ?: "",
             createdAt = timeSource.nowInUtc(),
-            updatedAt = timeSource.nowInUtc()
+            updatedAt = timeSource.nowInUtc(),
         )
         saveContext(record)
         return record
@@ -43,7 +63,7 @@ class BSkyCrowdTimeStateMachine(
         return bSkyCrowdTimeStateMachineContextRepository.findByStateMachineId(stateMachineId)
     }
 
-    fun findByName(name : String) : BSkyCrowdTimeStateMachineContext {
+    fun findByName(name: String): BSkyCrowdTimeStateMachineContext {
         return bSkyCrowdTimeStateMachineContextRepository.findByName(name)
     }
 
@@ -57,17 +77,15 @@ class BSkyCrowdTimeStateMachine(
 
     override fun process(
         stateMachine: StateMachine,
-        ctx: BSkyCrowdTimeStateMachineContext
+        ctx: BSkyCrowdTimeStateMachineContext,
     ) {
         val state = BSkyCrowdTimeState.valueOf(stateMachine.currentState!!)
-        when(state) {
-            BSkyCrowdTimeState.UNSPECIFIED -> {throw IllegalStateException()
-            }
+        when (state) {
+            BSkyCrowdTimeState.UNSPECIFIED -> throw IllegalStateException()
             BSkyCrowdTimeState.CREATED -> handleCreated(stateMachine)
-            BSkyCrowdTimeState.NEEDS_INFO -> { // Noop
-            }
+            BSkyCrowdTimeState.NEEDS_INFO -> {}
             BSkyCrowdTimeState.WAITING -> {
-                if(ctx.receivedFormData) {
+                if (ctx.receivedFormData) {
                     handlePostingNotice(stateMachine)
                 }
             }
@@ -78,15 +96,14 @@ class BSkyCrowdTimeStateMachine(
         }
     }
 
-    // Specific states
-
     private fun handleCreated(stateMachine: StateMachine) {
-        applicationEventPublisher.publishEvent(RequestInfo(
-            source = this,
-            stateMachine = stateMachine,
-            formClass = BSkyCrowdTimeForm::class.qualifiedName!!
-        ))
-
+        applicationEventPublisher.publishEvent(
+            RequestInfo(
+                source = this,
+                stateMachine = stateMachine,
+                formClass = formTypeName,
+            )
+        )
         stateMachine.currentState = BSkyCrowdTimeState.WAITING.toString()
     }
 
@@ -118,12 +135,14 @@ class BSkyCrowdTimeStateMachine(
     private fun handleOpenIsPosted(stateMachine: StateMachine) {
         val record = stateMachine.context as BSkyCrowdTimeStateMachineContext
 
-        // We need to see if the notice has been reposted
         val reposts = blueSkyService.getReposts(record.noticeUri)
-        if(reposts.any {it.did == record.subjectDid}) {
+        if (reposts.any { it.did == record.subjectDid }) {
             record.repostedNoticeAt = timeSource.nowInUtc()
             record.hasRepostedNotice = true
-            val openPeriodDuration = Duration.of(record.openPeriodAmount.toLong(), ChronoUnit.valueOf(record.openPeriodUnit))
+            val openPeriodDuration = Duration.of(
+                record.openPeriodAmount,
+                ChronoUnit.valueOf(record.openPeriodUnit),
+            )
             record.openEndsAt = record.repostedNoticeAt!!.plus(openPeriodDuration)
             saveContext(record)
 
@@ -132,16 +151,16 @@ class BSkyCrowdTimeStateMachine(
     }
 
     private fun handleInOpen(stateMachine: StateMachine) {
-        // Now we periodically recalculate the end-time and wait for the time
-        // to elapse.
         val record = stateMachine.context as BSkyCrowdTimeStateMachineContext
-        val openDuration = Duration.of(record.openPeriodAmount.toLong(), ChronoUnit.valueOf(record.openPeriodUnit))
+        val openDuration = Duration.of(
+            record.openPeriodAmount,
+            ChronoUnit.valueOf(record.openPeriodUnit),
+        )
 
         val totalLikes = HashSet<LikeRecord>()
         val totalReposts = HashSet<RepostRecord>()
 
-        blueSkyService.traceThread(record.noticeUri) {
-                post ->
+        blueSkyService.traceThread(record.noticeUri) { post ->
             val likes = blueSkyService.getLikes(post.uri!!)
             likes.forEach {
                 totalLikes.add(LikeRecord(it.actor.did))
@@ -149,23 +168,27 @@ class BSkyCrowdTimeStateMachine(
 
             val reposts = blueSkyService.getReposts(post.uri!!)
             reposts.forEach {
-                // Exclude the author's mandatory repost.
-                if(it.did != record.subjectDid) {
+                if (it.did != record.subjectDid) {
                     totalReposts.add(RepostRecord(it.did))
                 }
             }
         }
 
-        val likeTime = Duration.of(totalLikes.size.toLong() * record.perLikeAdd, ChronoUnit.valueOf(record.perLikeAddUnit))
-        val repostTime = Duration.of(totalReposts.size.toLong() * record.perRepostAdd, ChronoUnit.valueOf(record.perRepostAddUnit))
+        val likeTime = Duration.of(
+            totalLikes.size.toLong() * record.perLikeAdd,
+            ChronoUnit.valueOf(record.perLikeAddUnit),
+        )
+        val repostTime = Duration.of(
+            totalReposts.size.toLong() * record.perRepostAdd,
+            ChronoUnit.valueOf(record.perRepostAddUnit),
+        )
 
-        // TODO: make configurable
         val minPeriod = Duration.of(1L, ChronoUnit.HOURS)
 
         val newTime = record.repostedNoticeAt!!.plus(likeTime).plus(repostTime).plus(minPeriod)
         record.endsAt = newTime
 
-        if(record.repostedNoticeAt!!.plus(openDuration) < timeSource.nowInUtc()) {
+        if (record.repostedNoticeAt!!.plus(openDuration) < timeSource.nowInUtc()) {
             stateMachine.currentState = BSkyCrowdTimeState.OPEN_CLOSED.toString()
         }
         saveContext(record)
@@ -174,10 +197,9 @@ class BSkyCrowdTimeStateMachine(
     private fun handleOpenClosed(stateMachine: StateMachine) {
         val record = stateMachine.context as BSkyCrowdTimeStateMachineContext
 
-        if(timeSource.nowInUtc() > record.endsAt) {
+        if (timeSource.nowInUtc() > record.endsAt) {
             stateMachine.currentState = BSkyCrowdTimeState.COMPLETE.toString()
             stateMachine.state = StateMachineState.COMPLETE
         }
-
     }
 }

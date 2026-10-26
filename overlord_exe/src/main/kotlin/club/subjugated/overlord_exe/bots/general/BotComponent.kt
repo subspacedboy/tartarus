@@ -7,36 +7,27 @@ import club.subjugated.overlord_exe.events.SendBotBytes
 import club.subjugated.overlord_exe.models.BotMap
 import club.subjugated.overlord_exe.models.Contract
 import club.subjugated.overlord_exe.models.ContractState
+import club.subjugated.overlord_exe.runtime.BotContext
+import club.subjugated.overlord_exe.runtime.CoordinatorGateway
+import club.subjugated.overlord_exe.runtime.DefaultBotContext
+import club.subjugated.overlord_exe.runtime.OverlordBot
+import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.services.BotContractInfo
 import club.subjugated.overlord_exe.services.BotMapService
 import club.subjugated.overlord_exe.services.ContractService
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.engine.okhttp.OkHttp
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.request.get
-import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.contentType
-import io.ktor.http.isSuccess
-import io.ktor.serialization.kotlinx.json.json
 import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
 import kotlinx.coroutines.CoroutineExceptionHandler
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.SmartInitializingSingleton
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Lazy
 import org.springframework.context.event.EventListener
 import org.springframework.core.env.Environment
 import org.springframework.stereotype.Component
@@ -83,41 +74,72 @@ data class BotCreateMessagePayload(
     val message: String,
 )
 
+/**
+ * Central umbrella host runtime managing bot registration, scoped [BotContext] creation,
+ * Author-multiplexed WebSocket event routing (`/ws/events?authorJwt=...`), and isolated per-bot periodic reviews.
+ */
 @Component
-class BotComponent(
+class BotComponent @Autowired constructor(
     private var contractService: ContractService,
     private var botMapService: BotMapService,
     private var transactionTemplate: TransactionTemplate,
     private val environment: Environment,
+    private val coordinatorGateway: CoordinatorGateway,
+    @Lazy @Autowired(required = false) private val blueSkyService: BlueSkyService? = null,
+    @Lazy @Autowired(required = false) private val discoveredBots: List<OverlordBot> = emptyList(),
     @Value("\${overlord.coordinator}") private val coordinator: String,
     @Value("\${overlord.ws_uri:ws://localhost:8080/ws/events}") private val wsUri: String,
-) {
+) : SmartInitializingSingleton {
     private val logger: Logger = LoggerFactory.getLogger(BotComponent::class.java)
 
     private val jsonParser = Json { ignoreUnknownKeys = true }
 
     lateinit var botExecutorWatchdogService: ScheduledExecutorService
 
-    var runningBots: ConcurrentHashMap<BotMap, ScheduledExecutorService> = ConcurrentHashMap()
     var handlers: ConcurrentHashMap<BotMap, MessageHandler> = ConcurrentHashMap()
+    private val contextsByInternalName = ConcurrentHashMap<String, BotContext>()
+    private val contextsByBotMap = ConcurrentHashMap<BotMap, BotContext>()
 
     @Volatile private var activeWebSocket: WebSocket? = null
     @Volatile private var webSocketConnecting: Boolean = false
 
-    fun startBot(botMap: BotMap, handler: MessageHandler) {
-        logger.info("Starting bot: ${botMap.internalName} (${botMap.externalName})")
-        runningBots[botMap]?.let { existingExecutor ->
-            try {
-                existingExecutor.shutdownNow()
-            } catch (e: Exception) {
-                logger.warn("Error shutting down old executor for ${botMap.internalName}: $e")
+    fun contextFor(bot: OverlordBot): BotContext {
+        return contextFor(bot.descriptor.internalName, bot.descriptor.description)
+    }
+
+    fun contextFor(internalName: String, description: String = internalName): BotContext {
+        return contextsByInternalName.computeIfAbsent(internalName) {
+            val botMap = botMapService.getOrCreateBotMap(internalName, description)
+            DefaultBotContext(
+                botMapProvider = { botMapService.findBotMap(internalName) ?: botMap },
+                botMapService = botMapService,
+                contractService = contractService,
+                coordinatorGateway = coordinatorGateway,
+                blueSkyService = blueSkyService,
+            ).also { ctx ->
+                contextsByBotMap[botMap] = ctx
             }
         }
-        val executor = Executors.newSingleThreadScheduledExecutor()
-        runningBots[botMap] = executor
-        handlers[botMap] = handler
+    }
 
+    fun startBot(botMap: BotMap, handler: MessageHandler): BotContext {
+        logger.info("Starting bot: ${botMap.internalName} (${botMap.externalName})")
+        handlers[botMap] = handler
+        val ctx = contextsByInternalName.computeIfAbsent(botMap.internalName) {
+            DefaultBotContext(
+                botMapProvider = { botMapService.findBotMap(botMap.internalName) ?: botMap },
+                botMapService = botMapService,
+                contractService = contractService,
+                coordinatorGateway = coordinatorGateway,
+                blueSkyService = blueSkyService,
+            )
+        }
+        contextsByBotMap[botMap] = ctx
+        if (handler is OverlordBot) {
+            handler.onStart(ctx)
+        }
         ensureWebSocketConnected()
+        return ctx
     }
 
     @PostConstruct
@@ -133,43 +155,89 @@ class BotComponent(
         }, 1, 5, TimeUnit.SECONDS)
 
         botExecutorWatchdogService.scheduleAtFixedRate({
-            transactionTemplate.execute { status ->
-                logger.info("Reviewing live contracts")
+            reviewAllBotsIsolated()
+        }, 0, 1, TimeUnit.MINUTES)
+    }
 
-                val scope = CoroutineScope(Dispatchers.Default)
-                val exceptionHandler = CoroutineExceptionHandler { _, e ->
-                    logger.error("Unhandled exception: $e")
-                }
+    override fun afterSingletonsInstantiated() {
+        registerDiscoveredBots()
+    }
 
-                handlers.forEach { (botMap, handler) ->
-                    logger.info("Reviewing ${botMap.internalName}")
+    fun registerDiscoveredBots() {
+        discoveredBots.forEach { bot ->
+            val botMap = botMapService.getOrCreateBotMap(
+                internalName = bot.descriptor.internalName,
+                description = bot.descriptor.description,
+            )
+            if (!handlers.containsKey(botMap)) {
+                startBot(botMap, bot)
+            }
+        }
+    }
 
-                    val contracts = contractService.getLiveContractsForBot(botMap.externalName)
-                    scope.async(exceptionHandler) {
-                        contracts.forEach { c ->
-                            val contractInfo = requestContract(
-                                botMap.externalName,
-                                c.lockSessionToken!!,
-                                c.serialNumber.toUShort(),
+    /**
+     * Reviews live contracts for each active bot in its own isolated transaction boundary.
+     *
+     * Fixes two concurrency/reliability issues from the previous design:
+     * 1. Contract state sync (`ABORTED` detection) runs synchronously before `reviewContracts` rather than in an unawaited `async` block.
+     * 2. Each bot executes in its own `transactionTemplate.execute` block so an error in one bot never rolls back another bot's work.
+     */
+    fun reviewAllBotsIsolated() {
+        handlers.forEach { (botMap, handler) ->
+            if (handler is OverlordBot && handler.descriptor.reviewInterval == null) {
+                return@forEach
+            }
+            reviewSingleBot(botMap, handler)
+        }
+    }
+
+    fun reviewSingleBot(botMap: BotMap, handler: MessageHandler) {
+        transactionTemplate.execute { status ->
+            try {
+                logger.info("Reviewing ${botMap.internalName}")
+                val rawContracts = contractService.getLiveContractsForBot(botMap.externalName)
+                val ctx = contextsByBotMap[botMap] ?: contextFor(botMap.internalName, botMap.internalName)
+
+                val activeContracts = mutableListOf<Contract>()
+                for (c in rawContracts) {
+                    val lockSession = c.lockSessionToken
+                    if (!lockSession.isNullOrBlank()) {
+                        try {
+                            val jwt = botMapService.getBotJwt(botMap)
+                            val contractInfo = coordinatorGateway.getContractBySession(
+                                botName = botMap.externalName,
+                                jwt = jwt,
+                                lockSession = lockSession,
+                                serial = c.serialNumber,
                             )
                             if (contractInfo.state == "ABORTED") {
                                 logger.info("Aborted contract: ${c.externalContractName}")
                                 c.state = ContractState.ABORTED
                                 contractService.save(c)
+                                if (handler is OverlordBot) {
+                                    handler.onAbort(ctx, c)
+                                }
+                                continue
+                            } else {
+                                contractService.updateContractWithGetContractResponse(c, contractInfo)
                             }
+                        } catch (syncEx: Exception) {
+                            logger.warn("Could not sync contract ${c.name} for ${botMap.internalName}: ${syncEx.message}")
                         }
                     }
-
-                    try {
-                        handler.reviewContracts(contracts)
-                    } catch (ex: Exception) {
-                        logger.error("Unhandled exception in reviewing contracts: $ex")
-                        ex.printStackTrace()
-                        status.setRollbackOnly()
-                    }
+                    activeContracts.add(c)
                 }
+
+                if (handler is OverlordBot) {
+                    handler.reviewContracts(ctx, activeContracts)
+                } else {
+                    handler.reviewContracts(activeContracts)
+                }
+            } catch (ex: Exception) {
+                logger.error("Unhandled exception in reviewing contracts for ${botMap.internalName}: $ex", ex)
+                status.setRollbackOnly()
             }
-        }, 0, 1, TimeUnit.MINUTES)
+        }
     }
 
     @Synchronized
@@ -183,7 +251,7 @@ class BotComponent(
         }
         webSocketConnecting = true
         try {
-            val authorJwt = runBlocking { botMapService.getAuthorJwt() }
+            val authorJwt = botMapService.getAuthorJwt()
             val fullUri = URI.create("$wsUri?authorJwt=$authorJwt")
             val httpClient = java.net.http.HttpClient.newHttpClient()
             val messageBuffer = StringBuilder()
@@ -265,7 +333,6 @@ class BotComponent(
                 }
             } catch (ex: Exception) {
                 logger.error("Encountered exception in processing WebSocket bot event", ex)
-                ex.printStackTrace()
                 status.setRollbackOnly()
             }
         }
@@ -273,12 +340,8 @@ class BotComponent(
 
     @PreDestroy
     fun stop() {
-        botExecutorWatchdogService.shutdown()
-
-        runningBots.forEach { (botMap, executor) ->
-            logger.info("Stopping ${botMap.internalName}")
-            executor.shutdown()
-            executor.awaitTermination(3, TimeUnit.SECONDS)
+        if (::botExecutorWatchdogService.isInitialized) {
+            botExecutorWatchdogService.shutdown()
         }
 
         try {
@@ -287,8 +350,9 @@ class BotComponent(
             logger.warn("Error closing WebSocket: $ex")
         }
         activeWebSocket = null
-        runningBots.clear()
         handlers.clear()
+        contextsByInternalName.clear()
+        contextsByBotMap.clear()
 
         logger.info("All bots stopped")
     }
@@ -309,23 +373,7 @@ class BotComponent(
             } else {
                 botMapService.getAuthorJwt()
             }
-
-            val client = HttpClient(OkHttp) {
-                install(ContentNegotiation) {
-                    json(jsonParser)
-                }
-            }
-            try {
-                val response = client.get("$coordinator/bots/$botName/contracts/bySession/$lockSession/$serial") {
-                    header(HttpHeaders.Authorization, "Bearer $jwt")
-                }
-                if (!response.status.isSuccess()) {
-                    throw IllegalStateException("Failed to fetch contract for $botName ($lockSession/$serial): HTTP ${response.status} - ${response.bodyAsText()}")
-                }
-                response.body<BotContractInfo>()
-            } finally {
-                client.close()
-            }
+            coordinatorGateway.getContractBySession(botName, jwt, lockSession, serial.toInt())
         }
     }
 
@@ -340,31 +388,42 @@ class BotComponent(
         val lockSession = commonMetadata.lockSession!!
 
         if (!forceSync) {
-            contractService.findContract(botMap.externalName, serial)?.let { return it }
+            contractService.findContract(botMap.externalName, serial)?.let { existing ->
+                if (existing.lockSessionToken.isNullOrBlank()) {
+                    existing.lockSessionToken = lockSession
+                    contractService.save(existing)
+                }
+                return existing
+            }
         }
 
-        return runBlocking {
-            val contractInfo = requestContract(
-                botMap.externalName,
-                lockSession,
-                commonMetadata.contractSerialNumber,
-            )
-            logger.debug("Got contract info {}", contractInfo)
+        val jwt = botMapService.getBotJwt(botMap)
+        val contractInfo = coordinatorGateway.getContractBySession(
+            botName = botMap.externalName,
+            jwt = jwt,
+            lockSession = lockSession,
+            serial = serial,
+        )
+        logger.debug("Got contract info {}", contractInfo)
 
-            val contract = contractService.getOrCreateContract(
-                botMap.externalName,
-                lockSession,
-                serial,
-            )
-            contractService.updateContractWithGetContractResponse(contract, contractInfo)
-        }
+        val contract = contractService.getOrCreateContract(
+            botMap.externalName,
+            lockSession,
+            serial,
+        )
+        return contractService.updateContractWithGetContractResponse(contract, contractInfo)
     }
 
     fun handleAccept(botMap: BotMap, signedEvent: SignedEvent) {
         logger.info("Handled accept")
         val contract = resolveOrSyncContract(botMap, signedEvent, forceSync = true)
         val handler = handlers[botMap]!!
-        handler.handleAccept(contract)
+        val ctx = contextsByBotMap[botMap] ?: contextFor(botMap.internalName, botMap.internalName)
+        if (handler is OverlordBot) {
+            handler.onAccept(ctx, contract)
+        } else {
+            handler.handleAccept(contract)
+        }
     }
 
     fun handleRelease(botMap: BotMap, signedEvent: SignedEvent) {
@@ -376,7 +435,12 @@ class BotComponent(
         val contract = contractService.markReleased(botMap.externalName, commonMetadata.contractSerialNumber.toInt())
 
         val handler = handlers[botMap]!!
-        handler.handleRelease(contract)
+        val ctx = contextsByBotMap[botMap] ?: contextFor(botMap.internalName, botMap.internalName)
+        if (handler is OverlordBot) {
+            handler.onRelease(ctx, contract)
+        } else {
+            handler.handleRelease(contract)
+        }
     }
 
     fun handleLock(botMap: BotMap, signedEvent: SignedEvent) {
@@ -384,7 +448,12 @@ class BotComponent(
         val contract = resolveOrSyncContract(botMap, signedEvent)
 
         val handler = handlers[botMap]!!
-        handler.handleLock(contract)
+        val ctx = contextsByBotMap[botMap] ?: contextFor(botMap.internalName, botMap.internalName)
+        if (handler is OverlordBot) {
+            handler.onLock(ctx, contract)
+        } else {
+            handler.handleLock(contract)
+        }
     }
 
     fun handleUnlock(botMap: BotMap, signedEvent: SignedEvent) {
@@ -392,7 +461,12 @@ class BotComponent(
         val contract = resolveOrSyncContract(botMap, signedEvent)
 
         val handler = handlers[botMap]!!
-        handler.handleUnlock(contract)
+        val ctx = contextsByBotMap[botMap] ?: contextFor(botMap.internalName, botMap.internalName)
+        if (handler is OverlordBot) {
+            handler.onUnlock(ctx, contract)
+        } else {
+            handler.handleUnlock(contract)
+        }
     }
 
     fun handleEmergencyUnlock(botMap: BotMap, signedEvent: SignedEvent) {
@@ -400,70 +474,46 @@ class BotComponent(
         val contract = resolveOrSyncContract(botMap, signedEvent)
 
         val handler = handlers[botMap]
-        handler?.handleEmergencyUnlock(contract)
+        val ctx = contextsByBotMap[botMap] ?: contextFor(botMap.internalName, botMap.internalName)
+        if (handler is OverlordBot) {
+            handler.onEmergencyUnlock(ctx, contract)
+        } else {
+            handler?.handleEmergencyUnlock(contract)
+        }
     }
 
     @EventListener
     fun handleSendMessage(event: SendBotBytes) {
-        if (environment.activeProfiles.contains("test")) {
-            return
-        }
         val action = event.action
-
         try {
             val botJwt = botMapService.getBotJwt(event.botMap)
             val botName = event.botMap.externalName
 
-            runBlocking {
-                val client = HttpClient(OkHttp) {
-                    install(ContentNegotiation) {
-                        json(jsonParser)
-                    }
+            when (action) {
+                is BotRestAction.CreateContract -> {
+                    coordinatorGateway.createContract(
+                        botName = botName,
+                        botJwt = botJwt,
+                        shareableToken = action.shareableToken,
+                        signedMessageBase64 = action.signedMessageBase64,
+                    )
                 }
-                try {
-                    val response = when (action) {
-                        is BotRestAction.CreateContract -> {
-                            client.post("$coordinator/bots/$botName/contracts") {
-                                header(HttpHeaders.Authorization, "Bearer $botJwt")
-                                contentType(ContentType.Application.Json)
-                                setBody(
-                                    BotCreateContractPayload(
-                                        shareableToken = action.shareableToken,
-                                        signedMessageBase64 = action.signedMessageBase64,
-                                    )
-                                )
-                            }
-                        }
-                        is BotRestAction.CreateCommand -> {
-                            client.post("$coordinator/bots/$botName/commands") {
-                                header(HttpHeaders.Authorization, "Bearer $botJwt")
-                                contentType(ContentType.Application.Json)
-                                setBody(
-                                    BotCreateCommandPayload(
-                                        contractName = action.contractName,
-                                        shareableToken = action.shareableToken,
-                                        signedMessageBase64 = action.signedMessageBase64,
-                                    )
-                                )
-                            }
-                        }
-                        is BotRestAction.CreateMessage -> {
-                            client.post("$coordinator/bots/$botName/contracts/${action.contractName}/messages") {
-                                header(HttpHeaders.Authorization, "Bearer $botJwt")
-                                contentType(ContentType.Application.Json)
-                                setBody(
-                                    BotCreateMessagePayload(
-                                        message = action.message,
-                                    )
-                                )
-                            }
-                        }
-                    }
-                    if (!response.status.isSuccess()) {
-                        logger.error("Failed REST action $action for ${event.botMap.internalName}: HTTP ${response.status} - ${response.bodyAsText()}")
-                    }
-                } finally {
-                    client.close()
+                is BotRestAction.CreateCommand -> {
+                    coordinatorGateway.createCommand(
+                        botName = botName,
+                        botJwt = botJwt,
+                        contractName = action.contractName,
+                        shareableToken = action.shareableToken,
+                        signedMessageBase64 = action.signedMessageBase64,
+                    )
+                }
+                is BotRestAction.CreateMessage -> {
+                    coordinatorGateway.addMessage(
+                        botName = botName,
+                        botJwt = botJwt,
+                        contractName = action.contractName,
+                        message = action.message,
+                    )
                 }
             }
         } catch (e: Exception) {
@@ -483,7 +533,6 @@ fun <T> retryOnNullPointer(
         try {
             return block()
         } catch (e: NullPointerException) {
-            println("Hit exception...")
             lastError = e
             if (it < maxAttempts - 1) Thread.sleep(delayMillis)
         }

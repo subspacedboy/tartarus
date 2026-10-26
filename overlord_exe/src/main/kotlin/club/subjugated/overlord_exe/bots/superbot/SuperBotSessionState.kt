@@ -1,5 +1,5 @@
 package club.subjugated.overlord_exe.bots.superbot
 
-enum class SuperBotRecordState {
+enum class SuperBotSessionState {
     UNSPECIFIED, CREATED, ISSUED, LIVE, COMPLETE
 }

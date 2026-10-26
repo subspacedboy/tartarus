@@ -1,7 +1,7 @@
 package club.subjugated.overlord_exe.bots.superbot.web
 
-import club.subjugated.overlord_exe.bots.superbot.SuperBotRecordState
-import club.subjugated.overlord_exe.bots.superbot.SuperBotService
+import club.subjugated.overlord_exe.bots.superbot.SuperBot
+import club.subjugated.overlord_exe.bots.superbot.SuperBotSessionState
 import jakarta.validation.Valid
 import jakarta.validation.constraints.Size
 import jakarta.ws.rs.core.MediaType
@@ -26,20 +26,20 @@ data class IntakeForm(
 @RequestMapping("/superbot")
 @Controller
 class SuperBotWebController(
-    private val superBotService: SuperBotService
+    private val superBot: SuperBot
 ) {
     @GetMapping("/{token}", produces = [MediaType.APPLICATION_JSON])
     fun getPage(@PathVariable token: String, model: Model): String {
-        val record = superBotService.findByName(token)
+        val session = superBot.findByName(token)
 
-        if(record.state != SuperBotRecordState.CREATED) {
+        if(session.state != SuperBotSessionState.CREATED) {
             return "no_more_edits"
         }
 
-        model.addAttribute("name", record.name)
+        model.addAttribute("name", session.name)
         model.addAttribute("intakeForm", IntakeForm(
-            name = record.name,
-            shareableToken = record.shareableToken ?: ""
+            name = session.name,
+            shareableToken = session.shareableToken ?: ""
         )
         )
         return "superbot/form"
@@ -55,7 +55,7 @@ class SuperBotWebController(
             "superbot/form" // return to the form page
         }
 
-        superBotService.processContractForm(form)
+        superBot.processContractForm(form)
         return "all_done"
     }
 }

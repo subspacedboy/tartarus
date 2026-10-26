@@ -13,6 +13,7 @@ import jakarta.annotation.PostConstruct
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.util.concurrent.ConcurrentHashMap
 
 @Service
 class StateMachineService(
@@ -20,18 +21,50 @@ class StateMachineService(
     private val timeSource: TimeSource,
     private val providers: List<ContextProvider<*, *>>,
     private val urlService: UrlService,
-    private val logger: Logger = LoggerFactory.getLogger(StateMachineService::class.java)
+    private val logger: Logger = LoggerFactory.getLogger(StateMachineService::class.java),
 ) {
-    val nameToProvider = HashMap<String, ContextProvider<*, *>>()
+    val nameToProvider = ConcurrentHashMap<String, ContextProvider<*, *>>()
+    private val formTypeToProvider = ConcurrentHashMap<String, ContextProvider<*, *>>()
 
     @PostConstruct
     fun buildRegistry() {
-        providers.forEach { p -> nameToProvider.put(p.javaClass.name, p) }
+        providers.forEach { p ->
+            nameToProvider[p.javaClass.name] = p
+            p::class.qualifiedName?.let { nameToProvider[it] = p }
+            if (p.objectiveId.isNotBlank()) {
+                nameToProvider[p.objectiveId] = p
+            }
+            if (p.formTypeName.isNotBlank()) {
+                formTypeToProvider[p.formTypeName] = p
+            }
+        }
     }
 
-    fun createNewStateMachine(ownerName : String, providerClassName: String, form: ContextForm, bskyUser : BSkyUser? = null) : StateMachine {
-        @Suppress("UNCHECKED_CAST")
-        val provider = nameToProvider.get(providerClassName) as ContextProvider<ContextForm, Context>
+    @Suppress("UNCHECKED_CAST")
+    fun resolveProvider(providerKey: String): ContextProvider<ContextForm, Context> {
+        if (nameToProvider.isEmpty()) {
+            buildRegistry()
+        }
+        return (nameToProvider[providerKey]
+            ?: throw IllegalArgumentException("Unknown state machine provider: $providerKey"))
+            as ContextProvider<ContextForm, Context>
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun resolveProviderByFormType(formType: String): ContextProvider<ContextForm, Context>? {
+        if (formTypeToProvider.isEmpty()) {
+            buildRegistry()
+        }
+        return formTypeToProvider[formType] as? ContextProvider<ContextForm, Context>
+    }
+
+    fun createNewStateMachine(
+        ownerName: String,
+        providerClassName: String,
+        form: ContextForm,
+        bskyUser: BSkyUser? = null,
+    ): StateMachine {
+        val provider = resolveProvider(providerClassName)
 
         val sm = StateMachine(
             ownedBy = ownerName,
@@ -39,7 +72,7 @@ class StateMachineService(
             machineVersion = "1",
             providerClass = provider,
             infoResolveMethod = InfoResolveMethod.USER,
-            bskyUser = bskyUser
+            bskyUser = bskyUser,
         )
         sm.state = StateMachineState.STARTED
         sm.currentState = provider.getInitialState()
@@ -55,45 +88,33 @@ class StateMachineService(
         return sm
     }
 
-    fun findById(id : Long) : StateMachine {
-        val stateMachine = stateMachineRepository.findById(id).get()
-
-        val provider = nameToProvider.get(stateMachine.machineType)
+    private fun hydrate(stateMachine: StateMachine): StateMachine {
+        val provider = resolveProvider(stateMachine.machineType)
         stateMachine.providerClass = provider
-        stateMachine.context = provider!!.findByStateMachineId(stateMachine.id)
-
+        stateMachine.context = provider.findByStateMachineId(stateMachine.id)
         return stateMachine
     }
 
-    fun findByName(name : String) : StateMachine {
-        val stateMachine = stateMachineRepository.findByName(name)
-
-        val provider = nameToProvider.get(stateMachine.machineType)
-        stateMachine.providerClass = provider
-        stateMachine.context = provider!!.findByStateMachineId(stateMachine.id)
-
-        return stateMachine
+    fun findById(id: Long): StateMachine {
+        return hydrate(stateMachineRepository.findById(id).get())
     }
 
-    fun findByOwnedBy(name : String) : List<StateMachine> {
+    fun findByName(name: String): StateMachine {
+        return hydrate(stateMachineRepository.findByName(name))
+    }
+
+    fun findByOwnedBy(name: String): List<StateMachine> {
         val stateMachines = stateMachineRepository.findByOwnedBy(name)
-
-        if(stateMachines.isEmpty()) {
+        if (stateMachines.isEmpty()) {
             logger.warn("Zero state machines found for findByOwnedBy -> $name")
         }
-
-        stateMachines.forEach { sm ->
-            val provider = nameToProvider.get(sm.machineType)
-            sm.providerClass = provider
-            sm.context = provider!!.findByStateMachineId(sm.id)
-        }
-
-        return stateMachines
+        return stateMachines.map { hydrate(it) }
     }
 
-    fun save(stateMachine: StateMachine) : StateMachine {
-        if(stateMachine.context != null) {
-            val provider = stateMachine.providerClass
+    @Suppress("UNCHECKED_CAST")
+    fun save(stateMachine: StateMachine): StateMachine {
+        if (stateMachine.context != null) {
+            val provider = stateMachine.providerClass ?: resolveProvider(stateMachine.machineType)
             (provider as ContextProvider<ContextForm, Context>).saveContext(stateMachine.context as Context)
         }
 
@@ -101,12 +122,10 @@ class StateMachineService(
         return stateMachineRepository.save(stateMachine)
     }
 
+    @Suppress("UNCHECKED_CAST")
     fun process(stateMachine: StateMachine) {
-        if(stateMachine.providerClass == null) {
-            throw IllegalStateException("Provider class cannot be null")
-        }
-        @Suppress("UNCHECKED_CAST")
-        val provider = (stateMachine.providerClass as ContextProvider<ContextForm, Context>)
+        val provider = (stateMachine.providerClass ?: resolveProvider(stateMachine.machineType))
+            as ContextProvider<ContextForm, Context>
         provider.process(stateMachine, stateMachine.context!!)
     }
 }

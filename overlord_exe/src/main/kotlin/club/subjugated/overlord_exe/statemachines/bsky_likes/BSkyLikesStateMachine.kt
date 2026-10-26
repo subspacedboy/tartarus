@@ -17,14 +17,30 @@ class BSkyLikesStateMachine(
     private val applicationEventPublisher: ApplicationEventPublisher,
 ) : ContextProvider<BSkyLikesForm, BSkyLikesStateMachineContext> {
 
-    override fun createContext(stateMachineId : Long, form: BSkyLikesForm): BSkyLikesStateMachineContext {
+    override val objectiveId: String = "bsky_likes"
+    override val formTypeName: String = BSkyLikesForm::class.qualifiedName!!
+    override val templateName: String = "info/bskylikesform"
+
+    override fun createEmptyForm(requestName: String): BSkyLikesForm {
+        return BSkyLikesForm(name = requestName)
+    }
+
+    override fun bindForm(params: Map<String, String>): BSkyLikesForm {
+        return BSkyLikesForm(
+            name = params["name"] ?: "",
+            did = params["did"] ?: "",
+            goal = params["goal"]?.toLongOrNull() ?: 10L,
+        )
+    }
+
+    override fun createContext(stateMachineId: Long, form: BSkyLikesForm): BSkyLikesStateMachineContext {
         val bskyContext = BSkyLikesStateMachineContext(
             stateMachineId = stateMachineId,
             goal = form.goal,
             likesSoFar = 0,
             did = form.did ?: "",
             createdAt = timeSource.nowInUtc(),
-            updatedAt = timeSource.nowInUtc()
+            updatedAt = timeSource.nowInUtc(),
         )
         bSkyLikesStateMachineContextRepository.save(bskyContext)
         return bskyContext
@@ -45,11 +61,11 @@ class BSkyLikesStateMachine(
 
     override fun process(stateMachine: StateMachine, ctx: BSkyLikesStateMachineContext) {
         val state = BSkyLikesStates.valueOf(stateMachine.currentState!!)
-        when(state) {
-            BSkyLikesStates.UNSPECIFIED -> TODO()
+        when (state) {
+            BSkyLikesStates.UNSPECIFIED -> throw IllegalStateException("UNSPECIFIED BSkyLikes state")
             BSkyLikesStates.NEEDS_INFO -> stateNeedsInfo(stateMachine)
             BSkyLikesStates.WAITING -> {
-                if(ctx.receivedFormData) {
+                if (ctx.receivedFormData) {
                     stateMachine.currentState = BSkyLikesStates.IN_PROGRESS.toString()
                 }
             }
@@ -59,33 +75,29 @@ class BSkyLikesStateMachine(
     }
 
     private fun stateNeedsInfo(stateMachine: StateMachine) {
-        val record = findByStateMachineId(stateMachine.id)
-
-        applicationEventPublisher.publishEvent(RequestInfo(
-            source = this,
-            stateMachine = stateMachine,
-            formClass = BSkyLikesForm::class.qualifiedName!!
-        ))
-
+        applicationEventPublisher.publishEvent(
+            RequestInfo(
+                source = this,
+                stateMachine = stateMachine,
+                formClass = formTypeName,
+            )
+        )
         stateMachine.currentState = BSkyLikesStates.WAITING.toString()
     }
 
     private fun stateInProgress(stateMachine: StateMachine) {
-        val ctx : BSkyLikesStateMachineContext = stateMachine.context!! as BSkyLikesStateMachineContext
+        val ctx: BSkyLikesStateMachineContext = stateMachine.context!! as BSkyLikesStateMachineContext
 
         var totalLikes = 0L
         blueSkyService.getAuthorFeedFromTime(ctx.did, ctx.createdAt!!) { post ->
             blueSkyService.traceThread(post.uri!!) { post2 ->
-                if(post2.author?.did == ctx.did) {
-                    if(post2.embed?.asImages != null) {
-                        val imageEmbed = post2.embed!!.asImages!!
-                        totalLikes += post2.likeCount!!
-                    }
+                if (post2.author?.did == ctx.did && post2.embed?.asImages != null) {
+                    totalLikes += post2.likeCount!!
                 }
             }
         }
         ctx.likesSoFar = totalLikes
-        if(ctx.likesSoFar >= ctx.goal) {
+        if (ctx.likesSoFar >= ctx.goal) {
             stateMachine.currentState = BSkyLikesStates.COMPLETE.toString()
             stateMachine.state = StateMachineState.COMPLETE
         }

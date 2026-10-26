@@ -1,7 +1,7 @@
 package club.subjugated.overlord_exe.bots.timer_bot.web
 
-import club.subjugated.overlord_exe.bots.timer_bot.TimerBotRecordService
-import club.subjugated.overlord_exe.bots.timer_bot.TimerBotRecordState
+import club.subjugated.overlord_exe.bots.timer_bot.TimerBot
+import club.subjugated.overlord_exe.bots.timer_bot.TimerSessionState
 import jakarta.validation.Valid
 import jakarta.validation.constraints.AssertTrue
 import jakarta.validation.constraints.Min
@@ -61,19 +61,19 @@ data class TimeForm(
 @RequestMapping("/timer")
 @Controller
 class TimerBotWebController(
-    val timerBotRecordService: TimerBotRecordService
+    val timerBot: TimerBot
 ) {
     @GetMapping("/{token}", produces = [MediaType.APPLICATION_JSON])
     fun getPage(@PathVariable token: String, model: Model): String {
-        val record = timerBotRecordService.getRecordByName(token)
+        val session = timerBot.getSessionByName(token)
 
-        if(record.state != TimerBotRecordState.CREATED) {
+        if(session.state != TimerSessionState.CREATED) {
             return "no_more_edits"
         }
 
-        model.addAttribute("name", record.name)
+        model.addAttribute("name", session.name)
         model.addAttribute("timeForm", TimeForm(
-            name = record.name,
+            name = session.name,
             shareableToken = ""
         )
         )
@@ -91,7 +91,7 @@ class TimerBotWebController(
         }
 
         println("Processing timer form: $form")
-        timerBotRecordService.processContractForm(form)
+        timerBot.processContractForm(form)
         return "all_done"
     }
 }

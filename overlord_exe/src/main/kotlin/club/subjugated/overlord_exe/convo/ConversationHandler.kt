@@ -5,7 +5,13 @@ import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageView
 import kotlin.reflect.KClass
 
 interface ConversationHandler {
-    fun handle(convoId: String, message: ConvoDefsMessageView) : String
-    fun getIntents() : List<KClass<out Intent>>
-    fun handleIntent(ctx : ConversationContext, intent: Intent) : ConversationResponse
+    /**
+     * Lowercase literal "!" command names routed to this handler (e.g. "timer", "superbot", "unlock").
+     */
+    val commands: Set<String>
+        get() = emptySet()
+
+    fun handle(convoId: String, message: ConvoDefsMessageView): String
+    fun getIntents(): List<KClass<out Intent>>
+    fun handleIntent(ctx: ConversationContext, intent: Intent): ConversationResponse
 }

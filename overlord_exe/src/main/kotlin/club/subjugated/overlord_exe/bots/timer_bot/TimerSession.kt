@@ -8,18 +8,20 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
+import jakarta.persistence.Table
 import java.time.OffsetDateTime
 
 @Entity
-class TimerBotRecord(
+@Table(name = "timer_bot_record")
+class TimerSession(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) var id: Long = 0,
     var name: String = generateId("tbr-"),
     @Enumerated(EnumType.STRING)
-    var state : TimerBotRecordState = TimerBotRecordState.UNSPECIFIED,
+    var state: TimerSessionState = TimerSessionState.UNSPECIFIED,
     var contractSerialNumber: Int,
     var contractId: Long? = null,
     var isPublic: Boolean = false,
-    var shareableToken : String = "",
+    var shareableToken: String = "",
     var timeAmount: Long = 0,
     var timeUnit: String = "minute",
 
@@ -34,6 +36,5 @@ class TimerBotRecord(
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var endsAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var acceptedAt: OffsetDateTime? = null,
-    var completed : Boolean = false
-) {
-}
+    var completed: Boolean = false,
+)
