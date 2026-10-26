@@ -2,8 +2,6 @@ package club.subjugated.overlord_exe.bots.general
 
 import club.subjugated.fb.event.EventType
 import club.subjugated.fb.event.SignedEvent
-import club.subjugated.overlord_exe.events.BotRestAction
-import club.subjugated.overlord_exe.events.SendBotBytes
 import club.subjugated.overlord_exe.models.BotMap
 import club.subjugated.overlord_exe.models.Contract
 import club.subjugated.overlord_exe.models.ContractState
@@ -28,7 +26,6 @@ import org.springframework.beans.factory.SmartInitializingSingleton
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Lazy
-import org.springframework.context.event.EventListener
 import org.springframework.core.env.Environment
 import org.springframework.stereotype.Component
 import org.springframework.transaction.support.TransactionTemplate
@@ -44,15 +41,12 @@ import java.util.concurrent.TimeUnit
 
 @Serializable
 data class BotEventWsPayload(
-    val type: String? = null,
-    val eventId: String? = null,
+    val type: String,
     val botName: String? = null,
+    val eventId: String? = null,
     val contractName: String? = null,
-    val contractSerial: Int? = null,
-    val lockSession: String? = null,
-    val counter: Int? = null,
-    val eventType: String? = null,
-    val correlationId: String? = null,
+    val contractSerialNumber: Int? = null,
+    val lockSessionToken: String? = null,
     val rawSignedEventBase64: String? = null,
 )
 
@@ -96,7 +90,7 @@ class BotComponent @Autowired constructor(
 
     lateinit var botExecutorWatchdogService: ScheduledExecutorService
 
-    var handlers: ConcurrentHashMap<BotMap, MessageHandler> = ConcurrentHashMap()
+    var handlers: ConcurrentHashMap<BotMap, OverlordBot> = ConcurrentHashMap()
     private val contextsByInternalName = ConcurrentHashMap<String, BotContext>()
     private val contextsByBotMap = ConcurrentHashMap<BotMap, BotContext>()
 
@@ -110,24 +104,26 @@ class BotComponent @Autowired constructor(
     fun contextFor(internalName: String, description: String = internalName): BotContext {
         return contextsByInternalName.computeIfAbsent(internalName) {
             val botMap = botMapService.getOrCreateBotMap(internalName, description)
-            DefaultBotContext(
-                botMapProvider = { botMapService.findBotMap(internalName) ?: botMap },
+            val ctx = DefaultBotContext(
+                botMapProvider = { botMapService.getOrCreateBotMap(internalName, description) },
                 botMapService = botMapService,
                 contractService = contractService,
                 coordinatorGateway = coordinatorGateway,
                 blueSkyService = blueSkyService,
-            ).also { ctx ->
-                contextsByBotMap[botMap] = ctx
-            }
+            )
+            contextsByBotMap[botMap] = ctx
+            ctx
         }
     }
 
-    fun startBot(botMap: BotMap, handler: MessageHandler): BotContext {
-        logger.info("Starting bot: ${botMap.internalName} (${botMap.externalName})")
-        handlers[botMap] = handler
+    fun startBot(
+        botMap: BotMap,
+        bot: OverlordBot,
+    ): BotContext {
+        handlers[botMap] = bot
         val ctx = contextsByInternalName.computeIfAbsent(botMap.internalName) {
             DefaultBotContext(
-                botMapProvider = { botMapService.findBotMap(botMap.internalName) ?: botMap },
+                botMapProvider = { botMapService.getOrCreateBotMap(botMap.internalName, bot.descriptor.description) },
                 botMapService = botMapService,
                 contractService = contractService,
                 coordinatorGateway = coordinatorGateway,
@@ -135,9 +131,7 @@ class BotComponent @Autowired constructor(
             )
         }
         contextsByBotMap[botMap] = ctx
-        if (handler is OverlordBot) {
-            handler.onStart(ctx)
-        }
+        bot.onStart(ctx)
         ensureWebSocketConnected()
         return ctx
     }
@@ -177,21 +171,17 @@ class BotComponent @Autowired constructor(
 
     /**
      * Reviews live contracts for each active bot in its own isolated transaction boundary.
-     *
-     * Fixes two concurrency/reliability issues from the previous design:
-     * 1. Contract state sync (`ABORTED` detection) runs synchronously before `reviewContracts` rather than in an unawaited `async` block.
-     * 2. Each bot executes in its own `transactionTemplate.execute` block so an error in one bot never rolls back another bot's work.
      */
     fun reviewAllBotsIsolated() {
-        handlers.forEach { (botMap, handler) ->
-            if (handler is OverlordBot && handler.descriptor.reviewInterval == null) {
+        handlers.forEach { (botMap, bot) ->
+            if (bot.descriptor.reviewInterval == null) {
                 return@forEach
             }
-            reviewSingleBot(botMap, handler)
+            reviewSingleBot(botMap, bot)
         }
     }
 
-    fun reviewSingleBot(botMap: BotMap, handler: MessageHandler) {
+    fun reviewSingleBot(botMap: BotMap, bot: OverlordBot) {
         transactionTemplate.execute { status ->
             try {
                 logger.info("Reviewing ${botMap.internalName}")
@@ -214,9 +204,7 @@ class BotComponent @Autowired constructor(
                                 logger.info("Aborted contract: ${c.externalContractName}")
                                 c.state = ContractState.ABORTED
                                 contractService.save(c)
-                                if (handler is OverlordBot) {
-                                    handler.onAbort(ctx, c)
-                                }
+                                bot.onAbort(ctx, c)
                                 continue
                             } else {
                                 contractService.updateContractWithGetContractResponse(c, contractInfo)
@@ -228,11 +216,7 @@ class BotComponent @Autowired constructor(
                     activeContracts.add(c)
                 }
 
-                if (handler is OverlordBot) {
-                    handler.reviewContracts(ctx, activeContracts)
-                } else {
-                    handler.reviewContracts(activeContracts)
-                }
+                bot.reviewContracts(ctx, activeContracts)
             } catch (ex: Exception) {
                 logger.error("Unhandled exception in reviewing contracts for ${botMap.internalName}: $ex", ex)
                 status.setRollbackOnly()
@@ -419,13 +403,9 @@ class BotComponent @Autowired constructor(
     fun handleAccept(botMap: BotMap, signedEvent: SignedEvent) {
         logger.info("Handled accept")
         val contract = resolveOrSyncContract(botMap, signedEvent, forceSync = true)
-        val handler = handlers[botMap]!!
+        val bot = handlers[botMap]!!
         val ctx = contextsByBotMap[botMap] ?: contextFor(botMap.internalName, botMap.internalName)
-        if (handler is OverlordBot) {
-            handler.onAccept(ctx, contract)
-        } else {
-            handler.handleAccept(contract)
-        }
+        bot.onAccept(ctx, contract)
     }
 
     fun handleRelease(botMap: BotMap, signedEvent: SignedEvent) {
@@ -436,109 +416,35 @@ class BotComponent @Autowired constructor(
 
         val contract = contractService.markReleased(botMap.externalName, commonMetadata.contractSerialNumber.toInt())
 
-        val handler = handlers[botMap]!!
+        val bot = handlers[botMap]!!
         val ctx = contextsByBotMap[botMap] ?: contextFor(botMap.internalName, botMap.internalName)
-        if (handler is OverlordBot) {
-            handler.onRelease(ctx, contract)
-        } else {
-            handler.handleRelease(contract)
-        }
+        bot.onRelease(ctx, contract)
     }
 
     fun handleLock(botMap: BotMap, signedEvent: SignedEvent) {
         logger.info("Handle Lock")
         val contract = resolveOrSyncContract(botMap, signedEvent)
 
-        val handler = handlers[botMap]!!
+        val bot = handlers[botMap]!!
         val ctx = contextsByBotMap[botMap] ?: contextFor(botMap.internalName, botMap.internalName)
-        if (handler is OverlordBot) {
-            handler.onLock(ctx, contract)
-        } else {
-            handler.handleLock(contract)
-        }
+        bot.onLock(ctx, contract)
     }
 
     fun handleUnlock(botMap: BotMap, signedEvent: SignedEvent) {
         logger.info("Handle Unlock")
         val contract = resolveOrSyncContract(botMap, signedEvent)
 
-        val handler = handlers[botMap]!!
+        val bot = handlers[botMap]!!
         val ctx = contextsByBotMap[botMap] ?: contextFor(botMap.internalName, botMap.internalName)
-        if (handler is OverlordBot) {
-            handler.onUnlock(ctx, contract)
-        } else {
-            handler.handleUnlock(contract)
-        }
+        bot.onUnlock(ctx, contract)
     }
 
     fun handleEmergencyUnlock(botMap: BotMap, signedEvent: SignedEvent) {
         logger.info("Handle Emergency Unlock")
         val contract = resolveOrSyncContract(botMap, signedEvent)
 
-        val handler = handlers[botMap]
+        val bot = handlers[botMap]
         val ctx = contextsByBotMap[botMap] ?: contextFor(botMap.internalName, botMap.internalName)
-        if (handler is OverlordBot) {
-            handler.onEmergencyUnlock(ctx, contract)
-        } else {
-            handler?.handleEmergencyUnlock(contract)
-        }
+        bot?.onEmergencyUnlock(ctx, contract)
     }
-
-    @EventListener
-    fun handleSendMessage(event: SendBotBytes) {
-        val action = event.action
-        try {
-            val botJwt = botMapService.getBotJwt(event.botMap)
-            val botName = event.botMap.externalName
-
-            when (action) {
-                is BotRestAction.CreateContract -> {
-                    coordinatorGateway.createContract(
-                        botName = botName,
-                        botJwt = botJwt,
-                        shareableToken = action.shareableToken,
-                        signedMessageBase64 = action.signedMessageBase64,
-                    )
-                }
-                is BotRestAction.CreateCommand -> {
-                    coordinatorGateway.createCommand(
-                        botName = botName,
-                        botJwt = botJwt,
-                        contractName = action.contractName,
-                        shareableToken = action.shareableToken,
-                        signedMessageBase64 = action.signedMessageBase64,
-                    )
-                }
-                is BotRestAction.CreateMessage -> {
-                    coordinatorGateway.addMessage(
-                        botName = botName,
-                        botJwt = botJwt,
-                        contractName = action.contractName,
-                        message = action.message,
-                    )
-                }
-            }
-        } catch (e: Exception) {
-            logger.error("Failed to dispatch SendBotBytes for ${event.botMap.internalName}: $e", e)
-        }
-    }
-}
-
-fun <T> retryOnNullPointer(
-    maxAttempts: Int = 3,
-    delayMillis: Long = 1000,
-    block: () -> T
-): T {
-    var lastError: NullPointerException? = null
-
-    repeat(maxAttempts) {
-        try {
-            return block()
-        } catch (e: NullPointerException) {
-            lastError = e
-            if (it < maxAttempts - 1) Thread.sleep(delayMillis)
-        }
-    }
-
-    throw lastError ?: NullPointerException("Unknown NPE in retryOnNullPointer")
 }

@@ -57,11 +57,7 @@ class OverlordConversationHandler(
                 val botMap = botMapService.getBotMap(botInternalName)
                 val contract = contractService.getOrCreateContract(botMap.externalName, lockSession, serialNumber)
                 val handler = botComponent.handlers[botMap]!!
-                if (handler is OverlordBot) {
-                    handler.onAccept(botComponent.contextFor(botInternalName), contract)
-                } else {
-                    handler.handleAccept(contract)
-                }
+                handler.onAccept(botComponent.contextFor(botInternalName), contract)
                 "Reprocessed accept"
             }
             "add" -> {

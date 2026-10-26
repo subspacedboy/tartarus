@@ -1,15 +1,14 @@
 package club.subjugated.overlord_exe
 
 import club.subjugated.overlord_exe.cli.CliRoot
-import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.springframework.boot.WebApplicationType
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.builder.SpringApplicationBuilder
+import org.springframework.scheduling.annotation.EnableScheduling
 import picocli.CommandLine
-import java.security.Security
 import kotlin.system.exitProcess
 
 @SpringBootApplication
+@EnableScheduling
 class OverlordExeApplication
 
 fun main(args: Array<String>) {

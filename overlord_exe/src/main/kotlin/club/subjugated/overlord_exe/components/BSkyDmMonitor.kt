@@ -1,23 +1,16 @@
 package club.subjugated.overlord_exe.components
 
-import club.subjugated.overlord_exe.bots.simple_proxy.convo.SimpleProxyConvoHandler
-import club.subjugated.overlord_exe.bots.superbot.convo.SuperBotConvoHandler
-import club.subjugated.overlord_exe.bots.timer_bot.convo.TimerBotConvoHandler
 import club.subjugated.overlord_exe.convo.ConversationContext
 import club.subjugated.overlord_exe.convo.ConversationHandler
-import club.subjugated.overlord_exe.events.SendDmEvent
-import club.subjugated.overlord_exe.intents.OverlordConversationHandler
 import club.subjugated.overlord_exe.services.BSkyUserService
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.services.IntentService
 import com.github.benmanes.caffeine.cache.Caffeine
-import org.quartz.DisallowConcurrentExecution
-import org.quartz.Job
-import org.quartz.JobExecutionContext
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.context.event.EventListener
+import org.springframework.core.env.Environment
+import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import work.socialhub.kbsky.ATProtocolException
 import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageView
@@ -25,57 +18,30 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
 
 @Component
-@DisallowConcurrentExecution
 class BSkyDmMonitor @Autowired constructor(
     private val blueSkyService: BlueSkyService,
     private val bSkyUserService: BSkyUserService,
     private val intentService: IntentService,
     private val conversationHandlers: List<ConversationHandler> = emptyList(),
+    @Autowired(required = false) private val environment: Environment? = null,
     private val logger: Logger = LoggerFactory.getLogger(BSkyDmMonitor::class.java),
-) : Job {
+) {
+    private val pollLock = ReentrantLock()
 
-    private var fallbackHandlersByCommand: Map<String, (String, ConvoDefsMessageView, List<String>) -> String> = emptyMap()
-
-    constructor(
-        blueSkyService: BlueSkyService,
-        logger: Logger = LoggerFactory.getLogger(BSkyDmMonitor::class.java),
-        timerBotConversationHandler: TimerBotConvoHandler,
-        superBotConvoHandler: SuperBotConvoHandler,
-        bSkyUserService: BSkyUserService,
-        simpleProxyConvoHandler: SimpleProxyConvoHandler,
-        overlordConversationHandler: OverlordConversationHandler,
-        intentService: IntentService,
-    ) : this(
-        blueSkyService = blueSkyService,
-        bSkyUserService = bSkyUserService,
-        intentService = intentService,
-        conversationHandlers = listOf(
-            timerBotConversationHandler,
-            superBotConvoHandler,
-            simpleProxyConvoHandler,
-            overlordConversationHandler,
-        ),
-        logger = logger,
-    ) {
-        fallbackHandlersByCommand = mapOf(
-            "contract" to { cId, msg, _ -> overlordConversationHandler.handle(cId, msg) },
-            "accept" to { cId, msg, _ -> overlordConversationHandler.handle(cId, msg) },
-            "token" to { cId, msg, _ -> simpleProxyConvoHandler.handle(cId, msg) },
-            "own" to { cId, msg, _ -> simpleProxyConvoHandler.handle(cId, msg) },
-            "submit" to { cId, msg, _ -> simpleProxyConvoHandler.handle(cId, msg) },
-            "unlock" to { cId, msg, _ -> simpleProxyConvoHandler.handle(cId, msg) },
-            "lock" to { cId, msg, _ -> simpleProxyConvoHandler.handle(cId, msg) },
-            "release" to { cId, msg, _ -> simpleProxyConvoHandler.handle(cId, msg) },
-            "timer" to { cId, msg, _ -> timerBotConversationHandler.handle(cId, msg) },
-            "superbot" to { cId, msg, _ -> superBotConvoHandler.handle(cId, msg) },
-        )
-    }
-
-    override fun execute(context: JobExecutionContext?) {
+    @Scheduled(fixedDelay = 4000)
+    fun scheduledCheckDms() {
+        if (environment?.activeProfiles?.contains("test") == true) {
+            return
+        }
+        if (!pollLock.tryLock()) {
+            return
+        }
         try {
             checkDms()
         } catch (ex: ATProtocolException) {
             logger.warn("ATProtocolException -> $ex")
+        } finally {
+            pollLock.unlock()
         }
     }
 
@@ -132,9 +98,7 @@ class BSkyDmMonitor @Autowired constructor(
         bskyUser.handle = handle
         bSkyUserService.save(bskyUser)
 
-        val interpretAsCommand = message.text.startsWith("!")
-
-        if (interpretAsCommand) {
+        if (message.text.startsWith("!")) {
             val messageMinusBang = message.text.replaceFirst("!", "").trim()
             val chunks = messageMinusBang.split("\\s+".toRegex())
             val cmd = chunks[0].lowercase()
@@ -143,27 +107,6 @@ class BSkyDmMonitor @Autowired constructor(
             val response: String = when {
                 registeredHandler != null -> registeredHandler.handle(convoId, message)
                 cmd == "hello" -> "Hello 😈"
-                cmd == "add" -> {
-                    val list = chunks.slice(1 until chunks.size).joinToString(" ").lowercase()
-                    try {
-                        val atUri = blueSkyService.listNameToUri(list)
-                        blueSkyService.addToList(message.sender.did, atUri)
-                        "Added"
-                    } catch (_: Exception) {
-                        "Unknown list: $list"
-                    }
-                }
-                cmd == "remove" -> {
-                    val list = chunks.slice(1 until chunks.size).joinToString(" ").lowercase()
-                    try {
-                        val atUri = blueSkyService.listNameToUri(list)
-                        blueSkyService.removeFromList(message.sender.did, atUri)
-                        "Removed"
-                    } catch (_: Exception) {
-                        "Unknown list: $list"
-                    }
-                }
-                cmd in fallbackHandlersByCommand -> fallbackHandlersByCommand.getValue(cmd).invoke(convoId, message, chunks)
                 else -> ""
             }
             if (!ignoreSend && response.isNotBlank()) {
@@ -190,10 +133,5 @@ class BSkyDmMonitor @Autowired constructor(
                 }
             }
         }
-    }
-
-    @EventListener
-    fun handleDmMessage(event: SendDmEvent) {
-        blueSkyService.sendDm(event.convoId, event.message)
     }
 }

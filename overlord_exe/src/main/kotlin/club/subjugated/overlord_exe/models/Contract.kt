@@ -15,19 +15,17 @@ class Contract(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) var id: Long = 0,
     var name: String = generateId("bc-"),
     var externalContractName: String? = null,
-    var botName : String,
+    var botName: String,
     var lockSessionToken: String?,
     var shareableToken: String? = null,
     var serialNumber: Int,
+    var nextCounter: Int = 1,
     @Enumerated(EnumType.STRING) var state: ContractState = ContractState.UNSPECIFIED,
 
     // The original contract bytes are always returned from GetContractResponse but we don't
-    // don't need to save them ourselves.
-    @Transient var signedMessage : ByteArray? = null,
-
-    @Transient var nextCounter: Int = 0,
+    // need to save them in the database ourselves.
+    @Transient var signedMessage: ByteArray? = null,
 
     @JsonFormat(shape = JsonFormat.Shape.STRING) var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING) var updatedAt: OffsetDateTime? = null,
-) {
-}
+)

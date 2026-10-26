@@ -1,20 +1,25 @@
 package club.subjugated.overlord_exe.runtime
 
-import club.subjugated.overlord_exe.bots.general.MessageHandler
+import club.subjugated.overlord_exe.convo.ConversationContext
+import club.subjugated.overlord_exe.convo.ConversationHandler
+import club.subjugated.overlord_exe.convo.ConversationResponse
 import club.subjugated.overlord_exe.models.Contract
+import club.subjugated.overlord_exe.services.Intent
+import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageView
 import java.time.Duration
+import kotlin.reflect.KClass
 
 /**
- * Declarative metadata describing an independent logical bot hosted inside the Overlord umbrella runtime.
+ * Metadata describing a logical bot hosted within the Overlord umbrella runtime.
  */
 data class BotDescriptor(
     val internalName: String,
     val description: String,
-    val reviewInterval: Duration? = null,
+    val reviewInterval: Duration? = Duration.ofMinutes(1),
 )
 
 /**
- * Permission grant for a secondary co-bot included on a Contract (for example, the "announcer" observer bot).
+ * Co-bot permission grant included on a contract at issuance time.
  */
 data class CoBotGrant(
     val botName: String,
@@ -26,19 +31,27 @@ data class CoBotGrant(
 )
 
 /**
- * Primary SPI for a logical bot hosted within the Overlord umbrella runtime.
+ * Unified SPI for logical bots hosted inside the Overlord runtime.
  *
- * Extends [MessageHandler] with default bridge methods so existing callers and tests can invoke either
- * the context-aware hooks (`onAccept(ctx, contract)`) or the legacy callbacks (`handleAccept(contract)`).
+ * Combines Coordinator contract lifecycle hooks ([onAccept], [onRelease], [onAbort], [reviewContracts])
+ * with BlueSky DM command and LLM intent handling ([ConversationHandler]).
  */
-interface OverlordBot : MessageHandler {
+interface OverlordBot : ConversationHandler {
     val descriptor: BotDescriptor
 
-    fun onStart(ctx: BotContext) {}
+    // --- BlueSky DM & Intent defaults (override in bots that accept DM commands/intents) ---
+    override val commands: Set<String>
+        get() = emptySet()
 
-    fun reviewContracts(ctx: BotContext, contracts: List<Contract>) {
-        reviewContracts(contracts)
-    }
+    override fun handle(convoId: String, message: ConvoDefsMessageView): String = ""
+
+    override fun getIntents(): List<KClass<out Intent>> = emptyList()
+
+    override fun handleIntent(ctx: ConversationContext, intent: Intent): ConversationResponse =
+        ConversationResponse("")
+
+    // --- Coordinator Contract lifecycle hooks ---
+    fun onStart(ctx: BotContext) {}
 
     fun onAccept(ctx: BotContext, contract: Contract) {
         handleAccept(contract)
@@ -62,10 +75,15 @@ interface OverlordBot : MessageHandler {
 
     fun onAbort(ctx: BotContext, contract: Contract) {}
 
-    override fun reviewContracts(contracts: List<Contract>) {}
-    override fun handleAccept(contract: Contract) {}
-    override fun handleRelease(contract: Contract) {}
-    override fun handleLock(contract: Contract) {}
-    override fun handleUnlock(contract: Contract) {}
-    override fun handleEmergencyUnlock(contract: Contract) {}
+    fun reviewContracts(ctx: BotContext, contracts: List<Contract>) {
+        reviewContracts(contracts)
+    }
+
+    // Convenience overloads for direct unit/integration test calls
+    fun handleAccept(contract: Contract) {}
+    fun handleRelease(contract: Contract) {}
+    fun handleLock(contract: Contract) {}
+    fun handleUnlock(contract: Contract) {}
+    fun handleEmergencyUnlock(contract: Contract) {}
+    fun reviewContracts(contracts: List<Contract>) {}
 }
