@@ -158,6 +158,14 @@ class AsyncTartarusClient:
                 print("Event -> Emergency unlocked")
                 if has_callable(self.callback_obj, "on_emergency_unlock"):
                     await self.callback_obj.on_emergency_unlock(self, se)
+            case EventType.StartedUpdate:
+                print("Event -> Started update")
+                if has_callable(self.callback_obj, "on_started_update"):
+                    await self.callback_obj.on_started_update(self, se)
+            case EventType.PeriodicUpdate:
+                print("Event -> Periodic update")
+                if has_callable(self.callback_obj, "on_periodic_update"):
+                    await self.callback_obj.on_periodic_update(self, se)
 
     async def start(self):
         while True:

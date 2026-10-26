@@ -1,12 +1,12 @@
 use crate::acknowledger::Acknowledger;
 use crate::config_verifier::ConfigVerifier;
-use crate::contract_generated::club::subjugated::fb::message::{
-    MessagePayload, PeriodicUpdate, PeriodicUpdateArgs, SignedMessage, SignedMessageArgs,
-    StartedUpdate, StartedUpdateArgs,
-};
 use crate::event_buffer::PersistentEventRingBuffer;
 use crate::event_generated::club::subjugated::fb::event::{
-    CommonMetadata, CommonMetadataArgs, Event, EventArgs, EventType, SignedEvent, SignedEventArgs,
+    AcceptContract, AcceptContractArgs, CommonMetadata, CommonMetadataArgs, EmergencyUnlock,
+    EmergencyUnlockArgs, Event, EventArgs, EventType, LocalLock, LocalLockArgs, LocalUnlock,
+    LocalUnlockArgs, Lock, LockArgs, PeriodicUpdate, PeriodicUpdateArgs, ReleaseContract,
+    ReleaseContractArgs, SignedEvent, SignedEventArgs, StartedUpdate, StartedUpdateArgs, Unlock,
+    UnlockArgs,
 };
 use crate::fb_helper::calculate_signature_with_backend;
 #[allow(deprecated)]
@@ -507,7 +507,7 @@ impl LockCtx {
                     log::info!("Sending update + rescheduling");
                     self.schedule_next_update =
                         Some(self.time_in_ticks + Duration::from_secs(60).as_millis() as u64);
-                    self.enqueue_periodic_update_message(false, false);
+                    self.enqueue_periodic_update_message();
                 }
             }
         }
@@ -974,7 +974,6 @@ impl LockCtx {
         log::info!("Local Locking");
         self.is_locked = true;
         self.servo.close_position();
-        self.enqueue_periodic_update_message(false, true);
         self.enqueue_bot_event(EventType::LocalLock);
         self.dirty = true;
     }
@@ -983,7 +982,6 @@ impl LockCtx {
         log::info!("Locking");
         self.is_locked = true;
         self.servo.close_position();
-        self.enqueue_periodic_update_message(false, false);
         self.enqueue_bot_event(EventType::Lock);
         self.dirty = true;
     }
@@ -999,7 +997,6 @@ impl LockCtx {
         log::info!("Unlocking");
         self.is_locked = false;
         self.servo.open_position();
-        self.enqueue_periodic_update_message(true, false);
         self.enqueue_bot_event(EventType::LocalUnlock);
         self.dirty = true;
     }
@@ -1009,7 +1006,6 @@ impl LockCtx {
         self.is_locked = false;
         self.emergency_unlocked = true;
         self.servo.open_position();
-        self.enqueue_periodic_update_message(true, false);
         self.enqueue_bot_event(EventType::EmergencyUnlock);
         self.dirty = true;
     }
@@ -1018,7 +1014,6 @@ impl LockCtx {
         log::info!("Unlocking");
         self.is_locked = false;
         self.servo.open_position();
-        self.enqueue_periodic_update_message(false, false);
         self.enqueue_bot_event(EventType::Unlock);
         self.dirty = true;
     }
@@ -1182,132 +1177,227 @@ impl LockCtx {
     fn enqueue_announce_message(&mut self) {
         let current_contract_serial = self.contract.as_ref().map(|c| c.serial_number).unwrap_or(0);
         let started_with_local_contract = self.contract.is_some();
+        let event_id_str = format!("{}:{}:0", self.session_token, current_contract_serial);
 
         let mut builder = FlatBufferBuilder::with_capacity(1024);
         let pub_key_holder = builder.create_vector(self.lock_public_key.to_sec1_bytes().as_ref());
         let session = builder.create_string(&self.session_token);
+        let event_id_off = builder.create_string(&event_id_str);
 
-        let lock_update_event = StartedUpdate::create(
+        let metadata = CommonMetadata::create(
             &mut builder,
-            &StartedUpdateArgs {
-                public_key: Some(pub_key_holder),
-                session: Some(session),
-                started_with_local_contract,
-                is_locked: self.is_locked,
-                current_contract_serial,
+            &CommonMetadataArgs {
+                lock_session: Some(session),
+                contract_serial_number: current_contract_serial,
+                serial_number: 0,
+                counter: 0,
+                event_id: Some(event_id_off),
+                correlation_id: None,
             },
         );
 
-        let _payload_type = MessagePayload::StartedUpdate; // Union type
-        let _payload_value = lock_update_event.as_union_value();
+        let started_update = StartedUpdate::create(
+            &mut builder,
+            &StartedUpdateArgs {
+                public_key: Some(pub_key_holder),
+                started_with_local_contract,
+                is_locked: self.is_locked,
+            },
+        );
 
-        builder.finish(lock_update_event, None);
+        let event = Event::create(
+            &mut builder,
+            &EventArgs {
+                metadata: Some(metadata),
+                event_type: EventType::StartedUpdate,
+                event: Some(started_update.as_union_value()),
+            },
+        );
+
+        builder.finish(event, None);
         let buffer = builder.finished_data();
 
         let signature = calculate_signature_with_backend(buffer, self.backend.as_mut())
-            .expect("Failed to sign StartedUpdate message");
+            .expect("Failed to sign StartedUpdate event");
 
-        // Re-serialize in fresh builder to embed signature
+        // Re-serialize in fresh builder to embed signature in outer SignedEvent
         let mut builder = FlatBufferBuilder::with_capacity(1024);
         let pub_key_holder = builder.create_vector(self.lock_public_key.to_sec1_bytes().as_ref());
         let session = builder.create_string(&self.session_token);
-        let lock_update_event = StartedUpdate::create(
+        let event_id_off = builder.create_string(&event_id_str);
+
+        let metadata = CommonMetadata::create(
+            &mut builder,
+            &CommonMetadataArgs {
+                lock_session: Some(session),
+                contract_serial_number: current_contract_serial,
+                serial_number: 0,
+                counter: 0,
+                event_id: Some(event_id_off),
+                correlation_id: None,
+            },
+        );
+
+        let started_update = StartedUpdate::create(
             &mut builder,
             &StartedUpdateArgs {
                 public_key: Some(pub_key_holder),
-                session: Some(session),
                 started_with_local_contract,
                 is_locked: self.is_locked,
-                current_contract_serial,
             },
         );
 
-        let payload_type = MessagePayload::StartedUpdate; // Union type
-        let payload_value = lock_update_event.as_union_value();
+        let event = Event::create(
+            &mut builder,
+            &EventArgs {
+                metadata: Some(metadata),
+                event_type: EventType::StartedUpdate,
+                event: Some(started_update.as_union_value()),
+            },
+        );
 
         let sig_bytes = signature.to_bytes();
         let signature_offset = builder.create_vector(sig_bytes.as_slice());
-        let signed_message = SignedMessage::create(
+        let signed_event = SignedEvent::create(
             &mut builder,
-            &SignedMessageArgs {
+            &SignedEventArgs {
                 signature: Some(signature_offset),
-                payload: Some(payload_value),
-                payload_type,
-                authority_identifier: None,
+                payload: Some(event),
             },
         );
 
-        builder.finish(signed_message, None);
+        builder.finish(signed_event, None);
         let data = builder.finished_data().to_vec();
 
-        let t = SignedMessageTransport::new(data, SignedMessages);
+        // Ephemeral: do not persist to NVS event_ring
+        let t = SignedMessageTransport::new(data, TopicType::LockEvents);
         self.enqueue_message(t);
     }
 
-    fn enqueue_periodic_update_message(&mut self, local_unlock: bool, local_lock: bool) {
-        let mut builder = FlatBufferBuilder::with_capacity(1024);
-        let session = builder.create_string(&self.session_token);
-
+    fn enqueue_periodic_update_message(&mut self) {
         let current_contract_serial = match &self.contract {
             Some(s) => s.serial_number,
             None => 0,
         };
-
-        let periodic_update_event = PeriodicUpdate::create(
-            &mut builder,
-            &PeriodicUpdateArgs {
-                session: Some(session),
-                is_locked: self.is_locked,
-                current_contract_serial,
-                local_unlock,
-                local_lock,
-                emergency_unlocked: self.emergency_unlocked,
-            },
-        );
-
-        let _payload_type = MessagePayload::StartedUpdate; // Union type
-        let _payload_value = periodic_update_event.as_union_value();
-
-        builder.finish(periodic_update_event, None);
-        let buffer = builder.finished_data();
-
-        let signature = calculate_signature_with_backend(buffer, self.backend.as_mut())
-            .expect("Failed to sign PeriodicUpdate message");
+        let event_id_str = format!("{}:{}:0", self.session_token, current_contract_serial);
+        let device_uptime =
+            (unsafe { esp_idf_svc::sys::esp_timer_get_time() }.max(0) as u64) / 1_000_000;
 
         let mut builder = FlatBufferBuilder::with_capacity(1024);
         let session = builder.create_string(&self.session_token);
+        let event_id_off = builder.create_string(&event_id_str);
 
-        let periodic_update_event = PeriodicUpdate::create(
+        let metadata = CommonMetadata::create(
+            &mut builder,
+            &CommonMetadataArgs {
+                lock_session: Some(session),
+                contract_serial_number: current_contract_serial,
+                serial_number: 0,
+                counter: 0,
+                event_id: Some(event_id_off),
+                correlation_id: None,
+            },
+        );
+
+        let periodic_update = PeriodicUpdate::create(
             &mut builder,
             &PeriodicUpdateArgs {
-                session: Some(session),
                 is_locked: self.is_locked,
-                current_contract_serial,
-                local_unlock,
-                local_lock,
                 emergency_unlocked: self.emergency_unlocked,
+                device_uptime,
             },
         );
 
-        let payload_type = MessagePayload::PeriodicUpdate; // Union type
-        let payload_value = periodic_update_event.as_union_value();
+        let event = Event::create(
+            &mut builder,
+            &EventArgs {
+                metadata: Some(metadata),
+                event_type: EventType::PeriodicUpdate,
+                event: Some(periodic_update.as_union_value()),
+            },
+        );
+
+        builder.finish(event, None);
+        let buffer = builder.finished_data();
+
+        let signature = calculate_signature_with_backend(buffer, self.backend.as_mut())
+            .expect("Failed to sign PeriodicUpdate event");
+
+        let mut builder = FlatBufferBuilder::with_capacity(1024);
+        let session = builder.create_string(&self.session_token);
+        let event_id_off = builder.create_string(&event_id_str);
+
+        let metadata = CommonMetadata::create(
+            &mut builder,
+            &CommonMetadataArgs {
+                lock_session: Some(session),
+                contract_serial_number: current_contract_serial,
+                serial_number: 0,
+                counter: 0,
+                event_id: Some(event_id_off),
+                correlation_id: None,
+            },
+        );
+
+        let periodic_update = PeriodicUpdate::create(
+            &mut builder,
+            &PeriodicUpdateArgs {
+                is_locked: self.is_locked,
+                emergency_unlocked: self.emergency_unlocked,
+                device_uptime,
+            },
+        );
+
+        let event = Event::create(
+            &mut builder,
+            &EventArgs {
+                metadata: Some(metadata),
+                event_type: EventType::PeriodicUpdate,
+                event: Some(periodic_update.as_union_value()),
+            },
+        );
 
         let signature_offset = builder.create_vector(signature.to_bytes().as_slice());
-        let signed_message = SignedMessage::create(
+        let signed_event = SignedEvent::create(
             &mut builder,
-            &SignedMessageArgs {
+            &SignedEventArgs {
                 signature: Some(signature_offset),
-                payload: Some(payload_value),
-                payload_type,
-                authority_identifier: None,
+                payload: Some(event),
             },
         );
 
-        builder.finish(signed_message, None);
+        builder.finish(signed_event, None);
         let data = builder.finished_data().to_vec();
-        let t = SignedMessageTransport::new(data, SignedMessages);
 
+        // Ephemeral: do not persist to NVS event_ring
+        let t = SignedMessageTransport::new(data, TopicType::LockEvents);
         self.enqueue_message(t);
+    }
+
+    fn create_durable_event_union<'a>(
+        builder: &mut FlatBufferBuilder<'a>,
+        event_type: EventType,
+    ) -> Option<flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>> {
+        match event_type {
+            EventType::AcceptContract => Some(
+                AcceptContract::create(builder, &AcceptContractArgs {}).as_union_value(),
+            ),
+            EventType::LocalLock => {
+                Some(LocalLock::create(builder, &LocalLockArgs {}).as_union_value())
+            }
+            EventType::LocalUnlock => {
+                Some(LocalUnlock::create(builder, &LocalUnlockArgs {}).as_union_value())
+            }
+            EventType::Lock => Some(Lock::create(builder, &LockArgs {}).as_union_value()),
+            EventType::Unlock => Some(Unlock::create(builder, &UnlockArgs {}).as_union_value()),
+            EventType::ReleaseContract => Some(
+                ReleaseContract::create(builder, &ReleaseContractArgs {}).as_union_value(),
+            ),
+            EventType::EmergencyUnlock => Some(
+                EmergencyUnlock::create(builder, &EmergencyUnlockArgs {}).as_union_value(),
+            ),
+            _ => None,
+        }
     }
 
     fn enqueue_bot_event(&mut self, event_type: EventType) {
@@ -1338,11 +1428,14 @@ impl LockCtx {
             },
         );
 
+        let event_union = Self::create_durable_event_union(&mut builder, event_type);
+
         let event = Event::create(
             &mut builder,
             &EventArgs {
                 metadata: Some(metadata),
                 event_type,
+                event: event_union,
             },
         );
 
@@ -1370,11 +1463,14 @@ impl LockCtx {
             },
         );
 
+        let event_union = Self::create_durable_event_union(&mut builder, event_type);
+
         let event = Event::create(
             &mut builder,
             &EventArgs {
                 metadata: Some(metadata),
                 event_type,
+                event: event_union,
             },
         );
 

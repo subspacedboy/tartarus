@@ -37,11 +37,14 @@ class Event : Table() {
             null
         }
     }
-    val eventType : Byte
+    val eventType : UByte
         get() {
             val o = __offset(6)
-            return if(o != 0) bb.get(o + bb_pos) else 0
+            return if(o != 0) bb.get(o + bb_pos).toUByte() else 0u
         }
+    fun event(obj: Table) : Table? {
+        val o = __offset(8); return if (o != 0) __union(obj, o + bb_pos) else null
+    }
     companion object {
         fun validateVersion() = Constants.FLATBUFFERS_24_3_25()
         fun getRootAsEvent(_bb: ByteBuffer): Event = getRootAsEvent(_bb, Event())
@@ -49,15 +52,17 @@ class Event : Table() {
             _bb.order(ByteOrder.LITTLE_ENDIAN)
             return (obj.__assign(_bb.getInt(_bb.position()) + _bb.position(), _bb))
         }
-        fun createEvent(builder: FlatBufferBuilder, metadataOffset: Int, eventType: Byte) : Int {
-            builder.startTable(2)
+        fun createEvent(builder: FlatBufferBuilder, metadataOffset: Int, eventType: UByte, eventOffset: Int) : Int {
+            builder.startTable(3)
+            addEvent(builder, eventOffset)
             addMetadata(builder, metadataOffset)
             addEventType(builder, eventType)
             return endEvent(builder)
         }
-        fun startEvent(builder: FlatBufferBuilder) = builder.startTable(2)
+        fun startEvent(builder: FlatBufferBuilder) = builder.startTable(3)
         fun addMetadata(builder: FlatBufferBuilder, metadata: Int) = builder.addOffset(0, metadata, 0)
-        fun addEventType(builder: FlatBufferBuilder, eventType: Byte) = builder.addByte(1, eventType, 0)
+        fun addEventType(builder: FlatBufferBuilder, eventType: UByte) = builder.addByte(1, eventType.toByte(), 0)
+        fun addEvent(builder: FlatBufferBuilder, event: Int) = builder.addOffset(2, event, 0)
         fun endEvent(builder: FlatBufferBuilder) : Int {
             val o = builder.endTable()
             return o

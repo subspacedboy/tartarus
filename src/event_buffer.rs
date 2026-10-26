@@ -293,6 +293,8 @@ impl PersistentEventRingBuffer {
                             crate::event_generated::club::subjugated::fb::event::EventType::Unlock => "Unlock",
                             crate::event_generated::club::subjugated::fb::event::EventType::ReleaseContract => "ReleaseContract",
                             crate::event_generated::club::subjugated::fb::event::EventType::EmergencyUnlock => "EmergencyUnlock",
+                            crate::event_generated::club::subjugated::fb::event::EventType::StartedUpdate => "StartedUpdate",
+                            crate::event_generated::club::subjugated::fb::event::EventType::PeriodicUpdate => "PeriodicUpdate",
                             _ => "Unknown",
                         };
                         (contract, counter, ev_type)
@@ -320,7 +322,8 @@ mod tests {
     use super::*;
     use flatbuffers::FlatBufferBuilder;
     use crate::event_generated::club::subjugated::fb::event::{
-        CommonMetadata, CommonMetadataArgs, Event, EventArgs, EventType, SignedEvent, SignedEventArgs,
+        CommonMetadata, CommonMetadataArgs, Event, EventArgs, EventType, Lock, LockArgs,
+        SignedEvent, SignedEventArgs,
     };
 
     #[test]
@@ -360,11 +363,13 @@ mod tests {
             },
         );
 
+        let lock_evt = Lock::create(&mut builder, &LockArgs {});
         let event = Event::create(
             &mut builder,
             &EventArgs {
                 metadata: Some(metadata),
                 event_type: EventType::Lock,
+                event: Some(lock_evt.as_union_value()),
             },
         );
 

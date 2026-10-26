@@ -2,13 +2,65 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
+import { AcceptContract } from '../../../../club/subjugated/fb/event/accept-contract.js';
+import { EmergencyUnlock } from '../../../../club/subjugated/fb/event/emergency-unlock.js';
+import { LocalLock } from '../../../../club/subjugated/fb/event/local-lock.js';
+import { LocalUnlock } from '../../../../club/subjugated/fb/event/local-unlock.js';
+import { Lock } from '../../../../club/subjugated/fb/event/lock.js';
+import { PeriodicUpdate } from '../../../../club/subjugated/fb/event/periodic-update.js';
+import { ReleaseContract } from '../../../../club/subjugated/fb/event/release-contract.js';
+import { StartedUpdate } from '../../../../club/subjugated/fb/event/started-update.js';
+import { Unlock } from '../../../../club/subjugated/fb/event/unlock.js';
+
+
 export enum EventType {
-  Undefined = 0,
+  NONE = 0,
   AcceptContract = 1,
   LocalLock = 2,
   LocalUnlock = 3,
   Lock = 4,
   Unlock = 5,
   ReleaseContract = 6,
-  EmergencyUnlock = 7
+  EmergencyUnlock = 7,
+  StartedUpdate = 8,
+  PeriodicUpdate = 9
+}
+
+export function unionToEventType(
+  type: EventType,
+  accessor: (obj:AcceptContract|EmergencyUnlock|LocalLock|LocalUnlock|Lock|PeriodicUpdate|ReleaseContract|StartedUpdate|Unlock) => AcceptContract|EmergencyUnlock|LocalLock|LocalUnlock|Lock|PeriodicUpdate|ReleaseContract|StartedUpdate|Unlock|null
+): AcceptContract|EmergencyUnlock|LocalLock|LocalUnlock|Lock|PeriodicUpdate|ReleaseContract|StartedUpdate|Unlock|null {
+  switch(EventType[type]) {
+    case 'NONE': return null; 
+    case 'AcceptContract': return accessor(new AcceptContract())! as AcceptContract;
+    case 'LocalLock': return accessor(new LocalLock())! as LocalLock;
+    case 'LocalUnlock': return accessor(new LocalUnlock())! as LocalUnlock;
+    case 'Lock': return accessor(new Lock())! as Lock;
+    case 'Unlock': return accessor(new Unlock())! as Unlock;
+    case 'ReleaseContract': return accessor(new ReleaseContract())! as ReleaseContract;
+    case 'EmergencyUnlock': return accessor(new EmergencyUnlock())! as EmergencyUnlock;
+    case 'StartedUpdate': return accessor(new StartedUpdate())! as StartedUpdate;
+    case 'PeriodicUpdate': return accessor(new PeriodicUpdate())! as PeriodicUpdate;
+    default: return null;
+  }
+}
+
+export function unionListToEventType(
+  type: EventType, 
+  accessor: (index: number, obj:AcceptContract|EmergencyUnlock|LocalLock|LocalUnlock|Lock|PeriodicUpdate|ReleaseContract|StartedUpdate|Unlock) => AcceptContract|EmergencyUnlock|LocalLock|LocalUnlock|Lock|PeriodicUpdate|ReleaseContract|StartedUpdate|Unlock|null, 
+  index: number
+): AcceptContract|EmergencyUnlock|LocalLock|LocalUnlock|Lock|PeriodicUpdate|ReleaseContract|StartedUpdate|Unlock|null {
+  switch(EventType[type]) {
+    case 'NONE': return null; 
+    case 'AcceptContract': return accessor(index, new AcceptContract())! as AcceptContract;
+    case 'LocalLock': return accessor(index, new LocalLock())! as LocalLock;
+    case 'LocalUnlock': return accessor(index, new LocalUnlock())! as LocalUnlock;
+    case 'Lock': return accessor(index, new Lock())! as Lock;
+    case 'Unlock': return accessor(index, new Unlock())! as Unlock;
+    case 'ReleaseContract': return accessor(index, new ReleaseContract())! as ReleaseContract;
+    case 'EmergencyUnlock': return accessor(index, new EmergencyUnlock())! as EmergencyUnlock;
+    case 'StartedUpdate': return accessor(index, new StartedUpdate())! as StartedUpdate;
+    case 'PeriodicUpdate': return accessor(index, new PeriodicUpdate())! as PeriodicUpdate;
+    default: return null;
+  }
 }

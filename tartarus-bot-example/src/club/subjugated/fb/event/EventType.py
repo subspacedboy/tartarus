@@ -3,7 +3,7 @@
 # namespace: event
 
 class EventType(object):
-    Undefined = 0
+    NONE = 0
     AcceptContract = 1
     LocalLock = 2
     LocalUnlock = 3
@@ -11,3 +11,5 @@ class EventType(object):
     Unlock = 5
     ReleaseContract = 6
     EmergencyUnlock = 7
+    StartedUpdate = 8
+    PeriodicUpdate = 9

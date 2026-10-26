@@ -5,13 +5,15 @@ package club.subjugated.fb.event
 @Suppress("unused")
 class EventType private constructor() {
     companion object {
-        const val Undefined: Byte = 0
-        const val AcceptContract: Byte = 1
-        const val LocalLock: Byte = 2
-        const val LocalUnlock: Byte = 3
-        const val Lock: Byte = 4
-        const val Unlock: Byte = 5
-        const val ReleaseContract: Byte = 6
-        const val EmergencyUnlock: Byte = 7
+        const val NONE: UByte = 0u
+        const val AcceptContract: UByte = 1u
+        const val LocalLock: UByte = 2u
+        const val LocalUnlock: UByte = 3u
+        const val Lock: UByte = 4u
+        const val Unlock: UByte = 5u
+        const val ReleaseContract: UByte = 6u
+        const val EmergencyUnlock: UByte = 7u
+        const val StartedUpdate: UByte = 8u
+        const val PeriodicUpdate: UByte = 9u
     }
 }

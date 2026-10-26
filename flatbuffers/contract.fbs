@@ -24,27 +24,6 @@ table Contract {
   is_emergency_unlock_allowed: bool = true;
 }
 
-table StartedUpdate {
-    public_key: [ubyte];
-    session: string;
-
-    started_with_local_contract: bool;
-
-    current_contract_serial: ushort;
-    is_locked: bool;
-}
-
-table PeriodicUpdate {
-  session: string;
-  is_locked: bool;
-  current_contract_serial: ushort;
-
-  local_unlock: bool;
-  local_lock: bool;
-
-  emergency_unlocked: bool = false;
-}
-
 table Acknowledgement {
     public_key: [ubyte];
     session: string;
@@ -93,8 +72,6 @@ union MessagePayload {
   LockCommand,
   UnlockCommand,
   ReleaseCommand,
-  StartedUpdate,
-  PeriodicUpdate,
   Acknowledgement,
   Error,
   AbortCommand,

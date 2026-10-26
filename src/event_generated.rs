@@ -17,13 +17,13 @@ pub mod event {
 
 
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
-pub const ENUM_MIN_EVENT_TYPE: i8 = 0;
+pub const ENUM_MIN_EVENT_TYPE: u8 = 0;
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
-pub const ENUM_MAX_EVENT_TYPE: i8 = 7;
+pub const ENUM_MAX_EVENT_TYPE: u8 = 9;
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
 #[allow(non_camel_case_types)]
-pub const ENUM_VALUES_EVENT_TYPE: [EventType; 8] = [
-  EventType::Undefined,
+pub const ENUM_VALUES_EVENT_TYPE: [EventType; 10] = [
+  EventType::NONE,
   EventType::AcceptContract,
   EventType::LocalLock,
   EventType::LocalUnlock,
@@ -31,14 +31,16 @@ pub const ENUM_VALUES_EVENT_TYPE: [EventType; 8] = [
   EventType::Unlock,
   EventType::ReleaseContract,
   EventType::EmergencyUnlock,
+  EventType::StartedUpdate,
+  EventType::PeriodicUpdate,
 ];
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[repr(transparent)]
-pub struct EventType(pub i8);
+pub struct EventType(pub u8);
 #[allow(non_upper_case_globals)]
 impl EventType {
-  pub const Undefined: Self = Self(0);
+  pub const NONE: Self = Self(0);
   pub const AcceptContract: Self = Self(1);
   pub const LocalLock: Self = Self(2);
   pub const LocalUnlock: Self = Self(3);
@@ -46,11 +48,13 @@ impl EventType {
   pub const Unlock: Self = Self(5);
   pub const ReleaseContract: Self = Self(6);
   pub const EmergencyUnlock: Self = Self(7);
+  pub const StartedUpdate: Self = Self(8);
+  pub const PeriodicUpdate: Self = Self(9);
 
-  pub const ENUM_MIN: i8 = 0;
-  pub const ENUM_MAX: i8 = 7;
+  pub const ENUM_MIN: u8 = 0;
+  pub const ENUM_MAX: u8 = 9;
   pub const ENUM_VALUES: &'static [Self] = &[
-    Self::Undefined,
+    Self::NONE,
     Self::AcceptContract,
     Self::LocalLock,
     Self::LocalUnlock,
@@ -58,11 +62,13 @@ impl EventType {
     Self::Unlock,
     Self::ReleaseContract,
     Self::EmergencyUnlock,
+    Self::StartedUpdate,
+    Self::PeriodicUpdate,
   ];
   /// Returns the variant's name or "" if unknown.
   pub fn variant_name(self) -> Option<&'static str> {
     match self {
-      Self::Undefined => Some("Undefined"),
+      Self::NONE => Some("NONE"),
       Self::AcceptContract => Some("AcceptContract"),
       Self::LocalLock => Some("LocalLock"),
       Self::LocalUnlock => Some("LocalUnlock"),
@@ -70,6 +76,8 @@ impl EventType {
       Self::Unlock => Some("Unlock"),
       Self::ReleaseContract => Some("ReleaseContract"),
       Self::EmergencyUnlock => Some("EmergencyUnlock"),
+      Self::StartedUpdate => Some("StartedUpdate"),
+      Self::PeriodicUpdate => Some("PeriodicUpdate"),
       _ => None,
     }
   }
@@ -87,7 +95,7 @@ impl<'a> ::flatbuffers::Follow<'a> for EventType {
   type Inner = Self;
   #[inline]
   unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-    let b = unsafe { ::flatbuffers::read_scalar_at::<i8>(buf, loc) };
+    let b = unsafe { ::flatbuffers::read_scalar_at::<u8>(buf, loc) };
     Self(b)
   }
 }
@@ -96,20 +104,20 @@ impl ::flatbuffers::Push for EventType {
     type Output = EventType;
     #[inline]
     unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
-        unsafe { ::flatbuffers::emplace_scalar::<i8>(dst, self.0) };
+        unsafe { ::flatbuffers::emplace_scalar::<u8>(dst, self.0) };
     }
 }
 
 impl ::flatbuffers::EndianScalar for EventType {
-  type Scalar = i8;
+  type Scalar = u8;
   #[inline]
-  fn to_little_endian(self) -> i8 {
+  fn to_little_endian(self) -> u8 {
     self.0.to_le()
   }
   #[inline]
   #[allow(clippy::wrong_self_convention)]
-  fn from_little_endian(v: i8) -> Self {
-    let b = i8::from_le(v);
+  fn from_little_endian(v: u8) -> Self {
+    let b = u8::from_le(v);
     Self(b)
   }
 }
@@ -119,11 +127,13 @@ impl<'a> ::flatbuffers::Verifiable for EventType {
   fn run_verifier(
     v: &mut ::flatbuffers::Verifier, pos: usize
   ) -> Result<(), ::flatbuffers::InvalidFlatbuffer> {
-    i8::run_verifier(v, pos)
+    u8::run_verifier(v, pos)
   }
 }
 
 impl ::flatbuffers::SimpleToVerifyInSlice for EventType {}
+pub struct EventTypeUnionTableOffset {}
+
 pub enum CommonMetadataOffset {}
 #[derive(Copy, Clone, PartialEq)]
 
@@ -305,6 +315,812 @@ impl ::core::fmt::Debug for CommonMetadata<'_> {
       ds.finish()
   }
 }
+pub enum AcceptContractOffset {}
+#[derive(Copy, Clone, PartialEq)]
+
+pub struct AcceptContract<'a> {
+  pub _tab: ::flatbuffers::Table<'a>,
+}
+
+impl<'a> ::flatbuffers::Follow<'a> for AcceptContract<'a> {
+  type Inner = AcceptContract<'a>;
+  #[inline]
+  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    Self { _tab: unsafe { ::flatbuffers::Table::new(buf, loc) } }
+  }
+}
+
+impl<'a> AcceptContract<'a> {
+
+  #[inline]
+  pub unsafe fn init_from_table(table: ::flatbuffers::Table<'a>) -> Self {
+    AcceptContract { _tab: table }
+  }
+  #[allow(unused_mut)]
+  pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: ::flatbuffers::Allocator + 'bldr>(
+    _fbb: &'mut_bldr mut ::flatbuffers::FlatBufferBuilder<'bldr, A>,
+    _args: &'args AcceptContractArgs
+  ) -> ::flatbuffers::WIPOffset<AcceptContract<'bldr>> {
+    let mut builder = AcceptContractBuilder::new(_fbb);
+    builder.finish()
+  }
+
+}
+
+impl ::flatbuffers::Verifiable for AcceptContract<'_> {
+  #[inline]
+  fn run_verifier(
+    v: &mut ::flatbuffers::Verifier, pos: usize
+  ) -> Result<(), ::flatbuffers::InvalidFlatbuffer> {
+    v.visit_table(pos)?
+     .finish();
+    Ok(())
+  }
+}
+pub struct AcceptContractArgs {
+}
+impl<'a> Default for AcceptContractArgs {
+  #[inline]
+  fn default() -> Self {
+    AcceptContractArgs {
+    }
+  }
+}
+
+pub struct AcceptContractBuilder<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> {
+  fbb_: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>,
+  start_: ::flatbuffers::WIPOffset<::flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> AcceptContractBuilder<'a, 'b, A> {
+  #[inline]
+  pub fn new(_fbb: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>) -> AcceptContractBuilder<'a, 'b, A> {
+    let start = _fbb.start_table();
+    AcceptContractBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> ::flatbuffers::WIPOffset<AcceptContract<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    ::flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+impl ::core::fmt::Debug for AcceptContract<'_> {
+  fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+    let mut ds = f.debug_struct("AcceptContract");
+      ds.finish()
+  }
+}
+pub enum LocalLockOffset {}
+#[derive(Copy, Clone, PartialEq)]
+
+pub struct LocalLock<'a> {
+  pub _tab: ::flatbuffers::Table<'a>,
+}
+
+impl<'a> ::flatbuffers::Follow<'a> for LocalLock<'a> {
+  type Inner = LocalLock<'a>;
+  #[inline]
+  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    Self { _tab: unsafe { ::flatbuffers::Table::new(buf, loc) } }
+  }
+}
+
+impl<'a> LocalLock<'a> {
+
+  #[inline]
+  pub unsafe fn init_from_table(table: ::flatbuffers::Table<'a>) -> Self {
+    LocalLock { _tab: table }
+  }
+  #[allow(unused_mut)]
+  pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: ::flatbuffers::Allocator + 'bldr>(
+    _fbb: &'mut_bldr mut ::flatbuffers::FlatBufferBuilder<'bldr, A>,
+    _args: &'args LocalLockArgs
+  ) -> ::flatbuffers::WIPOffset<LocalLock<'bldr>> {
+    let mut builder = LocalLockBuilder::new(_fbb);
+    builder.finish()
+  }
+
+}
+
+impl ::flatbuffers::Verifiable for LocalLock<'_> {
+  #[inline]
+  fn run_verifier(
+    v: &mut ::flatbuffers::Verifier, pos: usize
+  ) -> Result<(), ::flatbuffers::InvalidFlatbuffer> {
+    v.visit_table(pos)?
+     .finish();
+    Ok(())
+  }
+}
+pub struct LocalLockArgs {
+}
+impl<'a> Default for LocalLockArgs {
+  #[inline]
+  fn default() -> Self {
+    LocalLockArgs {
+    }
+  }
+}
+
+pub struct LocalLockBuilder<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> {
+  fbb_: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>,
+  start_: ::flatbuffers::WIPOffset<::flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> LocalLockBuilder<'a, 'b, A> {
+  #[inline]
+  pub fn new(_fbb: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>) -> LocalLockBuilder<'a, 'b, A> {
+    let start = _fbb.start_table();
+    LocalLockBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> ::flatbuffers::WIPOffset<LocalLock<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    ::flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+impl ::core::fmt::Debug for LocalLock<'_> {
+  fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+    let mut ds = f.debug_struct("LocalLock");
+      ds.finish()
+  }
+}
+pub enum LocalUnlockOffset {}
+#[derive(Copy, Clone, PartialEq)]
+
+pub struct LocalUnlock<'a> {
+  pub _tab: ::flatbuffers::Table<'a>,
+}
+
+impl<'a> ::flatbuffers::Follow<'a> for LocalUnlock<'a> {
+  type Inner = LocalUnlock<'a>;
+  #[inline]
+  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    Self { _tab: unsafe { ::flatbuffers::Table::new(buf, loc) } }
+  }
+}
+
+impl<'a> LocalUnlock<'a> {
+
+  #[inline]
+  pub unsafe fn init_from_table(table: ::flatbuffers::Table<'a>) -> Self {
+    LocalUnlock { _tab: table }
+  }
+  #[allow(unused_mut)]
+  pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: ::flatbuffers::Allocator + 'bldr>(
+    _fbb: &'mut_bldr mut ::flatbuffers::FlatBufferBuilder<'bldr, A>,
+    _args: &'args LocalUnlockArgs
+  ) -> ::flatbuffers::WIPOffset<LocalUnlock<'bldr>> {
+    let mut builder = LocalUnlockBuilder::new(_fbb);
+    builder.finish()
+  }
+
+}
+
+impl ::flatbuffers::Verifiable for LocalUnlock<'_> {
+  #[inline]
+  fn run_verifier(
+    v: &mut ::flatbuffers::Verifier, pos: usize
+  ) -> Result<(), ::flatbuffers::InvalidFlatbuffer> {
+    v.visit_table(pos)?
+     .finish();
+    Ok(())
+  }
+}
+pub struct LocalUnlockArgs {
+}
+impl<'a> Default for LocalUnlockArgs {
+  #[inline]
+  fn default() -> Self {
+    LocalUnlockArgs {
+    }
+  }
+}
+
+pub struct LocalUnlockBuilder<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> {
+  fbb_: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>,
+  start_: ::flatbuffers::WIPOffset<::flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> LocalUnlockBuilder<'a, 'b, A> {
+  #[inline]
+  pub fn new(_fbb: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>) -> LocalUnlockBuilder<'a, 'b, A> {
+    let start = _fbb.start_table();
+    LocalUnlockBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> ::flatbuffers::WIPOffset<LocalUnlock<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    ::flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+impl ::core::fmt::Debug for LocalUnlock<'_> {
+  fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+    let mut ds = f.debug_struct("LocalUnlock");
+      ds.finish()
+  }
+}
+pub enum LockOffset {}
+#[derive(Copy, Clone, PartialEq)]
+
+pub struct Lock<'a> {
+  pub _tab: ::flatbuffers::Table<'a>,
+}
+
+impl<'a> ::flatbuffers::Follow<'a> for Lock<'a> {
+  type Inner = Lock<'a>;
+  #[inline]
+  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    Self { _tab: unsafe { ::flatbuffers::Table::new(buf, loc) } }
+  }
+}
+
+impl<'a> Lock<'a> {
+
+  #[inline]
+  pub unsafe fn init_from_table(table: ::flatbuffers::Table<'a>) -> Self {
+    Lock { _tab: table }
+  }
+  #[allow(unused_mut)]
+  pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: ::flatbuffers::Allocator + 'bldr>(
+    _fbb: &'mut_bldr mut ::flatbuffers::FlatBufferBuilder<'bldr, A>,
+    _args: &'args LockArgs
+  ) -> ::flatbuffers::WIPOffset<Lock<'bldr>> {
+    let mut builder = LockBuilder::new(_fbb);
+    builder.finish()
+  }
+
+}
+
+impl ::flatbuffers::Verifiable for Lock<'_> {
+  #[inline]
+  fn run_verifier(
+    v: &mut ::flatbuffers::Verifier, pos: usize
+  ) -> Result<(), ::flatbuffers::InvalidFlatbuffer> {
+    v.visit_table(pos)?
+     .finish();
+    Ok(())
+  }
+}
+pub struct LockArgs {
+}
+impl<'a> Default for LockArgs {
+  #[inline]
+  fn default() -> Self {
+    LockArgs {
+    }
+  }
+}
+
+pub struct LockBuilder<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> {
+  fbb_: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>,
+  start_: ::flatbuffers::WIPOffset<::flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> LockBuilder<'a, 'b, A> {
+  #[inline]
+  pub fn new(_fbb: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>) -> LockBuilder<'a, 'b, A> {
+    let start = _fbb.start_table();
+    LockBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> ::flatbuffers::WIPOffset<Lock<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    ::flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+impl ::core::fmt::Debug for Lock<'_> {
+  fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+    let mut ds = f.debug_struct("Lock");
+      ds.finish()
+  }
+}
+pub enum UnlockOffset {}
+#[derive(Copy, Clone, PartialEq)]
+
+pub struct Unlock<'a> {
+  pub _tab: ::flatbuffers::Table<'a>,
+}
+
+impl<'a> ::flatbuffers::Follow<'a> for Unlock<'a> {
+  type Inner = Unlock<'a>;
+  #[inline]
+  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    Self { _tab: unsafe { ::flatbuffers::Table::new(buf, loc) } }
+  }
+}
+
+impl<'a> Unlock<'a> {
+
+  #[inline]
+  pub unsafe fn init_from_table(table: ::flatbuffers::Table<'a>) -> Self {
+    Unlock { _tab: table }
+  }
+  #[allow(unused_mut)]
+  pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: ::flatbuffers::Allocator + 'bldr>(
+    _fbb: &'mut_bldr mut ::flatbuffers::FlatBufferBuilder<'bldr, A>,
+    _args: &'args UnlockArgs
+  ) -> ::flatbuffers::WIPOffset<Unlock<'bldr>> {
+    let mut builder = UnlockBuilder::new(_fbb);
+    builder.finish()
+  }
+
+}
+
+impl ::flatbuffers::Verifiable for Unlock<'_> {
+  #[inline]
+  fn run_verifier(
+    v: &mut ::flatbuffers::Verifier, pos: usize
+  ) -> Result<(), ::flatbuffers::InvalidFlatbuffer> {
+    v.visit_table(pos)?
+     .finish();
+    Ok(())
+  }
+}
+pub struct UnlockArgs {
+}
+impl<'a> Default for UnlockArgs {
+  #[inline]
+  fn default() -> Self {
+    UnlockArgs {
+    }
+  }
+}
+
+pub struct UnlockBuilder<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> {
+  fbb_: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>,
+  start_: ::flatbuffers::WIPOffset<::flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> UnlockBuilder<'a, 'b, A> {
+  #[inline]
+  pub fn new(_fbb: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>) -> UnlockBuilder<'a, 'b, A> {
+    let start = _fbb.start_table();
+    UnlockBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> ::flatbuffers::WIPOffset<Unlock<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    ::flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+impl ::core::fmt::Debug for Unlock<'_> {
+  fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+    let mut ds = f.debug_struct("Unlock");
+      ds.finish()
+  }
+}
+pub enum ReleaseContractOffset {}
+#[derive(Copy, Clone, PartialEq)]
+
+pub struct ReleaseContract<'a> {
+  pub _tab: ::flatbuffers::Table<'a>,
+}
+
+impl<'a> ::flatbuffers::Follow<'a> for ReleaseContract<'a> {
+  type Inner = ReleaseContract<'a>;
+  #[inline]
+  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    Self { _tab: unsafe { ::flatbuffers::Table::new(buf, loc) } }
+  }
+}
+
+impl<'a> ReleaseContract<'a> {
+
+  #[inline]
+  pub unsafe fn init_from_table(table: ::flatbuffers::Table<'a>) -> Self {
+    ReleaseContract { _tab: table }
+  }
+  #[allow(unused_mut)]
+  pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: ::flatbuffers::Allocator + 'bldr>(
+    _fbb: &'mut_bldr mut ::flatbuffers::FlatBufferBuilder<'bldr, A>,
+    _args: &'args ReleaseContractArgs
+  ) -> ::flatbuffers::WIPOffset<ReleaseContract<'bldr>> {
+    let mut builder = ReleaseContractBuilder::new(_fbb);
+    builder.finish()
+  }
+
+}
+
+impl ::flatbuffers::Verifiable for ReleaseContract<'_> {
+  #[inline]
+  fn run_verifier(
+    v: &mut ::flatbuffers::Verifier, pos: usize
+  ) -> Result<(), ::flatbuffers::InvalidFlatbuffer> {
+    v.visit_table(pos)?
+     .finish();
+    Ok(())
+  }
+}
+pub struct ReleaseContractArgs {
+}
+impl<'a> Default for ReleaseContractArgs {
+  #[inline]
+  fn default() -> Self {
+    ReleaseContractArgs {
+    }
+  }
+}
+
+pub struct ReleaseContractBuilder<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> {
+  fbb_: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>,
+  start_: ::flatbuffers::WIPOffset<::flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> ReleaseContractBuilder<'a, 'b, A> {
+  #[inline]
+  pub fn new(_fbb: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>) -> ReleaseContractBuilder<'a, 'b, A> {
+    let start = _fbb.start_table();
+    ReleaseContractBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> ::flatbuffers::WIPOffset<ReleaseContract<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    ::flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+impl ::core::fmt::Debug for ReleaseContract<'_> {
+  fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+    let mut ds = f.debug_struct("ReleaseContract");
+      ds.finish()
+  }
+}
+pub enum EmergencyUnlockOffset {}
+#[derive(Copy, Clone, PartialEq)]
+
+pub struct EmergencyUnlock<'a> {
+  pub _tab: ::flatbuffers::Table<'a>,
+}
+
+impl<'a> ::flatbuffers::Follow<'a> for EmergencyUnlock<'a> {
+  type Inner = EmergencyUnlock<'a>;
+  #[inline]
+  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    Self { _tab: unsafe { ::flatbuffers::Table::new(buf, loc) } }
+  }
+}
+
+impl<'a> EmergencyUnlock<'a> {
+
+  #[inline]
+  pub unsafe fn init_from_table(table: ::flatbuffers::Table<'a>) -> Self {
+    EmergencyUnlock { _tab: table }
+  }
+  #[allow(unused_mut)]
+  pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: ::flatbuffers::Allocator + 'bldr>(
+    _fbb: &'mut_bldr mut ::flatbuffers::FlatBufferBuilder<'bldr, A>,
+    _args: &'args EmergencyUnlockArgs
+  ) -> ::flatbuffers::WIPOffset<EmergencyUnlock<'bldr>> {
+    let mut builder = EmergencyUnlockBuilder::new(_fbb);
+    builder.finish()
+  }
+
+}
+
+impl ::flatbuffers::Verifiable for EmergencyUnlock<'_> {
+  #[inline]
+  fn run_verifier(
+    v: &mut ::flatbuffers::Verifier, pos: usize
+  ) -> Result<(), ::flatbuffers::InvalidFlatbuffer> {
+    v.visit_table(pos)?
+     .finish();
+    Ok(())
+  }
+}
+pub struct EmergencyUnlockArgs {
+}
+impl<'a> Default for EmergencyUnlockArgs {
+  #[inline]
+  fn default() -> Self {
+    EmergencyUnlockArgs {
+    }
+  }
+}
+
+pub struct EmergencyUnlockBuilder<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> {
+  fbb_: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>,
+  start_: ::flatbuffers::WIPOffset<::flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> EmergencyUnlockBuilder<'a, 'b, A> {
+  #[inline]
+  pub fn new(_fbb: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>) -> EmergencyUnlockBuilder<'a, 'b, A> {
+    let start = _fbb.start_table();
+    EmergencyUnlockBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> ::flatbuffers::WIPOffset<EmergencyUnlock<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    ::flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+impl ::core::fmt::Debug for EmergencyUnlock<'_> {
+  fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+    let mut ds = f.debug_struct("EmergencyUnlock");
+      ds.finish()
+  }
+}
+pub enum StartedUpdateOffset {}
+#[derive(Copy, Clone, PartialEq)]
+
+pub struct StartedUpdate<'a> {
+  pub _tab: ::flatbuffers::Table<'a>,
+}
+
+impl<'a> ::flatbuffers::Follow<'a> for StartedUpdate<'a> {
+  type Inner = StartedUpdate<'a>;
+  #[inline]
+  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    Self { _tab: unsafe { ::flatbuffers::Table::new(buf, loc) } }
+  }
+}
+
+impl<'a> StartedUpdate<'a> {
+  pub const VT_PUBLIC_KEY: ::flatbuffers::VOffsetT = 4;
+  pub const VT_STARTED_WITH_LOCAL_CONTRACT: ::flatbuffers::VOffsetT = 6;
+  pub const VT_IS_LOCKED: ::flatbuffers::VOffsetT = 8;
+
+  #[inline]
+  pub unsafe fn init_from_table(table: ::flatbuffers::Table<'a>) -> Self {
+    StartedUpdate { _tab: table }
+  }
+  #[allow(unused_mut)]
+  pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: ::flatbuffers::Allocator + 'bldr>(
+    _fbb: &'mut_bldr mut ::flatbuffers::FlatBufferBuilder<'bldr, A>,
+    args: &'args StartedUpdateArgs<'args>
+  ) -> ::flatbuffers::WIPOffset<StartedUpdate<'bldr>> {
+    let mut builder = StartedUpdateBuilder::new(_fbb);
+    if let Some(x) = args.public_key { builder.add_public_key(x); }
+    builder.add_is_locked(args.is_locked);
+    builder.add_started_with_local_contract(args.started_with_local_contract);
+    builder.finish()
+  }
+
+
+  #[inline]
+  pub fn public_key(&self) -> Option<::flatbuffers::Vector<'a, u8>> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<::flatbuffers::ForwardsUOffset<::flatbuffers::Vector<'a, u8>>>(StartedUpdate::VT_PUBLIC_KEY, None)}
+  }
+  #[inline]
+  pub fn started_with_local_contract(&self) -> bool {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<bool>(StartedUpdate::VT_STARTED_WITH_LOCAL_CONTRACT, Some(false)).unwrap()}
+  }
+  #[inline]
+  pub fn is_locked(&self) -> bool {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<bool>(StartedUpdate::VT_IS_LOCKED, Some(false)).unwrap()}
+  }
+}
+
+impl ::flatbuffers::Verifiable for StartedUpdate<'_> {
+  #[inline]
+  fn run_verifier(
+    v: &mut ::flatbuffers::Verifier, pos: usize
+  ) -> Result<(), ::flatbuffers::InvalidFlatbuffer> {
+    v.visit_table(pos)?
+     .visit_field::<::flatbuffers::ForwardsUOffset<::flatbuffers::Vector<'_, u8>>>("public_key", Self::VT_PUBLIC_KEY, false)?
+     .visit_field::<bool>("started_with_local_contract", Self::VT_STARTED_WITH_LOCAL_CONTRACT, false)?
+     .visit_field::<bool>("is_locked", Self::VT_IS_LOCKED, false)?
+     .finish();
+    Ok(())
+  }
+}
+pub struct StartedUpdateArgs<'a> {
+    pub public_key: Option<::flatbuffers::WIPOffset<::flatbuffers::Vector<'a, u8>>>,
+    pub started_with_local_contract: bool,
+    pub is_locked: bool,
+}
+impl<'a> Default for StartedUpdateArgs<'a> {
+  #[inline]
+  fn default() -> Self {
+    StartedUpdateArgs {
+      public_key: None,
+      started_with_local_contract: false,
+      is_locked: false,
+    }
+  }
+}
+
+pub struct StartedUpdateBuilder<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> {
+  fbb_: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>,
+  start_: ::flatbuffers::WIPOffset<::flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> StartedUpdateBuilder<'a, 'b, A> {
+  #[inline]
+  pub fn add_public_key(&mut self, public_key: ::flatbuffers::WIPOffset<::flatbuffers::Vector<'b , u8>>) {
+    self.fbb_.push_slot_always::<::flatbuffers::WIPOffset<_>>(StartedUpdate::VT_PUBLIC_KEY, public_key);
+  }
+  #[inline]
+  pub fn add_started_with_local_contract(&mut self, started_with_local_contract: bool) {
+    self.fbb_.push_slot::<bool>(StartedUpdate::VT_STARTED_WITH_LOCAL_CONTRACT, started_with_local_contract, false);
+  }
+  #[inline]
+  pub fn add_is_locked(&mut self, is_locked: bool) {
+    self.fbb_.push_slot::<bool>(StartedUpdate::VT_IS_LOCKED, is_locked, false);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>) -> StartedUpdateBuilder<'a, 'b, A> {
+    let start = _fbb.start_table();
+    StartedUpdateBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> ::flatbuffers::WIPOffset<StartedUpdate<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    ::flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+impl ::core::fmt::Debug for StartedUpdate<'_> {
+  fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+    let mut ds = f.debug_struct("StartedUpdate");
+      ds.field("public_key", &self.public_key());
+      ds.field("started_with_local_contract", &self.started_with_local_contract());
+      ds.field("is_locked", &self.is_locked());
+      ds.finish()
+  }
+}
+pub enum PeriodicUpdateOffset {}
+#[derive(Copy, Clone, PartialEq)]
+
+pub struct PeriodicUpdate<'a> {
+  pub _tab: ::flatbuffers::Table<'a>,
+}
+
+impl<'a> ::flatbuffers::Follow<'a> for PeriodicUpdate<'a> {
+  type Inner = PeriodicUpdate<'a>;
+  #[inline]
+  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    Self { _tab: unsafe { ::flatbuffers::Table::new(buf, loc) } }
+  }
+}
+
+impl<'a> PeriodicUpdate<'a> {
+  pub const VT_IS_LOCKED: ::flatbuffers::VOffsetT = 4;
+  pub const VT_EMERGENCY_UNLOCKED: ::flatbuffers::VOffsetT = 6;
+  pub const VT_DEVICE_UPTIME: ::flatbuffers::VOffsetT = 8;
+
+  #[inline]
+  pub unsafe fn init_from_table(table: ::flatbuffers::Table<'a>) -> Self {
+    PeriodicUpdate { _tab: table }
+  }
+  #[allow(unused_mut)]
+  pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: ::flatbuffers::Allocator + 'bldr>(
+    _fbb: &'mut_bldr mut ::flatbuffers::FlatBufferBuilder<'bldr, A>,
+    args: &'args PeriodicUpdateArgs
+  ) -> ::flatbuffers::WIPOffset<PeriodicUpdate<'bldr>> {
+    let mut builder = PeriodicUpdateBuilder::new(_fbb);
+    builder.add_device_uptime(args.device_uptime);
+    builder.add_emergency_unlocked(args.emergency_unlocked);
+    builder.add_is_locked(args.is_locked);
+    builder.finish()
+  }
+
+
+  #[inline]
+  pub fn is_locked(&self) -> bool {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<bool>(PeriodicUpdate::VT_IS_LOCKED, Some(false)).unwrap()}
+  }
+  #[inline]
+  pub fn emergency_unlocked(&self) -> bool {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<bool>(PeriodicUpdate::VT_EMERGENCY_UNLOCKED, Some(false)).unwrap()}
+  }
+  #[inline]
+  pub fn device_uptime(&self) -> u64 {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<u64>(PeriodicUpdate::VT_DEVICE_UPTIME, Some(0)).unwrap()}
+  }
+}
+
+impl ::flatbuffers::Verifiable for PeriodicUpdate<'_> {
+  #[inline]
+  fn run_verifier(
+    v: &mut ::flatbuffers::Verifier, pos: usize
+  ) -> Result<(), ::flatbuffers::InvalidFlatbuffer> {
+    v.visit_table(pos)?
+     .visit_field::<bool>("is_locked", Self::VT_IS_LOCKED, false)?
+     .visit_field::<bool>("emergency_unlocked", Self::VT_EMERGENCY_UNLOCKED, false)?
+     .visit_field::<u64>("device_uptime", Self::VT_DEVICE_UPTIME, false)?
+     .finish();
+    Ok(())
+  }
+}
+pub struct PeriodicUpdateArgs {
+    pub is_locked: bool,
+    pub emergency_unlocked: bool,
+    pub device_uptime: u64,
+}
+impl<'a> Default for PeriodicUpdateArgs {
+  #[inline]
+  fn default() -> Self {
+    PeriodicUpdateArgs {
+      is_locked: false,
+      emergency_unlocked: false,
+      device_uptime: 0,
+    }
+  }
+}
+
+pub struct PeriodicUpdateBuilder<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> {
+  fbb_: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>,
+  start_: ::flatbuffers::WIPOffset<::flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> PeriodicUpdateBuilder<'a, 'b, A> {
+  #[inline]
+  pub fn add_is_locked(&mut self, is_locked: bool) {
+    self.fbb_.push_slot::<bool>(PeriodicUpdate::VT_IS_LOCKED, is_locked, false);
+  }
+  #[inline]
+  pub fn add_emergency_unlocked(&mut self, emergency_unlocked: bool) {
+    self.fbb_.push_slot::<bool>(PeriodicUpdate::VT_EMERGENCY_UNLOCKED, emergency_unlocked, false);
+  }
+  #[inline]
+  pub fn add_device_uptime(&mut self, device_uptime: u64) {
+    self.fbb_.push_slot::<u64>(PeriodicUpdate::VT_DEVICE_UPTIME, device_uptime, 0);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>) -> PeriodicUpdateBuilder<'a, 'b, A> {
+    let start = _fbb.start_table();
+    PeriodicUpdateBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> ::flatbuffers::WIPOffset<PeriodicUpdate<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    ::flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+impl ::core::fmt::Debug for PeriodicUpdate<'_> {
+  fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+    let mut ds = f.debug_struct("PeriodicUpdate");
+      ds.field("is_locked", &self.is_locked());
+      ds.field("emergency_unlocked", &self.emergency_unlocked());
+      ds.field("device_uptime", &self.device_uptime());
+      ds.finish()
+  }
+}
 pub enum EventOffset {}
 #[derive(Copy, Clone, PartialEq)]
 
@@ -323,6 +1139,7 @@ impl<'a> ::flatbuffers::Follow<'a> for Event<'a> {
 impl<'a> Event<'a> {
   pub const VT_METADATA: ::flatbuffers::VOffsetT = 4;
   pub const VT_EVENT_TYPE: ::flatbuffers::VOffsetT = 6;
+  pub const VT_EVENT: ::flatbuffers::VOffsetT = 8;
 
   #[inline]
   pub unsafe fn init_from_table(table: ::flatbuffers::Table<'a>) -> Self {
@@ -334,6 +1151,7 @@ impl<'a> Event<'a> {
     args: &'args EventArgs<'args>
   ) -> ::flatbuffers::WIPOffset<Event<'bldr>> {
     let mut builder = EventBuilder::new(_fbb);
+    if let Some(x) = args.event { builder.add_event(x); }
     if let Some(x) = args.metadata { builder.add_metadata(x); }
     builder.add_event_type(args.event_type);
     builder.finish()
@@ -352,8 +1170,150 @@ impl<'a> Event<'a> {
     // Safety:
     // Created from valid Table for this object
     // which contains a valid value in this slot
-    unsafe { self._tab.get::<EventType>(Event::VT_EVENT_TYPE, Some(EventType::Undefined)).unwrap()}
+    unsafe { self._tab.get::<EventType>(Event::VT_EVENT_TYPE, Some(EventType::NONE)).unwrap()}
   }
+  #[inline]
+  pub fn event(&self) -> Option<::flatbuffers::Table<'a>> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<::flatbuffers::ForwardsUOffset<::flatbuffers::Table<'a>>>(Event::VT_EVENT, None)}
+  }
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn event_as_accept_contract(&self) -> Option<AcceptContract<'a>> {
+    if self.event_type() == EventType::AcceptContract {
+      self.event().map(|t| {
+       // Safety:
+       // Created from a valid Table for this object
+       // Which contains a valid union in this slot
+       unsafe { AcceptContract::init_from_table(t) }
+     })
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn event_as_local_lock(&self) -> Option<LocalLock<'a>> {
+    if self.event_type() == EventType::LocalLock {
+      self.event().map(|t| {
+       // Safety:
+       // Created from a valid Table for this object
+       // Which contains a valid union in this slot
+       unsafe { LocalLock::init_from_table(t) }
+     })
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn event_as_local_unlock(&self) -> Option<LocalUnlock<'a>> {
+    if self.event_type() == EventType::LocalUnlock {
+      self.event().map(|t| {
+       // Safety:
+       // Created from a valid Table for this object
+       // Which contains a valid union in this slot
+       unsafe { LocalUnlock::init_from_table(t) }
+     })
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn event_as_lock(&self) -> Option<Lock<'a>> {
+    if self.event_type() == EventType::Lock {
+      self.event().map(|t| {
+       // Safety:
+       // Created from a valid Table for this object
+       // Which contains a valid union in this slot
+       unsafe { Lock::init_from_table(t) }
+     })
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn event_as_unlock(&self) -> Option<Unlock<'a>> {
+    if self.event_type() == EventType::Unlock {
+      self.event().map(|t| {
+       // Safety:
+       // Created from a valid Table for this object
+       // Which contains a valid union in this slot
+       unsafe { Unlock::init_from_table(t) }
+     })
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn event_as_release_contract(&self) -> Option<ReleaseContract<'a>> {
+    if self.event_type() == EventType::ReleaseContract {
+      self.event().map(|t| {
+       // Safety:
+       // Created from a valid Table for this object
+       // Which contains a valid union in this slot
+       unsafe { ReleaseContract::init_from_table(t) }
+     })
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn event_as_emergency_unlock(&self) -> Option<EmergencyUnlock<'a>> {
+    if self.event_type() == EventType::EmergencyUnlock {
+      self.event().map(|t| {
+       // Safety:
+       // Created from a valid Table for this object
+       // Which contains a valid union in this slot
+       unsafe { EmergencyUnlock::init_from_table(t) }
+     })
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn event_as_started_update(&self) -> Option<StartedUpdate<'a>> {
+    if self.event_type() == EventType::StartedUpdate {
+      self.event().map(|t| {
+       // Safety:
+       // Created from a valid Table for this object
+       // Which contains a valid union in this slot
+       unsafe { StartedUpdate::init_from_table(t) }
+     })
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn event_as_periodic_update(&self) -> Option<PeriodicUpdate<'a>> {
+    if self.event_type() == EventType::PeriodicUpdate {
+      self.event().map(|t| {
+       // Safety:
+       // Created from a valid Table for this object
+       // Which contains a valid union in this slot
+       unsafe { PeriodicUpdate::init_from_table(t) }
+     })
+    } else {
+      None
+    }
+  }
+
 }
 
 impl ::flatbuffers::Verifiable for Event<'_> {
@@ -363,7 +1323,20 @@ impl ::flatbuffers::Verifiable for Event<'_> {
   ) -> Result<(), ::flatbuffers::InvalidFlatbuffer> {
     v.visit_table(pos)?
      .visit_field::<::flatbuffers::ForwardsUOffset<CommonMetadata>>("metadata", Self::VT_METADATA, false)?
-     .visit_field::<EventType>("event_type", Self::VT_EVENT_TYPE, false)?
+     .visit_union::<EventType, _>("event_type", Self::VT_EVENT_TYPE, "event", Self::VT_EVENT, false, |key, v, pos| {
+        match key {
+          EventType::AcceptContract => v.verify_union_variant::<::flatbuffers::ForwardsUOffset<AcceptContract>>("EventType::AcceptContract", pos),
+          EventType::LocalLock => v.verify_union_variant::<::flatbuffers::ForwardsUOffset<LocalLock>>("EventType::LocalLock", pos),
+          EventType::LocalUnlock => v.verify_union_variant::<::flatbuffers::ForwardsUOffset<LocalUnlock>>("EventType::LocalUnlock", pos),
+          EventType::Lock => v.verify_union_variant::<::flatbuffers::ForwardsUOffset<Lock>>("EventType::Lock", pos),
+          EventType::Unlock => v.verify_union_variant::<::flatbuffers::ForwardsUOffset<Unlock>>("EventType::Unlock", pos),
+          EventType::ReleaseContract => v.verify_union_variant::<::flatbuffers::ForwardsUOffset<ReleaseContract>>("EventType::ReleaseContract", pos),
+          EventType::EmergencyUnlock => v.verify_union_variant::<::flatbuffers::ForwardsUOffset<EmergencyUnlock>>("EventType::EmergencyUnlock", pos),
+          EventType::StartedUpdate => v.verify_union_variant::<::flatbuffers::ForwardsUOffset<StartedUpdate>>("EventType::StartedUpdate", pos),
+          EventType::PeriodicUpdate => v.verify_union_variant::<::flatbuffers::ForwardsUOffset<PeriodicUpdate>>("EventType::PeriodicUpdate", pos),
+          _ => Ok(()),
+        }
+     })?
      .finish();
     Ok(())
   }
@@ -371,13 +1344,15 @@ impl ::flatbuffers::Verifiable for Event<'_> {
 pub struct EventArgs<'a> {
     pub metadata: Option<::flatbuffers::WIPOffset<CommonMetadata<'a>>>,
     pub event_type: EventType,
+    pub event: Option<::flatbuffers::WIPOffset<::flatbuffers::UnionWIPOffset>>,
 }
 impl<'a> Default for EventArgs<'a> {
   #[inline]
   fn default() -> Self {
     EventArgs {
       metadata: None,
-      event_type: EventType::Undefined,
+      event_type: EventType::NONE,
+      event: None,
     }
   }
 }
@@ -393,7 +1368,11 @@ impl<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> EventBuilder<'a, 'b, A> {
   }
   #[inline]
   pub fn add_event_type(&mut self, event_type: EventType) {
-    self.fbb_.push_slot::<EventType>(Event::VT_EVENT_TYPE, event_type, EventType::Undefined);
+    self.fbb_.push_slot::<EventType>(Event::VT_EVENT_TYPE, event_type, EventType::NONE);
+  }
+  #[inline]
+  pub fn add_event(&mut self, event: ::flatbuffers::WIPOffset<::flatbuffers::UnionWIPOffset>) {
+    self.fbb_.push_slot_always::<::flatbuffers::WIPOffset<_>>(Event::VT_EVENT, event);
   }
   #[inline]
   pub fn new(_fbb: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>) -> EventBuilder<'a, 'b, A> {
@@ -415,6 +1394,75 @@ impl ::core::fmt::Debug for Event<'_> {
     let mut ds = f.debug_struct("Event");
       ds.field("metadata", &self.metadata());
       ds.field("event_type", &self.event_type());
+      match self.event_type() {
+        EventType::AcceptContract => {
+          if let Some(x) = self.event_as_accept_contract() {
+            ds.field("event", &x)
+          } else {
+            ds.field("event", &"InvalidFlatbuffer: Union discriminant does not match value.")
+          }
+        },
+        EventType::LocalLock => {
+          if let Some(x) = self.event_as_local_lock() {
+            ds.field("event", &x)
+          } else {
+            ds.field("event", &"InvalidFlatbuffer: Union discriminant does not match value.")
+          }
+        },
+        EventType::LocalUnlock => {
+          if let Some(x) = self.event_as_local_unlock() {
+            ds.field("event", &x)
+          } else {
+            ds.field("event", &"InvalidFlatbuffer: Union discriminant does not match value.")
+          }
+        },
+        EventType::Lock => {
+          if let Some(x) = self.event_as_lock() {
+            ds.field("event", &x)
+          } else {
+            ds.field("event", &"InvalidFlatbuffer: Union discriminant does not match value.")
+          }
+        },
+        EventType::Unlock => {
+          if let Some(x) = self.event_as_unlock() {
+            ds.field("event", &x)
+          } else {
+            ds.field("event", &"InvalidFlatbuffer: Union discriminant does not match value.")
+          }
+        },
+        EventType::ReleaseContract => {
+          if let Some(x) = self.event_as_release_contract() {
+            ds.field("event", &x)
+          } else {
+            ds.field("event", &"InvalidFlatbuffer: Union discriminant does not match value.")
+          }
+        },
+        EventType::EmergencyUnlock => {
+          if let Some(x) = self.event_as_emergency_unlock() {
+            ds.field("event", &x)
+          } else {
+            ds.field("event", &"InvalidFlatbuffer: Union discriminant does not match value.")
+          }
+        },
+        EventType::StartedUpdate => {
+          if let Some(x) = self.event_as_started_update() {
+            ds.field("event", &x)
+          } else {
+            ds.field("event", &"InvalidFlatbuffer: Union discriminant does not match value.")
+          }
+        },
+        EventType::PeriodicUpdate => {
+          if let Some(x) = self.event_as_periodic_update() {
+            ds.field("event", &x)
+          } else {
+            ds.field("event", &"InvalidFlatbuffer: Union discriminant does not match value.")
+          }
+        },
+        _ => {
+          let x: Option<()> = None;
+          ds.field("event", &x)
+        },
+      };
       ds.finish()
   }
 }

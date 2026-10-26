@@ -16,10 +16,6 @@ sealed class ValidatedPayload {
 
     data class ReleaseCommandPayload(val releaseCommand: ReleaseCommand) : ValidatedPayload()
 
-    data class StartedUpdatePayload(val startedUpdate: StartedUpdate) : ValidatedPayload()
-
-    data class PeriodicUpdatePayload(val periodicUpdate: PeriodicUpdate) : ValidatedPayload()
-
     data class AcknowledgementPayload(val acknowledgement: Acknowledgement) : ValidatedPayload()
 
     data class AbortPayload(val abortCommand: AbortCommand) : ValidatedPayload()
@@ -54,12 +50,6 @@ fun findVerificationKeyRequirement(buf: ByteBuffer): ValidationKeyRequirement {
             signedMessage.payload(ack)
             ValidationKeyRequirement.LockSessionKey(ack.session!!)
         }
-        MessagePayload.StartedUpdate -> ValidationKeyRequirement.KeyIsInMessage
-        MessagePayload.PeriodicUpdate -> {
-            val update = PeriodicUpdate()
-            signedMessage.payload(update)
-            ValidationKeyRequirement.LockSessionKey(update.session!!)
-        }
         else -> ValidationKeyRequirement.Unspecified
     }
 }
@@ -75,15 +65,6 @@ fun signedMessageBytesValidator(buf: ByteBuffer): ValidatedPayload {
         val key = ByteArray(contract.publicKeyLength) { contract.publicKey(it).toByte() }
         if (verifySignedMessageSignature(contract, key, signatureBytes)) {
             return ValidatedPayload.ContractPayload(contract)
-        }
-    }
-
-    if (signedMessage.payloadType == MessagePayload.StartedUpdate) {
-        val update = StartedUpdate()
-        signedMessage.payload(update)
-        val key = ByteArray(update.publicKeyLength) { update.publicKey(it).toByte() }
-        if (verifySignedMessageSignature(update, key, signatureBytes)) {
-            return ValidatedPayload.StartedUpdatePayload(update)
         }
     }
 
@@ -171,15 +152,6 @@ fun signedMessageBytesValidatorWithExternalKey(buf: ByteBuffer, key: ByteArray):
                 ValidatedPayload.UnknownPayload
             }
         }
-        MessagePayload.PeriodicUpdate -> {
-            val update = PeriodicUpdate()
-            signedMessage.payload(update)
-            if (verifySignedMessageSignature(update, key, signatureBytes)) {
-                ValidatedPayload.PeriodicUpdatePayload(update)
-            } else {
-                ValidatedPayload.UnknownPayload
-            }
-        }
         else -> {
             ValidatedPayload.UnknownPayload
         }
@@ -240,6 +212,27 @@ fun <T : Table> getVTableStart(table: T): Int {
 fun verifySignedEvent(buf: ByteBuffer, key: ByteArray): club.subjugated.fb.event.SignedEvent? {
     val signedEvent = club.subjugated.fb.event.SignedEvent.getRootAsSignedEvent(buf)
     val payload = signedEvent.payload ?: return null
+    val signatureBytes =
+        ByteArray(signedEvent.signatureLength) { signedEvent.signature(it).toByte() }
+    return if (verifySignedMessageSignature(payload, key, signatureBytes)) {
+        signedEvent
+    } else {
+        null
+    }
+}
+
+fun verifySignedEventWithEmbeddedKey(buf: ByteBuffer): club.subjugated.fb.event.SignedEvent? {
+    val signedEvent = club.subjugated.fb.event.SignedEvent.getRootAsSignedEvent(buf)
+    val payload = signedEvent.payload ?: return null
+    if (payload.eventType != club.subjugated.fb.event.EventType.StartedUpdate) {
+        return null
+    }
+    val startedUpdate = club.subjugated.fb.event.StartedUpdate()
+    payload.event(startedUpdate) ?: return null
+    if (startedUpdate.publicKeyLength == 0) {
+        return null
+    }
+    val key = ByteArray(startedUpdate.publicKeyLength) { startedUpdate.publicKey(it).toByte() }
     val signatureBytes =
         ByteArray(signedEvent.signatureLength) { signedEvent.signature(it).toByte() }
     return if (verifySignedMessageSignature(payload, key, signatureBytes)) {

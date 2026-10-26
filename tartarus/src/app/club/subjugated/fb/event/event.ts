@@ -5,7 +5,7 @@
 import * as flatbuffers from 'flatbuffers';
 
 import { CommonMetadata } from '../../../../club/subjugated/fb/event/common-metadata.js';
-import { EventType } from '../../../../club/subjugated/fb/event/event-type.js';
+import { EventType, unionToEventType, unionListToEventType } from '../../../../club/subjugated/fb/event/event-type.js';
 
 
 export class Event {
@@ -33,11 +33,16 @@ metadata(obj?:CommonMetadata):CommonMetadata|null {
 
 eventType():EventType {
   const offset = this.bb!.__offset(this.bb_pos, 6);
-  return offset ? this.bb!.readInt8(this.bb_pos + offset) : EventType.Undefined;
+  return offset ? this.bb!.readUint8(this.bb_pos + offset) : EventType.NONE;
+}
+
+event<T extends flatbuffers.Table>(obj:any):any|null {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.__union(obj, this.bb_pos + offset) : null;
 }
 
 static startEvent(builder:flatbuffers.Builder) {
-  builder.startObject(2);
+  builder.startObject(3);
 }
 
 static addMetadata(builder:flatbuffers.Builder, metadataOffset:flatbuffers.Offset) {
@@ -45,7 +50,11 @@ static addMetadata(builder:flatbuffers.Builder, metadataOffset:flatbuffers.Offse
 }
 
 static addEventType(builder:flatbuffers.Builder, eventType:EventType) {
-  builder.addFieldInt8(1, eventType, EventType.Undefined);
+  builder.addFieldInt8(1, eventType, EventType.NONE);
+}
+
+static addEvent(builder:flatbuffers.Builder, eventOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(2, eventOffset, 0);
 }
 
 static endEvent(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -53,10 +62,11 @@ static endEvent(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createEvent(builder:flatbuffers.Builder, metadataOffset:flatbuffers.Offset, eventType:EventType):flatbuffers.Offset {
+static createEvent(builder:flatbuffers.Builder, metadataOffset:flatbuffers.Offset, eventType:EventType, eventOffset:flatbuffers.Offset):flatbuffers.Offset {
   Event.startEvent(builder);
   Event.addMetadata(builder, metadataOffset);
   Event.addEventType(builder, eventType);
+  Event.addEvent(builder, eventOffset);
   return Event.endEvent(builder);
 }
 }

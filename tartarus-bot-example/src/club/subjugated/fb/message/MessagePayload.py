@@ -8,9 +8,7 @@ class MessagePayload(object):
     LockCommand = 2
     UnlockCommand = 3
     ReleaseCommand = 4
-    StartedUpdate = 5
-    PeriodicUpdate = 6
-    Acknowledgement = 7
-    Error = 8
-    AbortCommand = 9
-    ResetCommand = 10
+    Acknowledgement = 5
+    Error = 6
+    AbortCommand = 7
+    ResetCommand = 8

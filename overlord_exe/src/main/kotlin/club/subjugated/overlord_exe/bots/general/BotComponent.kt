@@ -330,6 +330,8 @@ class BotComponent @Autowired constructor(
                     EventType.Lock -> handleLock(botMap, signedEvent)
                     EventType.Unlock -> handleUnlock(botMap, signedEvent)
                     EventType.EmergencyUnlock -> handleEmergencyUnlock(botMap, signedEvent)
+                    EventType.StartedUpdate -> logger.debug("Received StartedUpdate for ${commonMetadata.lockSession}")
+                    EventType.PeriodicUpdate -> logger.debug("Received PeriodicUpdate for ${commonMetadata.lockSession}")
                 }
             } catch (ex: Exception) {
                 logger.error("Encountered exception in processing WebSocket bot event", ex)

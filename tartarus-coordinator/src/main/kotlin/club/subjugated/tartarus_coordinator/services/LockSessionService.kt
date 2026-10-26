@@ -1,6 +1,6 @@
 package club.subjugated.tartarus_coordinator.services
 
-import club.subjugated.fb.message.PeriodicUpdate
+import club.subjugated.fb.event.PeriodicUpdate
 import club.subjugated.tartarus_coordinator.api.messages.NewLockSessionMessage
 import club.subjugated.tartarus_coordinator.events.FirmwareValidationEvent
 import club.subjugated.tartarus_coordinator.events.PeriodicUpdateEvent
@@ -62,14 +62,18 @@ class LockSessionService {
         return this.lockSessionRepository.findBySessionToken(token)
     }
 
-    fun handlePeriodicUpdate(periodicUpdate: PeriodicUpdate) {
-        val lockSession = findBySessionToken(periodicUpdate.session!!)!!
+    fun handlePeriodicUpdate(
+        sessionToken: String,
+        currentContractSerial: Int,
+        periodicUpdate: PeriodicUpdate,
+    ) {
+        val lockSession = findBySessionToken(sessionToken)!!
 
         lockSession.isLocked = periodicUpdate.isLocked
         lockSession.emergencyUnlocked = periodicUpdate.emergencyUnlocked
         saveLockSession(lockSession)
         val internalUpdate =
-            if (periodicUpdate.currentContractSerial.toInt() != 0) {
+            if (currentContractSerial != 0) {
                 val contracts =
                     contractService.findByLockSessionIdAndState(
                         lockSession,
@@ -77,7 +81,7 @@ class LockSessionService {
                     )
                 val activeContract =
                     contracts.firstOrNull {
-                        it.serialNumber == periodicUpdate.currentContractSerial.toInt()
+                        it.serialNumber == currentContractSerial
                     }
                 PeriodicUpdateEvent(this, lockSession, activeContract)
             } else {

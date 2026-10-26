@@ -39,11 +39,21 @@ class Event(object):
     def EventType(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Int8Flags, o + self._tab.Pos)
+            return self._tab.Get(flatbuffers.number_types.Uint8Flags, o + self._tab.Pos)
         return 0
 
+    # Event
+    def Event(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
+        if o != 0:
+            from flatbuffers.table import Table
+            obj = Table(bytearray(), 0)
+            self._tab.Union(obj, o)
+            return obj
+        return None
+
 def EventStart(builder):
-    builder.StartObject(2)
+    builder.StartObject(3)
 
 def Start(builder):
     EventStart(builder)
@@ -55,10 +65,16 @@ def AddMetadata(builder, metadata):
     EventAddMetadata(builder, metadata)
 
 def EventAddEventType(builder, eventType):
-    builder.PrependInt8Slot(1, eventType, 0)
+    builder.PrependUint8Slot(1, eventType, 0)
 
 def AddEventType(builder, eventType):
     EventAddEventType(builder, eventType)
+
+def EventAddEvent(builder, event):
+    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(event), 0)
+
+def AddEvent(builder, event):
+    EventAddEvent(builder, event)
 
 def EventEnd(builder):
     return builder.EndObject()

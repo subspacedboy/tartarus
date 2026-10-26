@@ -1,4 +1,4 @@
-create table bot_map(
+create table bot_map (
     id bigint NOT NULL AUTO_INCREMENT,
     name varchar(25) NOT NULL,
     internal_name varchar(25) NOT NULL,
@@ -9,49 +9,68 @@ create table bot_map(
     public_key BLOB NOT NULL,
     created_at DATETIME,
     updated_at DATETIME,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_bot_map_internal_name (internal_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-create table contract(
+create table contract (
     id bigint NOT NULL AUTO_INCREMENT,
     name varchar(25) NOT NULL,
-    external_contract_name varchar(25),
-    bot_name varchar(25),
-    lock_session_token varchar(25),
-    shareable_token varchar(10),
-    serial_number SMALLINT UNSIGNED,
+    external_contract_name varchar(64),
+    bot_name varchar(25) NOT NULL,
+    lock_session_token varchar(64),
+    shareable_token varchar(64),
+    serial_number SMALLINT UNSIGNED NOT NULL,
+    next_counter int NOT NULL DEFAULT 1,
     state varchar(25) NOT NULL,
     created_at DATETIME,
     updated_at DATETIME,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    INDEX idx_contract_bot_serial (bot_name, serial_number),
+    INDEX idx_contract_bot_state (bot_name, state)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-create table timer_bot_record (
+create table bot_engagement (
     id bigint NOT NULL AUTO_INCREMENT,
     name varchar(25) NOT NULL,
-    is_public tinyint NOT NULL,
-    did varchar(255) NOT NULL,
-    time_amount int NOT NULL,
-    time_unit varchar(25) NOT NULL,
-    contract_serial_number int NOT NULL,
+    bot_id varchar(25) NOT NULL,
+    phase varchar(25) NOT NULL,
     contract_id bigint,
+    contract_serial_number int NOT NULL DEFAULT 0,
+    shareable_token varchar(64),
+    subject_did varchar(255) NOT NULL,
+    convo_id varchar(64) NOT NULL,
+    keyholder_did varchar(255),
+    info_token varchar(25),
+    status_token varchar(25),
+    data JSON NOT NULL,
     created_at DATETIME,
     accepted_at DATETIME,
-    ends_at DATETIME,
-    completed tinyint,
-    PRIMARY KEY (id)
+    updated_at DATETIME,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_engagement_name (name),
+    INDEX idx_engagement_bot_serial (bot_id, contract_serial_number),
+    INDEX idx_engagement_contract_id (contract_id),
+    INDEX idx_engagement_info_token (info_token),
+    INDEX idx_engagement_status_token (status_token),
+    INDEX idx_engagement_proxy_pair (bot_id, keyholder_did, subject_did, phase)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-ALTER TABLE timer_bot_record ADD COLUMN convo_id varchar(64) AFTER did;
-ALTER TABLE timer_bot_record ADD COLUMN state varchar(25) NOT NULL AFTER name;
-
-ALTER TABLE timer_bot_record ADD COLUMN min_duration int AFTER time_unit;
-ALTER TABLE timer_bot_record ADD COLUMN min_duration_unit varchar(25) AFTER min_duration;
-ALTER TABLE timer_bot_record ADD COLUMN max_duration int AFTER min_duration_unit;
-ALTER TABLE timer_bot_record ADD COLUMN max_duration_unit varchar(25) AFTER max_duration;
-
-ALTER TABLE timer_bot_record ADD COLUMN shareable_token varchar(25) AFTER is_public;
-ALTER TABLE timer_bot_record ADD COLUMN is_random tinyint AFTER is_public;
+create table bsky_user (
+    id bigint NOT NULL AUTO_INCREMENT,
+    name varchar(25) NOT NULL,
+    created_at DATETIME,
+    updated_at DATETIME,
+    did varchar(255) NOT NULL,
+    handle varchar(255),
+    convo_id varchar(64),
+    shareable_token varchar(64),
+    do_not_contact tinyint default 0,
+    PRIMARY KEY (id),
+    INDEX idx_bsky_user_did (did),
+    INDEX idx_bsky_user_handle (handle),
+    INDEX idx_bsky_user_token (shareable_token)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 create table bsky_like (
     id bigint NOT NULL AUTO_INCREMENT,
@@ -63,11 +82,10 @@ create table bsky_like (
     updated_at DATETIME,
     did varchar(255) NOT NULL,
     handle varchar(255) NOT NULL,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    INDEX idx_like_did (did),
+    INDEX idx_like_record (record_id, record_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE INDEX idx_did ON bsky_like(did);
-CREATE INDEX idx_record ON bsky_like(record_id, record_type);
 
 create table bsky_repost (
     id bigint NOT NULL AUTO_INCREMENT,
@@ -79,113 +97,7 @@ create table bsky_repost (
     updated_at DATETIME,
     did varchar(255) NOT NULL,
     handle varchar(255) NOT NULL,
-    PRIMARY KEY (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE INDEX idx_did ON bsky_repost(did);
-CREATE INDEX idx_record ON bsky_repost(record_id, record_type);
-
-create table super_bot_record (
-    id bigint NOT NULL AUTO_INCREMENT,
-    name varchar(25) NOT NULL,
-    state varchar(25) NOT NULL,
-    shareable_token varchar(25) NOT NULL,
-    contract_serial_number int NOT NULL,
-    contract_id bigint,
-    created_at DATETIME,
-    accepted_at DATETIME,
-    bsky_user_id bigint,
-    did varchar(255) NOT NULL,
-    convo_id varchar(255) NOT NULL,
-    configuration json,
-    PRIMARY KEY (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-create table state_machine (
-    id bigint NOT NULL AUTO_INCREMENT,
-    name varchar(25) NOT NULL,
-    state varchar(25) NOT NULL,
-    owned_by varchar(25) NOT NULL,
-    machine_type varchar(255) NOT NULL,
-    machine_version varchar(25) NOT NULL,
-    machine_state varchar(25) NOT NULL,
-    created_at DATETIME,
-    updated_at DATETIME,
-    info_resolve_method varchar(25) NOT NULL,
-    bsky_user_id bigint,
-    PRIMARY KEY (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-create table bsky_likes_sm_context (
-    id bigint NOT NULL AUTO_INCREMENT,
-    state_machine_id bigint NOT NULL,
-    name varchar(25) NOT NULL,
-    created_at DATETIME,
-    updated_at DATETIME,
-    goal int NOT NULL,
-    likes_so_far int NOT NULL,
-    did varchar(255) NOT NULL,
-    PRIMARY KEY (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-create table bsky_crowd_time_sm_context (
-        id bigint NOT NULL AUTO_INCREMENT,
-        state_machine_id bigint NOT NULL,
-        name varchar(25) NOT NULL,
-        created_at DATETIME,
-        updated_at DATETIME,
-        accepted_at DATETIME,
-        open_ends_at DATETIME,
-        ends_at DATETIME,
-        reposted_notice_at DATETIME,
-        per_like_add int NOT NULL,
-        per_like_add_unit varchar(25) NOT NULL,
-        per_repost_add int NOT NULL,
-        per_repost_add_unit varchar(25) NOT NULL,
-        open_period_amount int NOT NULL,
-        open_period_unit varchar(25) NOT NULL,
-        notice_uri varchar(255),
-        has_reposted_notice tinyint NOT NULL default 0,
-        subject_did varchar(255) NOT NULL,
-        PRIMARY KEY (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-create table bsky_user (
-    id bigint NOT NULL AUTO_INCREMENT,
-    name varchar(25) NOT NULL,
-    created_at DATETIME,
-    updated_at DATETIME,
-    did varchar(255) NOT NULL,
-    handle varchar(255),
-    convo_id varchar(25),
-    shareable_token varchar(25),
-    do_not_contact tinyint default 0,
-    PRIMARY KEY (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-create table info_request (
-    id bigint NOT NULL AUTO_INCREMENT,
-    name varchar(25) NOT NULL,
-    state varchar(25) NOT NULL,
-    state_machine_id bigint,
-    created_at DATETIME,
-    updated_at DATETIME,
-    form_type varchar(255) NOT NULL,
-    bsky_user_id bigint,
-    PRIMARY KEY (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-create table simple_proxy (
-    id bigint NOT NULL AUTO_INCREMENT,
-    name varchar(25) NOT NULL,
-    state varchar(25) NOT NULL,
-    contract_serial_number int NOT NULL,
-    contract_id bigint,
-    created_at DATETIME,
-    updated_at DATETIME,
-    accepted_at DATETIME,
-    key_holder_bsky_user_id bigint,
-    bsky_user_id bigint,
-    is_public tinyint,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    INDEX idx_repost_did (did),
+    INDEX idx_repost_record (record_id, record_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

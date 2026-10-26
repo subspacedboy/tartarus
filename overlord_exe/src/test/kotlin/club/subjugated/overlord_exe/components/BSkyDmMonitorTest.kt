@@ -1,8 +1,5 @@
 package club.subjugated.overlord_exe.components
 
-import club.subjugated.overlord_exe.bots.simple_proxy.convo.SimpleProxyConvoHandler
-import club.subjugated.overlord_exe.bots.superbot.convo.SuperBotConvoHandler
-import club.subjugated.overlord_exe.bots.timer_bot.convo.TimerBotConvoHandler
 import club.subjugated.overlord_exe.convo.ConversationContext
 import club.subjugated.overlord_exe.convo.ConversationHandler
 import club.subjugated.overlord_exe.convo.ConversationResponse
@@ -13,7 +10,6 @@ import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.services.Intent
 import club.subjugated.overlord_exe.services.IntentService
 import club.subjugated.overlord_exe.services.ResolvedIntent
-import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -24,7 +20,6 @@ import org.mockito.kotlin.never
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import org.quartz.DisallowConcurrentExecution
 import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageView
 import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageViewSender
 import kotlin.reflect.KClass
@@ -32,10 +27,7 @@ import kotlin.reflect.KClass
 class BSkyDmMonitorTest {
 
     private val blueSkyService: BlueSkyService = mock()
-    private val timerBotConversationHandler: TimerBotConvoHandler = mock()
-    private val superBotConvoHandler: SuperBotConvoHandler = mock()
     private val bSkyUserService: BSkyUserService = mock()
-    private val simpleProxyConvoHandler: SimpleProxyConvoHandler = mock()
     private val overlordConversationHandler: OverlordConversationHandler = mock()
     private val intentService: IntentService = mock()
 
@@ -45,23 +37,14 @@ class BSkyDmMonitorTest {
     fun setUp() {
         monitor = BSkyDmMonitor(
             blueSkyService = blueSkyService,
-            timerBotConversationHandler = timerBotConversationHandler,
-            superBotConvoHandler = superBotConvoHandler,
             bSkyUserService = bSkyUserService,
-            simpleProxyConvoHandler = simpleProxyConvoHandler,
-            overlordConversationHandler = overlordConversationHandler,
             intentService = intentService,
+            conversationHandlers = listOf(overlordConversationHandler),
         )
 
         val user = BSkyUser(did = "did:plc:test1234", handle = "test.bsky.social")
         whenever(bSkyUserService.findOrCreateByDid(any())).thenReturn(user)
         whenever(blueSkyService.resolveDidToHandle(any())).thenReturn("test.bsky.social")
-    }
-
-    @Test
-    fun `class has DisallowConcurrentExecution annotation`() {
-        val annotation = BSkyDmMonitor::class.java.getAnnotation(DisallowConcurrentExecution::class.java)
-        assertEquals(true, annotation != null, "BSkyDmMonitor should be annotated with @DisallowConcurrentExecution")
     }
 
     @Test

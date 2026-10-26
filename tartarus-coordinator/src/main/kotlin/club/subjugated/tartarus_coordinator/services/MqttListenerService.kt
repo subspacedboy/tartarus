@@ -186,12 +186,6 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                         }
 
                         when (signedMessage) {
-                            is ValidatedPayload.StartedUpdatePayload -> {
-                                handleStartUpdateEvent(signedMessage)
-                            }
-                            is ValidatedPayload.PeriodicUpdatePayload -> {
-                                handlePeriodicUpdate(signedMessage)
-                            }
                             is ValidatedPayload.AcknowledgementPayload -> {
                                 handleAcknowledgePayload(signedMessage)
                             }
@@ -244,6 +238,7 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                 transactionTemplate.execute { status ->
                     try {
                         val sessionToken = topic.removePrefix("locks/").removeSuffix("/events")
+                        this.liveClients.put(sessionToken, "locks/$sessionToken")
                         println("📨 Got Lock Event on topic $topic for session $sessionToken")
                         eventService.processIncomingLockEvent(sessionToken, message.payload)
                     } catch (ex: Exception) {
@@ -256,70 +251,6 @@ class MqttListenerService(private val transactionManager: PlatformTransactionMan
                 }
             }
         }
-    }
-
-    private fun handleStartUpdateEvent(signedMessage: ValidatedPayload.StartedUpdatePayload) {
-        val theUpdate = signedMessage.startedUpdate
-
-        val key = ByteArray(theUpdate.publicKeyLength) { theUpdate.publicKey(it).toByte() }
-        val sessionToken = theUpdate.session!!
-
-        this.liveClients.put(sessionToken, "locks/$sessionToken")
-
-        val nlsm =
-            NewLockSessionMessage(
-                publicKey = Base64.getEncoder().encodeToString(key),
-                sessionToken = theUpdate.session!!,
-                userSessionPublicKey = "",
-            )
-
-        val lockSession = lockSessionService.createLockSession(nlsm)
-        lockSessionService.saveLockSession(lockSession)
-
-        // Update matching provisioned hardware unit lock pubkey if known
-        try {
-            val pubKeyB64 = nlsm.publicKey
-            val matched =
-                (unitRepository?.findByLastKnownSessionToken(sessionToken) ?: emptyList()) +
-                    (unitRepository?.findByInitialSessionToken(sessionToken) ?: emptyList())
-            for (u in matched.distinctBy { it.hardwareId }) {
-                u.lastKnownLockPubkeyB64 = pubKeyB64
-                u.lastKnownSessionToken = sessionToken
-                unitRepository?.save(u)
-            }
-        } catch (e: Exception) {
-            println(
-                "⚠️ Warning: could not update provisioned unit for session $sessionToken: ${e.message}"
-            )
-        }
-
-        val queue = lockSession.commandQueue.first()
-        val commands = queue.commands
-        val pendingCommands = commands.filter { it.state == CommandState.PENDING }
-
-        for (command in pendingCommands) {
-            println("📤 Transmitting command ${command} -> ${sessionToken}")
-            client.publish("locks/$sessionToken", MqttMessage(command.body))
-        }
-
-        // Send back Configuration data for safety keys.
-        val configData = this.configurationService.getConfigurationAsFB()
-        println("🧩 Transmitting configuration data -> ${sessionToken}")
-        client.publish("configuration/$sessionToken", MqttMessage(configData))
-
-        // Also send the firmware challenge :-)
-        val firmwareChallenge = firmwareService.generateFirmwareChallenge(sessionToken)
-        println("🌮 Transmitting firmware challenge data -> ${sessionToken}")
-        client.publish("firmware/${sessionToken}", MqttMessage(firmwareChallenge))
-    }
-
-    private fun handlePeriodicUpdate(signedMessage: ValidatedPayload.PeriodicUpdatePayload) {
-        val update = signedMessage.periodicUpdate
-
-        println(
-            "👀 Periodic update from ${update.session} -> Locked? ${update.isLocked}, Local Lock -> ${update.localLock}, Local Unlock -> ${update.localUnlock}, Emergency unlocked? -> ${update.emergencyUnlocked}"
-        )
-        this.lockSessionService.handlePeriodicUpdate(update)
     }
 
     private fun handleAcknowledgePayload(signedMessage: ValidatedPayload.AcknowledgementPayload) {

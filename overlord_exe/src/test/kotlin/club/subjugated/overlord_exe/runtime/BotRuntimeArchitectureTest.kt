@@ -139,8 +139,6 @@ class BotRuntimeArchitectureTest {
             contractRepository = contractRepository,
             botMapService = botMapService,
             timeSource = timeSource,
-            applicationEventPublisher = eventPublisher,
-            environment = environment,
         )
 
         botComponent = BotComponent(

@@ -9,11 +9,41 @@ table CommonMetadata {
     correlation_id: string;
 }
 
-enum EventType : byte { Undefined = 0, AcceptContract, LocalLock, LocalUnlock, Lock, Unlock, ReleaseContract, EmergencyUnlock }
+table AcceptContract {}
+table LocalLock {}
+table LocalUnlock {}
+table Lock {}
+table Unlock {}
+table ReleaseContract {}
+table EmergencyUnlock {}
+
+table StartedUpdate {
+    public_key: [ubyte];
+    started_with_local_contract: bool;
+    is_locked: bool;
+}
+
+table PeriodicUpdate {
+    is_locked: bool;
+    emergency_unlocked: bool = false;
+    device_uptime: ulong;
+}
+
+union EventType {
+    AcceptContract,
+    LocalLock,
+    LocalUnlock,
+    Lock,
+    Unlock,
+    ReleaseContract,
+    EmergencyUnlock,
+    StartedUpdate,
+    PeriodicUpdate
+}
 
 table Event {
   metadata: CommonMetadata;
-  event_type: EventType;
+  event: EventType;
 }
 
 table SignedEvent {

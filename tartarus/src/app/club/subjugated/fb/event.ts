@@ -2,7 +2,16 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
+export { AcceptContract } from './event/accept-contract.js';
 export { CommonMetadata } from './event/common-metadata.js';
+export { EmergencyUnlock } from './event/emergency-unlock.js';
 export { Event } from './event/event.js';
 export { EventType } from './event/event-type.js';
+export { LocalLock } from './event/local-lock.js';
+export { LocalUnlock } from './event/local-unlock.js';
+export { Lock } from './event/lock.js';
+export { PeriodicUpdate } from './event/periodic-update.js';
+export { ReleaseContract } from './event/release-contract.js';
 export { SignedEvent } from './event/signed-event.js';
+export { StartedUpdate } from './event/started-update.js';
+export { Unlock } from './event/unlock.js';

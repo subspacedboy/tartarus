@@ -10,11 +10,9 @@ class MessagePayload private constructor() {
         const val LockCommand: UByte = 2u
         const val UnlockCommand: UByte = 3u
         const val ReleaseCommand: UByte = 4u
-        const val StartedUpdate: UByte = 5u
-        const val PeriodicUpdate: UByte = 6u
-        const val Acknowledgement: UByte = 7u
-        const val Error: UByte = 8u
-        const val AbortCommand: UByte = 9u
-        const val ResetCommand: UByte = 10u
+        const val Acknowledgement: UByte = 5u
+        const val Error: UByte = 6u
+        const val AbortCommand: UByte = 7u
+        const val ResetCommand: UByte = 8u
     }
 }

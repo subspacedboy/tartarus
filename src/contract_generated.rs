@@ -19,17 +19,15 @@ pub mod message {
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
 pub const ENUM_MIN_MESSAGE_PAYLOAD: u8 = 0;
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
-pub const ENUM_MAX_MESSAGE_PAYLOAD: u8 = 10;
+pub const ENUM_MAX_MESSAGE_PAYLOAD: u8 = 8;
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
 #[allow(non_camel_case_types)]
-pub const ENUM_VALUES_MESSAGE_PAYLOAD: [MessagePayload; 11] = [
+pub const ENUM_VALUES_MESSAGE_PAYLOAD: [MessagePayload; 9] = [
   MessagePayload::NONE,
   MessagePayload::Contract,
   MessagePayload::LockCommand,
   MessagePayload::UnlockCommand,
   MessagePayload::ReleaseCommand,
-  MessagePayload::StartedUpdate,
-  MessagePayload::PeriodicUpdate,
   MessagePayload::Acknowledgement,
   MessagePayload::Error,
   MessagePayload::AbortCommand,
@@ -46,23 +44,19 @@ impl MessagePayload {
   pub const LockCommand: Self = Self(2);
   pub const UnlockCommand: Self = Self(3);
   pub const ReleaseCommand: Self = Self(4);
-  pub const StartedUpdate: Self = Self(5);
-  pub const PeriodicUpdate: Self = Self(6);
-  pub const Acknowledgement: Self = Self(7);
-  pub const Error: Self = Self(8);
-  pub const AbortCommand: Self = Self(9);
-  pub const ResetCommand: Self = Self(10);
+  pub const Acknowledgement: Self = Self(5);
+  pub const Error: Self = Self(6);
+  pub const AbortCommand: Self = Self(7);
+  pub const ResetCommand: Self = Self(8);
 
   pub const ENUM_MIN: u8 = 0;
-  pub const ENUM_MAX: u8 = 10;
+  pub const ENUM_MAX: u8 = 8;
   pub const ENUM_VALUES: &'static [Self] = &[
     Self::NONE,
     Self::Contract,
     Self::LockCommand,
     Self::UnlockCommand,
     Self::ReleaseCommand,
-    Self::StartedUpdate,
-    Self::PeriodicUpdate,
     Self::Acknowledgement,
     Self::Error,
     Self::AbortCommand,
@@ -76,8 +70,6 @@ impl MessagePayload {
       Self::LockCommand => Some("LockCommand"),
       Self::UnlockCommand => Some("UnlockCommand"),
       Self::ReleaseCommand => Some("ReleaseCommand"),
-      Self::StartedUpdate => Some("StartedUpdate"),
-      Self::PeriodicUpdate => Some("PeriodicUpdate"),
       Self::Acknowledgement => Some("Acknowledgement"),
       Self::Error => Some("Error"),
       Self::AbortCommand => Some("AbortCommand"),
@@ -593,351 +585,6 @@ impl ::core::fmt::Debug for Contract<'_> {
       ds.field("terms", &self.terms());
       ds.field("is_temporary_unlock_allowed", &self.is_temporary_unlock_allowed());
       ds.field("is_emergency_unlock_allowed", &self.is_emergency_unlock_allowed());
-      ds.finish()
-  }
-}
-pub enum StartedUpdateOffset {}
-#[derive(Copy, Clone, PartialEq)]
-
-pub struct StartedUpdate<'a> {
-  pub _tab: ::flatbuffers::Table<'a>,
-}
-
-impl<'a> ::flatbuffers::Follow<'a> for StartedUpdate<'a> {
-  type Inner = StartedUpdate<'a>;
-  #[inline]
-  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-    Self { _tab: unsafe { ::flatbuffers::Table::new(buf, loc) } }
-  }
-}
-
-impl<'a> StartedUpdate<'a> {
-  pub const VT_PUBLIC_KEY: ::flatbuffers::VOffsetT = 4;
-  pub const VT_SESSION: ::flatbuffers::VOffsetT = 6;
-  pub const VT_STARTED_WITH_LOCAL_CONTRACT: ::flatbuffers::VOffsetT = 8;
-  pub const VT_CURRENT_CONTRACT_SERIAL: ::flatbuffers::VOffsetT = 10;
-  pub const VT_IS_LOCKED: ::flatbuffers::VOffsetT = 12;
-
-  #[inline]
-  pub unsafe fn init_from_table(table: ::flatbuffers::Table<'a>) -> Self {
-    StartedUpdate { _tab: table }
-  }
-  #[allow(unused_mut)]
-  pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: ::flatbuffers::Allocator + 'bldr>(
-    _fbb: &'mut_bldr mut ::flatbuffers::FlatBufferBuilder<'bldr, A>,
-    args: &'args StartedUpdateArgs<'args>
-  ) -> ::flatbuffers::WIPOffset<StartedUpdate<'bldr>> {
-    let mut builder = StartedUpdateBuilder::new(_fbb);
-    if let Some(x) = args.session { builder.add_session(x); }
-    if let Some(x) = args.public_key { builder.add_public_key(x); }
-    builder.add_current_contract_serial(args.current_contract_serial);
-    builder.add_is_locked(args.is_locked);
-    builder.add_started_with_local_contract(args.started_with_local_contract);
-    builder.finish()
-  }
-
-
-  #[inline]
-  pub fn public_key(&self) -> Option<::flatbuffers::Vector<'a, u8>> {
-    // Safety:
-    // Created from valid Table for this object
-    // which contains a valid value in this slot
-    unsafe { self._tab.get::<::flatbuffers::ForwardsUOffset<::flatbuffers::Vector<'a, u8>>>(StartedUpdate::VT_PUBLIC_KEY, None)}
-  }
-  #[inline]
-  pub fn session(&self) -> Option<&'a str> {
-    // Safety:
-    // Created from valid Table for this object
-    // which contains a valid value in this slot
-    unsafe { self._tab.get::<::flatbuffers::ForwardsUOffset<&str>>(StartedUpdate::VT_SESSION, None)}
-  }
-  #[inline]
-  pub fn started_with_local_contract(&self) -> bool {
-    // Safety:
-    // Created from valid Table for this object
-    // which contains a valid value in this slot
-    unsafe { self._tab.get::<bool>(StartedUpdate::VT_STARTED_WITH_LOCAL_CONTRACT, Some(false)).unwrap()}
-  }
-  #[inline]
-  pub fn current_contract_serial(&self) -> u16 {
-    // Safety:
-    // Created from valid Table for this object
-    // which contains a valid value in this slot
-    unsafe { self._tab.get::<u16>(StartedUpdate::VT_CURRENT_CONTRACT_SERIAL, Some(0)).unwrap()}
-  }
-  #[inline]
-  pub fn is_locked(&self) -> bool {
-    // Safety:
-    // Created from valid Table for this object
-    // which contains a valid value in this slot
-    unsafe { self._tab.get::<bool>(StartedUpdate::VT_IS_LOCKED, Some(false)).unwrap()}
-  }
-}
-
-impl ::flatbuffers::Verifiable for StartedUpdate<'_> {
-  #[inline]
-  fn run_verifier(
-    v: &mut ::flatbuffers::Verifier, pos: usize
-  ) -> Result<(), ::flatbuffers::InvalidFlatbuffer> {
-    v.visit_table(pos)?
-     .visit_field::<::flatbuffers::ForwardsUOffset<::flatbuffers::Vector<'_, u8>>>("public_key", Self::VT_PUBLIC_KEY, false)?
-     .visit_field::<::flatbuffers::ForwardsUOffset<&str>>("session", Self::VT_SESSION, false)?
-     .visit_field::<bool>("started_with_local_contract", Self::VT_STARTED_WITH_LOCAL_CONTRACT, false)?
-     .visit_field::<u16>("current_contract_serial", Self::VT_CURRENT_CONTRACT_SERIAL, false)?
-     .visit_field::<bool>("is_locked", Self::VT_IS_LOCKED, false)?
-     .finish();
-    Ok(())
-  }
-}
-pub struct StartedUpdateArgs<'a> {
-    pub public_key: Option<::flatbuffers::WIPOffset<::flatbuffers::Vector<'a, u8>>>,
-    pub session: Option<::flatbuffers::WIPOffset<&'a str>>,
-    pub started_with_local_contract: bool,
-    pub current_contract_serial: u16,
-    pub is_locked: bool,
-}
-impl<'a> Default for StartedUpdateArgs<'a> {
-  #[inline]
-  fn default() -> Self {
-    StartedUpdateArgs {
-      public_key: None,
-      session: None,
-      started_with_local_contract: false,
-      current_contract_serial: 0,
-      is_locked: false,
-    }
-  }
-}
-
-pub struct StartedUpdateBuilder<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> {
-  fbb_: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>,
-  start_: ::flatbuffers::WIPOffset<::flatbuffers::TableUnfinishedWIPOffset>,
-}
-impl<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> StartedUpdateBuilder<'a, 'b, A> {
-  #[inline]
-  pub fn add_public_key(&mut self, public_key: ::flatbuffers::WIPOffset<::flatbuffers::Vector<'b , u8>>) {
-    self.fbb_.push_slot_always::<::flatbuffers::WIPOffset<_>>(StartedUpdate::VT_PUBLIC_KEY, public_key);
-  }
-  #[inline]
-  pub fn add_session(&mut self, session: ::flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<::flatbuffers::WIPOffset<_>>(StartedUpdate::VT_SESSION, session);
-  }
-  #[inline]
-  pub fn add_started_with_local_contract(&mut self, started_with_local_contract: bool) {
-    self.fbb_.push_slot::<bool>(StartedUpdate::VT_STARTED_WITH_LOCAL_CONTRACT, started_with_local_contract, false);
-  }
-  #[inline]
-  pub fn add_current_contract_serial(&mut self, current_contract_serial: u16) {
-    self.fbb_.push_slot::<u16>(StartedUpdate::VT_CURRENT_CONTRACT_SERIAL, current_contract_serial, 0);
-  }
-  #[inline]
-  pub fn add_is_locked(&mut self, is_locked: bool) {
-    self.fbb_.push_slot::<bool>(StartedUpdate::VT_IS_LOCKED, is_locked, false);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>) -> StartedUpdateBuilder<'a, 'b, A> {
-    let start = _fbb.start_table();
-    StartedUpdateBuilder {
-      fbb_: _fbb,
-      start_: start,
-    }
-  }
-  #[inline]
-  pub fn finish(self) -> ::flatbuffers::WIPOffset<StartedUpdate<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    ::flatbuffers::WIPOffset::new(o.value())
-  }
-}
-
-impl ::core::fmt::Debug for StartedUpdate<'_> {
-  fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-    let mut ds = f.debug_struct("StartedUpdate");
-      ds.field("public_key", &self.public_key());
-      ds.field("session", &self.session());
-      ds.field("started_with_local_contract", &self.started_with_local_contract());
-      ds.field("current_contract_serial", &self.current_contract_serial());
-      ds.field("is_locked", &self.is_locked());
-      ds.finish()
-  }
-}
-pub enum PeriodicUpdateOffset {}
-#[derive(Copy, Clone, PartialEq)]
-
-pub struct PeriodicUpdate<'a> {
-  pub _tab: ::flatbuffers::Table<'a>,
-}
-
-impl<'a> ::flatbuffers::Follow<'a> for PeriodicUpdate<'a> {
-  type Inner = PeriodicUpdate<'a>;
-  #[inline]
-  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-    Self { _tab: unsafe { ::flatbuffers::Table::new(buf, loc) } }
-  }
-}
-
-impl<'a> PeriodicUpdate<'a> {
-  pub const VT_SESSION: ::flatbuffers::VOffsetT = 4;
-  pub const VT_IS_LOCKED: ::flatbuffers::VOffsetT = 6;
-  pub const VT_CURRENT_CONTRACT_SERIAL: ::flatbuffers::VOffsetT = 8;
-  pub const VT_LOCAL_UNLOCK: ::flatbuffers::VOffsetT = 10;
-  pub const VT_LOCAL_LOCK: ::flatbuffers::VOffsetT = 12;
-  pub const VT_EMERGENCY_UNLOCKED: ::flatbuffers::VOffsetT = 14;
-
-  #[inline]
-  pub unsafe fn init_from_table(table: ::flatbuffers::Table<'a>) -> Self {
-    PeriodicUpdate { _tab: table }
-  }
-  #[allow(unused_mut)]
-  pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: ::flatbuffers::Allocator + 'bldr>(
-    _fbb: &'mut_bldr mut ::flatbuffers::FlatBufferBuilder<'bldr, A>,
-    args: &'args PeriodicUpdateArgs<'args>
-  ) -> ::flatbuffers::WIPOffset<PeriodicUpdate<'bldr>> {
-    let mut builder = PeriodicUpdateBuilder::new(_fbb);
-    if let Some(x) = args.session { builder.add_session(x); }
-    builder.add_current_contract_serial(args.current_contract_serial);
-    builder.add_emergency_unlocked(args.emergency_unlocked);
-    builder.add_local_lock(args.local_lock);
-    builder.add_local_unlock(args.local_unlock);
-    builder.add_is_locked(args.is_locked);
-    builder.finish()
-  }
-
-
-  #[inline]
-  pub fn session(&self) -> Option<&'a str> {
-    // Safety:
-    // Created from valid Table for this object
-    // which contains a valid value in this slot
-    unsafe { self._tab.get::<::flatbuffers::ForwardsUOffset<&str>>(PeriodicUpdate::VT_SESSION, None)}
-  }
-  #[inline]
-  pub fn is_locked(&self) -> bool {
-    // Safety:
-    // Created from valid Table for this object
-    // which contains a valid value in this slot
-    unsafe { self._tab.get::<bool>(PeriodicUpdate::VT_IS_LOCKED, Some(false)).unwrap()}
-  }
-  #[inline]
-  pub fn current_contract_serial(&self) -> u16 {
-    // Safety:
-    // Created from valid Table for this object
-    // which contains a valid value in this slot
-    unsafe { self._tab.get::<u16>(PeriodicUpdate::VT_CURRENT_CONTRACT_SERIAL, Some(0)).unwrap()}
-  }
-  #[inline]
-  pub fn local_unlock(&self) -> bool {
-    // Safety:
-    // Created from valid Table for this object
-    // which contains a valid value in this slot
-    unsafe { self._tab.get::<bool>(PeriodicUpdate::VT_LOCAL_UNLOCK, Some(false)).unwrap()}
-  }
-  #[inline]
-  pub fn local_lock(&self) -> bool {
-    // Safety:
-    // Created from valid Table for this object
-    // which contains a valid value in this slot
-    unsafe { self._tab.get::<bool>(PeriodicUpdate::VT_LOCAL_LOCK, Some(false)).unwrap()}
-  }
-  #[inline]
-  pub fn emergency_unlocked(&self) -> bool {
-    // Safety:
-    // Created from valid Table for this object
-    // which contains a valid value in this slot
-    unsafe { self._tab.get::<bool>(PeriodicUpdate::VT_EMERGENCY_UNLOCKED, Some(false)).unwrap()}
-  }
-}
-
-impl ::flatbuffers::Verifiable for PeriodicUpdate<'_> {
-  #[inline]
-  fn run_verifier(
-    v: &mut ::flatbuffers::Verifier, pos: usize
-  ) -> Result<(), ::flatbuffers::InvalidFlatbuffer> {
-    v.visit_table(pos)?
-     .visit_field::<::flatbuffers::ForwardsUOffset<&str>>("session", Self::VT_SESSION, false)?
-     .visit_field::<bool>("is_locked", Self::VT_IS_LOCKED, false)?
-     .visit_field::<u16>("current_contract_serial", Self::VT_CURRENT_CONTRACT_SERIAL, false)?
-     .visit_field::<bool>("local_unlock", Self::VT_LOCAL_UNLOCK, false)?
-     .visit_field::<bool>("local_lock", Self::VT_LOCAL_LOCK, false)?
-     .visit_field::<bool>("emergency_unlocked", Self::VT_EMERGENCY_UNLOCKED, false)?
-     .finish();
-    Ok(())
-  }
-}
-pub struct PeriodicUpdateArgs<'a> {
-    pub session: Option<::flatbuffers::WIPOffset<&'a str>>,
-    pub is_locked: bool,
-    pub current_contract_serial: u16,
-    pub local_unlock: bool,
-    pub local_lock: bool,
-    pub emergency_unlocked: bool,
-}
-impl<'a> Default for PeriodicUpdateArgs<'a> {
-  #[inline]
-  fn default() -> Self {
-    PeriodicUpdateArgs {
-      session: None,
-      is_locked: false,
-      current_contract_serial: 0,
-      local_unlock: false,
-      local_lock: false,
-      emergency_unlocked: false,
-    }
-  }
-}
-
-pub struct PeriodicUpdateBuilder<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> {
-  fbb_: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>,
-  start_: ::flatbuffers::WIPOffset<::flatbuffers::TableUnfinishedWIPOffset>,
-}
-impl<'a: 'b, 'b, A: ::flatbuffers::Allocator + 'a> PeriodicUpdateBuilder<'a, 'b, A> {
-  #[inline]
-  pub fn add_session(&mut self, session: ::flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<::flatbuffers::WIPOffset<_>>(PeriodicUpdate::VT_SESSION, session);
-  }
-  #[inline]
-  pub fn add_is_locked(&mut self, is_locked: bool) {
-    self.fbb_.push_slot::<bool>(PeriodicUpdate::VT_IS_LOCKED, is_locked, false);
-  }
-  #[inline]
-  pub fn add_current_contract_serial(&mut self, current_contract_serial: u16) {
-    self.fbb_.push_slot::<u16>(PeriodicUpdate::VT_CURRENT_CONTRACT_SERIAL, current_contract_serial, 0);
-  }
-  #[inline]
-  pub fn add_local_unlock(&mut self, local_unlock: bool) {
-    self.fbb_.push_slot::<bool>(PeriodicUpdate::VT_LOCAL_UNLOCK, local_unlock, false);
-  }
-  #[inline]
-  pub fn add_local_lock(&mut self, local_lock: bool) {
-    self.fbb_.push_slot::<bool>(PeriodicUpdate::VT_LOCAL_LOCK, local_lock, false);
-  }
-  #[inline]
-  pub fn add_emergency_unlocked(&mut self, emergency_unlocked: bool) {
-    self.fbb_.push_slot::<bool>(PeriodicUpdate::VT_EMERGENCY_UNLOCKED, emergency_unlocked, false);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut ::flatbuffers::FlatBufferBuilder<'a, A>) -> PeriodicUpdateBuilder<'a, 'b, A> {
-    let start = _fbb.start_table();
-    PeriodicUpdateBuilder {
-      fbb_: _fbb,
-      start_: start,
-    }
-  }
-  #[inline]
-  pub fn finish(self) -> ::flatbuffers::WIPOffset<PeriodicUpdate<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    ::flatbuffers::WIPOffset::new(o.value())
-  }
-}
-
-impl ::core::fmt::Debug for PeriodicUpdate<'_> {
-  fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-    let mut ds = f.debug_struct("PeriodicUpdate");
-      ds.field("session", &self.session());
-      ds.field("is_locked", &self.is_locked());
-      ds.field("current_contract_serial", &self.current_contract_serial());
-      ds.field("local_unlock", &self.local_unlock());
-      ds.field("local_lock", &self.local_lock());
-      ds.field("emergency_unlocked", &self.emergency_unlocked());
       ds.finish()
   }
 }
@@ -2014,36 +1661,6 @@ impl<'a> SignedMessage<'a> {
 
   #[inline]
   #[allow(non_snake_case)]
-  pub fn payload_as_started_update(&self) -> Option<StartedUpdate<'a>> {
-    if self.payload_type() == MessagePayload::StartedUpdate {
-      self.payload().map(|t| {
-       // Safety:
-       // Created from a valid Table for this object
-       // Which contains a valid union in this slot
-       unsafe { StartedUpdate::init_from_table(t) }
-     })
-    } else {
-      None
-    }
-  }
-
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn payload_as_periodic_update(&self) -> Option<PeriodicUpdate<'a>> {
-    if self.payload_type() == MessagePayload::PeriodicUpdate {
-      self.payload().map(|t| {
-       // Safety:
-       // Created from a valid Table for this object
-       // Which contains a valid union in this slot
-       unsafe { PeriodicUpdate::init_from_table(t) }
-     })
-    } else {
-      None
-    }
-  }
-
-  #[inline]
-  #[allow(non_snake_case)]
   pub fn payload_as_acknowledgement(&self) -> Option<Acknowledgement<'a>> {
     if self.payload_type() == MessagePayload::Acknowledgement {
       self.payload().map(|t| {
@@ -2117,8 +1734,6 @@ impl ::flatbuffers::Verifiable for SignedMessage<'_> {
           MessagePayload::LockCommand => v.verify_union_variant::<::flatbuffers::ForwardsUOffset<LockCommand>>("MessagePayload::LockCommand", pos),
           MessagePayload::UnlockCommand => v.verify_union_variant::<::flatbuffers::ForwardsUOffset<UnlockCommand>>("MessagePayload::UnlockCommand", pos),
           MessagePayload::ReleaseCommand => v.verify_union_variant::<::flatbuffers::ForwardsUOffset<ReleaseCommand>>("MessagePayload::ReleaseCommand", pos),
-          MessagePayload::StartedUpdate => v.verify_union_variant::<::flatbuffers::ForwardsUOffset<StartedUpdate>>("MessagePayload::StartedUpdate", pos),
-          MessagePayload::PeriodicUpdate => v.verify_union_variant::<::flatbuffers::ForwardsUOffset<PeriodicUpdate>>("MessagePayload::PeriodicUpdate", pos),
           MessagePayload::Acknowledgement => v.verify_union_variant::<::flatbuffers::ForwardsUOffset<Acknowledgement>>("MessagePayload::Acknowledgement", pos),
           MessagePayload::Error => v.verify_union_variant::<::flatbuffers::ForwardsUOffset<Error>>("MessagePayload::Error", pos),
           MessagePayload::AbortCommand => v.verify_union_variant::<::flatbuffers::ForwardsUOffset<AbortCommand>>("MessagePayload::AbortCommand", pos),
@@ -2214,20 +1829,6 @@ impl ::core::fmt::Debug for SignedMessage<'_> {
         },
         MessagePayload::ReleaseCommand => {
           if let Some(x) = self.payload_as_release_command() {
-            ds.field("payload", &x)
-          } else {
-            ds.field("payload", &"InvalidFlatbuffer: Union discriminant does not match value.")
-          }
-        },
-        MessagePayload::StartedUpdate => {
-          if let Some(x) = self.payload_as_started_update() {
-            ds.field("payload", &x)
-          } else {
-            ds.field("payload", &"InvalidFlatbuffer: Union discriminant does not match value.")
-          }
-        },
-        MessagePayload::PeriodicUpdate => {
-          if let Some(x) = self.payload_as_periodic_update() {
             ds.field("payload", &x)
           } else {
             ds.field("payload", &"InvalidFlatbuffer: Union discriminant does not match value.")
