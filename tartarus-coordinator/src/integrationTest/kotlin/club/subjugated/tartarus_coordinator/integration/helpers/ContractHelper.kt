@@ -1,6 +1,5 @@
 package club.subjugated.tartarus_coordinator.integration.helpers
 
-import club.subjugated.fb.bots.MessagePayload
 import club.subjugated.fb.message.Bot
 import club.subjugated.fb.message.Permission
 import club.subjugated.fb.message.SignedMessage

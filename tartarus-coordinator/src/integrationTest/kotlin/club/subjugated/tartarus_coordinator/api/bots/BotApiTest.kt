@@ -1,5 +1,6 @@
 package club.subjugated.tartarus_coordinator.api.bots
 
+import club.subjugated.fb.event.AcceptContract
 import club.subjugated.fb.event.CommonMetadata
 import club.subjugated.fb.event.Event
 import club.subjugated.fb.event.EventType
@@ -248,7 +249,7 @@ class Helper {
             sessionToken: String,
             contractSerial: UShort,
             counter: UShort,
-            eventType: Byte,
+            eventType: UByte,
             lockPrivateKeyBytes: ByteArray,
         ): ByteArray {
             val builder = FlatBufferBuilder(1024)
@@ -263,7 +264,9 @@ class Helper {
                     0,
                     0,
                 )
-            val eventOffset = Event.createEvent(builder, metadataOffset, eventType)
+            AcceptContract.startAcceptContract(builder)
+            val acceptOffset = AcceptContract.endAcceptContract(builder)
+            val eventOffset = Event.createEvent(builder, metadataOffset, eventType, acceptOffset)
             builder.finish(eventOffset)
 
             val eventBytes = builder.sizedByteArray()
@@ -298,8 +301,10 @@ class Helper {
                     0,
                     0,
                 )
+            AcceptContract.startAcceptContract(signedBuilder)
+            val signedAcceptOffset = AcceptContract.endAcceptContract(signedBuilder)
             val signedEventPayloadOffset =
-                Event.createEvent(signedBuilder, signedMetadataOffset, eventType)
+                Event.createEvent(signedBuilder, signedMetadataOffset, eventType, signedAcceptOffset)
             val sigOffset = signedBuilder.createByteVector(sig)
             val signedEventOffset =
                 SignedEvent.createSignedEvent(signedBuilder, sigOffset, signedEventPayloadOffset)
