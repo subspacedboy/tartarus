@@ -4,9 +4,9 @@ Tartarus is an open-source hardware lock system, primarily designed for chastity
 Think of it as an erotic application of modern cryptography.
 
 ## The Parts
-The physical lock is an ESP32-S3 powered smart lock that communicates over Wi-Fi for contract management. You can place your keys in the lock, agree to terms online with your keyholder, and then have it remotely sealed and managed.
+The physical lock is an ESP32-S3 powered smart lock that communicates over Wi-Fi (MQTT), Bluetooth Low Energy (BLE GATT), and USB (Web Serial) for contract and lock management. You can place your keys in the lock, agree to terms online with your keyholder, and then have it remotely sealed and managed.
 
-It's composed of the physical pieces (the actual physical lock you can build), the [coordinator](https://tartarus.subjugated.club) (for issuing commands, managing contracts, keys, and a lot of stuff), a network of bots for added functionality, and [Overlord-exe](https://bsky.app/profile/overlord-exe.subjugated.club) (the Bluesky bot/ineraction layer).
+It's composed of the physical pieces (the actual physical lock you can build), the [coordinator](https://tartarus.subjugated.club) (for issuing commands, managing contracts, keys, and hardware verification), a network of automated bots connected via duplex WebSockets, and [Overlord-exe](https://bsky.app/profile/overlord-exe.subjugated.club) (the Bluesky bot/interaction layer).
 
 ## What makes it different?
 

@@ -15,8 +15,7 @@ Kotlin found in `tartarus-coordinator`.
 
 ### Web Frontend
 
-Angular 19 and the source for `https://tartarus.subjugated.club`. Found
-in `tartarus`.
+Angular 22 application built with Spartan UI and Tailwind primitives at `https://tartarus.subjugated.club`. Found in `tartarus`. Includes in-browser Web Serial firmware flashing, serial command dispatch, BLE management, and contract administration.
 
 ### Example bot
 
@@ -25,7 +24,7 @@ Check out `tartarus-bot-example`.
 
 ### Overlord_exe
 
-This is a collection of official bots written in Kotlin.
+The official bot framework and runtime written in Kotlin, communicating over duplex WebSockets with author-owned sessions. Includes Bluesky social integration. Found in `overlord_exe`.
 See [@subjugatedclub.bsky.social](https://bsky.app/profile/subjugatedclub.bsky.social).
 
 

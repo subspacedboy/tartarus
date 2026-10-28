@@ -2,31 +2,31 @@
 
 ## Step 1: Complete Build + Setup
 
-Make sure it's built, online, and working.
+Make sure your lock is assembled, powered, and connected to the network (or accessible via Web Serial / BLE).
 
 ## Step 2: Login
 
-Scan the QR code on the front of the lock.
-It will give you a magical URL that will sign you into the website
-as a `LockUserSession`.
+Scan the QR code displayed on the screen of the lock (or use the credentials generated during initial setup).
+This opens an authenticated `LockUserSession` on [Tartarus](https://tartarus.subjugated.club), bringing you to the **My Lock** dashboard.
 
-## Step 3: Share Links
+## Step 3: Share Links & Tokens
 
-You'll see two links. One is your "Share" link and one is your "Total Control" link/token.
-If you send someone the "Share" link and they write a contract you'll be given the option to accept/reject it.
-If you send someone the "Total Control" link you will not be prompted, and the contract will be sent directly
-to the hardware and accepted. You've been warned.
+In the "My Lock" dashboard, you have two invitation links:
 
-You can tell the tokens apart because share tokens start with `s-` and total control tokens start
-with `tc-`.
+* **Share Link (`s-...`)**: When your author writes a contract with this link, you receive an invitation in your dashboard with full details. You have the choice to accept or reject it.
+* **Total Control Link (`tc-...`)**: If you give someone your Total Control link, any contract they submit will bypass manual confirmation and be sent directly to the hardware for automatic acceptance.
 
-## Step 4: Accept/Reject Contracts
+## Step 4: Review and Accept Contracts
 
-Decide who you want to accept a contract from.
+When a contract proposal arrives under a Share token, review:
+* The contract terms and duration.
+* Whether temporary unlocking via the physical lock buttons is permitted.
+* Which automated bots are attached, and what permissions they have (`can_lock`, `can_unlock`, `can_release`, `receive_events`).
 
-Make sure to read the terms. And especially note if any bots have been listed and with what permissions.
+If you agree, click **Accept Contract**. The lock physically engages and seals.
 
-## Step 5: Wait For Release
+## Step 5: Operating the Lock & Offline Buffering
 
-Enjoy. If temporary unlocks are allowed you can go to the lock
-screen on the lock and use the middle button to toggle the lock.
+* **Temporary Unlocks**: If allowed by your contract, you can navigate to the lock screen on the physical device (press D2 to cycle screens) and press D1 (the middle button) to toggle between locked and unlocked.
+* **Offline Event Ring Buffer**: If your Wi-Fi is temporarily offline, you can still cycle temporary unlocks. The firmware records these actions in an on-board 20-event ring buffer, which automatically drains and syncs to the coordinator and author as soon as Wi-Fi reconnects or via BLE.
+* **Emergency Safeguards**: If an unexpected emergency occurs or connectivity is permanently lost, contracts can be released using the **Emergency Unlock** protocol or aborted by an administrator using an offline `SafetyKey`.
