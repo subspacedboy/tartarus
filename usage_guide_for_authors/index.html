@@ -462,10 +462,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-4-enjoy" class="md-nav__link">
+  <a href="#step-5-managing-the-lock-serial-fallback" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 4: Enjoy
+        Step 5: Managing the Lock &amp; Serial Fallback
       
     </span>
   </a>
@@ -473,10 +473,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-5-release" class="md-nav__link">
+  <a href="#step-6-release" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 5: Release
+        Step 6: Release
       
     </span>
   </a>
@@ -589,10 +589,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-4-enjoy" class="md-nav__link">
+  <a href="#step-5-managing-the-lock-serial-fallback" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 4: Enjoy
+        Step 5: Managing the Lock &amp; Serial Fallback
       
     </span>
   </a>
@@ -600,10 +600,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-5-release" class="md-nav__link">
+  <a href="#step-6-release" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 5: Release
+        Step 6: Release
       
     </span>
   </a>
@@ -630,27 +630,38 @@
 <h1 id="author-guide-so-you-want-to-hold-some-keys">Author Guide - So You Want To Hold Some Keys</h1>
 <h2 id="step-1-get-a-keypair">Step 1: Get A Keypair</h2>
 <p>Generate a keypair using the <a href="https://tartarus.subjugated.club/keypair">key generator</a>.
-This keypair is how you login and what the software will use to sign all your contracts
+This keypair is how you log in and what the software will use to sign all your contracts
 and commands.</p>
-<p><strong>Do not share it</strong>. Especially with your sub. It's functionally a password. Anyone with this image/key file can release
+<p><strong>Do not share it</strong>. Especially with your sub. It's functionally a master private key. Anyone with this image or key file can release
 or unlock a contract.</p>
-<p><strong>Protect it</strong>. Treat it like a physical key your sub handed you. If you lose it you'll need to find someone
+<p><strong>Protect it</strong>. Treat it like a physical key your sub handed you. If you lose it you'll need an administrator with a designated <code>SafetyKey</code>
 to abort the contract.</p>
 <h2 id="step-2-login">Step 2: Login</h2>
+<p>Go to <a href="https://tartarus.subjugated.club/login">Tartarus Login</a> and select <strong>Author Login</strong>.
+Upload or drag and drop your saved keypair image/file. The browser verifies the key locally and establishes an authenticated <code>AuthorSession</code>.</p>
 <h2 id="step-3-get-a-token-from-your-sub">Step 3: Get A Token From Your Sub</h2>
-<p>Every sub has two links. One is the "share" link the other is the "total control" link.
+<p>Every sub has two links: the "share" link and the "total control" link.
 The "share" token starts with <code>s-</code> and the total control token starts with <code>tc-</code>.</p>
-<p>An <code>s-</code> token will let you write a contract and send it to your sub for review and accept/reject.
-A <code>tc-</code> token will let you write a contract and issue it directly. If the lock is online it will auto-accept it.
-The website will let you know which you have.</p>
-<p>When you load the link it will become a <code>KnownToken</code> and it will always be available on the website under "Lock sessions".
-You can name the token so you can remember who it came from.</p>
+<ul>
+<li>An <code>s-</code> token lets you write a contract and send it to your sub for review and accept/reject.</li>
+<li>A <code>tc-</code> token lets you write a contract and issue it directly to hardware. If the lock is online, it will auto-accept it.</li>
+</ul>
+<p>The website will clearly identify which token type you are viewing. When you load the link, it becomes a <code>KnownToken</code> saved to your account.
+In the modernized Spartan UI dashboard, known tokens are displayed as cards under "Lock sessions". You can label them to keep track of who they belong to, or delete them when a session is finished.</p>
 <h2 id="step-4-write-a-contract">Step 4: Write A Contract</h2>
-<p>Go nuts. Add bots. Whatever.</p>
-<h2 id="step-4-enjoy">Step 4: Enjoy</h2>
-<p>😈</p>
-<h2 id="step-5-release">Step 5: Release</h2>
-<p>When you're done you'll have a button for Release. That will end the contract.</p>
+<p>Using the Contract Creator:
+* Set contract terms and duration.
+* Configure whether temporary unlocks via physical lock buttons are permitted.
+* Attach automated bots with granular permissions (<code>can_lock</code>, <code>can_unlock</code>, <code>can_release</code>, and <code>receive_events</code>).</p>
+<p>Once submitted, the contract is signed with your author key and dispatched to the lock.</p>
+<h2 id="step-5-managing-the-lock-serial-fallback">Step 5: Managing the Lock &amp; Serial Fallback</h2>
+<p>From the Author Contract View, you can issue commands (<code>Lock</code>, <code>Unlock</code>, <code>Release</code>, or <code>EmergencyUnlock</code>).</p>
+<blockquote>
+<p>[!TIP]
+<strong>Serial Command Fallback</strong>: If the lock is offline or experiencing network difficulties, command cards feature a <strong>Send via serial</strong> option. You can copy the Base64 command armored string and transmit it directly over USB serial via the Web Serial Console.</p>
+</blockquote>
+<h2 id="step-6-release">Step 6: Release</h2>
+<p>When the agreed terms are fulfilled, click <strong>Release Contract</strong>. The author key signs a <code>ReleaseCommand</code> and, upon confirmation from the lock, the contract is ended and the hardware unlocks.</p>
 
 
 

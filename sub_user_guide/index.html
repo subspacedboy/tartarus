@@ -413,10 +413,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-3-share-links" class="md-nav__link">
+  <a href="#step-3-share-links-tokens" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 3: Share Links
+        Step 3: Share Links &amp; Tokens
       
     </span>
   </a>
@@ -424,10 +424,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-4-acceptreject-contracts" class="md-nav__link">
+  <a href="#step-4-review-and-accept-contracts" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 4: Accept/Reject Contracts
+        Step 4: Review and Accept Contracts
       
     </span>
   </a>
@@ -435,10 +435,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-5-wait-for-release" class="md-nav__link">
+  <a href="#step-5-operating-the-lock-offline-buffering" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 5: Wait For Release
+        Step 5: Operating the Lock &amp; Offline Buffering
       
     </span>
   </a>
@@ -556,10 +556,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-3-share-links" class="md-nav__link">
+  <a href="#step-3-share-links-tokens" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 3: Share Links
+        Step 3: Share Links &amp; Tokens
       
     </span>
   </a>
@@ -567,10 +567,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-4-acceptreject-contracts" class="md-nav__link">
+  <a href="#step-4-review-and-accept-contracts" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 4: Accept/Reject Contracts
+        Step 4: Review and Accept Contracts
       
     </span>
   </a>
@@ -578,10 +578,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-5-wait-for-release" class="md-nav__link">
+  <a href="#step-5-operating-the-lock-offline-buffering" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 5: Wait For Release
+        Step 5: Operating the Lock &amp; Offline Buffering
       
     </span>
   </a>
@@ -607,24 +607,28 @@
 
 <h1 id="lock-user-guide-so-you-want-someone-to-hold-your-keys">Lock User Guide - So You Want Someone To Hold Your Keys</h1>
 <h2 id="step-1-complete-build-setup">Step 1: Complete Build + Setup</h2>
-<p>Make sure it's built, online, and working.</p>
+<p>Make sure your lock is assembled, powered, and connected to the network (or accessible via Web Serial / BLE).</p>
 <h2 id="step-2-login">Step 2: Login</h2>
-<p>Scan the QR code on the front of the lock.
-It will give you a magical URL that will sign you into the website
-as a <code>LockUserSession</code>.</p>
-<h2 id="step-3-share-links">Step 3: Share Links</h2>
-<p>You'll see two links. One is your "Share" link and one is your "Total Control" link/token.
-If you send someone the "Share" link and they write a contract you'll be given the option to accept/reject it.
-If you send someone the "Total Control" link you will not be prompted, and the contract will be sent directly
-to the hardware and accepted. You've been warned.</p>
-<p>You can tell the tokens apart because share tokens start with <code>s-</code> and total control tokens start
-with <code>tc-</code>.</p>
-<h2 id="step-4-acceptreject-contracts">Step 4: Accept/Reject Contracts</h2>
-<p>Decide who you want to accept a contract from.</p>
-<p>Make sure to read the terms. And especially note if any bots have been listed and with what permissions.</p>
-<h2 id="step-5-wait-for-release">Step 5: Wait For Release</h2>
-<p>Enjoy. If temporary unlocks are allowed you can go to the lock
-screen on the lock and use the middle button to toggle the lock.</p>
+<p>Scan the QR code displayed on the screen of the lock (or use the credentials generated during initial setup).
+This opens an authenticated <code>LockUserSession</code> on <a href="https://tartarus.subjugated.club">Tartarus</a>, bringing you to the <strong>My Lock</strong> dashboard.</p>
+<h2 id="step-3-share-links-tokens">Step 3: Share Links &amp; Tokens</h2>
+<p>In the "My Lock" dashboard, you have two invitation links:</p>
+<ul>
+<li><strong>Share Link (<code>s-...</code>)</strong>: When your author writes a contract with this link, you receive an invitation in your dashboard with full details. You have the choice to accept or reject it.</li>
+<li><strong>Total Control Link (<code>tc-...</code>)</strong>: If you give someone your Total Control link, any contract they submit will bypass manual confirmation and be sent directly to the hardware for automatic acceptance.</li>
+</ul>
+<h2 id="step-4-review-and-accept-contracts">Step 4: Review and Accept Contracts</h2>
+<p>When a contract proposal arrives under a Share token, review:
+* The contract terms and duration.
+* Whether temporary unlocking via the physical lock buttons is permitted.
+* Which automated bots are attached, and what permissions they have (<code>can_lock</code>, <code>can_unlock</code>, <code>can_release</code>, <code>receive_events</code>).</p>
+<p>If you agree, click <strong>Accept Contract</strong>. The lock physically engages and seals.</p>
+<h2 id="step-5-operating-the-lock-offline-buffering">Step 5: Operating the Lock &amp; Offline Buffering</h2>
+<ul>
+<li><strong>Temporary Unlocks</strong>: If allowed by your contract, you can navigate to the lock screen on the physical device (press D2 to cycle screens) and press D1 (the middle button) to toggle between locked and unlocked.</li>
+<li><strong>Offline Event Ring Buffer</strong>: If your Wi-Fi is temporarily offline, you can still cycle temporary unlocks. The firmware records these actions in an on-board 20-event ring buffer, which automatically drains and syncs to the coordinator and author as soon as Wi-Fi reconnects or via BLE.</li>
+<li><strong>Emergency Safeguards</strong>: If an unexpected emergency occurs or connectivity is permanently lost, contracts can be released using the <strong>Emergency Unlock</strong> protocol or aborted by an administrator using an offline <code>SafetyKey</code>.</li>
+</ul>
 
 
 

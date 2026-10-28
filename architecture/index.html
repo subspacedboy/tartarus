@@ -344,10 +344,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#signedevent" class="md-nav__link">
+  <a href="#signedevent-unified-telemetry" class="md-nav__link">
     <span class="md-ellipsis">
       
-        SignedEvent
+        SignedEvent &amp; Unified Telemetry
       
     </span>
   </a>
@@ -387,6 +387,17 @@
     <span class="md-ellipsis">
       
         Lock Startup
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bluetooth-low-energy-ble-offline-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bluetooth Low Energy (BLE) &amp; Offline Storage
       
     </span>
   </a>
@@ -723,10 +734,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#signedevent" class="md-nav__link">
+  <a href="#signedevent-unified-telemetry" class="md-nav__link">
     <span class="md-ellipsis">
       
-        SignedEvent
+        SignedEvent &amp; Unified Telemetry
       
     </span>
   </a>
@@ -766,6 +777,17 @@
     <span class="md-ellipsis">
       
         Lock Startup
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bluetooth-low-energy-ble-offline-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bluetooth Low Energy (BLE) &amp; Offline Storage
       
     </span>
   </a>
@@ -865,8 +887,14 @@
 <p>This doc is a continuous work in progress.</p>
 <p>This serves as the rough architecture guide for how the whole
 thing works if you're curious.</p>
-<p>There's essentially three components: the lock, the website <a href="https://tartarus.subjugated.club">Tartarus</a>, and the coordinator(API).</p>
-<p>The "center" of the system is the Coordinator. The locks need somewhere to send and receive updates, process commands etc.
+<p>There are four core components in the Tartarus ecosystem:</p>
+<ol>
+<li><strong>The Lock (Firmware)</strong>: ESP32-S3 firmware written in Rust managing physical locking state, hardware security (Infineon Optiga Trust M or software fallback), display rendering via <code>embedded-graphics</code>, and local Bluetooth LE / USB serial interfaces.</li>
+<li><strong>The Coordinator</strong>: Spring Boot + Kotlin backend providing REST APIs, MQTT messaging, hardware attestation verification, and WebSocket session management.</li>
+<li><strong>The Web Application</strong>: Modern Angular application built with Spartan UI and Tailwind primitives at <a href="https://tartarus.subjugated.club">Tartarus</a>, supporting in-browser Web Serial flashing, serial command dispatch, BLE management, and contract administration.</li>
+<li><strong>Overlord &amp; Bot Platform</strong>: Automated agent and bot services communicating over duplex WebSockets with author ownership for reactive lock automation and social interactions (e.g. Bluesky).</li>
+</ol>
+<p>The "center" of the system is the Coordinator. The locks need somewhere to send and receive updates, process commands, etc.
 When they startup they check their local configuration and go through these steps:</p>
 <h2 id="cryptography">Cryptography</h2>
 <p>Almost every entity in the system has a public and private keypair.</p>
@@ -921,18 +949,20 @@ This was an early design decision to minimize the size of <code>SignedMessage</c
 so they would help fit inside scannable QR code blocks. The downside is most
 verification libraries like BouncyCastle want signatures in <code>DER</code> format so you'll need to convert them
 around.</p>
-<h2 id="signedevent"><code>SignedEvent</code></h2>
-<p>The lock will generate signed events for both the coordinator and any bots
-that are listed on a contract. They are similar in structure to <code>SignedMessage</code>.</p>
-<p>The events in the contract lifecycle are:</p>
+<h2 id="signedevent-unified-telemetry"><code>SignedEvent</code> &amp; Unified Telemetry</h2>
+<p>The lock generates cryptographically signed events for the coordinator, web admin sessions, and any authorized bots listed on a contract. They are similar in structure to <code>SignedMessage</code>, carrying a signed payload with common metadata and timestamps.</p>
+<p>The events in the contract lifecycle and telemetry system are:</p>
 <ul>
 <li><code>Accept</code> - This event is emitted after the contract has been confirmed in the hardware.</li>
-<li><code>Lock</code> - The lock was locked via command from the coordinator.</li>
+<li><code>Lock</code> - The lock was locked via command from the coordinator or a bot.</li>
 <li><code>Unlock</code> - The lock was unlocked via command.</li>
 <li><code>LocalLock</code> - The lock button on the face of the lock was used. Only emits if temporary unlocking is allowed.</li>
 <li><code>LocalUnlock</code> - The unlock button on the face of the lock was used. Only emits if temporary unlocking is allowed.</li>
 <li><code>Release</code> - The contract was released and confirmed in hardware.</li>
-<li><code>Abort</code> - The contract was aborted via a <code>SafetyKey</code>.</li>
+<li><code>Abort</code> - The contract was aborted via a designated <code>SafetyKey</code>.</li>
+<li><code>EmergencyUnlock</code> - The contract was unlocked via an emergency unlock command.</li>
+<li><code>StartedUpdate</code> - Telemetry emitted on lock boot announcing firmware version, lock state, and contract status.</li>
+<li><code>PeriodicUpdate</code> - Heartbeat telemetry published periodically while online. Bots with <code>receive_events</code> permissions will receive these periodic updates too.</li>
 </ul>
 <h2 id="contract-structure">Contract structure</h2>
 <p>Contracts are pretty straight forward:</p>
@@ -956,10 +986,8 @@ bits of the system will try and interpret this field.</li>
 <li>Lastly, should temporary unlocks be allowed. If this is true the buttons
 on the lock face will work, otherwise they won't.</li>
 </ul>
-<p>In the original design it was </p>
 <h3 id="bots-permissions">Bots &amp; Permissions</h3>
-<p>Only bots listed on the contract body will be able to receive events.
-Events come directly from the lock, not the coordinator.</p>
+<p>Only bots listed on the contract body will be able to receive events. Events are published by the lock to isolated per-lock MQTT topics (<code>tartarus/{lock_id}/events</code>), and the coordinator filters and fans them out to authorized bots over duplex WebSockets. Bots will also receive periodic updates if they have event permissions.</p>
 <p>Additionally, bots have four possible permission settings:</p>
 <ul>
 <li><code>receive_events</code> - Whether or not <code>SignedEvent</code> messages will be generated at their appropriate point in the lifecycle.
@@ -969,19 +997,20 @@ If this is false no events will be sent to the bot.</li>
 <li><code>can_release</code> - If this is true the bot can end the contract.</li>
 </ul>
 <h2 id="lock-startup">Lock Startup</h2>
-<p>What happens on lock startup.</p>
+<p>What happens on lock startup:</p>
 <ul>
-<li>Send <code>StartedUpdate</code> from the Contract flatbuffers.
-If the coordinator has never heard from this lock before it will create a new <code>LockSession</code>.
-It also includes the public key material from the lock, whether it started with a contract, and what
-the current lock state is.</li>
-<li>Receive a <code>CoordinatorConfiguration</code> message potentially updating the lock's local configuration.
-Can also be used to set/toggle experimental features in the firmware.</li>
-<li>Sends a <code>GetLatestFirmwareRequest</code> that will us what the latest available version via OTA ("Over the air") is.</li>
-<li>Receive a <code>FirmwareChallengeRequest</code>. If you have an "official" build of the firmware it will have a key
-injected that can prove it's an official firmware. This is pretty much just ceremonial.</li>
+<li>Send <code>StartedUpdate</code> from the unified <code>event.fbs</code> flatbuffers. If the coordinator has never heard from this lock before, it creates a new <code>LockSession</code>. The update includes the lock's public key material, whether it started with an active contract, the firmware version, and the current lock state.</li>
+<li>Receive a <code>CoordinatorConfiguration</code> message potentially updating the lock's local configuration or toggling experimental firmware features.</li>
+<li>In the pre-1.2.0 world, we had scaffolding for OTA updates (<code>GetLatestFirmwareRequest</code>). The problem is that the Adafruit Reverse TFT Feather only has 4MB of flash, which became unworkable as firmware features grew. However, modern in-browser Web Serial flashing (<code>/updater</code>) obviated the need for OTA anyway, allowing the partition table to be standardized with a larger application partition and 24 KB NVS.</li>
+<li>Authenticate hardware security: The firmware uses a pluggable <code>SecurityBackend</code> architecture. For "official" hardware builds, an Infineon Optiga Trust M secure element module provides hardware-isolated keys and ECDSA signing; the coordinator cryptographically verifies the hardware certificate chain against Infineon Root CAs. The "official" build is an optional additional layer of security for those that want a slightly more oppressive experience—especially good for software people who know how things work! Homebrew builds run smoothly using the software security backend.</li>
 </ul>
-<p>From there it will publish a <code>PeriodicUpdate</code> once a minute indefinitely.</p>
+<p>From there, it will publish a <code>PeriodicUpdate</code> event once a minute indefinitely (which is also forwarded to authorized bots).</p>
+<h2 id="bluetooth-low-energy-ble-offline-storage">Bluetooth Low Energy (BLE) &amp; Offline Storage</h2>
+<p>To support scenarios where Wi-Fi is intermittent or unavailable, the firmware incorporates local transport and buffering:</p>
+<ul>
+<li><strong>On-Board BLE GATT Server</strong>: An embedded BLE GATT server (<code>ble_server.rs</code>) allows direct interaction with the lock without requiring Wi-Fi. It uses challenge-response authentication over GATT characteristics for issuing commands, reading device status, and draining audit events.</li>
+<li><strong>Offline Ring Buffer</strong>: A 20-event circular buffer (<code>event_buffer.rs</code>) captures state changes (such as local lock/unlock toggles) when the lock is offline. Once Wi-Fi reconnects or a client connects over BLE, buffered events are automatically flushed and synced.</li>
+</ul>
 <h2 id="terms">Terms</h2>
 <h3 id="locksession"><code>LockSession</code></h3>
 <p>A <code>LockSession</code> uniquely defines a particular Tartarus lock.</p>

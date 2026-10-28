@@ -541,8 +541,8 @@
 <p>Tartarus is an open-source hardware lock system, primarily designed for chastity, but it could be used for anything.
 Think of it as an erotic application of modern cryptography.</p>
 <h2 id="the-parts">The Parts</h2>
-<p>The physical lock is an ESP32-S3 powered smart lock that communicates over Wi-Fi for contract management. You can place your keys in the lock, agree to terms online with your keyholder, and then have it remotely sealed and managed.</p>
-<p>It's composed of the physical pieces (the actual physical lock you can build), the <a href="https://tartarus.subjugated.club">coordinator</a> (for issuing commands, managing contracts, keys, and a lot of stuff), a network of bots for added functionality, and <a href="https://bsky.app/profile/overlord-exe.subjugated.club">Overlord-exe</a> (the Bluesky bot/ineraction layer).</p>
+<p>The physical lock is an ESP32-S3 powered smart lock that communicates over Wi-Fi (MQTT), Bluetooth Low Energy (BLE GATT), and USB (Web Serial) for contract and lock management. You can place your keys in the lock, agree to terms online with your keyholder, and then have it remotely sealed and managed.</p>
+<p>It's composed of the physical pieces (the actual physical lock you can build), the <a href="https://tartarus.subjugated.club">coordinator</a> (for issuing commands, managing contracts, keys, and hardware verification), a network of automated bots connected via duplex WebSockets, and <a href="https://bsky.app/profile/overlord-exe.subjugated.club">Overlord-exe</a> (the Bluesky bot/interaction layer).</p>
 <h2 id="what-makes-it-different">What makes it different?</h2>
 <p>It brings a lot of BDSM dynamics into the online world.
 You can have people in far off locations manage your keys, give you tasks, have group accountability etc.
