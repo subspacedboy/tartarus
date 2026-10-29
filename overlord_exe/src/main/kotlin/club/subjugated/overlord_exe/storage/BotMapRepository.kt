@@ -7,4 +7,5 @@ import org.springframework.stereotype.Repository
 @Repository
 interface BotMapRepository : JpaRepository<BotMap, Long> {
     fun findByInternalNameAndCoordinator(name : String, coordinator : String) : BotMap?
+    fun findFirstByInternalNameOrderByUpdatedAtDesc(name : String) : BotMap?
 }

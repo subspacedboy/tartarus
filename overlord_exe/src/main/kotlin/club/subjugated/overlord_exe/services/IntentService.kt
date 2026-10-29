@@ -1,5 +1,6 @@
 package club.subjugated.overlord_exe.services
 
+import aws.sdk.kotlin.runtime.auth.credentials.StaticCredentialsProvider
 import aws.sdk.kotlin.services.bedrockruntime.BedrockRuntimeClient
 import aws.sdk.kotlin.services.bedrockruntime.model.ContentBlock
 import aws.sdk.kotlin.services.bedrockruntime.model.ConversationRole
@@ -8,6 +9,7 @@ import aws.sdk.kotlin.services.bedrockruntime.model.Message
 import aws.sdk.kotlin.services.bedrockruntime.model.SystemContentBlock
 import aws.sdk.kotlin.services.bedrockruntime.model.Tool
 import aws.sdk.kotlin.services.bedrockruntime.model.ToolConfiguration
+import aws.smithy.kotlin.runtime.auth.awscredentials.Credentials
 import aws.smithy.kotlin.runtime.content.Document
 import club.subjugated.overlord_exe.convo.ConversationContext
 import club.subjugated.overlord_exe.convo.ConversationHandler
@@ -66,12 +68,31 @@ class IntentService @Autowired constructor(
     @Value("\${overlord.bedrock.limits.max-conversation-turns:8}")
     var maxConversationTurns: Int = 8
 
+    // Optional explicit AWS credentials (fallback to AWS SDK default chain if unset)
+    @Value("\${overlord.aws.access-key-id:}")
+    var awsAccessKeyId: String = ""
+
+    @Value("\${overlord.aws.secret-access-key:}")
+    var awsSecretAccessKey: String = ""
+
+    @Value("\${overlord.aws.session-token:}")
+    var awsSessionToken: String = ""
+
     private var bedrockClientInstance: BedrockRuntimeClient? = injectedBedrockClient
 
     internal fun getBedrockClient(): BedrockRuntimeClient {
         return bedrockClientInstance ?: synchronized(this) {
             bedrockClientInstance ?: BedrockRuntimeClient {
                 region = awsRegion
+                if (awsAccessKeyId.isNotBlank() && awsSecretAccessKey.isNotBlank()) {
+                    credentialsProvider = StaticCredentialsProvider(
+                        Credentials(
+                            accessKeyId = awsAccessKeyId.trim(),
+                            secretAccessKey = awsSecretAccessKey.trim(),
+                            sessionToken = awsSessionToken.trim().ifBlank { null },
+                        )
+                    )
+                }
             }.also { bedrockClientInstance = it }
         }
     }

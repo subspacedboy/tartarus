@@ -104,6 +104,11 @@ class KtorCoordinatorGateway(
 ) : CoordinatorGateway {
     private val logger: Logger = LoggerFactory.getLogger(KtorCoordinatorGateway::class.java)
 
+    val apiBase: String by lazy {
+        val trimmed = coordinator.trim().trimEnd('/')
+        if (trimmed.endsWith("/api")) trimmed else "$trimmed/api"
+    }
+
     private val jsonParser = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -142,7 +147,7 @@ class KtorCoordinatorGateway(
             return AuthorSessionResponse(sessionToken = "as-TESTAUTHOR", name = "as-TESTAUTHOR")
         }
         return runBlocking {
-            val response = httpClient.post("$coordinator/author_sessions/") {
+            val response = httpClient.post("$apiBase/author_sessions/") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }
@@ -160,7 +165,7 @@ class KtorCoordinatorGateway(
             return emptyList()
         }
         return runBlocking {
-            val response = httpClient.get("$coordinator/bots/mine") {
+            val response = httpClient.get("$apiBase/bots/mine") {
                 header(HttpHeaders.Authorization, "Bearer $authorJwt")
             }
             if (!response.status.isSuccess()) {
@@ -177,7 +182,7 @@ class KtorCoordinatorGateway(
             return NewBotResponse(name = generateId("b-"), clearTextPassword = "")
         }
         return runBlocking {
-            val response = httpClient.post("$coordinator/bots/") {
+            val response = httpClient.post("$apiBase/bots/") {
                 header(HttpHeaders.Authorization, "Bearer $authorJwt")
                 contentType(ContentType.Application.Json)
                 setBody(request)
@@ -212,7 +217,7 @@ class KtorCoordinatorGateway(
             return info
         }
         return runBlocking {
-            val response = httpClient.post("$coordinator/bots/$botName/contracts") {
+            val response = httpClient.post("$apiBase/bots/$botName/contracts") {
                 header(HttpHeaders.Authorization, "Bearer $botJwt")
                 contentType(ContentType.Application.Json)
                 setBody(
@@ -259,7 +264,7 @@ class KtorCoordinatorGateway(
                 )
         }
         return runBlocking {
-            val response = httpClient.get("$coordinator/bots/$botName/contracts/bySession/$lockSession/$serial") {
+            val response = httpClient.get("$apiBase/bots/$botName/contracts/bySession/$lockSession/$serial") {
                 header(HttpHeaders.Authorization, "Bearer $jwt")
             }
             if (!response.status.isSuccess()) {
@@ -290,7 +295,7 @@ class KtorCoordinatorGateway(
             return
         }
         runBlocking {
-            val response = httpClient.post("$coordinator/bots/$botName/commands") {
+            val response = httpClient.post("$apiBase/bots/$botName/commands") {
                 header(HttpHeaders.Authorization, "Bearer $botJwt")
                 contentType(ContentType.Application.Json)
                 setBody(
@@ -326,7 +331,7 @@ class KtorCoordinatorGateway(
             return
         }
         runBlocking {
-            val response = httpClient.post("$coordinator/bots/$botName/contracts/$contractName/messages") {
+            val response = httpClient.post("$apiBase/bots/$botName/contracts/$contractName/messages") {
                 header(HttpHeaders.Authorization, "Bearer $botJwt")
                 contentType(ContentType.Application.Json)
                 setBody(BotCreateMessagePayload(message = message))

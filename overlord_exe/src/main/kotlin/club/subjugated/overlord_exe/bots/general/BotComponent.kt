@@ -90,9 +90,26 @@ class BotComponent @Autowired constructor(
     @Lazy @Autowired(required = false) private val blueSkyService: BlueSkyService? = null,
     @Lazy @Autowired(required = false) private val discoveredBots: List<OverlordBot> = emptyList(),
     @Value("\${overlord.coordinator}") private val coordinator: String,
-    @Value("\${overlord.ws_uri:ws://localhost:8080/ws/events}") private val wsUri: String,
+    @Value("\${overlord.ws_uri:}") private val wsUri: String = "",
 ) : SmartInitializingSingleton {
     private val logger: Logger = LoggerFactory.getLogger(BotComponent::class.java)
+
+    val resolvedWsUri: String by lazy {
+        val configured = wsUri.trim()
+        if (configured.isNotBlank() && configured != "ws://localhost:8080/ws/events") {
+            val trimmed = configured.trimEnd('/')
+            if (!trimmed.endsWith("/ws/events")) {
+                if (trimmed.endsWith("/api")) "$trimmed/ws/events" else "$trimmed/api/ws/events"
+            } else {
+                trimmed
+            }
+        } else {
+            val wsScheme = if (coordinator.startsWith("https://")) "wss://" else "ws://"
+            val stripped = coordinator.replace("https://", "").replace("http://", "").trimEnd('/')
+            val base = if (stripped.endsWith("/api")) stripped else "$stripped/api"
+            "$wsScheme$base/ws/events"
+        }
+    }
 
     private val jsonParser = Json { ignoreUnknownKeys = true }
 
@@ -244,14 +261,14 @@ class BotComponent @Autowired constructor(
         webSocketConnecting = true
         try {
             val authorJwt = botMapService.getAuthorJwt()
-            val fullUri = URI.create("$wsUri?authorJwt=$authorJwt")
+            val fullUri = URI.create("$resolvedWsUri?authorJwt=$authorJwt")
             val httpClient = java.net.http.HttpClient.newHttpClient()
             val messageBuffer = StringBuilder()
 
             httpClient.newWebSocketBuilder()
                 .buildAsync(fullUri, object : WebSocket.Listener {
                     override fun onOpen(webSocket: WebSocket) {
-                        logger.info("Connected to Tartarus Coordinator WebSocket at $wsUri")
+                        logger.info("Connected to Tartarus Coordinator WebSocket at $resolvedWsUri")
                         activeWebSocket = webSocket
                         webSocketConnecting = false
                         webSocket.request(1)
@@ -282,7 +299,7 @@ class BotComponent @Autowired constructor(
                     }
                 })
                 .exceptionally { ex ->
-                    logger.warn("Failed to connect WebSocket to $wsUri: ${ex.message}")
+                    logger.warn("Failed to connect WebSocket to $resolvedWsUri: ${ex.message}")
                     activeWebSocket = null
                     webSocketConnecting = false
                     null

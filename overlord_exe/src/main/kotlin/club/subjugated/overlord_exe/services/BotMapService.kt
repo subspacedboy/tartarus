@@ -78,7 +78,13 @@ class BotMapService(
 
     fun findBotMap(internalName: String): BotMap? {
         botCache[internalName]?.let { return it }
-        return botMapRepository.findByInternalNameAndCoordinator(internalName, coordinator)?.also {
+        val found = botMapRepository.findByInternalNameAndCoordinator(internalName, coordinator)
+            ?: botMapRepository.findFirstByInternalNameOrderByUpdatedAtDesc(internalName)?.also {
+                logger.info("Migrating existing BotMap for '$internalName' from coordinator '${it.coordinator}' to '$coordinator'")
+                it.coordinator = coordinator
+                botMapRepository.save(it)
+            }
+        return found?.also {
             botCache[internalName] = it
         }
     }
@@ -93,7 +99,7 @@ class BotMapService(
         description: String,
         preferredKeyVersion: Int? = null,
     ): BotMap {
-        val existing = botMapRepository.findByInternalNameAndCoordinator(internalName, coordinator)
+        val existing = findBotMap(internalName)
 
         val remoteBots: List<CoordinatorBotDto> = try {
             if (environment.activeProfiles.contains("test")) {
