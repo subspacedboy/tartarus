@@ -81,7 +81,7 @@ export class UpdaterComponent implements OnInit, OnDestroy {
   progressDetails = signal<string>('');
 
   // Server & Manifest configuration
-  baseUrl = signal<string>('https://tartarus.subjugated.club/firmware2/');
+  baseUrl = signal<string>('https://tartarus.subjugated.club/firmware/');
   manifest = signal<FirmwareManifest | null>(null);
   manifestLoading = signal<boolean>(false);
   manifestError = signal<string | null>(null);

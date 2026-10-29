@@ -48,3 +48,4 @@ Thumbs.db
 *.pem
 .wrangler/
 wrangler.toml
+_worker.bundle
