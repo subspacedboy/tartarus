@@ -15,11 +15,11 @@ import org.springframework.stereotype.Service
 
 @Service
 class ConfigurationService {
-    @Value("\${tartarus.api_uri}") var apiUri: String = ""
+    @Value("\${tartarus.api_uri:}") var apiUri: String = ""
 
-    @Value("\${tartarus.ws_uri}") var wsUri: String = ""
+    @Value("\${tartarus.ws_uri:}") var wsUri: String = ""
 
-    @Value("\${tartarus.web_uri}") var webUri: String = ""
+    @Value("\${tartarus.web_uri:http://localhost:4200}") var webUri: String = ""
 
     @Value("\${tartarus.mqtt_uri}") var mqttUri: String = ""
 
@@ -29,12 +29,28 @@ class ConfigurationService {
 
     @Autowired lateinit var safetyKeyService: SafetyKeyService
 
+    fun resolveApiUri(): String {
+        return if (apiUri.isNotBlank()) apiUri else "${webUri.trimEnd('/')}/api"
+    }
+
+    fun resolveWsUri(): String {
+        if (wsUri.isNotBlank()) return wsUri
+        val baseWs = when {
+            webUri.startsWith("https://") -> "wss://" + webUri.substring(8)
+            webUri.startsWith("http://") -> "ws://" + webUri.substring(7)
+            else -> webUri
+        }
+        return "${baseWs.trimEnd('/')}/api/ws/events"
+    }
+
     fun getConfigurationAsMessage(): ConfigurationMessage {
+        val effectiveApiUri = resolveApiUri()
+        val effectiveWsUri = resolveWsUri()
         val safetyKeys = this.safetyKeyService.getAllActiveSafetyKeys()
         val configuration =
             ConfigurationMessage(
-                apiUri = apiUri,
-                wsUri = wsUri,
+                apiUri = effectiveApiUri,
+                wsUri = effectiveWsUri,
                 webUri = webUri,
                 mqttUri = mqttUri,
                 safetyKeys = safetyKeys.map { SafetyKeyMessage.fromSafetyKey(it) },
@@ -69,9 +85,9 @@ class ConfigurationService {
 
         // Create main configuration
         val webUriOffset = builder.createString(webUri)
-        val wsUriOffset = builder.createString(wsUri)
+        val wsUriOffset = builder.createString(resolveWsUri())
         val mqttUriOffset = builder.createString(mqttUri)
-        val apiUriOffset = builder.createString(apiUri)
+        val apiUriOffset = builder.createString(resolveApiUri())
 
         val bytes = java.util.Base64.getDecoder().decode(loginTokenPublicKey)
         val compressedPublicKey =

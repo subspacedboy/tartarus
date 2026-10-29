@@ -33,7 +33,8 @@ export class TartarusCoordinatorService {
     private configService: ConfigService,
     private toastService: ToastService,) {
     let config = this.configService.getConfig();
-    this.baseUrl = String(config.apiUri);
+    const rawUrl = config.apiUri || (config.webUri ? `${config.webUri}/api` : '/api');
+    this.baseUrl = rawUrl.replace(/\/+$/, '');
   }
 
   public saveKeyRecord(public_key: string) : Observable<boolean> {

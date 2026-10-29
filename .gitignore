@@ -15,3 +15,14 @@ docs/site**
 
 secure_boot_signing_key.pem
 *.bin
+
+# Secrets & Cloudflare tunnel artifacts
+.env
+.env.*
+*.pem
+*.pfx
+*.jks
+cert.pem
+creds.json
+*.tunnel.json
+.wrangler/

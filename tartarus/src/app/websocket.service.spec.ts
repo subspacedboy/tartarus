@@ -49,5 +49,8 @@ describe('WebsocketService', () => {
     expect(service['normalizeWsUrl']('ws://localhost:5002')).toBe('ws://localhost:5002/ws/events');
     expect(service['normalizeWsUrl']('ws://localhost:5002/ws/events')).toBe('ws://localhost:5002/ws/events');
     expect(service['normalizeWsUrl']('https://tartarus-api.subjugated.club:4446')).toBe('wss://tartarus-api.subjugated.club:4446/ws/events');
+    expect(service['normalizeWsUrl']('https://tartarus.subjugated.club/api')).toBe('wss://tartarus.subjugated.club/api/ws/events');
+    expect(service['normalizeWsUrl']('https://tartarus.subjugated.club/api/')).toBe('wss://tartarus.subjugated.club/api/ws/events');
+    expect(service['normalizeWsUrl']('wss://tartarus.subjugated.club/api/ws/events')).toBe('wss://tartarus.subjugated.club/api/ws/events');
   });
 });

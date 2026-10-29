@@ -39,6 +39,7 @@ dependencies {
     implementation("org.springframework.session:spring-session-core")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     runtimeOnly("com.mysql:mysql-connector-j")
+    implementation("org.mariadb.jdbc:mariadb-java-client")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation("org.springframework.security:spring-security-test")

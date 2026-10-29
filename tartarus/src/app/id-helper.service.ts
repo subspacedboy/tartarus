@@ -9,13 +9,16 @@ export class IdHelperService {
   constructor() { }
 
   generateBase32Id(length: number = 6): string {
-    // Generate a random number. Adjust the range as needed.
-    let randomNumber = Math.floor(Math.random() * Math.pow(2, 24)); // 20 bits
-
-    // Convert the number to a Base32 encoded string
-    let encoded = base32.encode(randomNumber.toString(16));
-
-    // Return the first 'length' characters
-    return encoded.substring(0, length).toUpperCase();
+    const byteLength = Math.max(8, Math.ceil((length * 5) / 8) + 4);
+    const randomBytes = new Uint8Array(byteLength);
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      crypto.getRandomValues(randomBytes);
+    } else {
+      for (let i = 0; i < byteLength; i++) {
+        randomBytes[i] = Math.floor(Math.random() * 256);
+      }
+    }
+    const encoded = base32.encode(randomBytes);
+    return encoded.replace(/=+$/, '').substring(0, length).toUpperCase();
   }
 }

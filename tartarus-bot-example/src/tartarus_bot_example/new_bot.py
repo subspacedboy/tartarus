@@ -19,8 +19,8 @@ if isinstance(public_key, ec.EllipticCurvePublicKey):
 
     import requests
 
-    # url = "http://localhost:5002/bots/"
-    url = "https://tartarus-api.subjugated.club:4446/bots/"
+    # url = "http://localhost:5002/api/bots/"
+    url = "https://tartarus.subjugated.club/api/bots/"
 
     data = {
         "publicKey": encoded_key,

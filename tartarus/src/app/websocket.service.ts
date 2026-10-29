@@ -173,9 +173,16 @@ export class WebsocketService {
     }
 
     try {
-      const parsed = new URL(normalized);
-      if (!parsed.pathname || parsed.pathname === '/' || parsed.pathname === '') {
-        parsed.pathname = '/ws/events';
+      const base = (typeof window !== 'undefined' && window.location) ? window.location.href : 'http://localhost';
+      const parsed = new URL(normalized, base);
+      if (parsed.protocol === 'http:') {
+        parsed.protocol = 'ws:';
+      } else if (parsed.protocol === 'https:') {
+        parsed.protocol = 'wss:';
+      }
+
+      if (!parsed.pathname.endsWith('/ws/events')) {
+        parsed.pathname = parsed.pathname.replace(/\/+$/, '') + '/ws/events';
       }
       return parsed.toString().replace(/\/$/, '');
     } catch {
