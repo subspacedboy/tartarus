@@ -36,7 +36,9 @@ In order to build the lock you will need:
 
 ## 3D Files
 
-You can get the full kit of parts here: [Full kit](static/tartarus_parts.3mf)
+You can get the full kit of v1.5 parts here: [Full kit](static/tartarus_1_5_parts.3mf)
+
+Legacy: The original shapes for the QR code reader version: [Full kit](static/tartarus_parts.3mf)
 
 I personally use Prusa slicer + the Prusa MINI+ for most builds. I use organic supports, 15% infill, and the 0.20mm SPEED profile.
 Feel free to adjust as necessary. I recommend printing with PLA.
@@ -215,5 +217,7 @@ I have a tupperware full of change for this. Give it an hour or two.
 ### Done!
 
 ![Servo mounted to main body](images/24.png)`
+
+v1.5 with Trust module
 
 ![Next iteration of the lock](images/IMG_9664.png)`
