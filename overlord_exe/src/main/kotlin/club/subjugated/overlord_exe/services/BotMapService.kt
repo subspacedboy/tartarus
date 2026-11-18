@@ -61,6 +61,7 @@ class BotMapService(
     private val timeSource: TimeSource,
     private val environment: Environment,
     private val coordinatorGateway: CoordinatorGateway,
+    @Value("\${overlord.environment:}") private val overlordEnvironment: String = "",
 ) {
     private val logger: Logger = LoggerFactory.getLogger(BotMapService::class.java)
 
@@ -101,6 +102,17 @@ class BotMapService(
     ): BotMap {
         val existing = findBotMap(internalName)
 
+        // Never overwrite an already-persisted bot's identity or private key on routine startup.
+        if (existing != null &&
+            preferredKeyVersion == null &&
+            existing.externalName.isNotBlank() &&
+            existing.privateKey != null &&
+            existing.publicKey != null
+        ) {
+            botCache[internalName] = existing
+            return existing
+        }
+
         val remoteBots: List<CoordinatorBotDto> = try {
             if (environment.activeProfiles.contains("test")) {
                 emptyList()
@@ -119,6 +131,8 @@ class BotMapService(
         val encodedKey = Base64.getEncoder()
             .encodeToString(encodePublicKeySecp1(keyPair.public as ECPublicKey))
 
+        val effectiveDescription = formatBotDescription(description)
+
         val newBot = if (environment.activeProfiles.contains("test")) {
             NewBotResponse(
                 name = existing?.externalName ?: remoteMatch?.name ?: generateId("b-"),
@@ -126,7 +140,7 @@ class BotMapService(
             )
         } else {
             try {
-                register(encodedKey, description, internalName, keyVersion)
+                register(encodedKey, effectiveDescription, internalName, keyVersion)
             } catch (e: Exception) {
                 logger.warn(
                     "Coordinator registration failed for $internalName (${e.message}); using local placeholder until coordinator is reachable"
@@ -139,12 +153,27 @@ class BotMapService(
         }
 
         val saved = if (existing != null) {
-            existing.externalName = newBot.name
-            existing.password = newBot.clearTextPassword ?: ""
-            existing.privateKey = keyPair.private.encoded
-            existing.publicKey = keyPair.public.encoded
-            existing.updatedAt = timeSource.nowInUtc()
-            botMapRepository.save(existing)
+            if (existing.externalName.isNotBlank() && newBot.name != existing.externalName) {
+                logger.error(
+                    "Refusing to overwrite existing BotMap for '$internalName' (externalName='${existing.externalName}') with mismatched coordinator bot '${newBot.name}'"
+                )
+                existing
+            } else if (existing.privateKey != null &&
+                preferredKeyVersion == null &&
+                !existing.privateKey!!.contentEquals(keyPair.private.encoded)
+            ) {
+                logger.error(
+                    "Refusing to overwrite existing privateKey for '$internalName' (${existing.externalName}) without explicit keyVersion rotation"
+                )
+                existing
+            } else {
+                existing.externalName = newBot.name
+                existing.password = newBot.clearTextPassword ?: ""
+                existing.privateKey = keyPair.private.encoded
+                existing.publicKey = keyPair.public.encoded
+                existing.updatedAt = timeSource.nowInUtc()
+                botMapRepository.save(existing)
+            }
         } else {
             createBotMap(
                 internalName = internalName,
@@ -197,6 +226,20 @@ class BotMapService(
     fun getBotJwt(botMap: BotMap): String {
         val privateKey = loadPrivateKeyFromPkcs8Bytes(botMap.privateKey!!)
         return createEs256Jwt(botMap.externalName, privateKey)
+    }
+
+    internal fun resolveEnvironmentLabel(): String {
+        val explicit = overlordEnvironment.trim()
+        if (explicit.isNotBlank()) return explicit
+        val profiles = environment.activeProfiles.filter { it.isNotBlank() }
+        if (profiles.isNotEmpty()) return profiles.joinToString(",")
+        return "dev"
+    }
+
+    internal fun formatBotDescription(description: String): String {
+        val envLabel = resolveEnvironmentLabel()
+        val suffix = "[$envLabel]"
+        return if (description.trimEnd().endsWith(suffix)) description else "$description $suffix"
     }
 
     fun register(

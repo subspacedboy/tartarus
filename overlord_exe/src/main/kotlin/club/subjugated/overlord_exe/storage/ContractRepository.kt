@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository
 interface ContractRepository : JpaRepository<Contract, Long> {
     fun findByBotNameAndSerialNumber(botName : String, serialNumber : Int) : Contract?
     fun findByBotNameAndStateIn(botName : String, state : List<ContractState>) : List<Contract>
+    fun findByShareableToken(shareableToken: String): List<Contract>
     fun findByEmergencyUnlockedTrueAndStateIn(states: List<ContractState>): List<Contract>
     fun findByShareableTokenAndEmergencyUnlockedTrueAndStateIn(
         shareableToken: String,

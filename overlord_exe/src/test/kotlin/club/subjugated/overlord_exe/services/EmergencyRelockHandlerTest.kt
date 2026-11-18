@@ -123,6 +123,10 @@ class EmergencyRelockHandlerTest {
                 val states = inv.getArgument<List<ContractState>>(1)
                 savedContracts.filter { it.botName == botName && it.state in states }
             }
+            on { findByShareableToken(any()) } doAnswer { inv ->
+                val token = inv.getArgument<String>(0)
+                savedContracts.filter { it.shareableToken == token }
+            }
             on { findByEmergencyUnlockedTrueAndStateIn(any()) } doAnswer { inv ->
                 @Suppress("UNCHECKED_CAST")
                 val states = inv.getArgument<List<ContractState>>(0)
@@ -168,6 +172,18 @@ class EmergencyRelockHandlerTest {
                 val convoId = inv.getArgument<String>(0)
                 val phase = inv.getArgument<EngagementPhase>(1)
                 savedEngagements.filter { it.convoId == convoId && it.phase == phase }
+            }
+            on { findBySubjectDidAndPhaseIn(any(), any()) } doAnswer { inv ->
+                val did = inv.getArgument<String>(0)
+                @Suppress("UNCHECKED_CAST")
+                val phases = inv.getArgument<List<EngagementPhase>>(1)
+                savedEngagements.filter { it.subjectDid == did && it.phase in phases }
+            }
+            on { findByConvoIdAndPhaseIn(any(), any()) } doAnswer { inv ->
+                val convoId = inv.getArgument<String>(0)
+                @Suppress("UNCHECKED_CAST")
+                val phases = inv.getArgument<List<EngagementPhase>>(1)
+                savedEngagements.filter { it.convoId == convoId && it.phase in phases }
             }
             on { findByBotIdAndContractIdIn(any(), any()) } doAnswer { inv ->
                 val botId = inv.getArgument<String>(0)
@@ -441,6 +457,9 @@ class EmergencyRelockHandlerTest {
         whenever(coordinatorGateway.getContractBySession(eq("b-SUPER"), any(), eq("ls-s1"), eq(202))).thenReturn(
             BotContractInfo(name = "c-S1", nextCounter = 6, state = "CONFIRMED")
         )
+        whenever(coordinatorGateway.getContractBySession(eq("b-TIMER"), any(), eq("ls-n1"), eq(203))).thenReturn(
+            BotContractInfo(name = "c-NORMAL", nextCounter = 2, state = "ACCEPTED")
+        )
 
         val reply = emergencyRelockService.relockForUser(convoContext())
 
@@ -572,5 +591,83 @@ class EmergencyRelockHandlerTest {
         completedSuperContract.emergencyUnlocked = false
         superBot.reviewContracts(mockCtx, listOf(completedSuperContract))
         verify(mockCtx, times(1)).release(completedSuperContract)
+    }
+
+    @Test
+    fun `EmergencyRelockService force-resyncs stale CREATED contracts and falls back to live contracts when emergencyUnlocked is false`() {
+        registerBot("timer", "b-TIMER")
+
+        val staleContract = contractService.save(
+            Contract(
+                name = "bc-STALE",
+                externalContractName = "c-STALE",
+                botName = "b-TIMER",
+                lockSessionToken = "ls-stale",
+                shareableToken = "s-SUB1234",
+                serialNumber = 401,
+                nextCounter = 1,
+                state = ContractState.CREATED,
+                emergencyUnlocked = false,
+            )
+        )
+        savedEngagements.add(
+            BotEngagement(
+                id = 401L,
+                name = "tbr-401",
+                botId = "timer",
+                phase = EngagementPhase.ISSUED,
+                contractId = staleContract.id,
+                contractSerialNumber = 401,
+                shareableToken = "s-SUB1234",
+                subjectDid = "did:plc:sub1",
+                convoId = "convo-1",
+                data = TimerEngagementData(),
+            )
+        )
+
+        whenever(coordinatorGateway.getContractBySession(eq("b-TIMER"), any(), eq("ls-stale"), eq(401))).thenReturn(
+            BotContractInfo(name = "c-STALE", nextCounter = 3, state = "ACCEPTED")
+        )
+
+        val reply = emergencyRelockService.relockForUser(convoContext(shareableToken = null))
+
+        assertTrue(reply.contains("1 contract(s)"), "Unexpected reply: $reply")
+        assertEquals(ContractState.ACCEPTED, savedContracts.first().state)
+        verify(coordinatorGateway, times(1)).createCommand(
+            botName = eq("b-TIMER"),
+            botJwt = any(),
+            contractName = eq("c-STALE"),
+            shareableToken = eq("s-SUB1234"),
+            signedMessageBase64 = any(),
+        )
+    }
+
+    @Test
+    fun `BotComponent force-syncs non-live contract when EmergencyUnlock event arrives`() {
+        registerBot("timer", "b-TIMER")
+
+        contractService.save(
+            Contract(
+                name = "bc-SYNC",
+                externalContractName = "c-SYNC",
+                botName = "b-TIMER",
+                lockSessionToken = "ls-sync",
+                shareableToken = "s-SYNC1",
+                serialNumber = 501,
+                state = ContractState.CREATED,
+            )
+        )
+
+        whenever(coordinatorGateway.getContractBySession(eq("b-TIMER"), any(), eq("ls-sync"), eq(501))).thenReturn(
+            BotContractInfo(name = "c-SYNC", nextCounter = 2, state = "ACCEPTED")
+        )
+
+        val emergencyB64 = buildEventB64("ls-sync", 501u, EventType.EmergencyUnlock)
+        botComponent.handleWebSocketMessage(
+            """{"type":"bot_event","botName":"b-TIMER","eventType":"EmergencyUnlock","lockSession":"ls-sync","contractSerial":501,"rawSignedEventBase64":"$emergencyB64"}"""
+        )
+
+        assertEquals(ContractState.ACCEPTED, savedContracts.first().state)
+        assertTrue(savedContracts.first().emergencyUnlocked)
     }
 }

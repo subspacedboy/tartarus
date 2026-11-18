@@ -3,6 +3,7 @@ package club.subjugated.tartarus_coordinator.api.messages
 import club.subjugated.tartarus_coordinator.models.Event
 import club.subjugated.tartarus_coordinator.models.EventDelivery
 import com.fasterxml.jackson.annotation.JsonFormat
+import jakarta.persistence.EntityNotFoundException
 import java.time.OffsetDateTime
 
 data class EventDeliveryMessage(
@@ -12,8 +13,13 @@ data class EventDeliveryMessage(
 ) {
     companion object {
         fun fromDelivery(delivery: EventDelivery): EventDeliveryMessage {
+            val botName = try {
+                delivery.bot.name
+            } catch (_: EntityNotFoundException) {
+                "<deleted-bot>"
+            }
             return EventDeliveryMessage(
-                botName = delivery.bot.name,
+                botName = botName,
                 delivered = delivery.delivered,
                 deliveredAt = delivery.deliveredAt,
             )

@@ -2,6 +2,7 @@ package club.subjugated.tartarus_coordinator.models
 
 import com.fasterxml.jackson.annotation.JsonFormat
 import jakarta.persistence.Entity
+import jakarta.persistence.EntityNotFoundException
 import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
@@ -39,7 +40,12 @@ class EventDelivery(
     var createdAt: OffsetDateTime = OffsetDateTime.now(),
 ) {
     override fun toString(): String {
-        return "EventDelivery(id=$id, event=${event.name}, bot=${bot.name}, " +
+        val botName = try {
+            bot.name
+        } catch (_: EntityNotFoundException) {
+            "<deleted-bot>"
+        }
+        return "EventDelivery(id=$id, event=${event.name}, bot=$botName, " +
             "delivered=$delivered)"
     }
 }

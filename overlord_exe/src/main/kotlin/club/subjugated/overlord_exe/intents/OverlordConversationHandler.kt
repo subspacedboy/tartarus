@@ -12,6 +12,7 @@ import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.services.BotMapService
 import club.subjugated.overlord_exe.services.ContractService
 import club.subjugated.overlord_exe.services.EmergencyRelockService
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
@@ -24,6 +25,8 @@ class OverlordConversationHandler(
     private val botComponent: BotComponent,
     @Autowired(required = false) private val emergencyRelockService: EmergencyRelockService? = null,
 ) : ConversationHandler {
+
+    private val logger = LoggerFactory.getLogger(OverlordConversationHandler::class.java)
 
     override val commands: Set<String> = setOf("hello", "contract", "accept", "add", "remove", "relock")
 
@@ -78,24 +81,43 @@ class OverlordConversationHandler(
         return when (command) {
             "hello" -> "Hello 😈"
             "contract" -> {
+                if (args.size < 3) {
+                    return "Usage: !contract <botInternalName> <lockSession> <serialNumber>"
+                }
                 val botInternalName = args[0]
                 val lockSession = args[1]
-                val serialNumber = args[2].toInt()
+                val serialNumber = args[2].toIntOrNull()
+                    ?: return "Invalid serial number: ${args[2]}"
 
-                val botCtx = botComponent.contextFor(botInternalName)
-                botCtx.syncContract(lockSession, serialNumber)
-                "Refreshed"
+                try {
+                    val botCtx = botComponent.contextFor(botInternalName)
+                    botCtx.syncContract(lockSession, serialNumber)
+                    "Refreshed"
+                } catch (ex: Exception) {
+                    logger.warn("Failed to refresh contract $botInternalName ($lockSession/$serialNumber): ${ex.message}")
+                    "Failed to refresh contract: ${ex.message ?: "unknown error"}"
+                }
             }
             "accept" -> {
+                if (args.size < 3) {
+                    return "Usage: !accept <botInternalName> <lockSession> <serialNumber>"
+                }
                 val botInternalName = args[0]
                 val lockSession = args[1]
-                val serialNumber = args[2].toInt()
+                val serialNumber = args[2].toIntOrNull()
+                    ?: return "Invalid serial number: ${args[2]}"
 
-                val botMap = botMapService.getBotMap(botInternalName)
-                val contract = contractService.getOrCreateContract(botMap.externalName, lockSession, serialNumber)
-                val handler = botComponent.handlers[botMap]!!
-                handler.onAccept(botComponent.contextFor(botInternalName), contract)
-                "Reprocessed accept"
+                try {
+                    val botMap = botMapService.getBotMap(botInternalName)
+                    val contract = contractService.getOrCreateContract(botMap.externalName, lockSession, serialNumber)
+                    val handler = botComponent.handlers[botMap]
+                        ?: return "No active handler for bot $botInternalName"
+                    handler.onAccept(botComponent.contextFor(botInternalName), contract)
+                    "Reprocessed accept"
+                } catch (ex: Exception) {
+                    logger.warn("Failed to reprocess accept $botInternalName ($lockSession/$serialNumber): ${ex.message}")
+                    "Failed to reprocess accept: ${ex.message ?: "unknown error"}"
+                }
             }
             "add" -> {
                 val list = args.joinToString(" ").lowercase()

@@ -28,6 +28,7 @@ import org.eclipse.paho.client.mqttv3.MqttClient
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.dao.EmptyResultDataAccessException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -319,6 +320,14 @@ class EventService {
         return null
     }
 
+    private fun findBotOrNull(botName: String): club.subjugated.tartarus_coordinator.models.Bot? {
+        return try {
+            botRepository.findByName(botName)
+        } catch (_: EmptyResultDataAccessException) {
+            null
+        }
+    }
+
     @Suppress("TooGenericExceptionCaught")
     private fun fanOutEphemeralEventToContractBots(
         lockSession: LockSession,
@@ -346,7 +355,11 @@ class EventService {
         val rawSignedEventB64 = Base64.getEncoder().encodeToString(payloadBytes)
         for (embeddedBot in embeddedBots) {
             val botName = embeddedBot.name!!
-            val botEntity = botRepository.findByName(botName)
+            val botEntity = findBotOrNull(botName)
+            if (botEntity == null) {
+                logger.warn("Skipping ephemeral event fanout to missing bot {}", botName)
+                continue
+            }
             if (botEntity.state != BotState.ACTIVE) {
                 logger.info("Skipping ephemeral event fanout to non-active bot {}", botName)
                 continue
@@ -404,8 +417,10 @@ class EventService {
         val rawSignedEventB64 = Base64.getEncoder().encodeToString(payloadBytes)
         for (embeddedBot in embeddedBots) {
             val botName = embeddedBot.name!!
-            val botEntity = botRepository.findByName(botName)
-            if (botEntity.state != BotState.ACTIVE) {
+            val botEntity = findBotOrNull(botName)
+            if (botEntity == null) {
+                logger.warn("Skipping event fanout to missing bot {}", botName)
+            } else if (botEntity.state != BotState.ACTIVE) {
                 logger.info("Skipping event fanout to non-active bot {}", botName)
             } else {
                 deliverEventToSingleBot(contract, savedEvent, botEntity, rawSignedEventB64)

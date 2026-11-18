@@ -111,23 +111,31 @@ class BSkyDmMonitor @Autowired constructor(
             val args = if (chunks.size > 1) chunks.drop(1) else emptyList()
 
             val registeredHandler = resolveCommandHandler(cmd)
-            val response: String = when {
-                registeredHandler != null -> registeredHandler.handleCommand(ctx, cmd, args)
-                cmd == "hello" -> "Hello 😈"
-                else -> ""
+            val response: String = try {
+                when {
+                    registeredHandler != null -> registeredHandler.handleCommand(ctx, cmd, args)
+                    cmd == "hello" -> "Hello 😈"
+                    else -> ""
+                }
+            } catch (ex: Exception) {
+                logger.error("Error handling !$cmd in convo $convoId: ${ex.message}", ex)
+                "Sorry, something went wrong handling !$cmd."
             }
             if (!ignoreSend && response.isNotBlank()) {
                 blueSkyService.sendDm(convoId, response)
             }
         } else {
             withConversationLockIfAvailable(convoId) {
-                val response = intentService.resolve(convoId, message.text)
-
-                val responseText = if (response.intent != null) {
-                    val r = intentService.dispatch(ctx, response.intent)
-                    r.text
-                } else {
-                    response.chat ?: ""
+                val responseText = try {
+                    val response = intentService.resolve(convoId, message.text)
+                    if (response.intent != null) {
+                        intentService.dispatch(ctx, response.intent).text
+                    } else {
+                        response.chat ?: ""
+                    }
+                } catch (ex: Exception) {
+                    logger.error("Error processing conversational DM in convo $convoId: ${ex.message}", ex)
+                    "Sorry, something went wrong processing your message."
                 }
 
                 if (!ignoreSend && responseText.isNotBlank()) {

@@ -4,6 +4,7 @@ import club.subjugated.overlord_exe.bots.general.BotComponent
 import club.subjugated.overlord_exe.convo.ConversationContext
 import club.subjugated.overlord_exe.models.BotEngagement
 import club.subjugated.overlord_exe.models.Contract
+import club.subjugated.overlord_exe.models.ContractState
 import club.subjugated.overlord_exe.models.EngagementPhase
 import club.subjugated.overlord_exe.storage.BotEngagementRepository
 import org.slf4j.LoggerFactory
@@ -17,6 +18,15 @@ class EmergencyRelockService(
 ) {
     private val logger = LoggerFactory.getLogger(EmergencyRelockService::class.java)
 
+    companion object {
+        private val CANDIDATE_ENGAGEMENT_PHASES = listOf(EngagementPhase.ACTIVE, EngagementPhase.ISSUED)
+        private val TERMINAL_CONTRACT_STATES = setOf(
+            ContractState.RELEASED,
+            ContractState.ABORTED,
+            ContractState.REJECTED,
+        )
+    }
+
     fun findEmergencyUnlockedContractsForUser(
         subjectDid: String,
         convoId: String,
@@ -25,15 +35,15 @@ class EmergencyRelockService(
         val candidates = mutableListOf<Contract>()
 
         if (!shareableToken.isNullOrBlank()) {
-            candidates += contractService.findEmergencyUnlockedContractsForShareableToken(shareableToken)
+            candidates += contractService.findContractsForShareableToken(shareableToken)
         }
 
         val engagements = buildList {
             if (subjectDid.isNotBlank()) {
-                addAll(botEngagementRepository.findBySubjectDidAndPhase(subjectDid, EngagementPhase.ACTIVE))
+                addAll(botEngagementRepository.findBySubjectDidAndPhaseIn(subjectDid, CANDIDATE_ENGAGEMENT_PHASES))
             }
             if (convoId.isNotBlank()) {
-                addAll(botEngagementRepository.findByConvoIdAndPhase(convoId, EngagementPhase.ACTIVE))
+                addAll(botEngagementRepository.findByConvoIdAndPhaseIn(convoId, CANDIDATE_ENGAGEMENT_PHASES))
             }
         }.distinctBy { it.id to it.name }
 
@@ -41,13 +51,48 @@ class EmergencyRelockService(
             resolveContractForEngagement(engagement)?.let { candidates += it }
             val engToken = engagement.shareableToken
             if (!engToken.isNullOrBlank()) {
-                candidates += contractService.findEmergencyUnlockedContractsForShareableToken(engToken)
+                candidates += contractService.findContractsForShareableToken(engToken)
             }
         }
 
-        return candidates
-            .filter { it.emergencyUnlocked && it.state in ContractService.LIVE_STATES }
+        val uniqueCandidates = candidates
             .distinctBy { if (it.id != 0L) it.id else "${it.botName}:${it.serialNumber}" }
+            .filter { it.state !in TERMINAL_CONTRACT_STATES }
+
+        if (uniqueCandidates.isEmpty()) {
+            logger.info("No non-terminal candidate contracts found for subjectDid=$subjectDid convoId=$convoId")
+            return emptyList()
+        }
+
+        val synced = uniqueCandidates.map { candidate ->
+            val lockSession = candidate.lockSessionToken
+            val botCtx = botComponent.contextForExternalName(candidate.botName)
+            if (!lockSession.isNullOrBlank() && botCtx != null) {
+                runCatching {
+                    botCtx.syncContract(lockSession, candidate.serialNumber)
+                }.onFailure { ex ->
+                    logger.warn("Failed to force-sync candidate contract ${candidate.name}: ${ex.message}")
+                }.getOrDefault(candidate)
+            } else {
+                candidate
+            }
+        }
+
+        val live = synced.filter { it.state in ContractService.LIVE_STATES }
+        if (live.isEmpty()) {
+            logger.info(
+                "No live contracts after sync for subjectDid=$subjectDid (candidates=${synced.map { "${it.name}:${it.state}" }})"
+            )
+            return emptyList()
+        }
+
+        val emergencyOnly = live.filter { it.emergencyUnlocked }
+        return emergencyOnly.ifEmpty {
+            logger.info(
+                "No contracts flagged emergencyUnlocked=true for subjectDid=$subjectDid; falling back to all ${live.size} live contract(s)"
+            )
+            live
+        }
     }
 
     private fun resolveContractForEngagement(engagement: BotEngagement): Contract? {
@@ -76,7 +121,7 @@ class EmergencyRelockService(
         )
 
         if (contracts.isEmpty()) {
-            return "No emergency-unlocked active contracts found for your account."
+            return "No active contracts found for your account."
         }
 
         val relocked = mutableListOf<String>()

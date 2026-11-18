@@ -128,4 +128,35 @@ class BSkyDmMonitorTest {
         dynamicMonitor.handleDm("convo-99", message)
         verify(blueSkyService, times(1)).sendDm("convo-99", "http://localhost:8090/custom/123")
     }
+
+    @Test
+    fun `catches command handler exceptions without crashing scheduled DM polling`() {
+        val failingHandler = object : ConversationHandler {
+            override val commands: Set<String> = setOf("contract")
+            override fun handleCommand(
+                ctx: ConversationContext,
+                command: String,
+                args: List<String>,
+            ): String = throw IllegalStateException("Failed to fetch contract: HTTP 500")
+        }
+
+        val safeMonitor = BSkyDmMonitor(
+            blueSkyService = blueSkyService,
+            bSkyUserService = bSkyUserService,
+            intentService = intentService,
+            conversationHandlers = listOf(failingHandler),
+        )
+
+        val sender = mock<ConvoDefsMessageViewSender> {
+            on { did } doReturn "did:plc:test1234"
+        }
+        val message = mock<ConvoDefsMessageView> {
+            on { id } doReturn "msg-fail-1"
+            on { text } doReturn "!contract timer SNFK2U 46922"
+            on { this.sender } doReturn sender
+        }
+
+        safeMonitor.handleDm("convo-err", message)
+        verify(blueSkyService, times(1)).sendDm("convo-err", "Sorry, something went wrong handling !contract.")
+    }
 }

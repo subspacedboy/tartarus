@@ -21,4 +21,6 @@ interface BotEngagementRepository : JpaRepository<BotEngagement, Long> {
     ): List<BotEngagement>
     fun findBySubjectDidAndPhase(subjectDid: String, phase: EngagementPhase): List<BotEngagement>
     fun findByConvoIdAndPhase(convoId: String, phase: EngagementPhase): List<BotEngagement>
+    fun findBySubjectDidAndPhaseIn(subjectDid: String, phases: List<EngagementPhase>): List<BotEngagement>
+    fun findByConvoIdAndPhaseIn(convoId: String, phases: List<EngagementPhase>): List<BotEngagement>
 }

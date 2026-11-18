@@ -64,6 +64,11 @@ class ContractService(
 
     fun findById(id: Long): Contract? = contractRepository.findById(id).orElse(null)
 
+    fun findContractsForShareableToken(shareableToken: String): List<Contract> {
+        if (shareableToken.isBlank()) return emptyList()
+        return contractRepository.findByShareableToken(shareableToken)
+    }
+
     fun findEmergencyUnlockedContractsForShareableToken(shareableToken: String): List<Contract> {
         if (shareableToken.isBlank()) return emptyList()
         return contractRepository.findByShareableTokenAndEmergencyUnlockedTrueAndStateIn(

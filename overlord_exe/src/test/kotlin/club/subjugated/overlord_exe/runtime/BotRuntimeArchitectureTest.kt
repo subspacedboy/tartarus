@@ -498,4 +498,89 @@ class BotRuntimeArchitectureTest {
         assertEquals(true, receivedPeriodicLocked)
         assertEquals(3600UL, receivedPeriodicUptime)
     }
+
+    @Test
+    fun `BotMapService never overwrites existing BotMap externalName or privateKey on restart`() {
+        val originalKeyPair = deriveBotKeyPair(botMapService.authorKeyPair.private, "timer", 1)
+        val existing = BotMap(
+            id = 4L,
+            internalName = "timer",
+            externalName = "b-ORIGINAL",
+            coordinator = "http://localhost:5002",
+            password = "pw",
+            privateKey = originalKeyPair.private.encoded,
+            publicKey = originalKeyPair.public.encoded,
+        )
+        savedBotMaps["timer"] = existing
+
+        // Even if author_private_key is blank (ephemeral) or coordinator would return a different name
+        val blankKeyService = BotMapService(
+            botMapRepository = botMapRepository,
+            coordinator = "http://localhost:5002",
+            authorPrivateKeyB64 = "",
+            timeSource = TimeSource(),
+            environment = environment,
+            coordinatorGateway = coordinatorGateway,
+        )
+
+        val result = blankKeyService.getOrCreateBotMap("timer", "TimerBot")
+
+        assertEquals("b-ORIGINAL", result.externalName)
+        assertArrayEquals(originalKeyPair.private.encoded, result.privateKey)
+        verify(coordinatorGateway, never()).registerBot(any(), any())
+    }
+
+    @Test
+    fun `BotMapService refuses to overwrite existing BotMap when coordinator returns a different externalName`() {
+        val originalKeyPair = deriveBotKeyPair(botMapService.authorKeyPair.private, "timer", 1)
+        savedBotMaps["timer"] = BotMap(
+            id = 4L,
+            internalName = "timer",
+            externalName = "b-ORIGINAL",
+            coordinator = "http://localhost:5002",
+            password = "pw",
+            privateKey = originalKeyPair.private.encoded,
+            publicKey = originalKeyPair.public.encoded,
+        )
+
+        whenever(coordinatorGateway.createAuthorSession(any())).thenReturn(
+            AuthorSessionResponse(sessionToken = "as-1", name = "as-AUTHOR1")
+        )
+        whenever(coordinatorGateway.getMyBots(any())).thenReturn(emptyList())
+        whenever(coordinatorGateway.registerBot(any(), any())).thenReturn(
+            NewBotResponse(name = "b-DIFFERENT", clearTextPassword = "")
+        )
+
+        val result = botMapService.getOrCreateBotMap("timer", "TimerBot", preferredKeyVersion = 2)
+
+        assertEquals("b-ORIGINAL", result.externalName)
+        assertArrayEquals(originalKeyPair.private.encoded, result.privateKey)
+    }
+
+    @Test
+    fun `BotMapService tags bot description with environment label`() {
+        val prodService = BotMapService(
+            botMapRepository = botMapRepository,
+            coordinator = "http://localhost:5002",
+            authorPrivateKeyB64 = authorKeyB64,
+            timeSource = TimeSource(),
+            environment = environment,
+            coordinatorGateway = coordinatorGateway,
+            overlordEnvironment = "production",
+        )
+        whenever(coordinatorGateway.createAuthorSession(any())).thenReturn(
+            AuthorSessionResponse(name = "as-AUTHOR1")
+        )
+        whenever(coordinatorGateway.getMyBots(any())).thenReturn(emptyList())
+        whenever(coordinatorGateway.registerBot(any(), any())).thenReturn(
+            NewBotResponse(name = "b-TIMER-PROD")
+        )
+
+        prodService.getOrCreateBotMap("timer", "TimerBot")
+
+        val regCaptor = argumentCaptor<club.subjugated.overlord_exe.services.NewBotRequest>()
+        verify(coordinatorGateway).registerBot(any(), regCaptor.capture())
+        assertEquals("TimerBot [production]", regCaptor.firstValue.description)
+        assertEquals("TimerBot [dev]", botMapService.formatBotDescription("TimerBot"))
+    }
 }

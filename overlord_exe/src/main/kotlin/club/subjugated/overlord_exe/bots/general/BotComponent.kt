@@ -414,7 +414,9 @@ class BotComponent @Autowired constructor(
                     existing.lockSessionToken = lockSession
                     contractService.save(existing)
                 }
-                return existing
+                if (existing.state in ContractService.LIVE_STATES) {
+                    return existing
+                }
             }
         }
 
