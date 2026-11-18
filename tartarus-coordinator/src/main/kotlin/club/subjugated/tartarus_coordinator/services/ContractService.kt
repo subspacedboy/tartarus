@@ -6,6 +6,7 @@ import club.subjugated.fb.message.SignedMessage
 import club.subjugated.tartarus_coordinator.api.messages.NewContractMessage
 import club.subjugated.tartarus_coordinator.events.AcknowledgedCommandEvent
 import club.subjugated.tartarus_coordinator.events.ContractChangeEvent
+import club.subjugated.tartarus_coordinator.events.ErroredCommandEvent
 import club.subjugated.tartarus_coordinator.events.NewCommandEvent
 import club.subjugated.tartarus_coordinator.models.AuthorSession
 import club.subjugated.tartarus_coordinator.models.Bot
@@ -118,6 +119,12 @@ class ContractService {
                 "Contract does not belong to this lock session",
             )
         }
+        if (contract.state != ContractState.CREATED) {
+            throw org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.CONFLICT,
+                "Contract cannot be approved in state ${contract.state}",
+            )
+        }
 
         contract.state = ContractState.ACCEPTED
         val command =
@@ -174,12 +181,22 @@ class ContractService {
         )
     }
 
+    private fun requireConfirmedContract(contract: Contract) {
+        if (contract.state != ContractState.CONFIRMED) {
+            throw org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.CONFLICT,
+                "Contract is not confirmed (current state: ${contract.state})",
+            )
+        }
+    }
+
     fun saveCommand(
         authorSession: AuthorSession,
         lockSession: LockSession,
         contract: Contract,
         signedMessage: String,
     ) {
+        requireConfirmedContract(contract)
         val decodedData = Base64.getDecoder().decode(signedMessage)
         val sm = SignedMessage.getRootAsSignedMessage(ByteBuffer.wrap(decodedData))
         val authorityId = sm.authorityIdentifier
@@ -261,6 +278,7 @@ class ContractService {
 
     @Suppress("LongMethod")
     fun saveCommandForBot(bot: Bot, contract: Contract, signedMessage: String) {
+        requireConfirmedContract(contract)
         require(bot.state == BotState.ACTIVE) { "Bot is not active" }
         val embeddedBot =
             contract.getEmbeddedBots().firstOrNull { it.name == bot.name }
@@ -662,6 +680,29 @@ class ContractService {
             val contract = command.contract
             contract.state = ContractState.RELEASED
             this.contractRepository.save(contract)
+        }
+    }
+
+    @EventListener
+    fun handleErroredCommandEvent(event: ErroredCommandEvent) {
+        val command = event.command
+        val contract = command.contract
+        if (command.type == CommandType.ACCEPT_CONTRACT && contract.state == ContractState.ACCEPTED) {
+            contract.state = ContractState.ERROR
+            this.contractRepository.save(contract)
+
+            val remainingPending =
+                this.commandQueueService
+                    .getByContract(contract)
+                    .filter { it.id != command.id && it.state == CommandState.PENDING }
+            val reason = event.message ?: "Accept contract failed"
+            for (pending in remainingPending) {
+                pending.state = CommandState.ERROR
+                pending.message = "Contract activation failed: $reason"
+                this.commandQueueService.saveCommand(pending)
+            }
+
+            publisher.publishEvent(ContractChangeEvent(this, contract))
         }
     }
 }

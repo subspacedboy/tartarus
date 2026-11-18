@@ -2,6 +2,7 @@ package club.subjugated.tartarus_coordinator.services
 
 import club.subjugated.fb.message.Acknowledgement
 import club.subjugated.tartarus_coordinator.events.AcknowledgedCommandEvent
+import club.subjugated.tartarus_coordinator.events.ErroredCommandEvent
 import club.subjugated.tartarus_coordinator.models.AuthorSession
 import club.subjugated.tartarus_coordinator.models.Command
 import club.subjugated.tartarus_coordinator.models.CommandState
@@ -72,6 +73,7 @@ class CommandQueueService {
         command.state = CommandState.ERROR
         command.message = message
         saveCommand(command)
+        publisher.publishEvent(ErroredCommandEvent(this, command, message))
     }
 
     fun getPendingCommandsForSession(lockSession: LockSession): List<Command> {

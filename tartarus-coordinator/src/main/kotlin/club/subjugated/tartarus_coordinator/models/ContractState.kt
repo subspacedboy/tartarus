@@ -8,4 +8,5 @@ enum class ContractState {
     REJECTED,
     RELEASED,
     ABORTED,
+    ERROR,
 }

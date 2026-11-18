@@ -11,6 +11,7 @@ import club.subjugated.tartarus_coordinator.integration.helpers.makeCreateContra
 import club.subjugated.tartarus_coordinator.integration.helpers.makeLoginCryptogram
 import club.subjugated.tartarus_coordinator.integration.helpers.makeSignedAcknowledgement
 import club.subjugated.tartarus_coordinator.integration.helpers.makeSignedError
+import club.subjugated.tartarus_coordinator.models.ContractState
 import club.subjugated.tartarus_coordinator.services.ContractService
 import club.subjugated.tartarus_coordinator.services.LockSessionService
 import club.subjugated.tartarus_coordinator.util.derToRawSignature
@@ -22,14 +23,17 @@ import java.security.interfaces.ECPublicKey
 import java.util.*
 import kotlin.test.Test
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpStatus
 import org.springframework.security.core.userdetails.User
 import org.springframework.test.annotation.Commit
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.TestPropertySource
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.server.ResponseStatusException
 
 @SpringBootTest(classes = [TartarusCoordinatorApplication::class])
 @TestPropertySource(locations = ["classpath:application-test.properties"])
@@ -486,5 +490,35 @@ class CommandControllerTest {
             updatedCommandsResponse.body!!.first { it.name == acceptContractCommand.name }
         assertThat(updatedCmd.state).isEqualTo("ERROR")
         assertThat(updatedCmd.message).isEqualTo("Servo jammed")
+
+        val erroredContract = contractService.getByNameForAuthor(contractResponse.body!!.name)
+        assertThat(erroredContract.state).isEqualTo(ContractState.ERROR)
+
+        val ackRetryEx =
+            assertThrows<ResponseStatusException> {
+                commandController.manuallyAcknowledgeCommand(
+                    lockUser,
+                    contractResponse.body!!.name,
+                    acceptContractCommand.name,
+                )
+            }
+        assertThat(ackRetryEx.statusCode).isEqualTo(HttpStatus.CONFLICT)
+
+        val reapproveEx =
+            assertThrows<ResponseStatusException> {
+                contractController.approve(lockUser, contractResponse.body!!.name)
+            }
+        assertThat(reapproveEx.statusCode).isEqualTo(HttpStatus.CONFLICT)
+
+        val saveCmdEx =
+            assertThrows<ResponseStatusException> {
+                contractService.saveCommand(
+                    erroredContract.authorSession,
+                    erroredContract.lockSession,
+                    erroredContract,
+                    "dummy",
+                )
+            }
+        assertThat(saveCmdEx.statusCode).isEqualTo(HttpStatus.CONFLICT)
     }
 }

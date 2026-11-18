@@ -236,7 +236,7 @@
           [class.border-l-amber-500]="contract.state === 'CREATED'"
           [class.border-l-primary]="contract.state === 'ACCEPTED'"
           [class.border-l-emerald-500]="contract.state === 'CONFIRMED'"
-          [class.border-l-destructive]="contract.state === 'REJECTED' || contract.state === 'ABORTED'"
+          [class.border-l-destructive]="contract.state === 'REJECTED' || contract.state === 'ABORTED' || contract.state === 'ERROR'"
         >
           <div hlmCardHeader class="pb-3">
             <h2 hlmCardTitle class="text-lg">Lock Control</h2>
@@ -373,6 +373,14 @@
                 <div hlmAlert variant="destructive">
                   <h3 hlmAlertTitle>Contract Aborted</h3>
                   <div hlmAlertDescription>This contract was terminated via administrative override.</div>
+                </div>
+              }
+              @case ('ERROR') {
+                <div hlmAlert variant="destructive">
+                  <h3 hlmAlertTitle>Contract Activation Failed</h3>
+                  <div hlmAlertDescription>
+                    The physical lock rejected the <code class="font-mono text-xs">ACCEPT_CONTRACT</code> command (for example, because it is already under another contract). This contract cannot be used.
+                  </div>
                 </div>
               }
               @default {

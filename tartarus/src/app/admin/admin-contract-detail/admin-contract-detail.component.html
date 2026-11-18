@@ -136,6 +136,12 @@
           @case('RELEASED') {
             <p class="text-sm text-muted-foreground">Contract has ended.</p>
           }
+          @case('ERROR') {
+            <div hlmAlert variant="destructive">
+              <h4 hlmAlertTitle>Contract Activation Failed</h4>
+              <div hlmAlertDescription>The physical lock rejected the initial ACCEPT_CONTRACT command.</div>
+            </div>
+          }
         }
       </div>
     </section>

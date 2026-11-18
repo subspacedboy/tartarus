@@ -2,6 +2,8 @@ package club.subjugated.tartarus_coordinator.api
 
 import club.subjugated.tartarus_coordinator.api.messages.AcknowledgeCommandMessage
 import club.subjugated.tartarus_coordinator.api.messages.CommandMessage
+import club.subjugated.tartarus_coordinator.models.CommandState
+import club.subjugated.tartarus_coordinator.models.ContractState
 import club.subjugated.tartarus_coordinator.services.AuthorSessionService
 import club.subjugated.tartarus_coordinator.services.CommandQueueService
 import club.subjugated.tartarus_coordinator.services.ContractService
@@ -96,6 +98,27 @@ class CommandController {
         val command =
             commands.firstOrNull { it.name == commandName }
                 ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Command not found")
+
+        if (
+            contract.state in
+                listOf(
+                    ContractState.ERROR,
+                    ContractState.REJECTED,
+                    ContractState.RELEASED,
+                    ContractState.ABORTED,
+                )
+        ) {
+            throw ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Contract is in terminal state ${contract.state}",
+            )
+        }
+        if (command.state != CommandState.PENDING) {
+            throw ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Command is already in state ${command.state}",
+            )
+        }
 
         if (!body?.signedAcknowledgement.isNullOrBlank()) {
             val signedAckBase64 = body!!.signedAcknowledgement!!.trim()
