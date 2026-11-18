@@ -789,23 +789,35 @@ impl LockCtx {
     pub fn process_command(&mut self, command: VerifiedType) -> Result<bool, String> {
         self.check_permission(&command)?;
 
-        if self.emergency_unlocked {
-            match command {
-                VerifiedType::LockCommand(_) => {
+        match command {
+            VerifiedType::AbortCommand(c) => {
+                self.pending_correlation_id = Some(format!("cmd:{}", c.counter));
+                self.end_contract();
+                self.current_screen = ScreenId::QrCode;
+                self.save_state_if_dirty();
+                Ok(true)
+            }
+            VerifiedType::ResetCommand(reset) => {
+                self.full_reset(&reset);
+                self.current_screen = ScreenId::QrCode;
+                self.save_state_if_dirty();
+                Ok(true)
+            }
+            VerifiedType::LockCommand(c) => {
+                if self.emergency_unlocked {
                     log::info!("Received explicit LOCK command; clearing emergency_unlocked state");
                     self.emergency_unlocked = false;
-                    self.lock();
-                    self.current_screen = ScreenId::LockState;
-                    self.save_state_if_dirty();
-                    return Ok(true);
+                } else {
+                    self.pending_correlation_id = Some(format!("cmd:{}", c.counter));
                 }
-                _ => {
-                    return Err("Lock requires an explicit LOCK command following emergency unlock".to_string());
-                }
+                self.lock();
+                self.current_screen = ScreenId::LockState;
+                self.save_state_if_dirty();
+                Ok(true)
             }
-        }
-
-        match command {
+            _ if self.emergency_unlocked => {
+                Err("Lock requires an explicit LOCK command following emergency unlock".to_string())
+            }
             VerifiedType::Contract(contract) => {
                 if self.contract.is_some() {
                     return Err("Lock already under contract".to_string());
@@ -824,29 +836,9 @@ impl LockCtx {
                 self.save_state_if_dirty();
                 Ok(true)
             }
-            VerifiedType::LockCommand(c) => {
-                self.pending_correlation_id = Some(format!("cmd:{}", c.counter));
-                self.lock();
-                self.current_screen = ScreenId::LockState;
-                self.save_state_if_dirty();
-                Ok(true)
-            }
             VerifiedType::ReleaseCommand(c) => {
                 self.pending_correlation_id = Some(format!("cmd:{}", c.counter));
                 self.end_contract();
-                self.current_screen = ScreenId::QrCode;
-                self.save_state_if_dirty();
-                Ok(true)
-            }
-            VerifiedType::AbortCommand(c) => {
-                self.pending_correlation_id = Some(format!("cmd:{}", c.counter));
-                self.end_contract();
-                self.current_screen = ScreenId::QrCode;
-                self.save_state_if_dirty();
-                Ok(true)
-            }
-            VerifiedType::ResetCommand(reset) => {
-                self.full_reset(&reset);
                 self.current_screen = ScreenId::QrCode;
                 self.save_state_if_dirty();
                 Ok(true)
