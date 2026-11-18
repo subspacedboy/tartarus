@@ -105,6 +105,21 @@
           @case('CREATED') {
             <p class="text-sm text-muted-foreground">Contract has been created and is waiting for acceptance.</p>
           }
+          @case('ACCEPTED') {
+            @if (hasFailedAcceptContractCommand) {
+              <div hlmAlert variant="destructive">
+                <h4 hlmAlertTitle>Accept Contract Command Failed</h4>
+                <div hlmAlertDescription>
+                  The initial ACCEPT_CONTRACT command failed, but the contract is still in ACCEPTED state. Move it to ERROR to prevent future commands or retries.
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-3 pt-2">
+                <button hlmBtn variant="destructive" type="button" (click)="markAsError()">Move to Error State</button>
+              </div>
+            } @else {
+              <p class="text-sm text-muted-foreground">Contract has been accepted and is waiting for the physical lock to acknowledge ACCEPT_CONTRACT.</p>
+            }
+          }
           @case('CONFIRMED') {
             @if(contract.lockState?.emergencyUnlocked) {
               <div hlmAlert variant="destructive">

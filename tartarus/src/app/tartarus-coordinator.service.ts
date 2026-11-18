@@ -506,6 +506,17 @@ export class TartarusCoordinatorService {
     }));
   }
 
+  public markContractError(contractName: string) : Observable<Contract> {
+    const error_uri = `${this.baseUrl}/admin/contracts/${contractName}/error`;
+    const body = JSON.stringify({});
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json', 'X-Require-Admin': 'requires authorization tokens' });
+    return this.http.post(error_uri, body, {headers} ).pipe(map((res:any) => {
+      return new Contract(res);
+    }), catchError(error => {
+      return this.handleError(error);
+    }));
+  }
+
   public getLockSessionsForAdmin() : Observable<LockSession[]> {
     const queryParams = {  };
 

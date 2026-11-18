@@ -683,26 +683,56 @@ class ContractService {
         }
     }
 
+    fun markContractErrorAdminOnly(contract: Contract): Contract {
+        if (contract.state != ContractState.ACCEPTED) {
+            throw org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.CONFLICT,
+                "Contract can only be moved to ERROR from ACCEPTED state (current state: ${contract.state})",
+            )
+        }
+        val failedAccept =
+            this.commandQueueService
+                .getByContract(contract)
+                .firstOrNull {
+                    it.type == CommandType.ACCEPT_CONTRACT && it.state == CommandState.ERROR
+                }
+                ?: throw org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT,
+                    "ACCEPT_CONTRACT command has not failed",
+                )
+
+        return transitionContractToError(contract, failedAccept.message, excludeCommandId = failedAccept.id)
+    }
+
+    private fun transitionContractToError(
+        contract: Contract,
+        reason: String?,
+        excludeCommandId: Long? = null,
+    ): Contract {
+        contract.state = ContractState.ERROR
+        this.contractRepository.save(contract)
+
+        val remainingPending =
+            this.commandQueueService
+                .getByContract(contract)
+                .filter { (excludeCommandId == null || it.id != excludeCommandId) && it.state == CommandState.PENDING }
+        val resolvedReason = reason ?: "Accept contract failed"
+        for (pending in remainingPending) {
+            pending.state = CommandState.ERROR
+            pending.message = "Contract activation failed: $resolvedReason"
+            this.commandQueueService.saveCommand(pending)
+        }
+
+        publisher.publishEvent(ContractChangeEvent(this, contract))
+        return contract
+    }
+
     @EventListener
     fun handleErroredCommandEvent(event: ErroredCommandEvent) {
         val command = event.command
         val contract = command.contract
         if (command.type == CommandType.ACCEPT_CONTRACT && contract.state == ContractState.ACCEPTED) {
-            contract.state = ContractState.ERROR
-            this.contractRepository.save(contract)
-
-            val remainingPending =
-                this.commandQueueService
-                    .getByContract(contract)
-                    .filter { it.id != command.id && it.state == CommandState.PENDING }
-            val reason = event.message ?: "Accept contract failed"
-            for (pending in remainingPending) {
-                pending.state = CommandState.ERROR
-                pending.message = "Contract activation failed: $reason"
-                this.commandQueueService.saveCommand(pending)
-            }
-
-            publisher.publishEvent(ContractChangeEvent(this, contract))
+            transitionContractToError(contract, event.message, excludeCommandId = command.id)
         }
     }
 }

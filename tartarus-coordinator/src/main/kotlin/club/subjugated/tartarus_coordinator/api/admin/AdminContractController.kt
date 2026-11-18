@@ -122,4 +122,17 @@ class AdminContractController {
 
         return ResponseEntity.ok(ContractMessage.fromContract(contract))
     }
+
+    @PostMapping("/{someToken}/error")
+    @ResponseBody
+    @PreAuthorize("hasAuthority('ADMIN')")
+    fun markContractError(
+        @AuthenticationPrincipal admin: UserDetails,
+        @PathVariable someToken: String,
+    ): ResponseEntity<ContractMessage> {
+        val contract = this.contractService.getByNameAdminOnly(someToken)
+        val updated = this.contractService.markContractErrorAdminOnly(contract)
+
+        return ResponseEntity.ok(ContractMessage.fromContract(updated))
+    }
 }

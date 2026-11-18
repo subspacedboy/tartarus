@@ -1,13 +1,17 @@
 package club.subjugated.tartarus_coordinator.api
 
 import club.subjugated.tartarus_coordinator.TartarusCoordinatorApplication
+import club.subjugated.tartarus_coordinator.api.admin.AdminContractController
 import club.subjugated.tartarus_coordinator.api.messages.NewAuthorSessionMessage
 import club.subjugated.tartarus_coordinator.api.messages.NewContractMessage
 import club.subjugated.tartarus_coordinator.api.messages.NewLockSessionMessage
 import club.subjugated.tartarus_coordinator.api.messages.NewLockUserSessionMessage
 import club.subjugated.tartarus_coordinator.integration.config.IntegrationTestConfig
 import club.subjugated.tartarus_coordinator.integration.helpers.makeCreateContractCommand
+import club.subjugated.tartarus_coordinator.models.CommandState
 import club.subjugated.tartarus_coordinator.models.ContractState
+import club.subjugated.tartarus_coordinator.services.CommandQueueService
+import club.subjugated.tartarus_coordinator.services.ContractService
 import club.subjugated.tartarus_coordinator.services.LockSessionService
 import club.subjugated.tartarus_coordinator.util.derToRawSignature
 import club.subjugated.tartarus_coordinator.util.encodePublicKeySecp1
@@ -24,6 +28,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.userdetails.User
+import org.springframework.security.test.context.support.WithMockUser
 import org.springframework.test.annotation.Commit
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.TestPropertySource
@@ -41,6 +46,9 @@ class ContractControllerTest {
     @Autowired lateinit var lockSessionService: LockSessionService
     @Autowired lateinit var authorSessionController: AuthorSessionController
     @Autowired lateinit var contractController: ContractController
+    @Autowired lateinit var adminContractController: AdminContractController
+    @Autowired lateinit var commandQueueService: CommandQueueService
+    @Autowired lateinit var contractService: ContractService
     @Autowired lateinit var lockUserSessionController: LockUserSessionController
     @org.springframework.beans.factory.annotation.Value("\${tartarus.login_token_private_key}")
     lateinit var tokenPrivateKey: String
@@ -193,5 +201,31 @@ class ContractControllerTest {
                 contractController.reject(lockUser, "c-does-not-exist")
             }
         assertThat(rejectEx.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+    }
+
+    @Test
+    @WithMockUser(username = "admin", authorities = ["ADMIN"])
+    fun testAdminMarkContractErrorRequiresFailedAcceptContract() {
+        val (lockUser, _, contractName) = createContractHelper("CTOK6")
+        val adminUser = User.withUsername("admin").password("").authorities("ADMIN").build()
+
+        contractController.approve(lockUser, contractName)
+
+        // While ACCEPT_CONTRACT is still PENDING, moving to ERROR should fail with 409 Conflict
+        val pendingEx =
+            assertThrows<ResponseStatusException> {
+                adminContractController.markContractError(adminUser, contractName)
+            }
+        assertThat(pendingEx.statusCode).isEqualTo(HttpStatus.CONFLICT)
+
+        // Simulate a stuck ACCEPTED contract whose ACCEPT_CONTRACT command is in ERROR state
+        val contract = contractService.getByNameAdminOnly(contractName)
+        val acceptCmd = commandQueueService.getByContract(contract).first()
+        acceptCmd.state = CommandState.ERROR
+        acceptCmd.message = "Lock already under contract"
+        commandQueueService.saveCommand(acceptCmd)
+
+        val response = adminContractController.markContractError(adminUser, contractName)
+        assertThat(response.body!!.state).isEqualTo(ContractState.ERROR.name)
     }
 }

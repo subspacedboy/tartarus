@@ -88,6 +88,10 @@ export class AdminContractDetailComponent implements OnInit {
     });
   }
 
+  get hasFailedAcceptContractCommand(): boolean {
+    return this.commands.some(c => c.type === 'ACCEPT_CONTRACT' && c.state === 'ERROR');
+  }
+
   abort() {
     this.tartarusCoordinatorService.abortContract(this.contractName).subscribe(aborted => {
       this.refreshData();
@@ -97,6 +101,18 @@ export class AdminContractDetailComponent implements OnInit {
   reset() {
     this.tartarusCoordinatorService.fullReset(this.contractName).subscribe(aborted => {
       this.refreshData();
+    });
+  }
+
+  markAsError() {
+    this.tartarusCoordinatorService.markContractError(this.contractName).subscribe({
+      next: () => {
+        this.toastService.showSuccess('Contract moved to ERROR state');
+        this.refreshData();
+      },
+      error: () => {
+        this.toastService.showError('Failed to move contract to ERROR state');
+      }
     });
   }
 
