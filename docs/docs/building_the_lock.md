@@ -60,7 +60,7 @@ Feel free to adjust as necessary. I recommend printing with PLA.
 
 ![Break headers off](images/4.png)
 
-![Break headers off](images/5.png)``
+![Break headers off](images/5.png)
 
 Use a pair of pliers and break off 3 headers from the full strip that comes with the ESP32-S3.
 
@@ -78,7 +78,7 @@ Also check out the [pinout guide](https://learn.adafruit.com/esp32-s3-reverse-tf
 
 If you are developing custom firmware or flashing locally from source:
 
-![Flash firmware](images/6.png)`
+![Flash firmware](images/6.png)
 
 Hold down D0 and press Reset. Build and flash the firmware with:
 ```bash
@@ -99,7 +99,7 @@ We do this now because we need the firmware to calibrate the servo.
 * 1x mounting bracket
 * 1x SG92 servo (with single-ended horn, and small screw that came with it) 
 
-![Servo bracket](images/1.png)`
+![Servo bracket](images/1.png)
 
 ### Step 5: Wire servo to ESP32-S3 (Repin Servo Connector)
 
@@ -120,7 +120,7 @@ in the "down" angle position so we can mount the horn.
 
 ### Step 6: Mount the horn
 
-![Servo wiring with flipped wires](images/9.png)`
+![Servo wiring with flipped wires](images/9.png)
 
 Mount the horn at 6 as if it were a clock. Connect power back to the ESP32-S3 and make sure the
 servo starts at 6. Toggle the lock on the second screen (D2 to change screen and then by pressing D1, the middle button). It should freely rotate
@@ -132,13 +132,13 @@ not to rotate the horn while tightening.
 * 4x bolts
 * 4x nuts
 
-![3D printed lid backside](images/11.png)`
+![3D printed lid backside](images/11.png)
 
-![3D printed lib with header clearance popped out](images/12.png)`
+![3D printed lib with header clearance popped out](images/12.png)
 
-![3D printed lib with header clearance popped out](images/13.png)`
+![3D printed lib with header clearance popped out](images/13.png)
 
-![3D printed lib with header clearance popped out](images/14.png)`
+![3D printed lib with header clearance popped out](images/14.png)
 
 Use a pair of tweezers (or similar) to remove the small section where the headers will fit
 from the underside of the 3D print.
@@ -156,7 +156,7 @@ Connect the Optiga Trust M breakout to the ESP32-S3 board using the 50mm STEMMA 
 Cut a small piece of 3M VHB tape and affix the back of the breakout board securely to the inside wall of the enclosure, ensuring the board and cable stay completely clear of the sliding tray and servo arm.
 The orientation doesn't matter but I personally arrange it so the silkscreen printed shackle points toward the tray.
 
-![Optiga Trust M Module mounted with VHB](images/IMG_9662.png)`
+![Optiga Trust M Module mounted with VHB](images/IMG_9662.png)
 
 ### Step 9: Wire and mount code reader (Optional / Legacy Builds Only)
 
@@ -169,11 +169,11 @@ The orientation doesn't matter but I personally arrange it so the silkscreen pri
 * 1 nut
 * 2 spacers from 3D print
 
-![Tiny code reader and associated parts](images/16.png)`
+![Tiny code reader and associated parts](images/16.png)
 
-![Tiny code reader and associated parts](images/17.png)`
+![Tiny code reader and associated parts](images/17.png)
 
-![Tiny code reader and associated parts with spacers glued down](images/18.png)`
+![Tiny code reader and associated parts with spacers glued down](images/18.png)
 
 Connect the tiny code reader with the stemma QT cable to the main board.
 
@@ -189,23 +189,23 @@ Plug it in and cycle the lock. When you're satisfied it's all working make the w
 
 ### Step 11: Mount servo to main body
 
-![Servo mounted to main body](images/19.png)`
+![Servo mounted to main body](images/19.png)
 
 ### Step 12: Mount technical lid to main body
 
-![Servo mounted to main body](images/20.png)`
+![Servo mounted to main body](images/20.png)
 
 I use a tiny cable tie to make this a little easier and a little more organized.
 
 Use your 2-part epoxy to secure the front lid to the body.
 
-![Servo mounted to main body](images/21.png)`
+![Servo mounted to main body](images/21.png)
 
 ### Step 13: Seal top
 
-![Servo mounted to main body](images/22.png)`
+![Servo mounted to main body](images/22.png)
 
-![Servo mounted to main body](images/23.png)`
+![Servo mounted to main body](images/23.png)
 
 I use 2-part epoxy on the left sill, the right sill, and across
 the front where all the technical parts are mounted.
@@ -216,8 +216,8 @@ I have a tupperware full of change for this. Give it an hour or two.
 
 ### Done!
 
-![Servo mounted to main body](images/24.png)`
+![Servo mounted to main body](images/24.png)
 
 v1.5 with Trust module
 
-![Next iteration of the lock](images/IMG_9664.png)`
+![Next iteration of the lock](images/IMG_9664.png)

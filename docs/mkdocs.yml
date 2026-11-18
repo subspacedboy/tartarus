@@ -1,3 +1,12 @@
 site_name: Tartarus Docs
 theme:
   name: material
+nav:
+  - Home: index.md
+  - What is Tartarus?: what_is_tartarus.md
+  - System Architecture: architecture.md
+  - Building the Lock: building_the_lock.md
+  - Initial Setup: setting_up_the_lock.md
+  - Lock User Guide: sub_user_guide.md
+  - Author Guide: usage_guide_for_authors.md
+  - Release Notes: release_notes.md

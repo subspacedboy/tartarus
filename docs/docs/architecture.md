@@ -68,9 +68,6 @@ start = bytes[0]
 contract_start = bytes[start]
 vtable_start = start - contract_start
 hash = hashlib.sha256(bytes[vtable_start:]).digest()
-signature = signer.sign(hash)contract_start = bytes[start]
-vtable_start = start - contract_start
-hash = hashlib.sha256(bytes[vtable_start:]).digest()
 signature = signer.sign(hash)
 ```
 
@@ -88,15 +85,14 @@ The lock generates cryptographically signed events for the coordinator, web admi
 
 The events in the contract lifecycle and telemetry system are:
 
-* `Accept` - This event is emitted after the contract has been confirmed in the hardware.
+* `AcceptContract` - This event is emitted after the contract has been confirmed in the hardware.
 * `Lock` - The lock was locked via command from the coordinator or a bot.
 * `Unlock` - The lock was unlocked via command.
 * `LocalLock` - The lock button on the face of the lock was used. Only emits if temporary unlocking is allowed.
 * `LocalUnlock` - The unlock button on the face of the lock was used. Only emits if temporary unlocking is allowed.
-* `Release` - The contract was released and confirmed in hardware.
-* `Abort` - The contract was aborted via a designated `SafetyKey`.
-* `EmergencyUnlock` - The contract was unlocked via an emergency unlock command.
-* `StartedUpdate` - Telemetry emitted on lock boot announcing firmware version, lock state, and contract status.
+* `ReleaseContract` - The contract was released and confirmed in hardware.
+* `EmergencyUnlock` - The lock was unlocked physically by the subject via the on-device Emergency Unlock screen.
+* `StartedUpdate` - Telemetry emitted on lock boot announcing the lock's public key, lock state, and whether it started with a local contract.
 * `PeriodicUpdate` - Heartbeat telemetry published periodically while online. Bots with `receive_events` permissions will receive these periodic updates too.
 
 ## Contract structure
@@ -111,6 +107,8 @@ table Contract {
   terms: string;
   // If true, subject can freely cycle the lock.
   is_temporary_unlock_allowed: bool;
+  // If true, subject can emergency unlock the lock. Defaults to true.
+  is_emergency_unlock_allowed: bool = true;
 }
 ```
 
@@ -122,8 +120,8 @@ by this key.
 * The `bots` vector identifies which bots are allowed to participate in this contract.
 * The `terms` string is just an unstructured string. It can include whatever you want. None of the core
 bits of the system will try and interpret this field.
-* Lastly, should temporary unlocks be allowed. If this is true the buttons
-on the lock face will work, otherwise they won't.
+* `is_temporary_unlock_allowed` controls whether the physical lock/unlock button on the lock face works.
+* `is_emergency_unlock_allowed` (defaults to `true`) controls whether the on-device Emergency Unlock screen is available.
 
 ### Bots & Permissions
 
@@ -137,22 +135,37 @@ If this is false no events will be sent to the bot.
 * `can_lock` - Same as unlock but for lock.
 * `can_release` - If this is true the bot can end the contract.
 
+### Bot Transport & Key Derivation
+
+The legacy MQTT FlatBuffers bot inbox (`bots.fbs`) has been retired. Modern bots are owned by an `AuthorSession` and interact with the coordinator via:
+
+* **Deterministic Key Derivation**: Bot `secp256r1` keypairs can be derived deterministically via HKDF from the owning Author's private key, an internal bot name, and a `keyVersion` (managed in the `/bots` UI).
+* **Authenticated REST & WebSockets**: Bots submit signed commands over authenticated REST (`/bots/...`) and receive filtered `SignedEvent` streams in real time over duplex WebSockets (`/ws/events`). See `overlord_exe` and `tartarus-bot-example` for reference implementations.
+
 ## Lock Startup
 
 What happens on lock startup:
 
-* Send `StartedUpdate` from the unified `event.fbs` flatbuffers. If the coordinator has never heard from this lock before, it creates a new `LockSession`. The update includes the lock's public key material, whether it started with an active contract, the firmware version, and the current lock state.
+* Send `StartedUpdate` from the unified `event.fbs` flatbuffers. If the coordinator has never heard from this lock before, it creates a new `LockSession`. The update includes the lock's public key material, whether it started with an active contract, and the current lock state.
 * Receive a `CoordinatorConfiguration` message potentially updating the lock's local configuration or toggling experimental firmware features.
 * In the pre-1.2.0 world, we had scaffolding for OTA updates (`GetLatestFirmwareRequest`). The problem is that the Adafruit Reverse TFT Feather only has 4MB of flash, which became unworkable as firmware features grew. However, modern in-browser Web Serial flashing (`/updater`) obviated the need for OTA anyway, allowing the partition table to be standardized with a larger application partition and 24 KB NVS.
 * Authenticate hardware security: The firmware uses a pluggable `SecurityBackend` architecture. For "official" hardware builds, an Infineon Optiga Trust M secure element module provides hardware-isolated keys and ECDSA signing; the coordinator cryptographically verifies the hardware certificate chain against Infineon Root CAs. The "official" build is an optional additional layer of security for those that want a slightly more oppressive experience—especially good for software people who know how things work! Homebrew builds run smoothly using the software security backend.
 
 From there, it will publish a `PeriodicUpdate` event once a minute indefinitely (which is also forwarded to authorized bots).
 
+### Hardware Provisioning & Attestation
+
+For official builds equipped with an Infineon Optiga Trust M secure element (`src/provisioning.rs`):
+
+* **Platform Binding Secret (`EFUSE_BLK3`)**: During factory provisioning, a 256-bit seed is burned into `EFUSE_BLK3` (write-protected) and combined with HKDF (`tartarus-optiga-pbs-v1`) to bind the Optiga chip to the host ESP32-S3.
+* **Serial Provisioning Commands**: Sending `PROVISION` (hardware Optiga + eFuses) or `SOFT_PROVISION` (software backend) over USB serial when no contract is active generates/exports the device's public key and certificate payload (`PROVISION_RESULT:{...}`).
+* **Coordinator Verification**: Administrators ingest the provisioning payload via `/admin/hardware`, allowing the coordinator to validate the Infineon certificate chain against root CAs and mark the `LockSession` as hardware-verified.
+
 ## Bluetooth Low Energy (BLE) & Offline Storage
 
 To support scenarios where Wi-Fi is intermittent or unavailable, the firmware incorporates local transport and buffering:
 
-* **On-Board BLE GATT Server**: An embedded BLE GATT server (`ble_server.rs`) allows direct interaction with the lock without requiring Wi-Fi. It uses challenge-response authentication over GATT characteristics for issuing commands, reading device status, and draining audit events.
+* **On-Board BLE GATT Server**: An embedded BLE GATT server (`ble_server.rs`) allows direct interaction with the lock without requiring Wi-Fi. It authenticates clients using a 6-digit PIN displayed on the lock's `BLE PIN` screen (with a 5-attempt lockout resettable via `D1`) for issuing commands, configuring Wi-Fi, reading device status, and draining audit events.
 * **Offline Ring Buffer**: A 20-event circular buffer (`event_buffer.rs`) captures state changes (such as local lock/unlock toggles) when the lock is offline. Once Wi-Fi reconnects or a client connects over BLE, buffered events are automatically flushed and synced.
 
 ## Terms

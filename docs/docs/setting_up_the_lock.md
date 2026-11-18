@@ -27,17 +27,29 @@ If your lock is built with the Useful Sensors Tiny Code Reader module:
 
 ### 3. Bluetooth Low Energy (BLE)
 
-The lock runs an on-board BLE GATT server (`ble_server.rs`). Using a compatible BLE browser or client:
+The lock runs an on-board BLE GATT server (`ble_server.rs`). Using the **[Web Bluetooth Manager](https://tartarus.subjugated.club/bt)** (in a Web Bluetooth-compatible browser) or a compatible BLE client:
 
-* Pair with the lock over BLE using challenge-response authentication.
-* Query device health, inspect buffered offline events, and issue management commands locally without active Wi-Fi.
+* **Connect & Authenticate**: Click **Connect** in `/bt` to pair with the lock. On the physical lock, press `D2` until you reach the **BLE PIN** screen and enter the 6-digit PIN shown there.
+* **Lockout Recovery**: Five consecutive wrong PIN attempts put BLE into a `locked_out` state. Press `D1` on the **BLE PIN** screen to generate a fresh 6-digit PIN and clear the lockout.
+* **Configure Wi-Fi**: Once authenticated, submit your Wi-Fi SSID and password directly from the BLE dashboard without needing USB serial or a camera module.
+* **Inspect & Drain Offline Events**: View the on-board 20-event ring buffer (`Event Queue`), drain buffered offline events to sync them, or re-enqueue events if needed.
+* **Local Commands**: Issue Base64-armored `SignedMessage` commands and push `CoordinatorConfiguration` updates locally without active Wi-Fi.
 
 ## Verifying it worked
 
-Once the lock is online it will try and connect to the default message broker at `wss://tartarus-mqtt.subjugated.club:4447/mqtt`.
+Once the lock is online it will try and connect to the default message broker at `wss://tartarus-mqtt.subjugated.club/mqtt`.
 If it succeeds it will download a configuration blob containing everything it needs to create login credentials for you.
 
 Give it a reset and a scannable QR code should be on the display after it boots.
+
+## Backing Up NVS Before Reflashing
+
+The lock's 24 KiB NVS partition (`0x9000`–`0xF000`) stores Wi-Fi credentials, session keys, software fallback keys, and active contract state. Before reflashing or migrating hardware, you can back it up over USB using `backup_nvs.sh` from the repository root:
+
+```bash
+./backup_nvs.sh                     # Auto-detect serial port, saves nvs_backup_<TIMESTAMP>.bin
+./backup_nvs.sh -p /dev/cu.usbmodem1101 -o my_lock_nvs.bin
+```
 
 ## Signed Firmware & Secure Boot v2
 
