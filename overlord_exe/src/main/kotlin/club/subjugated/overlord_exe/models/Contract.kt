@@ -21,6 +21,7 @@ class Contract(
     var serialNumber: Int,
     var nextCounter: Int = 1,
     @Enumerated(EnumType.STRING) var state: ContractState = ContractState.UNSPECIFIED,
+    var emergencyUnlocked: Boolean = false,
 
     // The original contract bytes are always returned from GetContractResponse but we don't
     // need to save them in the database ourselves.

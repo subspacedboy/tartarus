@@ -204,6 +204,7 @@ class TimerBot(
         val engagements = findByContractIds(contracts.map { it.id })
         for (engagement in engagements) {
             val contract = contracts.find { it.id == engagement.contractId } ?: continue
+            if (contract.emergencyUnlocked) continue
             val data = engagement.data as? TimerEngagementData ?: continue
 
             if (data.endsAt != null && data.endsAt!! < timeSource.nowInUtc()) {

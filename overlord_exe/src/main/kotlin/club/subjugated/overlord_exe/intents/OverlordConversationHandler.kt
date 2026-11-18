@@ -11,6 +11,8 @@ import club.subjugated.overlord_exe.services.BSkyUserService
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.services.BotMapService
 import club.subjugated.overlord_exe.services.ContractService
+import club.subjugated.overlord_exe.services.EmergencyRelockService
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
 @Component
@@ -20,9 +22,10 @@ class OverlordConversationHandler(
     private val contractService: ContractService,
     private val botMapService: BotMapService,
     private val botComponent: BotComponent,
+    @Autowired(required = false) private val emergencyRelockService: EmergencyRelockService? = null,
 ) : ConversationHandler {
 
-    override val commands: Set<String> = setOf("hello", "contract", "accept", "add", "remove")
+    override val commands: Set<String> = setOf("hello", "contract", "accept", "add", "remove", "relock")
 
     override val intents: List<IntentSpec<*>> = listOf(
         unitIntent(
@@ -55,6 +58,14 @@ class OverlordConversationHandler(
             val atUri = blueSkyService.listNameToUri(listName)
             blueSkyService.removeFromList(did, atUri)
             ConversationResponse(text = "Removed from $listName")
+        },
+        unitIntent(
+            name = "relock",
+            description = "The user wants to relock their device after an emergency unlock to resume their active contract(s).",
+            examples = listOf("Relock me", "I'm ready to relock", "Put me back in the lock after emergency unlock"),
+        ) { ctx ->
+            val reply = emergencyRelockService?.relockForUser(ctx) ?: "Relock service unavailable."
+            ConversationResponse(text = reply)
         },
     )
 
@@ -106,6 +117,7 @@ class OverlordConversationHandler(
                     "Unknown list: $list"
                 }
             }
+            "relock" -> emergencyRelockService?.relockForUser(ctx) ?: "Relock service unavailable."
             else -> "Unknown command"
         }
     }

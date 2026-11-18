@@ -11,10 +11,12 @@ import club.subjugated.overlord_exe.runtime.BotContext
 import club.subjugated.overlord_exe.runtime.CoordinatorGateway
 import club.subjugated.overlord_exe.runtime.DefaultBotContext
 import club.subjugated.overlord_exe.runtime.OverlordBot
+import club.subjugated.overlord_exe.services.BSkyUserService
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.services.BotContractInfo
 import club.subjugated.overlord_exe.services.BotMapService
 import club.subjugated.overlord_exe.services.ContractService
+import club.subjugated.overlord_exe.storage.BotEngagementRepository
 import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -91,6 +93,8 @@ class BotComponent @Autowired constructor(
     @Lazy @Autowired(required = false) private val discoveredBots: List<OverlordBot> = emptyList(),
     @Value("\${overlord.coordinator}") private val coordinator: String,
     @Value("\${overlord.ws_uri:}") private val wsUri: String = "",
+    @Lazy @Autowired(required = false) private val botEngagementRepository: BotEngagementRepository? = null,
+    @Lazy @Autowired(required = false) private val bSkyUserService: BSkyUserService? = null,
 ) : SmartInitializingSingleton {
     private val logger: Logger = LoggerFactory.getLogger(BotComponent::class.java)
 
@@ -124,6 +128,12 @@ class BotComponent @Autowired constructor(
 
     fun contextFor(bot: OverlordBot): BotContext {
         return contextFor(bot.descriptor.internalName, bot.descriptor.description)
+    }
+
+    fun contextForExternalName(externalName: String): BotContext? {
+        val botMap = handlers.keys.find { it.externalName == externalName } ?: return null
+        val description = handlers[botMap]?.descriptor?.description ?: botMap.internalName
+        return contextsByBotMap[botMap] ?: contextFor(botMap.internalName, description)
     }
 
     fun contextFor(internalName: String, description: String = internalName): BotContext {
@@ -449,6 +459,7 @@ class BotComponent @Autowired constructor(
     fun handleLock(botMap: BotMap, signedEvent: SignedEvent) {
         logger.info("Handle Lock")
         val contract = resolveOrSyncContract(botMap, signedEvent)
+        contractService.markEmergencyUnlocked(contract, false)
 
         val bot = handlers[botMap]!!
         val ctx = contextsByBotMap[botMap] ?: contextFor(botMap.internalName, botMap.internalName)
@@ -467,10 +478,46 @@ class BotComponent @Autowired constructor(
     fun handleEmergencyUnlock(botMap: BotMap, signedEvent: SignedEvent) {
         logger.info("Handle Emergency Unlock")
         val contract = resolveOrSyncContract(botMap, signedEvent)
+        val wasAlreadyEmergencyUnlocked = contract.emergencyUnlocked
+        contractService.markEmergencyUnlocked(contract, true)
 
         val bot = handlers[botMap]
         val ctx = contextsByBotMap[botMap] ?: contextFor(botMap.internalName, botMap.internalName)
         bot?.onEmergencyUnlock(ctx, contract)
+
+        if (!wasAlreadyEmergencyUnlocked) {
+            notifySubjectEmergencyUnlock(botMap, contract)
+        }
+    }
+
+    private fun notifySubjectEmergencyUnlock(botMap: BotMap, contract: Contract) {
+        val bsky = blueSkyService ?: return
+        val convoId = resolveSubjectConvoId(botMap, contract) ?: return
+        if (convoId.isBlank()) return
+        try {
+            bsky.sendDm(
+                convoId,
+                "Emergency unlock detected on your device. Send !relock or ask me to relock when you're ready to get back on track.",
+            )
+        } catch (ex: Exception) {
+            logger.warn("Failed to send emergency unlock DM for contract ${contract.name}: ${ex.message}")
+        }
+    }
+
+    private fun resolveSubjectConvoId(botMap: BotMap, contract: Contract): String? {
+        val engagement = botEngagementRepository?.findByContractId(contract.id)
+            ?: botEngagementRepository?.findByBotIdAndContractSerialNumber(
+                botMap.internalName,
+                contract.serialNumber,
+            )
+        if (engagement != null && engagement.convoId.isNotBlank()) {
+            return engagement.convoId
+        }
+        val token = contract.shareableToken
+        if (!token.isNullOrBlank()) {
+            return bSkyUserService?.findByShareableToken(token)?.convoId
+        }
+        return null
     }
 
     fun handleStartedUpdate(botMap: BotMap, signedEvent: SignedEvent) {
@@ -502,6 +549,7 @@ class BotComponent @Autowired constructor(
             "Periodic update received for ${botMap.internalName} (${botMap.externalName}): session=${commonMetadata.lockSession}, serial=${commonMetadata.contractSerialNumber}, isLocked=${periodicUpdate.isLocked}, emergencyUnlocked=${periodicUpdate.emergencyUnlocked}, deviceUptime=${periodicUpdate.deviceUptime}s"
         )
         val contract = resolveOrSyncContract(botMap, signedEvent)
+        contractService.markEmergencyUnlocked(contract, periodicUpdate.emergencyUnlocked)
         val bot = handlers[botMap]
         val ctx = contextsByBotMap[botMap] ?: contextFor(botMap.internalName, botMap.internalName)
         bot?.onPeriodicUpdate(ctx, contract, periodicUpdate)

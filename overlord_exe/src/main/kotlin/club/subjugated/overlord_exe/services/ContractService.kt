@@ -44,6 +44,10 @@ class ContractService(
     private var timeSource: TimeSource,
     private val logger: Logger = LoggerFactory.getLogger(ContractService::class.java),
 ) {
+    companion object {
+        val LIVE_STATES = listOf(ContractState.ACCEPTED, ContractState.CONFIRMED)
+    }
+
     fun recordCounter(contract: Contract, counter: Int) {
         contract.nextCounter = counter
         contractRepository.save(contract)
@@ -54,8 +58,31 @@ class ContractService(
     fun getLiveContractsForBot(botName: String): List<Contract> {
         return contractRepository.findByBotNameAndStateIn(
             botName,
-            listOf(ContractState.ACCEPTED, ContractState.CONFIRMED),
+            LIVE_STATES,
         )
+    }
+
+    fun findById(id: Long): Contract? = contractRepository.findById(id).orElse(null)
+
+    fun findEmergencyUnlockedContractsForShareableToken(shareableToken: String): List<Contract> {
+        if (shareableToken.isBlank()) return emptyList()
+        return contractRepository.findByShareableTokenAndEmergencyUnlockedTrueAndStateIn(
+            shareableToken,
+            LIVE_STATES,
+        )
+    }
+
+    fun findAllEmergencyUnlockedLiveContracts(): List<Contract> {
+        return contractRepository.findByEmergencyUnlockedTrueAndStateIn(LIVE_STATES)
+    }
+
+    fun markEmergencyUnlocked(contract: Contract, emergencyUnlocked: Boolean): Contract {
+        if (contract.emergencyUnlocked == emergencyUnlocked) {
+            return contract
+        }
+        contract.emergencyUnlocked = emergencyUnlocked
+        contract.updatedAt = timeSource.nowInUtc()
+        return contractRepository.save(contract)
     }
 
     fun getOrCreateContract(
@@ -85,6 +112,7 @@ class ContractService(
     fun markReleased(botName: String, serialNumber: Int): Contract {
         val contract = getContract(botName, serialNumber)
         contract.state = ContractState.RELEASED
+        contract.emergencyUnlocked = false
         contract.updatedAt = timeSource.nowInUtc()
         return contractRepository.save(contract)
     }

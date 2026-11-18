@@ -155,7 +155,7 @@ class SuperBot(
             ) ?: engagementRepository.findByContractId(contract.id) ?: return@forEach
 
             val state = objectiveService.process(engagement)
-            if (state != null && state.status == ObjectiveStatus.COMPLETE) {
+            if (state != null && state.status == ObjectiveStatus.COMPLETE && !contract.emergencyUnlocked) {
                 ctx.release(contract)
             }
         }
