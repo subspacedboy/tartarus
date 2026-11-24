@@ -561,25 +561,10 @@ export class TartarusCoordinatorService {
     }));
   }
 
-  // Admin firmware
-
-  public addFirmware(firmwareBytes : string) : Observable<boolean> {
-    const add_firmware_uri = `${this.baseUrl}/admin/firmware/`;
-    const body = JSON.stringify({
-      firmware : firmwareBytes,
-    });
-    const headers = new HttpHeaders({ 'Content-Type': 'application/json', 'X-Require-Admin': 'requires authorization tokens' });
-    return this.http.post(add_firmware_uri, body, {headers} ).pipe(map((res:any) => {
-      return true;
-    }),  catchError(error => {
-      return this.handleError(error);
-    }));
-  }
-
   // Hardware Fleet & Provisioning
 
   public listProvisionedUnits(mode?: string, revoked?: boolean, search?: string): Observable<ProvisionedHardwareUnitSummary[]> {
-    const uri = `${this.baseUrl}/api/admin/hardware/units`;
+    const uri = `${this.baseUrl}/admin/hardware/units`;
     let queryParams: any = {};
     if (mode) queryParams.mode = mode;
     if (revoked !== undefined && revoked !== null) queryParams.revoked = revoked;
@@ -594,7 +579,7 @@ export class TartarusCoordinatorService {
   }
 
   public getProvisionedUnitDetail(hardwareId: string): Observable<ProvisionedHardwareUnitDetail> {
-    const uri = `${this.baseUrl}/api/admin/hardware/units/${hardwareId}`;
+    const uri = `${this.baseUrl}/admin/hardware/units/${hardwareId}`;
     return this.http.get<ProvisionedHardwareUnitDetail>(uri, {
       headers: new HttpHeaders({ 'X-Require-Admin': 'requires authorization tokens' }),
     }).pipe(
@@ -603,7 +588,7 @@ export class TartarusCoordinatorService {
   }
 
   public verifyProvisioningPreview(request: ProvisioningIngestRequest): Observable<ProvisioningPreviewResult> {
-    const uri = `${this.baseUrl}/api/admin/hardware/verify-preview`;
+    const uri = `${this.baseUrl}/admin/hardware/verify-preview`;
     return this.http.post<ProvisioningPreviewResult>(uri, request, {
       headers: new HttpHeaders({ 'Content-Type': 'application/json', 'X-Require-Admin': 'requires authorization tokens' }),
     }).pipe(
@@ -612,7 +597,7 @@ export class TartarusCoordinatorService {
   }
 
   public provisionHardwareUnit(request: ProvisioningIngestRequest): Observable<ProvisionedHardwareUnitDetail> {
-    const uri = `${this.baseUrl}/api/admin/hardware/provision`;
+    const uri = `${this.baseUrl}/admin/hardware/provision`;
     return this.http.post<ProvisionedHardwareUnitDetail>(uri, request, {
       headers: new HttpHeaders({ 'Content-Type': 'application/json', 'X-Require-Admin': 'requires authorization tokens' }),
     }).pipe(
@@ -621,7 +606,7 @@ export class TartarusCoordinatorService {
   }
 
   public updateHardwareUnit(hardwareId: string, request: UpdateHardwareUnitRequest): Observable<ProvisionedHardwareUnitDetail> {
-    const uri = `${this.baseUrl}/api/admin/hardware/units/${hardwareId}`;
+    const uri = `${this.baseUrl}/admin/hardware/units/${hardwareId}`;
     return this.http.patch<ProvisionedHardwareUnitDetail>(uri, request, {
       headers: new HttpHeaders({ 'Content-Type': 'application/json', 'X-Require-Admin': 'requires authorization tokens' }),
     }).pipe(

@@ -28,6 +28,9 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.TransactionDefinition
+import org.springframework.transaction.support.TransactionTemplate
 
 @Service
 class FirmwareService(
@@ -39,7 +42,15 @@ class FirmwareService(
     private var unitRepository: ProvisionedHardwareUnitRepository? = null,
     @Autowired(required = false)
     private var attestationLogRepository: HardwareAttestationLogRepository? = null,
+    @Autowired(required = false)
+    private var transactionManager: PlatformTransactionManager? = null,
 ) {
+    private val requiresNewTransactionTemplate: TransactionTemplate? =
+        transactionManager?.let {
+            TransactionTemplate(it).apply {
+                propagationBehavior = TransactionDefinition.PROPAGATION_REQUIRES_NEW
+            }
+        }
     @Value("\${tartarus.firmware.challenge_key}") var challengeKey: String = ""
 
     private val nonceChallenges: Cache<Long, ByteArray> =
@@ -164,8 +175,10 @@ class FirmwareService(
             val unit = unitRepository?.findByHardwareId(normHwId)
 
             if (unit == null) {
+                // hardware_attestation_logs.hardware_id has an FK to provisioned_hardware_units;
+                // store null here and keep the unregistered ID in failureReason.
                 logAttestation(
-                    hardwareId = normHwId,
+                    hardwareId = null,
                     sessionToken = sessionToken,
                     firmwareVersion = currentFirmware,
                     verificationMethod = "FAILED",
@@ -310,17 +323,24 @@ class FirmwareService(
         failureReason: String?,
     ) {
         try {
-            val log =
-                HardwareAttestationLog(
-                    hardwareId = hardwareId,
-                    sessionToken = sessionToken,
-                    firmwareVersion = firmwareVersion,
-                    verificationMethod = verificationMethod,
-                    success = success,
-                    failureReason = failureReason,
-                    createdAt = timeSource.nowInUtc(),
-                )
-            attestationLogRepository?.save(log)
+            val saveLog = {
+                val log =
+                    HardwareAttestationLog(
+                        hardwareId = hardwareId,
+                        sessionToken = sessionToken,
+                        firmwareVersion = firmwareVersion,
+                        verificationMethod = verificationMethod,
+                        success = success,
+                        failureReason = failureReason,
+                        createdAt = timeSource.nowInUtc(),
+                    )
+                attestationLogRepository?.save(log)
+            }
+            if (requiresNewTransactionTemplate != null) {
+                requiresNewTransactionTemplate.execute { saveLog() }
+            } else {
+                saveLog()
+            }
         } catch (e: Exception) {
             println("⚠️ Warning: failed to save attestation log: ${e.message}")
         }

@@ -3,6 +3,7 @@ package club.subjugated.tartarus_coordinator.services
 import club.subjugated.fb.message.firmware.FirmwareChallengeRequest
 import club.subjugated.fb.message.firmware.FirmwareMessage
 import club.subjugated.tartarus_coordinator.events.FirmwareValidationEvent
+import club.subjugated.tartarus_coordinator.models.HardwareAttestationLog
 import club.subjugated.tartarus_coordinator.models.ProvisionedHardwareUnit
 import club.subjugated.tartarus_coordinator.storage.FirmwareRepository
 import club.subjugated.tartarus_coordinator.storage.FirmwareUpgradePathRepository
@@ -324,6 +325,13 @@ class FirmwareServiceTest {
             )
 
         assertThat(isValid).isFalse()
+
+        val logCaptor = ArgumentCaptor.forClass(HardwareAttestationLog::class.java)
+        verify(logRepository).save(logCaptor.capture())
+        assertThat(logCaptor.value.hardwareId).isNull()
+        assertThat(logCaptor.value.success).isFalse()
+        assertThat(logCaptor.value.verificationMethod).isEqualTo("FAILED")
+        assertThat(logCaptor.value.failureReason).isEqualTo("Unregistered hardware_id: $hardwareId")
     }
 
     @Test
@@ -360,6 +368,13 @@ class FirmwareServiceTest {
             )
 
         assertThat(isValid).isFalse()
+
+        val logCaptor = ArgumentCaptor.forClass(HardwareAttestationLog::class.java)
+        verify(logRepository).save(logCaptor.capture())
+        assertThat(logCaptor.value.hardwareId).isEqualTo(hardwareId)
+        assertThat(logCaptor.value.success).isFalse()
+        assertThat(logCaptor.value.verificationMethod).isEqualTo("FAILED")
+        assertThat(logCaptor.value.failureReason).isEqualTo("Hardware unit is revoked")
     }
 
     companion object {
