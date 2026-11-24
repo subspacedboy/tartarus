@@ -2,24 +2,24 @@ package club.subjugated.overlord_exe.services
 
 import club.subjugated.overlord_exe.bots.general.BotComponent
 import club.subjugated.overlord_exe.convo.ConversationContext
-import club.subjugated.overlord_exe.models.BotEngagement
 import club.subjugated.overlord_exe.models.Contract
+import club.subjugated.overlord_exe.models.ContractSession
 import club.subjugated.overlord_exe.models.ContractState
-import club.subjugated.overlord_exe.models.EngagementPhase
-import club.subjugated.overlord_exe.storage.BotEngagementRepository
+import club.subjugated.overlord_exe.models.SessionPhase
+import club.subjugated.overlord_exe.storage.ContractSessionRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
 class EmergencyRelockService(
     private val contractService: ContractService,
-    private val botEngagementRepository: BotEngagementRepository,
+    private val sessionRepository: ContractSessionRepository,
     private val botComponent: BotComponent,
 ) {
     private val logger = LoggerFactory.getLogger(EmergencyRelockService::class.java)
 
     companion object {
-        private val CANDIDATE_ENGAGEMENT_PHASES = listOf(EngagementPhase.ACTIVE, EngagementPhase.ISSUED)
+        private val CANDIDATE_SESSION_PHASES = listOf(SessionPhase.ACTIVE, SessionPhase.ISSUED)
         private val TERMINAL_CONTRACT_STATES = setOf(
             ContractState.RELEASED,
             ContractState.ABORTED,
@@ -30,28 +30,28 @@ class EmergencyRelockService(
     fun findEmergencyUnlockedContractsForUser(
         subjectDid: String,
         convoId: String,
-        shareableToken: String?,
+        shareableTokens: List<String> = emptyList(),
     ): List<Contract> {
         val candidates = mutableListOf<Contract>()
 
-        if (!shareableToken.isNullOrBlank()) {
-            candidates += contractService.findContractsForShareableToken(shareableToken)
+        shareableTokens.filter { it.isNotBlank() }.forEach { token ->
+            candidates += contractService.findContractsForShareableToken(token)
         }
 
-        val engagements = buildList {
+        val sessions = buildList {
             if (subjectDid.isNotBlank()) {
-                addAll(botEngagementRepository.findBySubjectDidAndPhaseIn(subjectDid, CANDIDATE_ENGAGEMENT_PHASES))
+                addAll(sessionRepository.findBySubjectDidAndPhaseIn(subjectDid, CANDIDATE_SESSION_PHASES))
             }
             if (convoId.isNotBlank()) {
-                addAll(botEngagementRepository.findByConvoIdAndPhaseIn(convoId, CANDIDATE_ENGAGEMENT_PHASES))
+                addAll(sessionRepository.findByConvoIdAndPhaseIn(convoId, CANDIDATE_SESSION_PHASES))
             }
-        }.distinctBy { it.id to it.name }
+        }.distinctBy { it.id to it.token }
 
-        for (engagement in engagements) {
-            resolveContractForEngagement(engagement)?.let { candidates += it }
-            val engToken = engagement.shareableToken
-            if (!engToken.isNullOrBlank()) {
-                candidates += contractService.findContractsForShareableToken(engToken)
+        for (session in sessions) {
+            resolveContractForSession(session)?.let { candidates += it }
+            val sessionToken = session.shareableToken
+            if (!sessionToken.isNullOrBlank()) {
+                candidates += contractService.findContractsForShareableToken(sessionToken)
             }
         }
 
@@ -80,44 +80,36 @@ class EmergencyRelockService(
 
         val live = synced.filter { it.state in ContractService.LIVE_STATES }
         if (live.isEmpty()) {
-            logger.info(
-                "No live contracts after sync for subjectDid=$subjectDid (candidates=${synced.map { "${it.name}:${it.state}" }})"
-            )
             return emptyList()
         }
 
         val emergencyOnly = live.filter { it.emergencyUnlocked }
-        return emergencyOnly.ifEmpty {
-            logger.info(
-                "No contracts flagged emergencyUnlocked=true for subjectDid=$subjectDid; falling back to all ${live.size} live contract(s)"
-            )
-            live
-        }
+        return emergencyOnly.ifEmpty { live }
     }
 
-    private fun resolveContractForEngagement(engagement: BotEngagement): Contract? {
-        engagement.contractId?.let { id ->
+    private fun resolveContractForSession(session: ContractSession): Contract? {
+        session.contractId?.let { id ->
             contractService.findById(id)?.let { return it }
         }
-        if (engagement.contractSerialNumber > 0) {
+        if (session.contractSerialNumber > 0) {
             val externalName = botComponent.handlers.keys
-                .find { it.internalName == engagement.botId }
+                .find { it.internalName == session.botId }
                 ?.externalName
             if (externalName != null) {
-                return contractService.findContract(externalName, engagement.contractSerialNumber)
+                return contractService.findContract(externalName, session.contractSerialNumber)
             }
         }
         return null
     }
 
     fun relockForUser(ctx: ConversationContext): String {
-        val subjectDid = ctx.bskyUser?.did ?: ctx.currentMessage.sender.did
-        val shareableToken = ctx.bskyUser?.shareableToken
+        val subjectDid = ctx.userContext?.did ?: ctx.currentMessage.sender.did
+        val knownTokens = ctx.userContext?.knownTokens?.map { it.token }.orEmpty()
 
         val contracts = findEmergencyUnlockedContractsForUser(
             subjectDid = subjectDid,
             convoId = ctx.convoId,
-            shareableToken = shareableToken,
+            shareableTokens = knownTokens,
         )
 
         if (contracts.isEmpty()) {

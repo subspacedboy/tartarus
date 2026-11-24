@@ -2,9 +2,10 @@ package club.subjugated.overlord_exe.components
 
 import club.subjugated.overlord_exe.convo.ConversationContext
 import club.subjugated.overlord_exe.convo.ConversationHandler
-import club.subjugated.overlord_exe.services.BSkyUserService
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.services.IntentService
+import club.subjugated.overlord_exe.services.UserContextService
+import club.subjugated.overlord_exe.services.UserProfileService
 import com.github.benmanes.caffeine.cache.Caffeine
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -20,7 +21,8 @@ import java.util.concurrent.locks.ReentrantLock
 @Component
 class BSkyDmMonitor @Autowired constructor(
     private val blueSkyService: BlueSkyService,
-    private val bSkyUserService: BSkyUserService,
+    private val userProfileService: UserProfileService,
+    private val userContextService: UserContextService,
     private val intentService: IntentService,
     private val conversationHandlers: List<ConversationHandler> = emptyList(),
     @Autowired(required = false) private val environment: Environment? = null,
@@ -92,14 +94,19 @@ class BSkyDmMonitor @Autowired constructor(
             }
             processedMessageIds.put(messageId, true)
         }
-        val bskyUser = bSkyUserService.findOrCreateByDid(message.sender.did)
-        val handle = blueSkyService.resolveDidToHandle(bskyUser.did)
-        bskyUser.convoId = convoId
-        bskyUser.handle = handle
-        bSkyUserService.save(bskyUser)
+
+        val senderDid = message.sender.did
+        val handle = runCatching { blueSkyService.resolveDidToHandle(senderDid) }.getOrNull()
+        userProfileService.learnFromDm(
+            did = senderDid,
+            convoId = convoId,
+            handle = handle,
+            messageText = message.text,
+        )
+        val userContext = userContextService.buildContextForDid(senderDid)
 
         val ctx = ConversationContext(
-            bskyUser = bskyUser,
+            userContext = userContext,
             convoId = convoId,
             currentMessage = message,
         )
@@ -127,7 +134,7 @@ class BSkyDmMonitor @Autowired constructor(
         } else {
             withConversationLockIfAvailable(convoId) {
                 val responseText = try {
-                    val response = intentService.resolve(convoId, message.text)
+                    val response = intentService.resolve(convoId, message.text, userContext)
                     if (response.intent != null) {
                         intentService.dispatch(ctx, response.intent).text
                     } else {

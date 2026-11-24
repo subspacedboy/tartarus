@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: layout(~{::body})}">
+<body>
+<h2>Configure Contract Session</h2>
+<p>Select the state machines / rules to attach to this contract. You can combine multiple rules together.</p>
+
+<form th:action="@{/session/submit}" method="post" th:object="${sessionForm}" class="needs-validation" novalidate>
+    <input type="hidden" th:field="*{token}">
+
+    <!-- Shareable Token (auto-injected or selectable from known tokens) -->
+    <div class="mb-3" th:if="${!knownTokens.isEmpty()}">
+        <label class="form-label">Known Shareable Tokens</label>
+        <div th:each="tok : ${knownTokens}" class="form-check">
+            <input class="form-check-input" type="radio" name="selectedKnownToken"
+                   th:id="${'tok-' + tok.token}" th:value="${tok.token}"
+                   th:checked="${tok.token == sessionForm.shareableToken}"
+                   onclick="document.getElementById('shareableToken').value = this.value">
+            <label class="form-check-label" th:for="${'tok-' + tok.token}">
+                <span th:text="${tok.token}">s-XXXXXXX</span>
+                <small class="text-muted" th:text="${'(' + tok.tokenType + ')'}"></small>
+            </label>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label for="shareableToken" class="form-label">Shareable Token</label>
+        <input class="form-control" id="shareableToken" th:field="*{shareableToken}" placeholder="s-XXXXXXX or tc-XXXXXXX">
+        <div class="text-danger" th:if="${#fields.hasErrors('shareableToken')}" th:errors="*{shareableToken}"></div>
+    </div>
+
+    <!-- Public Checkbox -->
+    <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="public" th:field="*{public}">
+        <label class="form-check-label" for="public">Announce publicly on Bluesky?</label>
+    </div>
+
+    <!-- Composable Machines -->
+    <div class="mb-3">
+        <label class="form-label">Rules / State Machines</label>
+        <div class="text-danger" th:if="${#fields.hasErrors('machines')}" th:errors="*{machines}"></div>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="m-timer" th:field="*{machines}" value="timer">
+            <label class="form-check-label" for="m-timer">Timer (fixed or random duration)</label>
+        </div>
+        <div class="form-check" th:if="${hasKeyholder}">
+            <input class="form-check-input" type="checkbox" id="m-proxy" th:field="*{machines}" value="proxy_control">
+            <label class="form-check-label" for="m-proxy">Keyholder Proxy Control</label>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="m-likes" th:field="*{machines}" value="bsky_likes">
+            <label class="form-check-label" for="m-likes">Bluesky Likes Goal</label>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="m-crowd" th:field="*{machines}" value="bsky_crowd_time">
+            <label class="form-check-label" for="m-crowd">Bluesky Crowd Time</label>
+        </div>
+    </div>
+
+    <!-- Release Policy -->
+    <div class="mb-3">
+        <label for="releasePolicy" class="form-label">Release Policy</label>
+        <select class="form-select" id="releasePolicy" th:field="*{releasePolicy}">
+            <option value="ALL">All selected rules must complete</option>
+            <option value="ANY">Any selected rule completes</option>
+            <option value="MANUAL" th:if="${hasKeyholder}">Manual (Keyholder releases)</option>
+        </select>
+    </div>
+
+    <!-- Timer Options -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">Timer Settings (if Timer selected)</h5>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="random" th:field="*{random}">
+                <label class="form-check-label" for="random">Randomize duration</label>
+            </div>
+            <div class="row g-2 mb-2">
+                <div class="col">
+                    <label for="minDuration" class="form-label">Min Duration</label>
+                    <input type="number" class="form-control" id="minDuration" th:field="*{minDuration}">
+                </div>
+                <div class="col">
+                    <label for="minUnit" class="form-label">Min Unit</label>
+                    <select class="form-select" id="minUnit" th:field="*{minUnit}">
+                        <option value="MINUTES">Minutes</option>
+                        <option value="HOURS">Hours</option>
+                        <option value="DAYS">Days</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row g-2">
+                <div class="col">
+                    <label for="maxDuration" class="form-label">Max / Fixed Duration</label>
+                    <input type="number" class="form-control" id="maxDuration" th:field="*{maxDuration}">
+                </div>
+                <div class="col">
+                    <label for="maxUnit" class="form-label">Max Unit</label>
+                    <select class="form-select" id="maxUnit" th:field="*{maxUnit}">
+                        <option value="MINUTES">Minutes</option>
+                        <option value="HOURS">Hours</option>
+                        <option value="DAYS">Days</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Issue Contract</button>
+</form>
+</body>
+</html>

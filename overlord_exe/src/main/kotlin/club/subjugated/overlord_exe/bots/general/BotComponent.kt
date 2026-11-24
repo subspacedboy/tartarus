@@ -11,12 +11,12 @@ import club.subjugated.overlord_exe.runtime.BotContext
 import club.subjugated.overlord_exe.runtime.CoordinatorGateway
 import club.subjugated.overlord_exe.runtime.DefaultBotContext
 import club.subjugated.overlord_exe.runtime.OverlordBot
-import club.subjugated.overlord_exe.services.BSkyUserService
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.services.BotContractInfo
 import club.subjugated.overlord_exe.services.BotMapService
 import club.subjugated.overlord_exe.services.ContractService
-import club.subjugated.overlord_exe.storage.BotEngagementRepository
+import club.subjugated.overlord_exe.services.UserProfileService
+import club.subjugated.overlord_exe.storage.ContractSessionRepository
 import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -93,8 +93,8 @@ class BotComponent @Autowired constructor(
     @Lazy @Autowired(required = false) private val discoveredBots: List<OverlordBot> = emptyList(),
     @Value("\${overlord.coordinator}") private val coordinator: String,
     @Value("\${overlord.ws_uri:}") private val wsUri: String = "",
-    @Lazy @Autowired(required = false) private val botEngagementRepository: BotEngagementRepository? = null,
-    @Lazy @Autowired(required = false) private val bSkyUserService: BSkyUserService? = null,
+    @Lazy @Autowired(required = false) private val sessionRepository: ContractSessionRepository? = null,
+    @Lazy @Autowired(required = false) private val userProfileService: UserProfileService? = null,
 ) : SmartInitializingSingleton {
     private val logger: Logger = LoggerFactory.getLogger(BotComponent::class.java)
 
@@ -219,7 +219,7 @@ class BotComponent @Autowired constructor(
     fun reviewSingleBot(botMap: BotMap, bot: OverlordBot) {
         transactionTemplate.execute { status ->
             try {
-                logger.info("Reviewing ${botMap.internalName}")
+                logger.debug("Reviewing ${botMap.internalName}")
                 val rawContracts = contractService.getLiveContractsForBot(botMap.externalName)
                 val ctx = contextsByBotMap[botMap] ?: contextFor(botMap.internalName, botMap.internalName)
 
@@ -437,21 +437,35 @@ class BotComponent @Autowired constructor(
         return contractService.updateContractWithGetContractResponse(contract, contractInfo)
     }
 
+    private fun formatEventContext(botMap: BotMap, contract: Contract): String {
+        val session = sessionRepository?.findByContractId(contract.id)
+            ?: sessionRepository?.findByBotIdAndContractSerialNumber(botMap.internalName, contract.serialNumber)
+        val profile = session?.subjectDid?.let { userProfileService?.findByDid(it) }
+            ?: contract.shareableToken?.takeIf { it.isNotBlank() }?.let { userProfileService?.findByShareableToken(it) }
+        val userLabel = when {
+            profile != null && !profile.handle.isNullOrBlank() -> "@${profile.handle} (${profile.did})"
+            profile != null -> profile.did
+            session != null -> session.subjectDid
+            else -> "unknown"
+        }
+        return "bot=${botMap.internalName} (${botMap.externalName}), contract=${contract.externalContractName ?: contract.name}, lockSession=${contract.lockSessionToken}, serial=${contract.serialNumber}, user=$userLabel, shareableToken=${contract.shareableToken}"
+    }
+
     fun handleAccept(botMap: BotMap, signedEvent: SignedEvent) {
-        logger.info("Handled accept")
         val contract = resolveOrSyncContract(botMap, signedEvent, forceSync = true)
+        logger.info("Handle Accept: ${formatEventContext(botMap, contract)}")
         val bot = handlers[botMap]!!
         val ctx = contextsByBotMap[botMap] ?: contextFor(botMap.internalName, botMap.internalName)
         bot.onAccept(ctx, contract)
     }
 
     fun handleRelease(botMap: BotMap, signedEvent: SignedEvent) {
-        logger.info("Handle release")
         val e = signedEvent.payload!!
         val commonMetadata = e.metadata!!
         resolveOrSyncContract(botMap, signedEvent)
 
         val contract = contractService.markReleased(botMap.externalName, commonMetadata.contractSerialNumber.toInt())
+        logger.info("Handle Release: ${formatEventContext(botMap, contract)}")
 
         val bot = handlers[botMap]!!
         val ctx = contextsByBotMap[botMap] ?: contextFor(botMap.internalName, botMap.internalName)
@@ -459,8 +473,8 @@ class BotComponent @Autowired constructor(
     }
 
     fun handleLock(botMap: BotMap, signedEvent: SignedEvent) {
-        logger.info("Handle Lock")
         val contract = resolveOrSyncContract(botMap, signedEvent)
+        logger.info("Handle Lock: ${formatEventContext(botMap, contract)}")
         contractService.markEmergencyUnlocked(contract, false)
 
         val bot = handlers[botMap]!!
@@ -469,8 +483,8 @@ class BotComponent @Autowired constructor(
     }
 
     fun handleUnlock(botMap: BotMap, signedEvent: SignedEvent) {
-        logger.info("Handle Unlock")
         val contract = resolveOrSyncContract(botMap, signedEvent)
+        logger.info("Handle Unlock: ${formatEventContext(botMap, contract)}")
 
         val bot = handlers[botMap]!!
         val ctx = contextsByBotMap[botMap] ?: contextFor(botMap.internalName, botMap.internalName)
@@ -478,8 +492,8 @@ class BotComponent @Autowired constructor(
     }
 
     fun handleEmergencyUnlock(botMap: BotMap, signedEvent: SignedEvent) {
-        logger.info("Handle Emergency Unlock")
         val contract = resolveOrSyncContract(botMap, signedEvent)
+        logger.info("Handle Emergency Unlock: ${formatEventContext(botMap, contract)}")
         val wasAlreadyEmergencyUnlocked = contract.emergencyUnlocked
         contractService.markEmergencyUnlocked(contract, true)
 
@@ -507,17 +521,17 @@ class BotComponent @Autowired constructor(
     }
 
     private fun resolveSubjectConvoId(botMap: BotMap, contract: Contract): String? {
-        val engagement = botEngagementRepository?.findByContractId(contract.id)
-            ?: botEngagementRepository?.findByBotIdAndContractSerialNumber(
+        val session = sessionRepository?.findByContractId(contract.id)
+            ?: sessionRepository?.findByBotIdAndContractSerialNumber(
                 botMap.internalName,
                 contract.serialNumber,
             )
-        if (engagement != null && engagement.convoId.isNotBlank()) {
-            return engagement.convoId
+        if (session != null && session.convoId.isNotBlank()) {
+            return session.convoId
         }
         val token = contract.shareableToken
         if (!token.isNullOrBlank()) {
-            return bSkyUserService?.findByShareableToken(token)?.convoId
+            return userProfileService?.findByShareableToken(token)?.convoId
         }
         return null
     }

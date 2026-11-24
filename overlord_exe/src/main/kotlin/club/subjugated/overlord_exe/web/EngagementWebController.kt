@@ -1,19 +1,19 @@
 package club.subjugated.overlord_exe.web
 
-import club.subjugated.overlord_exe.bots.simple_proxy.SimpleProxyBot
-import club.subjugated.overlord_exe.bots.simple_proxy.SimpleProxyIntakeForm
-import club.subjugated.overlord_exe.bots.superbot.IntakeForm
-import club.subjugated.overlord_exe.bots.superbot.SuperBot
-import club.subjugated.overlord_exe.bots.timer_bot.TimeForm
-import club.subjugated.overlord_exe.bots.timer_bot.TimerBot
-import club.subjugated.overlord_exe.models.BSkyCrowdTimeObjectiveState
-import club.subjugated.overlord_exe.models.EngagementPhase
-import club.subjugated.overlord_exe.models.SimpleProxyEngagementData
-import club.subjugated.overlord_exe.models.SuperBotEngagementData
-import club.subjugated.overlord_exe.objectives.ObjectiveService
+import club.subjugated.overlord_exe.bots.overlord.OverlordControlBot
+import club.subjugated.overlord_exe.machines.SessionEngine
+import club.subjugated.overlord_exe.machines.SessionIssueSpec
+import club.subjugated.overlord_exe.machines.TimerConfig
+import club.subjugated.overlord_exe.models.BSkyCrowdTimeMachineState
+import club.subjugated.overlord_exe.models.ReleasePolicy
+import club.subjugated.overlord_exe.models.SessionPhase
 import club.subjugated.overlord_exe.services.BlueSkyService
+import club.subjugated.overlord_exe.services.UserProfileService
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
+import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.Positive
+import jakarta.validation.constraints.Size
 import jakarta.ws.rs.core.MediaType
 import org.ocpsoft.prettytime.PrettyTime
 import org.springframework.stereotype.Controller
@@ -24,115 +24,101 @@ import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 
+data class SessionIntakeForm(
+    var token: String = "",
+    @field:NotBlank(message = "Shareable token is required")
+    var shareableToken: String = "",
+    var public: Boolean = false,
+    @field:Size(min = 1, message = "At least one rule/machine must be selected")
+    var machines: List<String> = listOf("timer"),
+    var releasePolicy: ReleasePolicy = ReleasePolicy.ALL,
+    var random: Boolean = false,
+    @field:Positive
+    var minDuration: Int = 1,
+    var minUnit: String = "HOURS",
+    @field:Positive
+    var maxDuration: Int = 1,
+    var maxUnit: String = "HOURS",
+)
+
 /**
- * Unified magic-link web controller for all bot intake forms, objective info requests, and status pages.
+ * Unified magic-link web controller for composable session intake, machine info requests, and status pages.
  */
 @Controller
 class EngagementWebController(
-    private val timerBot: TimerBot,
-    private val superBot: SuperBot,
-    private val simpleProxyBot: SimpleProxyBot,
-    private val objectiveService: ObjectiveService,
+    private val overlordControlBot: OverlordControlBot,
+    private val sessionEngine: SessionEngine,
+    private val userProfileService: UserProfileService,
     private val blueSkyService: BlueSkyService,
 ) {
-    // --- TimerBot Magic Link Intake ---
-
-    @GetMapping("/timer/{token}", produces = [MediaType.APPLICATION_JSON])
-    fun getTimerForm(@PathVariable token: String, model: Model): String {
-        val engagement = timerBot.getSessionByName(token)
-        if (engagement.phase != EngagementPhase.CREATED) {
+    @GetMapping("/session/{token}", produces = [MediaType.APPLICATION_JSON])
+    fun getSessionForm(@PathVariable token: String, model: Model): String {
+        val session = sessionEngine.findByToken(token)
+        if (session.phase != SessionPhase.CREATED) {
             return "no_more_edits"
         }
 
-        model.addAttribute("name", engagement.name)
-        model.addAttribute("timeForm", TimeForm(name = engagement.name, shareableToken = ""))
-        return "timer/form"
-    }
+        val knownTokens = userProfileService.getTokensForUser(session.subjectDid)
+        val prefilledToken = session.shareableToken?.takeIf { it.isNotBlank() }
+            ?: knownTokens.firstOrNull { it.isDefault }?.token
+            ?: knownTokens.firstOrNull()?.token
+            ?: ""
+        val existingMachines = sessionEngine.findMachines(session.id).map { it.machineType }
+            .ifEmpty { listOf("timer") }
 
-    @PostMapping("/timer/submit")
-    fun submitTimerForm(
-        @Valid @ModelAttribute("timeForm") form: TimeForm,
-        bindingResult: BindingResult,
-        model: Model,
-    ): String {
-        if (bindingResult.hasErrors()) {
-            model.addAttribute("name", form.name)
-            return "timer/form"
-        }
-        timerBot.processContractForm(form)
-        return "all_done"
-    }
-
-    // --- SuperBot Magic Link Intake ---
-
-    @GetMapping("/superbot/{token}", produces = [MediaType.APPLICATION_JSON])
-    fun getSuperBotForm(@PathVariable token: String, model: Model): String {
-        val engagement = superBot.findByName(token)
-        if (engagement.phase != EngagementPhase.CREATED) {
-            return "no_more_edits"
-        }
-
-        model.addAttribute("name", engagement.name)
+        model.addAttribute("hasKeyholder", !session.keyholderDid.isNullOrBlank())
+        model.addAttribute("knownTokens", knownTokens)
         model.addAttribute(
-            "intakeForm",
-            IntakeForm(
-                name = engagement.name,
-                shareableToken = engagement.shareableToken ?: "",
-            )
+            "sessionForm",
+            SessionIntakeForm(
+                token = session.token,
+                shareableToken = prefilledToken,
+                public = session.isPublic,
+                machines = existingMachines,
+                releasePolicy = session.releasePolicy,
+            ),
         )
-        return "superbot/form"
+        return "session/form"
     }
 
-    @PostMapping("/superbot/submit")
-    fun submitSuperBotForm(
-        @Valid @ModelAttribute("intakeForm") form: IntakeForm,
-        model: Model,
+    @PostMapping("/session/submit")
+    fun submitSessionForm(
+        @Valid @ModelAttribute("sessionForm") form: SessionIntakeForm,
         bindingResult: BindingResult,
+        model: Model,
     ): String {
+        val session = sessionEngine.findByToken(form.token)
         if (bindingResult.hasErrors()) {
-            model.addAttribute("name", form.name)
-            return "superbot/form"
+            model.addAttribute("hasKeyholder", !session.keyholderDid.isNullOrBlank())
+            model.addAttribute("knownTokens", userProfileService.getTokensForUser(session.subjectDid))
+            return "session/form"
         }
-        superBot.processContractForm(form)
+
+        sessionEngine.issueSession(
+            ctx = overlordControlBot.botContext,
+            session = session,
+            spec = SessionIssueSpec(
+                shareableToken = form.shareableToken,
+                isPublic = form.public,
+                releasePolicy = form.releasePolicy,
+                machineTypes = form.machines,
+                timerConfig = TimerConfig(
+                    isRandom = form.random,
+                    minDuration = form.minDuration,
+                    minUnit = form.minUnit,
+                    maxDuration = form.maxDuration,
+                    maxUnit = form.maxUnit,
+                ),
+            ),
+        )
         return "all_done"
     }
 
-    // --- SimpleProxy Magic Link Intake ---
-
-    @GetMapping("/simpleproxy/{token}", produces = [MediaType.APPLICATION_JSON])
-    fun getSimpleProxyForm(@PathVariable token: String, model: Model): String {
-        val engagement = simpleProxyBot.findByName(token)
-        if (engagement.phase != EngagementPhase.CREATED) {
-            return "no_more_edits"
-        }
-        val data = engagement.data as SimpleProxyEngagementData
-
-        model.addAttribute("name", engagement.name)
-        model.addAttribute("keyholder", data.keyholderHandle)
-        model.addAttribute("sub", data.subHandle)
-        model.addAttribute("intakeForm", SimpleProxyIntakeForm(name = engagement.name))
-        return "simpleproxy/form"
-    }
-
-    @PostMapping("/simpleproxy/submit")
-    fun submitSimpleProxyForm(
-        @Valid @ModelAttribute("intakeForm") form: SimpleProxyIntakeForm,
-        model: Model,
-        bindingResult: BindingResult,
-    ): String {
-        if (bindingResult.hasErrors()) {
-            model.addAttribute("name", form.name)
-            return "simpleproxy/form"
-        }
-        simpleProxyBot.processIntakeForm(form)
-        return "all_done"
-    }
-
-    // --- Objective Info Request Magic Links ---
+    // --- Machine Info Request Magic Links ---
 
     @GetMapping("/info/{token}", produces = [MediaType.APPLICATION_JSON])
     fun getInfoForm(@PathVariable token: String, model: Model): String {
-        val (templateName, form) = objectiveService.getFormForInfoToken(token)
+        val (templateName, form) = sessionEngine.getInfoForm(token)
             ?: return "no_more_edits"
 
         model.addAttribute("name", token)
@@ -143,27 +129,24 @@ class EngagementWebController(
     @PostMapping("/info/submit")
     fun submitInfoForm(request: HttpServletRequest): String {
         val params = request.parameterMap.mapValues { (_, values) -> values.firstOrNull() ?: "" }
-        objectiveService.submitInfoForm(params)
+        sessionEngine.submitInfoForm(params)
         return "all_done"
     }
 
     // --- Crowd Time Status Page ---
 
     @GetMapping("/bsky_crowd_time/status/{token}", produces = [MediaType.APPLICATION_JSON])
-    fun getCrowdTimeStatus(@PathVariable token: String, model: Model): String {
-        val engagement = objectiveService.findByStatusToken(token)
-            ?: throw IllegalStateException("Unknown crowd time status token: $token")
-        val data = engagement.data as SuperBotEngagementData
-        val state = data.activeObjective as BSkyCrowdTimeObjectiveState
+    fun getStatus(@PathVariable token: String, model: Model): String {
+        val machine = sessionEngine.findByStatusToken(token)
+            ?: return "no_more_edits"
+        val state = machine.state as? BSkyCrowdTimeMachineState
+            ?: return "no_more_edits"
 
         val handle = blueSkyService.resolveDidToHandle(state.subjectDid)
-        model.addAttribute("record", state)
         model.addAttribute("handle", handle)
-        model.addAttribute("state", state.phase)
-
-        if (state.endsAt != null) {
-            model.addAttribute("endsAtRelative", PrettyTime().format(state.endsAt))
-        }
+        model.addAttribute("bSkyCrowdTime", state)
+        model.addAttribute("openEndsAt", PrettyTime().format(state.openEndsAt))
+        model.addAttribute("endsAt", PrettyTime().format(state.endsAt))
         return "bsky_crowd_time/status"
     }
 }

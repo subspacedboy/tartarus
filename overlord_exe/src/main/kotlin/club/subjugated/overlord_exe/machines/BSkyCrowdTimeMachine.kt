@@ -1,11 +1,14 @@
-package club.subjugated.overlord_exe.objectives
+package club.subjugated.overlord_exe.machines
 
 import club.subjugated.overlord_exe.cli.LikeRecord
 import club.subjugated.overlord_exe.cli.RepostRecord
-import club.subjugated.overlord_exe.models.BSkyCrowdTimeObjectiveState
-import club.subjugated.overlord_exe.models.BotEngagement
+import club.subjugated.overlord_exe.models.BSkyCrowdTimeMachineState
+import club.subjugated.overlord_exe.models.Contract
+import club.subjugated.overlord_exe.models.ContractSession
 import club.subjugated.overlord_exe.models.CrowdTimePhase
-import club.subjugated.overlord_exe.models.ObjectiveStatus
+import club.subjugated.overlord_exe.models.MachineStatus
+import club.subjugated.overlord_exe.models.SessionMachine
+import club.subjugated.overlord_exe.runtime.BotContext
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.services.UrlService
 import club.subjugated.overlord_exe.util.TimeSource
@@ -33,28 +36,35 @@ data class BSkyCrowdTimeForm(
 )
 
 @Component
-class BSkyCrowdTimeObjective(
+class BSkyCrowdTimeMachine(
     private val timeSource: TimeSource,
     private val blueSkyService: BlueSkyService,
     private val urlService: UrlService,
-) : Objective<BSkyCrowdTimeObjectiveState> {
+) : SessionMachineHandler<BSkyCrowdTimeMachineState> {
 
-    override val objectiveId: String = "bsky_crowd_time"
+    override val machineType: String = "bsky_crowd_time"
+    override val displayName: String = "Bluesky Crowd Time"
     override val templateName: String = "info/bskycrowdtimeform"
 
-    override fun createInitialState(subjectDid: String): BSkyCrowdTimeObjectiveState {
-        return BSkyCrowdTimeObjectiveState(
-            subjectDid = subjectDid,
+    override fun initialStatus(): MachineStatus = MachineStatus.NEEDS_INFO
+
+    override fun createInitialState(session: ContractSession): BSkyCrowdTimeMachineState {
+        return BSkyCrowdTimeMachineState(
+            subjectDid = session.subjectDid,
             phase = CrowdTimePhase.WAITING,
             createdAt = timeSource.nowInUtc(),
         )
     }
 
-    override fun createEmptyForm(token: String): Any {
+    override fun createInfoForm(token: String): Any {
         return BSkyCrowdTimeForm(name = token)
     }
 
-    override fun applyFormParams(state: BSkyCrowdTimeObjectiveState, params: Map<String, String>) {
+    override fun applyInfoParams(
+        machine: SessionMachine,
+        state: BSkyCrowdTimeMachineState,
+        params: Map<String, String>,
+    ) {
         state.perLikeAdd = params["perLikeAdd"]?.toLongOrNull() ?: 1L
         state.perLikeAddUnit = params["perLikeAddUnit"] ?: "MINUTES"
         state.perRepostAdd = params["perRepostAdd"]?.toLongOrNull() ?: 1L
@@ -63,9 +73,20 @@ class BSkyCrowdTimeObjective(
         state.openPeriodUnit = params["openPeriodUnit"] ?: "HOURS"
         state.receivedFormData = true
         state.phase = CrowdTimePhase.WAITING
+        machine.status = MachineStatus.RUNNING
+        machine.statusToken = state.name
+        machine.state = state
     }
 
-    override fun evaluate(state: BSkyCrowdTimeObjectiveState, engagement: BotEngagement) {
+    override fun onTick(
+        ctx: BotContext,
+        session: ContractSession,
+        contract: Contract,
+        machine: SessionMachine,
+        state: BSkyCrowdTimeMachineState,
+    ) {
+        if (machine.status != MachineStatus.RUNNING) return
+
         when (state.phase) {
             CrowdTimePhase.UNSPECIFIED,
             CrowdTimePhase.CREATED,
@@ -77,14 +98,13 @@ class BSkyCrowdTimeObjective(
             }
             CrowdTimePhase.OPEN_POSTED -> checkNoticeReposted(state)
             CrowdTimePhase.IN_OPEN -> updateOpenPeriodTime(state)
-            CrowdTimePhase.OPEN_CLOSED -> checkExpired(state)
-            CrowdTimePhase.COMPLETE -> {
-                state.status = ObjectiveStatus.COMPLETE
-            }
+            CrowdTimePhase.OPEN_CLOSED -> checkExpired(machine, state)
+            CrowdTimePhase.COMPLETE -> machine.status = MachineStatus.SATISFIED
         }
+        machine.state = state
     }
 
-    private fun postNotice(state: BSkyCrowdTimeObjectiveState) {
+    private fun postNotice(state: BSkyCrowdTimeMachineState) {
         val subjectHandle = blueSkyService.resolveDidToHandle(state.subjectDid)
         val openPeriod = formatDuration(state.openPeriodAmount, state.openPeriodUnit)
         val likePeriod = formatDuration(state.perLikeAdd, state.perLikeAddUnit)
@@ -103,7 +123,7 @@ class BSkyCrowdTimeObjective(
         state.phase = CrowdTimePhase.OPEN_POSTED
     }
 
-    private fun checkNoticeReposted(state: BSkyCrowdTimeObjectiveState) {
+    private fun checkNoticeReposted(state: BSkyCrowdTimeMachineState) {
         val reposts = blueSkyService.getReposts(state.noticeUri)
         if (reposts.any { it.did == state.subjectDid }) {
             state.repostedNoticeAt = timeSource.nowInUtc()
@@ -117,7 +137,7 @@ class BSkyCrowdTimeObjective(
         }
     }
 
-    private fun updateOpenPeriodTime(state: BSkyCrowdTimeObjectiveState) {
+    private fun updateOpenPeriodTime(state: BSkyCrowdTimeMachineState) {
         val openDuration = Duration.of(
             state.openPeriodAmount,
             ChronoUnit.valueOf(state.openPeriodUnit),
@@ -155,11 +175,11 @@ class BSkyCrowdTimeObjective(
         }
     }
 
-    private fun checkExpired(state: BSkyCrowdTimeObjectiveState) {
+    private fun checkExpired(machine: SessionMachine, state: BSkyCrowdTimeMachineState) {
         val endsAt = state.endsAt ?: return
         if (timeSource.nowInUtc() > endsAt) {
             state.phase = CrowdTimePhase.COMPLETE
-            state.status = ObjectiveStatus.COMPLETE
+            machine.status = MachineStatus.SATISFIED
         }
     }
 }

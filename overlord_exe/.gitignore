@@ -38,3 +38,7 @@ out/
 
 ### Kotlin ###
 .kotlin
+
+### Local Secrets ###
+application-local.properties
+**/application-local.properties

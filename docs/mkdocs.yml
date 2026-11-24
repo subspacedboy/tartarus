@@ -9,4 +9,5 @@ nav:
   - Initial Setup: setting_up_the_lock.md
   - Lock User Guide: sub_user_guide.md
   - Author Guide: usage_guide_for_authors.md
+  - Overlord (Bluesky Bot): overlord.md
   - Release Notes: release_notes.md

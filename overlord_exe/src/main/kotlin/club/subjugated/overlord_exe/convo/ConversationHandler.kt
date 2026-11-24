@@ -1,8 +1,13 @@
 package club.subjugated.overlord_exe.convo
 
-import aws.sdk.kotlin.services.bedrockruntime.model.ToolInputSchema
-import aws.sdk.kotlin.services.bedrockruntime.model.ToolSpecification
-import aws.smithy.kotlin.runtime.content.Document
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.put
 import work.socialhub.kbsky.model.chat.bsky.convo.ConvoDefsMessageView
 
 enum class ParamType(val jsonSchemaType: String) {
@@ -16,6 +21,7 @@ data class IntentParam(
     val type: ParamType = ParamType.STRING,
     val description: String,
     val required: Boolean = true,
+    val enumValues: List<String>? = null,
 )
 
 class MissingIntentParameterException(
@@ -24,60 +30,62 @@ class MissingIntentParameterException(
     val paramDescription: String,
 ) : IllegalArgumentException("Missing required parameter '$paramName' ($paramDescription) for intent '$intentName'")
 
+fun JsonElement.asStringOrNull(): String? = (this as? JsonPrimitive)?.contentOrNull
+
+fun JsonElement.asString(): String = asStringOrNull() ?: error("Expected string JSON primitive, got $this")
+
+fun JsonElement.asBooleanOrNull(): Boolean? = (this as? JsonPrimitive)?.booleanOrNull
+
 /**
- * Declarative specification of a conversational intent exposed as a native Bedrock Converse tool.
+ * Declarative specification of a conversational intent exposed as a native Gemini function declaration.
  */
 data class IntentSpec<T : Any>(
     val name: String,
     val description: String,
     val parameters: List<IntentParam> = emptyList(),
     val examples: List<String> = emptyList(),
-    val parser: (Map<String, Document>) -> T,
+    val parser: (Map<String, JsonElement>) -> T,
     val handler: (ConversationContext, T) -> ConversationResponse,
 ) {
-    fun toToolSpecification(): ToolSpecification {
-        val fullDescription = buildString {
-            append(description)
-            if (examples.isNotEmpty()) {
-                append("\nExamples:\n")
-                append(examples.joinToString("\n") { "- $it" })
-            }
-        }
-        return ToolSpecification {
-            this.name = this@IntentSpec.name
-            this.description = fullDescription
-            this.inputSchema = ToolInputSchema.Json(toJsonSchemaDocument())
+    fun fullDescription(): String = buildString {
+        append(description)
+        if (examples.isNotEmpty()) {
+            append("\nExamples:\n")
+            append(examples.joinToString("\n") { "- $it" })
         }
     }
 
-    fun toJsonSchemaDocument(): Document {
-        val properties = parameters.associate { param ->
-            param.name to Document(
-                mapOf(
-                    "type" to Document(param.type.jsonSchemaType),
-                    "description" to Document(param.description),
-                )
-            )
-        }
-        val requiredList = parameters
-            .filter { it.required }
-            .map { Document(it.name) }
-
-        return Document(
-            mapOf(
-                "type" to Document("object"),
-                "properties" to Document(properties),
-                "required" to Document(requiredList),
-            )
+    fun toJsonSchemaObject(): JsonObject = buildJsonObject {
+        put("type", "object")
+        put(
+            "properties",
+            buildJsonObject {
+                parameters.forEach { param ->
+                    put(
+                        param.name,
+                        buildJsonObject {
+                            put("type", param.type.jsonSchemaType)
+                            put("description", param.description)
+                            if (!param.enumValues.isNullOrEmpty()) {
+                                put("enum", JsonArray(param.enumValues.map { JsonPrimitive(it) }))
+                            }
+                        },
+                    )
+                }
+            },
         )
+        val requiredParams = parameters.filter { it.required }.map { JsonPrimitive(it.name) }
+        if (requiredParams.isNotEmpty()) {
+            put("required", JsonArray(requiredParams))
+        }
     }
 
-    fun parseCall(input: Map<String, Document>): IntentCall<T> {
+    fun parseCall(input: Map<String, JsonElement>): IntentCall<T> {
         for (param in parameters) {
             if (param.required) {
-                val doc = input[param.name]
+                val value = input[param.name]
                     ?: throw MissingIntentParameterException(name, param.name, param.description)
-                if (param.type == ParamType.STRING && doc.asStringOrNull().isNullOrBlank()) {
+                if (param.type == ParamType.STRING && value.asStringOrNull().isNullOrBlank()) {
                     throw MissingIntentParameterException(name, param.name, param.description)
                 }
             }
@@ -102,7 +110,7 @@ data class IntentCall<T : Any>(
 }
 
 /**
- * Helper for zero-argument intents (e.g. "timer", "superbot", "hello").
+ * Helper for zero-argument intents (e.g. "timer", "superbot", "hello", "help").
  */
 fun unitIntent(
     name: String,
@@ -127,6 +135,7 @@ fun stringIntent(
     paramDescription: String,
     description: String,
     examples: List<String> = emptyList(),
+    enumValues: List<String>? = null,
     handler: (ConversationContext, String) -> ConversationResponse,
 ): IntentSpec<String> = IntentSpec(
     name = name,
@@ -137,6 +146,7 @@ fun stringIntent(
             type = ParamType.STRING,
             description = paramDescription,
             required = true,
+            enumValues = enumValues,
         )
     ),
     examples = examples,
@@ -152,7 +162,7 @@ fun <T : Any> intent(
     description: String,
     parameters: List<IntentParam>,
     examples: List<String> = emptyList(),
-    parser: (Map<String, Document>) -> T,
+    parser: (Map<String, JsonElement>) -> T,
     handler: (ConversationContext, T) -> ConversationResponse,
 ): IntentSpec<T> = IntentSpec(
     name = name,
@@ -164,32 +174,20 @@ fun <T : Any> intent(
 )
 
 interface ConversationHandler {
-    /**
-     * Lowercase literal "!" command names routed to this handler (e.g. "timer", "superbot", "unlock").
-     */
     val commands: Set<String>
         get() = emptySet()
 
-    /**
-     * Declarative LLM tool/intent specifications exposed to Bedrock Converse ToolConfiguration.
-     */
     val intents: List<IntentSpec<*>>
         get() = emptyList()
 
-    /**
-     * Handles a literal `!command` DM with a pre-populated [ConversationContext] and parsed arguments.
-     */
     fun handleCommand(ctx: ConversationContext, command: String, args: List<String>): String = ""
 
-    /**
-     * Convenience wrapper for callers that pass raw `(convoId, message)`.
-     */
     fun handle(convoId: String, message: ConvoDefsMessageView): String {
         val messageMinusBang = message.text.removePrefix("!").trim()
         val chunks = if (messageMinusBang.isEmpty()) emptyList() else messageMinusBang.split("\\s+".toRegex())
         val cmd = chunks.firstOrNull()?.lowercase() ?: ""
         val args = if (chunks.size > 1) chunks.drop(1) else emptyList()
-        val ctx = ConversationContext(bskyUser = null, convoId = convoId, currentMessage = message)
+        val ctx = ConversationContext(userContext = null, convoId = convoId, currentMessage = message)
         return handleCommand(ctx, cmd, args)
     }
 }

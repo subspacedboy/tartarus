@@ -1,2 +1,0 @@
-ALTER TABLE contract
-    ADD COLUMN emergency_unlocked BOOLEAN NOT NULL DEFAULT FALSE;

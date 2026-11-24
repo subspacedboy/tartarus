@@ -1,18 +1,5 @@
 package club.subjugated.overlord_exe.cli
 
-import aws.sdk.kotlin.runtime.client.AwsClientOption.Region
-import aws.sdk.kotlin.services.bedrock.BedrockClient
-import aws.sdk.kotlin.services.bedrock.model.FoundationModelSummary
-import aws.sdk.kotlin.services.bedrock.model.ListFoundationModelsRequest
-import aws.sdk.kotlin.services.bedrockruntime.BedrockRuntimeClient
-import aws.sdk.kotlin.services.bedrockruntime.converse
-import aws.sdk.kotlin.services.bedrockruntime.model.ContentBlock
-import aws.sdk.kotlin.services.bedrockruntime.model.ConversationRole
-import aws.sdk.kotlin.services.bedrockruntime.model.ConverseRequest
-import aws.sdk.kotlin.services.bedrockruntime.model.InvokeModelRequest
-import aws.sdk.kotlin.services.bedrockruntime.model.Message
-import aws.sdk.kotlin.services.bedrockruntime.model.SystemContentBlock
-import aws.smithy.kotlin.runtime.content.ByteStream
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.services.IntentService
 import club.subjugated.overlord_exe.services.RealBlueSkyService

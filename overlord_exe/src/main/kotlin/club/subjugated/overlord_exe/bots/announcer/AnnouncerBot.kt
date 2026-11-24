@@ -3,15 +3,13 @@ package club.subjugated.overlord_exe.bots.announcer
 import club.subjugated.fb.message.Contract
 import club.subjugated.fb.message.SignedMessage
 import club.subjugated.overlord_exe.bots.general.BotComponent
-import club.subjugated.overlord_exe.models.BSkyUser
 import club.subjugated.overlord_exe.models.BotMap
 import club.subjugated.overlord_exe.runtime.BotContext
 import club.subjugated.overlord_exe.runtime.BotDescriptor
 import club.subjugated.overlord_exe.runtime.OverlordBot
-import club.subjugated.overlord_exe.services.BSkyUserService
 import club.subjugated.overlord_exe.services.BlueSkyService
 import club.subjugated.overlord_exe.services.BotMapService
-import club.subjugated.overlord_exe.util.TimeSource
+import club.subjugated.overlord_exe.services.UserProfileService
 import jakarta.annotation.PostConstruct
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -22,8 +20,7 @@ import java.nio.ByteBuffer
 class AnnouncerBot(
     private val botMapService: BotMapService,
     private val botComponent: BotComponent,
-    private val bskyUserService: BSkyUserService,
-    private val timeSource: TimeSource,
+    private val userProfileService: UserProfileService,
     private val blueSkyService: BlueSkyService,
     private val logger: Logger = LoggerFactory.getLogger(AnnouncerBot::class.java),
 ) : OverlordBot {
@@ -48,18 +45,11 @@ class AnnouncerBot(
         return botMapService.getOrCreateBotMap(descriptor.internalName, descriptor.description)
     }
 
-    fun createRecord(token: String, did: String): BSkyUser {
-        val record = bskyUserService.findOrCreateByDid(did)
-        record.shareableToken = token
-        bskyUserService.save(record)
-        return record
-    }
-
     fun generateMessageForAccept(
         shareableToken: String,
         contract: club.subjugated.overlord_exe.models.Contract,
     ): String {
-        val subject = bskyUserService.findByShareableToken(shareableToken)?.let {
+        val subject = userProfileService.findByShareableToken(shareableToken)?.let {
             blueSkyService.resolveDidToHandle(it.did)
         } ?: "Unknown"
 
@@ -72,7 +62,7 @@ class AnnouncerBot(
     }
 
     fun generateMessageForRelease(shareableToken: String): String {
-        val subject = bskyUserService.findByShareableToken(shareableToken)?.let {
+        val subject = userProfileService.findByShareableToken(shareableToken)?.let {
             blueSkyService.resolveDidToHandle(it.did)
         } ?: "Unknown"
 
@@ -88,12 +78,14 @@ class AnnouncerBot(
     }
 
     override fun handleAccept(contract: club.subjugated.overlord_exe.models.Contract) {
-        val message = generateMessageForAccept(contract.shareableToken!!, contract)
+        val token = contract.shareableToken ?: return
+        val message = generateMessageForAccept(token, contract)
         blueSkyService.post(message)
     }
 
     override fun handleRelease(contract: club.subjugated.overlord_exe.models.Contract) {
-        val message = generateMessageForRelease(contract.shareableToken!!)
+        val token = contract.shareableToken ?: return
+        val message = generateMessageForRelease(token)
         blueSkyService.post(message)
     }
 }

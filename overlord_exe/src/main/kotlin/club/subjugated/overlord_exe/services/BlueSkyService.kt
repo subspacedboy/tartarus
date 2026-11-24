@@ -105,7 +105,8 @@ fun parseAtProto(input: String): AtUriParts? {
 @Profile("!test")
 class RealBlueSkyService(
     @Value("\${overlord.bsky.user}") private val bskyUser : String,
-    @Value("\${overlord.bsky.password_file}") private val bskyPasswordFile : String,
+    @Value("\${overlord.bsky.password:}") private val bskyPassword : String = "",
+    @Value("\${overlord.bsky.password_file:}") private val bskyPasswordFile : String = "",
     var publisher: ApplicationEventPublisher,
     var timeSource: TimeSource,
     val bskyLikeRepository: BskyLikeRepository,
@@ -125,7 +126,16 @@ class RealBlueSkyService(
 
     @PostConstruct
     fun start() {
-        val password = Files.readString(Paths.get(bskyPasswordFile)).trim()
+        val password = bskyPassword.trim().ifBlank {
+            if (bskyPasswordFile.isNotBlank()) {
+                Files.readString(Paths.get(bskyPasswordFile)).trim()
+            } else {
+                ""
+            }
+        }
+        require(password.isNotBlank()) {
+            "Bluesky password is not configured (set overlord.bsky.password or overlord.bsky.password_file)"
+        }
 
         val response = BlueskyFactory
             .instance(BSKY_SOCIAL.uri)

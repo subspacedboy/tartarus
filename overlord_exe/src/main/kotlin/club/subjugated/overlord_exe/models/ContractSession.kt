@@ -39,14 +39,13 @@ object OffsetDateTimeIsoSerializer : KSerializer<OffsetDateTime> {
     }
 }
 
-val EngagementJson = Json {
+val MachineJson = Json {
     ignoreUnknownKeys = true
     encodeDefaults = true
     classDiscriminator = "_type"
 }
 
-enum class EngagementPhase {
-    UNSPECIFIED,
+enum class SessionPhase {
     CREATED,
     ISSUED,
     ACTIVE,
@@ -54,12 +53,18 @@ enum class EngagementPhase {
     ABORTED,
 }
 
-@Serializable
-enum class ObjectiveStatus {
+enum class ReleasePolicy {
+    ALL,
+    ANY,
+    MANUAL,
+}
+
+enum class MachineStatus {
     NEEDS_INFO,
-    WAITING,
-    IN_PROGRESS,
-    COMPLETE,
+    WAITING_FORM,
+    RUNNING,
+    SATISFIED,
+    FAILED,
 }
 
 @Serializable
@@ -75,29 +80,53 @@ enum class CrowdTimePhase {
 }
 
 @Serializable
-sealed interface ObjectiveState {
-    val objectiveId: String
-    var status: ObjectiveStatus
+sealed interface MachineState {
+    val machineType: String
+}
+
+@Serializable
+@SerialName("timer")
+data class TimerMachineState(
+    var isRandom: Boolean = false,
+    var minDuration: Int = 1,
+    var minDurationUnit: String = "HOURS",
+    var maxDuration: Int = 1,
+    var maxDurationUnit: String = "HOURS",
+    @Serializable(with = OffsetDateTimeIsoSerializer::class)
+    var endsAt: OffsetDateTime? = null,
+    var completed: Boolean = false,
+) : MachineState {
+    override val machineType: String get() = "timer"
+}
+
+@Serializable
+@SerialName("proxy_control")
+data class ProxyControlMachineState(
+    var keyholderDid: String = "",
+    var keyholderHandle: String = "",
+    var keyholderConvoId: String = "",
+    var subHandle: String = "",
+    var allowAutoRelease: Boolean = false,
+) : MachineState {
+    override val machineType: String get() = "proxy_control"
 }
 
 @Serializable
 @SerialName("bsky_likes")
-data class BSkyLikesObjectiveState(
-    override val objectiveId: String = "bsky_likes",
-    override var status: ObjectiveStatus = ObjectiveStatus.NEEDS_INFO,
+data class BSkyLikesMachineState(
     var did: String = "",
     var goal: Long = 100,
     var likesSoFar: Long = 0,
     var receivedFormData: Boolean = false,
     @Serializable(with = OffsetDateTimeIsoSerializer::class)
     var createdAt: OffsetDateTime? = null,
-) : ObjectiveState
+) : MachineState {
+    override val machineType: String get() = "bsky_likes"
+}
 
 @Serializable
 @SerialName("bsky_crowd_time")
-data class BSkyCrowdTimeObjectiveState(
-    override val objectiveId: String = "bsky_crowd_time",
-    override var status: ObjectiveStatus = ObjectiveStatus.NEEDS_INFO,
+data class BSkyCrowdTimeMachineState(
     var phase: CrowdTimePhase = CrowdTimePhase.CREATED,
     var name: String = generateId("ct-"),
     var subjectDid: String = "",
@@ -120,107 +149,94 @@ data class BSkyCrowdTimeObjectiveState(
     var openEndsAt: OffsetDateTime? = null,
     @Serializable(with = OffsetDateTimeIsoSerializer::class)
     var endsAt: OffsetDateTime? = null,
-) : ObjectiveState {
-    // Exposed for Thymeleaf status template fallback compatibility
+) : MachineState {
+    override val machineType: String get() = "bsky_crowd_time"
     val state: String get() = phase.name
 }
 
-@Serializable
-sealed interface EngagementData
-
-@Serializable
-@SerialName("timer")
-data class TimerEngagementData(
-    var isPublic: Boolean = false,
-    var isRandom: Boolean = false,
-    var minDuration: Int = 0,
-    var minDurationUnit: String = "MINUTES",
-    var maxDuration: Int = 0,
-    var maxDurationUnit: String = "MINUTES",
-    @Serializable(with = OffsetDateTimeIsoSerializer::class)
-    var endsAt: OffsetDateTime? = null,
-    var completed: Boolean = false,
-) : EngagementData
-
-@Serializable
-@SerialName("simple_proxy")
-data class SimpleProxyEngagementData(
-    var isPublic: Boolean = false,
-    var keyholderHandle: String = "",
-    var keyholderConvoId: String = "",
-    var subHandle: String = "",
-) : EngagementData
-
-@Serializable
-@SerialName("superbot")
-data class SuperBotEngagementData(
-    var isPublic: Boolean = false,
-    var objectives: List<String> = emptyList(),
-    var activeObjective: ObjectiveState? = null,
-) : EngagementData
-
 @Entity
-@Table(name = "bot_engagement")
-class BotEngagement(
+@Table(name = "contract_session")
+class ContractSession(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long = 0,
-    var name: String = generateId("eng-"),
-    var botId: String = "",
+    var token: String = generateId("ses-"),
+    var botId: String = "overlord",
     @Enumerated(EnumType.STRING)
-    var phase: EngagementPhase = EngagementPhase.CREATED,
+    var phase: SessionPhase = SessionPhase.CREATED,
+    @Enumerated(EnumType.STRING)
+    var releasePolicy: ReleasePolicy = ReleasePolicy.ALL,
+    var isPublic: Boolean = false,
+    var terms: String? = null,
     var contractId: Long? = null,
     var contractSerialNumber: Int = 0,
-    var shareableToken: String? = "",
-    var subjectDid: String = "",
+    var shareableToken: String? = null,
+    var subjectDid: String,
     var convoId: String = "",
     var keyholderDid: String? = null,
-    var infoToken: String? = null,
-    var statusToken: String? = null,
-    @Column(name = "data", columnDefinition = "json")
-    var rawDataJson: String = "",
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     var createdAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     var acceptedAt: OffsetDateTime? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING)
+    var completedAt: OffsetDateTime? = null,
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     var updatedAt: OffsetDateTime? = null,
-    data: EngagementData = TimerEngagementData(),
+)
+
+@Entity
+@Table(name = "session_machine")
+class SessionMachine(
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    var id: Long = 0,
+    var sessionId: Long,
+    var machineType: String,
+    @Enumerated(EnumType.STRING)
+    var status: MachineStatus = MachineStatus.NEEDS_INFO,
+    var infoToken: String? = null,
+    var statusToken: String? = null,
+    @Column(name = "state_json", columnDefinition = "json")
+    var stateJson: String = "",
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    var createdAt: OffsetDateTime? = null,
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    var updatedAt: OffsetDateTime? = null,
+    state: MachineState = TimerMachineState(),
 ) {
     @Transient
-    private var cachedData: EngagementData? = data
+    private var cachedState: MachineState? = state
 
-    var data: EngagementData
+    var state: MachineState
         get() {
-            if (cachedData == null && rawDataJson.isNotBlank()) {
-                cachedData = EngagementJson.decodeFromString<EngagementData>(rawDataJson)
+            if (cachedState == null && stateJson.isNotBlank()) {
+                cachedState = MachineJson.decodeFromString<MachineState>(stateJson)
             }
-            return cachedData ?: TimerEngagementData().also { cachedData = it }
+            return cachedState ?: TimerMachineState().also { cachedState = it }
         }
         set(value) {
-            cachedData = value
-            rawDataJson = EngagementJson.encodeToString<EngagementData>(value)
+            cachedState = value
+            stateJson = MachineJson.encodeToString<MachineState>(value)
         }
 
     init {
-        if (rawDataJson.isBlank()) {
-            rawDataJson = EngagementJson.encodeToString<EngagementData>(data)
+        if (stateJson.isBlank()) {
+            stateJson = MachineJson.encodeToString<MachineState>(state)
         } else {
-            cachedData = runCatching { EngagementJson.decodeFromString<EngagementData>(rawDataJson) }.getOrNull() ?: data
+            cachedState = runCatching { MachineJson.decodeFromString<MachineState>(stateJson) }.getOrNull() ?: state
         }
     }
 
     @PostLoad
     fun onPostLoad() {
-        if (rawDataJson.isNotBlank()) {
-            cachedData = EngagementJson.decodeFromString<EngagementData>(rawDataJson)
+        if (stateJson.isNotBlank()) {
+            cachedState = MachineJson.decodeFromString<MachineState>(stateJson)
         }
     }
 
     @PrePersist
     @PreUpdate
     fun syncJsonBeforeSave() {
-        cachedData?.let {
-            rawDataJson = EngagementJson.encodeToString<EngagementData>(it)
+        cachedState?.let {
+            stateJson = MachineJson.encodeToString<MachineState>(it)
         }
     }
 }

@@ -142,11 +142,18 @@ class BotMapService(
             try {
                 register(encodedKey, effectiveDescription, internalName, keyVersion)
             } catch (e: Exception) {
+                val fallbackName = remoteMatch?.name ?: existing?.externalName
+                if (fallbackName.isNullOrBlank()) {
+                    throw IllegalStateException(
+                        "Coordinator registration failed for $internalName (${e.message})",
+                        e,
+                    )
+                }
                 logger.warn(
-                    "Coordinator registration failed for $internalName (${e.message}); using local placeholder until coordinator is reachable"
+                    "Coordinator registration failed for $internalName (${e.message}); reusing known externalName '$fallbackName'"
                 )
                 NewBotResponse(
-                    name = remoteMatch?.name ?: existing?.externalName ?: generateId("b-"),
+                    name = fallbackName,
                     clearTextPassword = existing?.password ?: "",
                 )
             }

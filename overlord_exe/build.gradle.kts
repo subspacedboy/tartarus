@@ -82,8 +82,7 @@ dependencies {
 	// https://mvnrepository.com/artifact/io.hypersistence/hypersistence-utils-hibernate-63
 	implementation("io.hypersistence:hypersistence-utils-hibernate-63:3.9.10")
 
-	implementation("aws.sdk.kotlin:bedrock:1.4.101")
-	implementation("aws.sdk.kotlin:bedrockruntime:1.4.101")
+
 
 	implementation("com.github.ben-manes.caffeine:caffeine:3.2.1")
 }
